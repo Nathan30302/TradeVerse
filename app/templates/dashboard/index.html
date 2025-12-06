@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Rotating Quote Styles */
+    .quote-container {
+        perspective: 1000px;
+    }
+    
+    .quote-card {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .quote-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+        animation: shimmer 3s infinite;
+    }
+    
+    @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+    
+    .quote-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .quote-icon i {
+        color: white;
+        font-size: 1.25rem;
+    }
+    
+    .quote-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .quote-text {
+        color: white;
+        font-size: 1rem;
+        font-style: italic;
+        margin: 0 0 0.5rem 0;
+        line-height: 1.5;
+        opacity: 1;
+        transition: opacity 0.5s ease;
+    }
+    
+    .quote-text.fade-out {
+        opacity: 0;
+    }
+    
+    .quote-progress {
+        height: 3px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    
+    .quote-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.1s linear;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1 class="page-title">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </h1>
+            <p class="page-subtitle">Welcome back, <strong>{{ current_user.username }}</strong>! 👋</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus-circle"></i> Add Trade
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Start Guide for New Users -->
+{% if stats.total_trades == 0 %}
+<div class="card border-0 mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <div class="card-body p-4">
+        <h4 class="mb-3"><i class="fas fa-rocket"></i> Welcome to TradeVerse!</h4>
+        <p class="mb-3">Get started with your trading journal in 3 easy steps:</p>
+        <div class="row text-center">
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="bg-white bg-opacity-10 rounded p-3">
+                    <div class="h2 mb-2">1</div>
+                    <strong>Plan Your Trade</strong>
+                    <p class="small mb-0 opacity-75">Use the Trade Planner to set your entry, SL, and TP</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="bg-white bg-opacity-10 rounded p-3">
+                    <div class="h2 mb-2">2</div>
+                    <strong>Log Your Trade</strong>
+                    <p class="small mb-0 opacity-75">Record what actually happened</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="bg-white bg-opacity-10 rounded p-3">
+                    <div class="h2 mb-2">3</div>
+                    <strong>Review & Improve</strong>
+                    <p class="small mb-0 opacity-75">Learn from your patterns</p>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="{{ url_for('planner.new_plan') }}" class="btn btn-light btn-lg me-2">
+                <i class="fas fa-clipboard-list"></i> Create First Plan
+            </a>
+            <a href="{{ url_for('trade.add') }}" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-plus"></i> Log a Trade
+            </a>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Rotating Motivational Quote -->
+<div class="quote-container mb-4" id="quoteContainer">
+    <div class="quote-card">
+        <div class="quote-icon">
+            <i class="fas fa-lightbulb"></i>
+        </div>
+        <div class="quote-content">
+            <p class="quote-text" id="quoteText">{{ quote }}</p>
+            <div class="quote-progress">
+                <div class="quote-progress-bar" id="quoteProgressBar"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Trades</div>
+            <div class="stat-value">{{ stats.total_trades }}</div>
+            <div class="stat-change text-muted">
+                <i class="fas fa-chart-line"></i> All time
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-card success">
+            <div class="stat-label">Win Rate</div>
+            <div class="stat-value">{{ stats.win_rate|percentage(1) }}</div>
+            <div class="stat-change text-success">
+                <i class="fas fa-arrow-up"></i> {{ stats.winning_trades }}W / {{ stats.losing_trades }}L
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-card {% if stats.total_pnl >= 0 %}success{% else %}danger{% endif %}">
+            <div class="stat-label">Total P/L</div>
+            <div class="stat-value {% if stats.total_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                {{ stats.total_pnl|currency(current_user.preferred_currency) }}
+            </div>
+            <div class="stat-change {% if stats.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                <i class="fas fa-{% if stats.total_pnl >= 0 %}arrow-up{% else %}arrow-down{% endif %}"></i> Net profit/loss
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-card warning">
+            <div class="stat-label">Avg R:R</div>
+            <div class="stat-value">{{ stats.avg_rr|rr_ratio }}</div>
+            <div class="stat-change text-warning">
+                <i class="fas fa-balance-scale"></i> Risk-reward ratio
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Stats Row -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card info">
+            <div class="stat-label">Open Trades</div>
+            <div class="stat-value">{{ stats.open_trades }}</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-card success">
+            <div class="stat-label">Average Win</div>
+            <div class="stat-value profit">{{ stats.avg_win|currency(current_user.preferred_currency) }}</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-card danger">
+            <div class="stat-label">Average Loss</div>
+            <div class="stat-value loss">{{ stats.avg_loss|currency(current_user.preferred_currency) }}</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="stat-card warning">
+            <div class="stat-label">Max Drawdown</div>
+            <div class="stat-value text-danger">{{ max_drawdown|currency(current_user.preferred_currency) }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Current Streak -->
+{% if streak.count > 0 %}
+<div class="alert {% if streak.type == 'win' %}alert-success{% else %}alert-danger{% endif %} border-0 mb-4">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-fire fa-2x me-3"></i>
+        <div>
+            <strong>Current Streak:</strong> {{ streak.count }} {{ streak.type }}s in a row!
+            {% if streak.type == 'win' %}
+                Keep up the great work! 🔥
+            {% else %}
+                Stay disciplined and follow your plan! 💪
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Charts Section -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line"></i> Equity Curve</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="equityChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Win/Loss Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="winLossChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Trades & Best/Worst -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history"></i> Recent Trades</h5>
+                <a href="{{ url_for('trade.list') }}" class="btn btn-sm btn-outline-light">
+                    View All <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_trades %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Symbol</th>
+                                    <th>Type</th>
+                                    <th>P/L</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trade in recent_trades %}
+                                <tr onclick="window.location='{{ url_for('trade.view', trade_id=trade.id) }}'" style="cursor: pointer;">
+                                    <td>{{ trade.entry_date|datetime('%m/%d %H:%M') }}</td>
+                                    <td><strong>{{ trade.symbol }}</strong></td>
+                                    <td>
+                                        <span class="badge bg-{% if trade.trade_type == 'BUY' %}success{% else %}danger{% endif %}">
+                                            {{ trade.trade_type }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if trade.profit_loss %}
+                                            <span class="{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
+                                                {{ trade.get_result_emoji() }} {{ trade.profit_loss|currency(current_user.preferred_currency) }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if trade.status == 'OPEN' %}warning{% else %}secondary{% endif %}">
+                                            {{ trade.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No trades yet</h5>
+                        <p class="text-muted">Start by adding your first trade!</p>
+                        <a href="{{ url_for('trade.add') }}" class="btn btn-primary">
+                            <i class="fas fa-plus-circle"></i> Add Trade
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Best Trade -->
+        {% if best_trade %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="text-success mb-3">
+                    <i class="fas fa-trophy"></i> Best Trade
+                </h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>{{ best_trade.symbol }}</strong>
+                    <span class="badge bg-success">{{ best_trade.trade_type }}</span>
+                </div>
+                <div class="h4 profit mb-0">
+                    {{ best_trade.profit_loss|currency(current_user.preferred_currency) }}
+                </div>
+                <small class="text-muted">{{ best_trade.entry_date|datetime('%B %d, %Y') }}</small>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Worst Trade -->
+        {% if worst_trade %}
+        <div class="card">
+            <div class="card-body">
+                <h6 class="text-danger mb-3">
+                    <i class="fas fa-exclamation-triangle"></i> Worst Trade
+                </h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>{{ worst_trade.symbol }}</strong>
+                    <span class="badge bg-danger">{{ worst_trade.trade_type }}</span>
+                </div>
+                <div class="h4 loss mb-0">
+                    {{ worst_trade.profit_loss|currency(current_user.preferred_currency) }}
+                </div>
+                <small class="text-muted">{{ worst_trade.entry_date|datetime('%B %d, %Y') }}</small>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- This Week -->
+        {% if week_performance.trades > 0 %}
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="mb-3">
+                    <i class="fas fa-calendar-week"></i> This Week
+                </h6>
+                <div class="mb-2">
+                    <small class="text-muted">Total Trades</small>
+                    <div class="h5">{{ week_performance.trades }}</div>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Win Rate</small>
+                    <div class="h5">{{ week_performance.win_rate|percentage(1) }}</div>
+                </div>
+                <div>
+                    <small class="text-muted">P/L</small>
+                    <div class="h5 {% if week_performance.pnl >= 0 %}profit{% else %}loss{% endif %}">
+                        {{ week_performance.pnl|currency(current_user.preferred_currency) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Fetch and render equity curve
+fetch("{{ url_for('dashboard.equity_curve_api') }}")
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('equityChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.date),
+                datasets: [{
+                    label: 'Equity',
+                    data: data.map(d => d.equity),
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        callbacks: {
+                            label: function(context) {
+                                return 'Equity: $' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    });
+
+// Win/Loss Pie Chart
+fetch("{{ url_for('dashboard.win_rate_chart_api') }}")
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('winLossChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Wins', 'Losses'],
+                datasets: [{
+                    data: [data.wins, data.losses],
+                    backgroundColor: ['#10b981', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 12, weight: '600' }
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+// ==================== Rotating Quotes ====================
+(function() {
+    const quotes = {{ config.QUOTES | tojson | safe }};
+    const rotationInterval = {{ config.QUOTE_ROTATION_INTERVAL }};
+    const quoteText = document.getElementById('quoteText');
+    const progressBar = document.getElementById('quoteProgressBar');
+    
+    if (!quoteText || !progressBar || quotes.length === 0) return;
+    
+    let currentIndex = Math.floor(Math.random() * quotes.length);
+    let progress = 0;
+    const progressStep = 100 / (rotationInterval / 100);
+    
+    function changeQuote() {
+        // Fade out
+        quoteText.classList.add('fade-out');
+        
+        setTimeout(() => {
+            // Change quote
+            currentIndex = (currentIndex + 1) % quotes.length;
+            quoteText.textContent = quotes[currentIndex];
+            
+            // Fade in
+            quoteText.classList.remove('fade-out');
+            
+            // Reset progress
+            progress = 0;
+            progressBar.style.width = '0%';
+        }, 500);
+    }
+    
+    // Progress bar animation
+    setInterval(() => {
+        progress += progressStep;
+        if (progress >= 100) {
+            changeQuote();
+        } else {
+            progressBar.style.width = progress + '%';
+        }
+    }, 100);
+})();
+</script>
+{% endblock %}

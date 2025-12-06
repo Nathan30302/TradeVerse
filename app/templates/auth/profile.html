@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <!-- Page Header -->
+        <div class="page-header mb-4">
+            <h1 class="page-title">
+                <i class="fas fa-user-circle"></i> My Profile
+            </h1>
+            <p class="page-subtitle">Manage your account settings and preferences</p>
+        </div>
+
+        <!-- Account Stats -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h3 class="text-primary">{{ current_user.trades.count() }}</h3>
+                        <p class="text-muted mb-0">Total Trades</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="text-success">{{ current_user.get_stats().win_rate|percentage(1) }}</h3>
+                        <p class="text-muted mb-0">Win Rate</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="text-info">{{ current_user.created_at|datetime('%b %Y') }}</h3>
+                        <p class="text-muted mb-0">Member Since</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Information -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-user"></i> Profile Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.profile') }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="username" class="form-label fw-bold">Username</label>
+                            <input type="text" class="form-control" id="username" 
+                                   value="{{ current_user.username }}" disabled>
+                            <small class="text-muted">Username cannot be changed</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="email" class="form-label fw-bold">Email</label>
+                            <input type="email" class="form-control" id="email" 
+                                   value="{{ current_user.email }}" disabled>
+                            <small class="text-muted">Email cannot be changed</small>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="full_name" class="form-label fw-bold">Full Name</label>
+                            <input type="text" class="form-control" id="full_name" name="full_name" 
+                                   value="{{ current_user.full_name or '' }}" 
+                                   placeholder="Your full name">
+                        </div>
+
+                        <div class="col-12">
+                            <label for="bio" class="form-label fw-bold">Bio</label>
+                            <textarea class="form-control" id="bio" name="bio" rows="3" 
+                                      placeholder="Tell us about yourself...">{{ current_user.bio or '' }}</textarea>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h6 class="fw-bold mb-3"><i class="fas fa-cog"></i> Preferences</h6>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="timezone" class="form-label fw-bold">Timezone</label>
+                            <select class="form-select" id="timezone" name="timezone">
+                                {% for tz in config.TIMEZONES %}
+                                    <option value="{{ tz }}" {% if tz == current_user.timezone %}selected{% endif %}>
+                                        {{ tz }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="preferred_currency" class="form-label fw-bold">Preferred Currency</label>
+                            <select class="form-select" id="preferred_currency" name="preferred_currency">
+                                {% for currency in config.CURRENCIES %}
+                                    <option value="{{ currency }}" 
+                                            {% if currency == current_user.preferred_currency %}selected{% endif %}>
+                                        {{ currency }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="theme" class="form-label fw-bold">Theme</label>
+                            <select class="form-select" id="theme" name="theme">
+                                <option value="light" {% if current_user.theme == 'light' %}selected{% endif %}>
+                                    ☀️ Light
+                                </option>
+                                <option value="dark" {% if current_user.theme == 'dark' %}selected{% endif %}>
+                                    🌙 Dark
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                    <form method="POST" action="{{ url_for('auth.profile') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    
+    <!-- rest of form -->
+                </form>
+            </div>
+        </div>
+
+        <!-- Change Password -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-lock"></i> Change Password</h5>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-key"></i> Change Password
+                </a>
+                <p class="text-muted mt-2 mb-0">
+                    <small>Last changed: Never</small>
+                </p>
+            </div>
+        </div>
+
+        <!-- Account Information -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Account Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-2">
+                            <strong>Account Status:</strong>
+                            <span class="badge bg-success">Active</span>
+                        </p>
+                        <p class="mb-2">
+                            <strong>Member Since:</strong> 
+                            {{ current_user.created_at.strftime('%B %d, %Y') }}
+                        </p>
+                        <p class="mb-0">
+                            <strong>Last Login:</strong> 
+                            {% if current_user.last_login %}
+                                {{ current_user.last_login.strftime('%B %d, %Y at %I:%M %p') }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-2">
+                            <strong>Email Verified:</strong>
+                            {% if current_user.is_verified %}
+                                <span class="badge bg-success">Yes</span>
+                            {% else %}
+                                <span class="badge bg-warning">No</span>
+                            {% endif %}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Premium:</strong>
+                            {% if current_user.is_premium %}
+                                <span class="badge bg-primary">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Free</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

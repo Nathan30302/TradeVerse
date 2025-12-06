@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        min-height: 100vh;
+    }
+    
+    .auth-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        position: relative;
+    }
+    
+    .auth-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+    }
+    
+    .auth-wrapper::after {
+        content: '';
+        position: absolute;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(118, 75, 162, 0.15) 0%, transparent 70%);
+        bottom: -100px;
+        left: -100px;
+        pointer-events: none;
+    }
+    
+    .auth-container {
+        width: 100%;
+        max-width: 480px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .auth-brand {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .auth-logo {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
+    }
+    
+    .auth-logo i {
+        font-size: 1.75rem;
+        color: white;
+    }
+    
+    .auth-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: white;
+        margin-bottom: 0.5rem;
+    }
+    
+    .auth-tagline {
+        color: #94a3b8;
+        font-size: 0.95rem;
+    }
+    
+    .auth-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 24px;
+        padding: 2rem;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+    
+    .form-label {
+        display: block;
+        color: #cbd5e1;
+        font-weight: 600;
+        font-size: 0.8rem;
+        margin-bottom: 0.4rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .form-control {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        color: white;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control::placeholder {
+        color: #64748b;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        background: rgba(99, 102, 241, 0.1);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    
+    .form-hint {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+    }
+    
+    .form-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin: 1.25rem 0;
+    }
+    
+    .form-check-input {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    
+    .form-check-input:checked {
+        background: #667eea;
+        border-color: #667eea;
+    }
+    
+    .form-check-label {
+        color: #94a3b8;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+    
+    .form-check-label a {
+        color: #667eea;
+        text-decoration: none;
+    }
+    
+    .form-check-label a:hover {
+        text-decoration: underline;
+    }
+    
+    .btn-register {
+        width: 100%;
+        padding: 0.875rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+    }
+    
+    .auth-divider {
+        display: flex;
+        align-items: center;
+        margin: 1.5rem 0;
+        color: #475569;
+        font-size: 0.85rem;
+    }
+    
+    .auth-divider::before,
+    .auth-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .auth-divider span {
+        padding: 0 1rem;
+    }
+    
+    .btn-login-link {
+        width: 100%;
+        padding: 0.75rem;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        color: #94a3b8;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: block;
+        text-align: center;
+    }
+    
+    .btn-login-link:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.25);
+        color: white;
+    }
+    
+    /* Features */
+    .auth-features {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+    
+    .auth-feature {
+        text-align: center;
+        color: #64748b;
+    }
+    
+    .auth-feature i {
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .auth-feature i.fa-check-circle { color: #10b981; }
+    .auth-feature i.fa-shield-alt { color: #667eea; }
+    .auth-feature i.fa-bolt { color: #f59e0b; }
+    
+    .auth-feature span {
+        font-size: 0.75rem;
+    }
+    
+    .navbar, .sidebar, footer {
+        display: none !important;
+    }
+    
+    .main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .container-fluid > .row {
+        margin: 0;
+    }
+    
+    @media (max-width: 576px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .auth-features {
+            gap: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-container">
+        <!-- Brand -->
+        <div class="auth-brand">
+            <div class="auth-logo">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <h1 class="auth-title">Join {{ app_name }}</h1>
+            <p class="auth-tagline">Start your journey to consistent trading</p>
+        </div>
+        
+        <!-- Register Card -->
+        <div class="auth-card">
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" 
+                               class="form-control" 
+                               name="username" 
+                               placeholder="johndoe"
+                               required 
+                               minlength="3"
+                               pattern="[a-zA-Z0-9_-]+"
+                               autofocus>
+                        <div class="form-hint">Letters, numbers, _ or -</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" 
+                               class="form-control" 
+                               name="full_name" 
+                               placeholder="John Doe">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" 
+                           class="form-control" 
+                           name="email" 
+                           placeholder="john@example.com"
+                           required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" 
+                               class="form-control" 
+                               name="password" 
+                               placeholder="Min 8 characters"
+                               required 
+                               minlength="8">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Confirm</label>
+                        <input type="password" 
+                               class="form-control" 
+                               name="confirm_password" 
+                               placeholder="Repeat password"
+                               required 
+                               minlength="8">
+                    </div>
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="terms" required>
+                    <label class="form-check-label" for="terms">
+                        I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn-register">
+                    <i class="fas fa-user-plus"></i>
+                    Create Account
+                </button>
+            </form>
+            
+            <div class="auth-divider">
+                <span>Already have an account?</span>
+            </div>
+            
+            <a href="{{ url_for('auth.login') }}" class="btn-login-link">
+                Sign in instead
+            </a>
+        </div>
+        
+        <!-- Features -->
+        <div class="auth-features">
+            <div class="auth-feature">
+                <i class="fas fa-check-circle"></i>
+                <span>Free Forever</span>
+            </div>
+            <div class="auth-feature">
+                <i class="fas fa-shield-alt"></i>
+                <span>Secure</span>
+            </div>
+            <div class="auth-feature">
+                <i class="fas fa-bolt"></i>
+                <span>Fast Setup</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

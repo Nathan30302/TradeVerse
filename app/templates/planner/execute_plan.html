@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Trade - {{ plan.symbol }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('planner.index') }}">Trade Planner</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('planner.view_plan', plan_id=plan.id) }}">{{ plan.symbol }}</a></li>
+            <li class="breadcrumb-item active">Complete Trade</li>
+        </ol>
+    </nav>
+    <h1 class="page-title">
+        <i class="fas fa-clipboard-check"></i> After Trade Review
+    </h1>
+    <p class="page-subtitle">Record what actually happened and reflect on your trade</p>
+</div>
+
+<!-- Plan Summary -->
+<div class="alert alert-info mb-4">
+    <div class="row align-items-center">
+        <div class="col-md-6">
+            <strong><i class="fas fa-chart-line"></i> {{ plan.symbol }}</strong>
+            <span class="badge {% if plan.direction == 'BUY' %}bg-success{% else %}bg-danger{% endif %} ms-2">
+                {{ plan.direction }}
+            </span>
+            <span class="badge bg-secondary ms-2">{{ plan.strategy or 'No strategy' }}</span>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <span class="me-3"><strong>Planned Entry:</strong> {{ "%.5f"|format(plan.planned_entry) }}</span>
+            <span class="me-3 text-danger"><strong>SL:</strong> {{ "%.5f"|format(plan.planned_stop_loss) }}</span>
+            <span class="text-success"><strong>TP:</strong> {{ "%.5f"|format(plan.planned_take_profit) }}</span>
+        </div>
+    </div>
+</div>
+
+<form method="POST" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    
+    <div class="row">
+        <!-- Left Column: Actual Execution -->
+        <div class="col-lg-8">
+            <!-- Actual Prices -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Actual Execution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            {{ form.actual_entry.label(class="form-label fw-bold") }}
+                            {{ form.actual_entry(class="form-control form-control-lg", placeholder="Actual entry price", id="actual_entry") }}
+                            {% for error in form.actual_entry.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                            <small class="text-muted">Planned: {{ "%.5f"|format(plan.planned_entry) }}</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {{ form.actual_exit.label(class="form-label fw-bold") }}
+                            {{ form.actual_exit(class="form-control form-control-lg", placeholder="Actual exit price", id="actual_exit") }}
+                            {% for error in form.actual_exit.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Auto-calculated P&L Preview -->
+                    <div class="mt-4 p-4 bg-light rounded text-center">
+                        <small class="text-muted d-block mb-2">Estimated P&L</small>
+                        <strong id="pnl_preview" class="h2">$0.00</strong>
+                        <div class="mt-2">
+                            <small class="text-muted">Lot Size: {{ plan.planned_lot_size }} | Symbol: {{ plan.symbol }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emotion & Grade -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-brain"></i> Psychology & Grading</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            {{ form.emotion_after.label(class="form-label fw-bold") }}
+                            {{ form.emotion_after(class="form-select form-select-lg") }}
+                            {% for error in form.emotion_after.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {{ form.trade_grade.label(class="form-label fw-bold") }}
+                            {{ form.trade_grade(class="form-select form-select-lg") }}
+                            {% for error in form.trade_grade.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Grade Guide -->
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <small class="text-muted">
+                            <strong>Grading Guide:</strong><br>
+                            <span class="text-success">A</span> = Followed plan perfectly, good execution<br>
+                            <span class="text-info">B</span> = Mostly followed plan, minor deviations<br>
+                            <span class="text-warning">C</span> = Some mistakes, room for improvement<br>
+                            <span class="text-danger">D</span> = Significant issues, learn from it
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reflection Notes -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Reflection</h5>
+                </div>
+                <div class="card-body">
+                    {{ form.reflection_notes.label(class="form-label fw-bold") }}
+                    {{ form.reflection_notes(class="form-control", rows="4", placeholder="What did you learn? What would you do differently? What went well or wrong?") }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Screenshot & Summary -->
+        <div class="col-lg-4">
+            <!-- After Screenshot -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-camera"></i> After Screenshot</h5>
+                </div>
+                <div class="card-body">
+                    {{ form.screenshot_after(class="form-control", id="screenshot_after") }}
+                    <small class="text-muted">Upload chart showing the trade result</small>
+                    
+                    <div id="preview_container" class="mt-3 d-none">
+                        <img id="screenshot_preview" class="img-fluid rounded shadow-sm" alt="Preview">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Before Screenshot Reference -->
+            {% if plan.screenshot_before_path %}
+            <div class="card mb-4">
+                <div class="card-header bg-secondary">
+                    <h5 class="mb-0 text-white"><i class="fas fa-image"></i> Before (Reference)</h5>
+                </div>
+                <div class="card-body p-2">
+                    <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}" 
+                         class="img-fluid rounded" alt="Before Screenshot">
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Trade Summary -->
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Trade Summary</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td class="text-muted">Symbol</td>
+                            <td class="text-end"><strong>{{ plan.symbol }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Direction</td>
+                            <td class="text-end">
+                                <span class="badge bg-{% if plan.direction == 'BUY' %}success{% else %}danger{% endif %}">
+                                    {{ plan.direction }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Lot Size</td>
+                            <td class="text-end"><strong>{{ plan.planned_lot_size }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Planned R:R</td>
+                            <td class="text-end"><strong>1:{{ "%.2f"|format(plan.planned_rr_ratio) if plan.planned_rr_ratio else '?' }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Strategy</td>
+                            <td class="text-end">{{ plan.strategy or 'N/A' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Submit Buttons -->
+    <div class="d-flex gap-3 justify-content-end mb-5">
+        <a href="{{ url_for('planner.view_plan', plan_id=plan.id) }}" class="btn btn-secondary btn-lg px-4">
+            <i class="fas fa-times"></i> Cancel
+        </a>
+        {{ form.submit(class="btn btn-success btn-lg px-5") }}
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// P&L Preview Calculator
+function calculatePnL() {
+    const actualEntry = parseFloat(document.getElementById('actual_entry').value) || 0;
+    const actualExit = parseFloat(document.getElementById('actual_exit').value) || 0;
+    const lotSize = {{ plan.planned_lot_size }};
+    const direction = '{{ plan.direction }}';
+    const symbol = '{{ plan.symbol }}';
+    
+    if (actualEntry && actualExit) {
+        let priceDiff = direction === 'BUY' ? actualExit - actualEntry : actualEntry - actualExit;
+        let pnl = 0;
+        
+        // Asset type detection and calculation
+        if (symbol.includes('XAU') || symbol.includes('GOLD')) {
+            // Gold: $100 per $1 move per 1.0 lot
+            pnl = priceDiff * 100 * lotSize;
+        } else if (symbol.includes('JPY')) {
+            // JPY pairs
+            pnl = priceDiff * 6400 * lotSize;
+        } else if (symbol.includes('NAS') || symbol.includes('US30') || symbol.includes('US500')) {
+            // Indices
+            pnl = priceDiff * 10 * lotSize;
+        } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
+            // Crypto
+            pnl = priceDiff * lotSize;
+        } else if (symbol.startsWith('USD') && !symbol.endsWith('USD')) {
+            // USD base pairs (USDCAD, USDCHF)
+            const pips = priceDiff / 0.0001;
+            const pipValue = 10.0 / actualExit;
+            pnl = pips * pipValue * lotSize;
+        } else {
+            // Standard forex
+            const pips = priceDiff / 0.0001;
+            pnl = pips * 10 * lotSize;
+        }
+        
+        const pnlEl = document.getElementById('pnl_preview');
+        pnlEl.textContent = '$' + pnl.toFixed(2);
+        
+        if (pnl > 0) {
+            pnlEl.className = 'h2 text-success';
+        } else if (pnl < 0) {
+            pnlEl.className = 'h2 text-danger';
+        } else {
+            pnlEl.className = 'h2 text-secondary';
+        }
+    }
+}
+
+['actual_entry', 'actual_exit'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', calculatePnL);
+});
+
+// Initial calculation if values exist
+calculatePnL();
+
+// Screenshot preview
+const screenshotInput = document.getElementById('screenshot_after');
+if (screenshotInput) {
+    screenshotInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('screenshot_preview').src = e.target.result;
+                document.getElementById('preview_container').classList.remove('d-none');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+</script>
+{% endblock %}

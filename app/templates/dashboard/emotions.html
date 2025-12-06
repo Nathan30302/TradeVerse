@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block title %}Emotion Tracking - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fas fa-heart"></i> Emotion Tracking
+            </h1>
+            <p class="page-subtitle">Understand how your emotions affect your trading</p>
+        </div>
+        <div class="btn-group">
+            <a href="{{ url_for('dashboard.emotions', days=30) }}" 
+               class="btn btn-{% if days == 30 %}primary{% else %}outline-primary{% endif %}">30 Days</a>
+            <a href="{{ url_for('dashboard.emotions', days=90) }}" 
+               class="btn btn-{% if days == 90 %}primary{% else %}outline-primary{% endif %}">90 Days</a>
+            <a href="{{ url_for('dashboard.emotions', days=180) }}" 
+               class="btn btn-{% if days == 180 %}primary{% else %}outline-primary{% endif %}">180 Days</a>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Trades With Emotion Data</div>
+            <div class="stat-value">{{ summary.total_trades_with_emotion }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card info">
+            <div class="stat-label">Most Common Emotion</div>
+            <div class="stat-value fs-5">{{ summary.most_common_emotion or 'N/A' }}</div>
+            <div class="stat-change">{{ summary.most_common_count or 0 }} trades</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card success">
+            <div class="stat-label">Best Emotion</div>
+            <div class="stat-value fs-5">{{ summary.best_emotion or 'N/A' }}</div>
+            <div class="stat-change text-success">{{ (summary.best_win_rate or 0)|round(1) }}% win rate</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card danger">
+            <div class="stat-label">Worst Emotion</div>
+            <div class="stat-value fs-5">{{ summary.worst_emotion or 'N/A' }}</div>
+            <div class="stat-change text-danger">{{ (summary.worst_win_rate or 0)|round(1) }}% win rate</div>
+        </div>
+    </div>
+</div>
+
+<!-- Recommendation -->
+{% if summary.recommendation %}
+<div class="alert alert-info mb-4">
+    <i class="fas fa-lightbulb"></i> <strong>Recommendation:</strong> {{ summary.recommendation }}
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Most Profitable Emotions -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-smile"></i> Most Profitable Emotions</h5>
+            </div>
+            <div class="card-body">
+                {% if profitable %}
+                    {% for emotion, stats in profitable %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                        <div>
+                            <strong>{{ emotion }}</strong>
+                            <br><small class="text-muted">{{ stats.count }} trades</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-success fs-6">${{ stats.total_pnl|round(2) }}</span>
+                            <br><small class="text-success">{{ stats.win_rate|round(1) }}% win</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-4">No profitable emotions found yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Most Dangerous Emotions -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-frown"></i> Most Dangerous Emotions</h5>
+            </div>
+            <div class="card-body">
+                {% if dangerous %}
+                    {% for emotion, stats in dangerous %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                        <div>
+                            <strong>{{ emotion }}</strong>
+                            <br><small class="text-muted">{{ stats.count }} trades</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-danger fs-6">-${{ stats.total_pnl|abs|round(2) }}</span>
+                            <br><small class="text-danger">{{ stats.win_rate|round(1) }}% win</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-4">No losing emotions found. Great job!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row">
+    <!-- Win Rate by Emotion -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Win Rate by Emotion</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="winRateChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- P/L by Emotion -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Profit/Loss by Emotion</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="pnlChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Emotion Frequency -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-area"></i> Emotion Frequency</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="frequencyChart" height="100"></canvas>
+    </div>
+</div>
+
+<!-- Before vs After Comparison -->
+{% if before_after.total > 0 %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Emotion Changes (Before → After Trade)</h5>
+    </div>
+    <div class="card-body">
+        <div class="row text-center mb-4">
+            <div class="col-md-4">
+                <div class="p-3 bg-success bg-opacity-10 rounded">
+                    <h3 class="text-success">{{ before_after.improved }}</h3>
+                    <p class="mb-0">Improved 📈</p>
+                    <small class="text-muted">Negative → Positive</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 bg-secondary bg-opacity-10 rounded">
+                    <h3>{{ before_after.stable }}</h3>
+                    <p class="mb-0">Stable ➡️</p>
+                    <small class="text-muted">No category change</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 bg-danger bg-opacity-10 rounded">
+                    <h3 class="text-danger">{{ before_after.worsened }}</h3>
+                    <p class="mb-0">Worsened 📉</p>
+                    <small class="text-muted">Positive → Negative</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Comparisons -->
+        {% if before_after.comparisons %}
+        <h6 class="text-muted mb-3">Recent Emotion Changes</h6>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Before</th>
+                        <th></th>
+                        <th>After</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for comp in before_after.comparisons[:10] %}
+                    <tr>
+                        <td><span class="badge bg-secondary">{{ comp.before }}</span></td>
+                        <td class="text-center">→</td>
+                        <td><span class="badge bg-secondary">{{ comp.after }}</span></td>
+                        <td>
+                            <span class="badge {% if comp.result == 'Win' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ comp.result }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Full Performance Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-table"></i> Complete Emotion Performance</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Emotion</th>
+                        <th class="text-center">Trades</th>
+                        <th class="text-center">Wins</th>
+                        <th class="text-center">Losses</th>
+                        <th class="text-center">Win Rate</th>
+                        <th class="text-end">Total P/L</th>
+                        <th class="text-end">Avg P/L</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emotion, stats in performance.items() %}
+                    <tr>
+                        <td><strong>{{ emotion }}</strong></td>
+                        <td class="text-center">{{ stats.count }}</td>
+                        <td class="text-center text-success">{{ stats.wins }}</td>
+                        <td class="text-center text-danger">{{ stats.losses }}</td>
+                        <td class="text-center">
+                            <div class="progress" style="height: 20px; width: 80px; margin: auto;">
+                                <div class="progress-bar {% if stats.win_rate >= 60 %}bg-success{% elif stats.win_rate >= 40 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                     style="width: {{ stats.win_rate }}%">
+                                    {{ stats.win_rate|round(0) }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-end {% if stats.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ stats.total_pnl|round(2) }}
+                        </td>
+                        <td class="text-end {% if stats.avg_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ stats.avg_pnl|round(2) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            No emotion data yet. Start logging emotions with your trades!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch chart data
+    fetch('{{ url_for("dashboard.emotion_chart_data", days=days) }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.labels.length === 0) return;
+            
+            // Win Rate Chart
+            new Chart(document.getElementById('winRateChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Win Rate %',
+                        data: data.win_rates,
+                        backgroundColor: data.colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: { display: true, text: 'Win Rate %' }
+                        }
+                    }
+                }
+            });
+            
+            // P/L Chart (Doughnut)
+            new Chart(document.getElementById('pnlChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.total_pnl.map(v => Math.abs(v)),
+                        backgroundColor: data.colors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'right' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const idx = context.dataIndex;
+                                    const val = data.total_pnl[idx];
+                                    return `${context.label}: $${val.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Frequency Chart
+            new Chart(document.getElementById('frequencyChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Trade Count',
+                        data: data.counts,
+                        backgroundColor: data.colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Number of Trades' }
+                        }
+                    }
+                }
+            });
+        });
+});
+</script>
+{% endblock %}

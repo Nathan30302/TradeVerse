@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Trade - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <h1 class="page-title">
+        <i class="fas fa-edit"></i> Edit Trade
+    </h1>
+    <p class="page-subtitle">Update trade details for {{ trade.symbol }}</p>
+</div>
+
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <form method="POST" action="{{ url_for('trade.edit', trade_id=trade.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            
+            <!-- Basic Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="symbol" class="form-label fw-bold">Symbol *</label>
+                            <select class="form-select" id="symbol" name="symbol" required>
+                                {% for instrument in config.INSTRUMENTS %}
+                                    <option value="{{ instrument }}" {% if instrument == trade.symbol %}selected{% endif %}>
+                                        {{ instrument }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="trade_type" class="form-label fw-bold">Trade Type *</label>
+                            <select class="form-select" id="trade_type" name="trade_type" required>
+                                <option value="BUY" {% if trade.trade_type == 'BUY' %}selected{% endif %}>BUY (Long) 📈</option>
+                                <option value="SELL" {% if trade.trade_type == 'SELL' %}selected{% endif %}>SELL (Short) 📉</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="lot_size" class="form-label fw-bold">Lot Size *</label>
+                            <input type="number" step="0.01" class="form-control" id="lot_size" 
+                                   name="lot_size" value="{{ trade.lot_size }}" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price Levels -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Price Levels</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="entry_price" class="form-label fw-bold">Entry Price *</label>
+                            <input type="number" step="0.00001" class="form-control" id="entry_price" 
+                                   name="entry_price" value="{{ trade.entry_price }}" required>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="stop_loss" class="form-label fw-bold">Stop Loss</label>
+                            <input type="number" step="0.00001" class="form-control" id="stop_loss" 
+                                   name="stop_loss" value="{{ trade.stop_loss or '' }}">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="take_profit" class="form-label fw-bold">Take Profit</label>
+                            <input type="number" step="0.00001" class="form-control" id="take_profit" 
+                                   name="take_profit" value="{{ trade.take_profit or '' }}">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="exit_price" class="form-label fw-bold">Exit Price</label>
+                            <input type="number" step="0.00001" class="form-control" id="exit_price" 
+                                   name="exit_price" value="{{ trade.exit_price or '' }}">
+                        </div>
+                    </div>
+
+                    {% if trade.risk_reward %}
+                    <div class="mt-3 p-3" style="background-color: #f8f9fa; border-radius: 10px;">
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Risk:Reward Ratio</small>
+                                <strong class="h5">{{ trade.risk_reward|rr_ratio }}</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Current Status</small>
+                                <span class="badge bg-{{ 'success' if trade.status == 'CLOSED' else 'warning' }}">
+                                    {{ trade.status }}
+                                </span>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">P/L</small>
+                                {% if trade.profit_loss %}
+                                    <strong class="h5 {% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
+                                        {{ trade.profit_loss|currency(current_user.preferred_currency) }}
+                                    </strong>
+                                {% else %}
+                                    <strong class="h5 text-muted">—</strong>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Strategy & Session -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chess"></i> Strategy & Session</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="strategy" class="form-label fw-bold">Strategy</label>
+                            <select class="form-select" id="strategy" name="strategy">
+                                <option value="">Select strategy...</option>
+                                {% for strategy in config.STRATEGIES %}
+                                    <option value="{{ strategy }}" {% if trade.strategy == strategy %}selected{% endif %}>
+                                        {{ strategy }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="session_type" class="form-label fw-bold">Trading Session</label>
+                            <select class="form-select" id="session_type" name="session_type">
+                                <option value="">Select session...</option>
+                                {% for session in config.SESSION_TYPES %}
+                                    <option value="{{ session }}" {% if trade.session_type == session %}selected{% endif %}>
+                                        {{ session }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="timeframe" class="form-label fw-bold">Timeframe</label>
+                            <select class="form-select" id="timeframe" name="timeframe">
+                                <option value="">Select...</option>
+                                <option value="1M" {% if trade.timeframe == '1M' %}selected{% endif %}>1 Minute</option>
+                                <option value="5M" {% if trade.timeframe == '5M' %}selected{% endif %}>5 Minutes</option>
+                                <option value="15M" {% if trade.timeframe == '15M' %}selected{% endif %}>15 Minutes</option>
+                                <option value="30M" {% if trade.timeframe == '30M' %}selected{% endif %}>30 Minutes</option>
+                                <option value="1H" {% if trade.timeframe == '1H' %}selected{% endif %}>1 Hour</option>
+                                <option value="4H" {% if trade.timeframe == '4H' %}selected{% endif %}>4 Hours</option>
+                                <option value="1D" {% if trade.timeframe == '1D' %}selected{% endif %}>1 Day</option>
+                                <option value="1W" {% if trade.timeframe == '1W' %}selected{% endif %}>1 Week</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Psychology -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-brain"></i> Psychology & Quality</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="emotion" class="form-label fw-bold">Emotion</label>
+                            <select class="form-select" id="emotion" name="emotion">
+                                <option value="">Select emotion...</option>
+                                {% for emotion in config.EMOTIONS %}
+                                    <option value="{{ emotion }}" {% if trade.emotion == emotion %}selected{% endif %}>
+                                        {{ emotion }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="confidence_level" class="form-label fw-bold">Confidence Level</label>
+                            <select class="form-select" id="confidence_level" name="confidence_level">
+                                <option value="">Select...</option>
+                                {% for i in range(10, 0, -1) %}
+                                    <option value="{{ i }}" {% if trade.confidence_level == i %}selected{% endif %}>
+                                        {{ i }} - {% if i >= 8 %}Very Confident{% elif i >= 5 %}Neutral{% else %}Unsure{% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-sticky-note"></i> Trade Notes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="pre_trade_plan" class="form-label fw-bold">Pre-Trade Plan</label>
+                        <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3">{{ trade.pre_trade_plan or '' }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="post_trade_notes" class="form-label fw-bold">Post-Trade Notes</label>
+                        <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3">{{ trade.post_trade_notes or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compliance -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check"></i> Compliance</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="checklist_completed" 
+                                       name="checklist_completed" {% if trade.checklist_completed %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="checklist_completed">
+                                    ✅ Pre-trade checklist completed
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="playbook_followed" 
+                                       name="playbook_followed" {% if trade.playbook_followed %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="playbook_followed">
+                                    📖 Playbook rules followed
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="d-flex gap-3 justify-content-end mb-5">
+                <a href="{{ url_for('trade.view', trade_id=trade.id) }}" class="btn btn-secondary btn-lg px-5">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

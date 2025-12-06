@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Post-Trade Review - {{ trade.symbol }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('trade.list') }}">Trades</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('trade.view', trade_id=trade.id) }}">{{ trade.symbol }}</a></li>
+            <li class="breadcrumb-item active">Post-Trade Review</li>
+        </ol>
+    </nav>
+    <h1 class="page-title">
+        <i class="fas fa-clipboard-check"></i> Post-Trade Review
+    </h1>
+    <p class="page-subtitle">Reflect on your trade and learn from it. Be honest with yourself!</p>
+</div>
+
+<!-- Trade & Plan Summary -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="alert alert-info">
+            <h6><i class="fas fa-chart-line"></i> Trade Details</h6>
+            <div class="d-flex justify-content-between">
+                <span><strong>{{ trade.symbol }}</strong> 
+                    <span class="badge {% if trade.trade_type == 'BUY' %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ trade.trade_type }}
+                    </span>
+                </span>
+                <span>
+                    Entry: {{ trade.entry_price }}
+                    {% if trade.exit_price %} → Exit: {{ trade.exit_price }}{% endif %}
+                </span>
+            </div>
+            {% if trade.profit_loss %}
+            <div class="mt-2">
+                <strong>P/L:</strong> 
+                <span class="{% if trade.profit_loss > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                    {{ trade.profit_loss|currency }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="alert alert-secondary">
+            <h6><i class="fas fa-clipboard-list"></i> Your Plan Was</h6>
+            <div class="row">
+                <div class="col-4">
+                    <small class="text-muted">Bias</small><br>
+                    <strong>{{ plan.market_bias }}</strong>
+                </div>
+                <div class="col-4">
+                    <small class="text-muted">Planned Entry</small><br>
+                    <strong>{{ plan.planned_entry }}</strong>
+                </div>
+                <div class="col-4">
+                    <small class="text-muted">Planned R:R</small><br>
+                    <strong>1:{{ plan.planned_rr_ratio or '?' }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="POST" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Trade Result -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-flag-checkered"></i> Trade Result</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form.trade_result.label(class="form-label fw-bold") }}
+                            {{ form.trade_result(class="form-select form-select-lg") }}
+                            {% for error in form.trade_result.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        {{ form.execution_notes.label(class="form-label fw-bold") }}
+                        {{ form.execution_notes(class="form-control", rows="4", placeholder="Describe how the trade played out. What happened?") }}
+                        {% for error in form.execution_notes.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plan Adherence -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-gavel"></i> Did You Follow Your Plan?</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Be honest! This is how you improve.</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                {{ form.followed_entry(class="form-check-input") }}
+                                {{ form.followed_entry.label(class="form-check-label") }}
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                {{ form.followed_stop_loss(class="form-check-input") }}
+                                {{ form.followed_stop_loss.label(class="form-check-label") }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                {{ form.followed_take_profit(class="form-check-input") }}
+                                {{ form.followed_take_profit.label(class="form-check-label") }}
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                {{ form.moved_stop_loss(class="form-check-input", id="moved_sl") }}
+                                {{ form.moved_stop_loss.label(class="form-check-label text-danger fw-bold") }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Warning if SL was moved -->
+                    <div id="sl_warning" class="alert alert-danger d-none mt-3">
+                        <i class="fas fa-skull-crossbones"></i>
+                        <strong>Critical Violation!</strong> Moving your stop loss is one of the worst habits in trading. 
+                        This must be addressed immediately.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mistakes & Lessons -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-graduation-cap"></i> Reflection & Learning</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form.what_went_well.label(class="form-label fw-bold text-success") }}
+                            {{ form.what_went_well(class="form-control", rows="3", placeholder="What did you do right?") }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {{ form.what_went_wrong.label(class="form-label fw-bold text-danger") }}
+                            {{ form.what_went_wrong(class="form-control", rows="3", placeholder="What could have been better?") }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {{ form.mistakes_made.label(class="form-label fw-bold text-warning") }}
+                            {{ form.mistakes_made(class="form-control", rows="3", placeholder="Any mistakes or rule violations?") }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {{ form.lessons_learned.label(class="form-label fw-bold text-info") }}
+                            {{ form.lessons_learned(class="form-control", rows="3", placeholder="Key takeaways from this trade?") }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Psychology After -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-brain"></i> How Do You Feel Now?</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form.emotion_after.label(class="form-label fw-bold") }}
+                            {{ form.emotion_after(class="form-select") }}
+                            {% for error in form.emotion_after.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {{ form.emotion_intensity_after.label(class="form-label fw-bold") }}
+                            {{ form.emotion_intensity_after(class="form-control", placeholder="1-10") }}
+                            {% for error in form.emotion_intensity_after.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Emotion Comparison -->
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <h6 class="text-muted">Emotion Comparison</h6>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Before Trade</small>
+                                <strong>{{ plan.emotion_before }} ({{ plan.emotion_intensity_before }}/10)</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">After Trade</small>
+                                <strong id="emotion_after_display">—</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Screenshot After -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-camera"></i> Chart Screenshot (After)</h5>
+                </div>
+                <div class="card-body">
+                    {{ form.screenshot_after(class="form-control") }}
+                    <small class="text-muted">Upload how the trade actually played out</small>
+                    
+                    <div id="preview_container" class="mt-3 d-none">
+                        <img id="screenshot_preview" class="img-fluid rounded" alt="Preview">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Before Screenshot Reference -->
+            {% if plan.screenshot_before_path %}
+            <div class="card mb-4">
+                <div class="card-header bg-secondary">
+                    <h6 class="mb-0"><i class="fas fa-image"></i> Your "Before" Screenshot</h6>
+                </div>
+                <div class="card-body p-2">
+                    <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}" 
+                         class="img-fluid rounded" alt="Before Screenshot">
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Review Tips -->
+            <div class="card mb-4 border-info">
+                <div class="card-body">
+                    <h6 class="text-info"><i class="fas fa-lightbulb"></i> Review Tips</h6>
+                    <ul class="small mb-0">
+                        <li>Be brutally honest with yourself</li>
+                        <li>Focus on process, not just outcome</li>
+                        <li>A winning trade can still have mistakes</li>
+                        <li>A losing trade can still be well-executed</li>
+                        <li>Look for patterns in your mistakes</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Your Original Plan -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-scroll"></i> Your Original Plan</h6>
+                </div>
+                <div class="card-body small">
+                    {% if plan.pre_trade_notes %}
+                        <p class="fst-italic">"{{ plan.pre_trade_notes }}"</p>
+                    {% endif %}
+                    {% if plan.trade_hypothesis %}
+                        <p><strong>Hypothesis:</strong> {{ plan.trade_hypothesis }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Submit Buttons -->
+    <div class="d-flex gap-3 justify-content-end mb-5">
+        <a href="{{ url_for('planner.view_plan', trade_id=trade.id) }}" class="btn btn-secondary btn-lg px-4">
+            <i class="fas fa-times"></i> Cancel
+        </a>
+        {{ form.submit(class="btn btn-success btn-lg px-5") }}
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// SL moved warning
+document.getElementById('moved_sl').addEventListener('change', function() {
+    const warning = document.getElementById('sl_warning');
+    if (this.checked) {
+        warning.classList.remove('d-none');
+    } else {
+        warning.classList.add('d-none');
+    }
+});
+
+// Screenshot preview
+document.getElementById('screenshot_after').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('screenshot_preview').src = e.target.result;
+            document.getElementById('preview_container').classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Update emotion display
+document.getElementById('emotion_after').addEventListener('change', function() {
+    const intensity = document.getElementById('emotion_intensity_after').value || '?';
+    document.getElementById('emotion_after_display').textContent = 
+        this.options[this.selectedIndex].text + ' (' + intensity + '/10)';
+});
+
+document.getElementById('emotion_intensity_after').addEventListener('input', function() {
+    const emotion = document.getElementById('emotion_after');
+    const emotionText = emotion.value ? emotion.options[emotion.selectedIndex].text : '—';
+    document.getElementById('emotion_after_display').textContent = 
+        emotionText + ' (' + (this.value || '?') + '/10)';
+});
+</script>
+{% endblock %}

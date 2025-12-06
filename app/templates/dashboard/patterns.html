@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Behavior Patterns - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fas fa-brain"></i> Behavior Pattern Analysis
+            </h1>
+            <p class="page-subtitle">
+                Analyzing {{ trade_count }} trades from the last {{ days }} days
+            </p>
+        </div>
+        <div>
+            <div class="btn-group">
+                <a href="{{ url_for('dashboard.patterns', days=30) }}" 
+                   class="btn btn-{% if days == 30 %}primary{% else %}outline-primary{% endif %}">
+                    30 Days
+                </a>
+                <a href="{{ url_for('dashboard.patterns', days=90) }}" 
+                   class="btn btn-{% if days == 90 %}primary{% else %}outline-primary{% endif %}">
+                    90 Days
+                </a>
+                <a href="{{ url_for('dashboard.patterns', days=180) }}" 
+                   class="btn btn-{% if days == 180 %}primary{% else %}outline-primary{% endif %}">
+                    180 Days
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pattern Summary -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="stat-card success">
+            <div class="stat-label">Strengths Found</div>
+            <div class="stat-value text-success">{{ positive_patterns|length }}</div>
+            <div class="stat-change">Things you're doing well</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card danger">
+            <div class="stat-label">Weaknesses Found</div>
+            <div class="stat-value text-danger">{{ warning_patterns|length }}</div>
+            <div class="stat-change">Areas to improve</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card info">
+            <div class="stat-label">Insights</div>
+            <div class="stat-value text-info">{{ insight_patterns|length }}</div>
+            <div class="stat-change">Neutral observations</div>
+        </div>
+    </div>
+</div>
+
+{% if patterns %}
+<div class="row">
+    <!-- Warnings/Weaknesses Column -->
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Areas to Improve</h5>
+            </div>
+            <div class="card-body">
+                {% if warning_patterns %}
+                    {% for pattern in warning_patterns %}
+                    <div class="alert alert-danger mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="alert-heading mb-1">
+                                    {{ pattern.icon }} {{ pattern.title }}
+                                </h6>
+                                <p class="mb-1">{{ pattern.message }}</p>
+                                <small class="text-muted">
+                                    Category: {{ pattern.category|capitalize }}
+                                </small>
+                            </div>
+                            <span class="badge bg-danger">{{ pattern.confidence }}% confident</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <p>No significant weaknesses detected!</p>
+                        <small>Keep up the good work.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Strengths Column -->
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-star"></i> Your Strengths</h5>
+            </div>
+            <div class="card-body">
+                {% if positive_patterns %}
+                    {% for pattern in positive_patterns %}
+                    <div class="alert alert-success mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="alert-heading mb-1">
+                                    {{ pattern.icon }} {{ pattern.title }}
+                                </h6>
+                                <p class="mb-1">{{ pattern.message }}</p>
+                                <small class="text-muted">
+                                    Category: {{ pattern.category|capitalize }}
+                                </small>
+                            </div>
+                            <span class="badge bg-success">{{ pattern.confidence }}% confident</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-search fa-3x mb-3"></i>
+                        <p>No clear strengths detected yet.</p>
+                        <small>Trade more to discover your strengths.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Insights -->
+{% if insight_patterns %}
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Additional Insights</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for pattern in insight_patterns %}
+            <div class="col-md-6 mb-3">
+                <div class="alert alert-info mb-0">
+                    <h6 class="alert-heading mb-1">
+                        {{ pattern.icon }} {{ pattern.title }}
+                    </h6>
+                    <p class="mb-0">{{ pattern.message }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- All Patterns Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-list"></i> All Detected Patterns</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;"></th>
+                        <th>Pattern</th>
+                        <th>Category</th>
+                        <th>Confidence</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pattern in patterns %}
+                    <tr>
+                        <td class="text-center fs-4">{{ pattern.icon }}</td>
+                        <td>
+                            <strong>{{ pattern.title }}</strong>
+                            <br><small class="text-muted">{{ pattern.message[:100] }}{% if pattern.message|length > 100 %}...{% endif %}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ pattern.category|capitalize }}</span>
+                        </td>
+                        <td>
+                            <div class="progress" style="height: 8px; width: 100px;">
+                                <div class="progress-bar bg-{% if pattern.confidence >= 80 %}success{% elif pattern.confidence >= 60 %}warning{% else %}secondary{% endif %}" 
+                                     style="width: {{ pattern.confidence }}%"></div>
+                            </div>
+                            <small>{{ pattern.confidence }}%</small>
+                        </td>
+                        <td>
+                            {% if pattern.type == 'positive' %}
+                                <span class="badge bg-success">Strength</span>
+                            {% elif pattern.type == 'warning' %}
+                                <span class="badge bg-danger">Weakness</span>
+                            {% else %}
+                                <span class="badge bg-info">Insight</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- No Patterns -->
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="fas fa-search fa-4x text-muted mb-4"></i>
+        <h4>Not Enough Data</h4>
+        <p class="text-muted">
+            You need at least 3 closed trades to detect patterns.
+            <br>Keep trading and check back later!
+        </p>
+        <a href="{{ url_for('trade.add') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Trade
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Tips -->
+<div class="card mt-4 border-info">
+    <div class="card-body">
+        <h6 class="text-info"><i class="fas fa-info-circle"></i> How Pattern Detection Works</h6>
+        <ul class="mb-0 small">
+            <li><strong>Minimum Data:</strong> At least 3 trades per category are needed for reliable patterns</li>
+            <li><strong>Confidence Score:</strong> Higher scores mean more reliable patterns (based on trade count)</li>
+            <li><strong>Timeframe:</strong> Use longer periods (90-180 days) for more accurate insights</li>
+            <li><strong>Action:</strong> Focus on reducing weaknesses first, then amplify your strengths</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

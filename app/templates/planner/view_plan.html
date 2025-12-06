@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Trade Plan - {{ plan.symbol }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('planner.index') }}">Trade Planner</a></li>
+            <li class="breadcrumb-item active">{{ plan.symbol }} {{ plan.direction }}</li>
+        </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1 class="page-title">
+                <i class="fas fa-clipboard-list"></i> {{ plan.symbol }}
+                <span class="badge bg-{% if plan.direction == 'BUY' %}success{% else %}danger{% endif %} ms-2">
+                    {{ plan.direction }}
+                </span>
+            </h1>
+            <p class="page-subtitle">
+                Created {{ plan.created_at.strftime('%B %d, %Y at %H:%M') }}
+                |
+                {% if plan.status == 'PLANNING' %}
+                    <span class="text-warning"><i class="fas fa-clock"></i> Planning</span>
+                {% elif plan.status == 'EXECUTED' %}
+                    <span class="text-info"><i class="fas fa-play"></i> Executed</span>
+                {% else %}
+                    <span class="text-success"><i class="fas fa-check-circle"></i> Reviewed</span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="btn-group">
+            {% if plan.status == 'PLANNING' %}
+                <a href="{{ url_for('planner.edit_plan', plan_id=plan.id) }}" class="btn btn-outline-primary">
+                    <i class="fas fa-edit"></i> Edit Plan
+                </a>
+                <a href="{{ url_for('planner.execute_plan', plan_id=plan.id) }}" class="btn btn-success">
+                    <i class="fas fa-check"></i> Complete Trade
+                </a>
+            {% elif plan.status == 'EXECUTED' %}
+                <a href="{{ url_for('planner.execute_plan', plan_id=plan.id) }}" class="btn btn-success">
+                    <i class="fas fa-clipboard-check"></i> Review Trade
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column: Before Trade -->
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary">
+                <h5 class="mb-0"><i class="fas fa-arrow-right"></i> BEFORE Trade (Plan)</h5>
+            </div>
+            <div class="card-body">
+                <!-- Trade Setup -->
+                <h6 class="text-muted mb-3"><i class="fas fa-chart-line"></i> Trade Setup</h6>
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Symbol</small>
+                        <strong class="fs-4">{{ plan.symbol }}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Strategy</small>
+                        <span class="badge bg-info fs-6">{{ plan.strategy or 'N/A' }}</span>
+                    </div>
+                </div>
+                
+                <!-- Planned Levels -->
+                <h6 class="text-muted mb-3"><i class="fas fa-crosshairs"></i> Planned Levels</h6>
+                <div class="row mb-4">
+                    <div class="col-3 text-center">
+                        <small class="text-muted d-block">Entry</small>
+                        <strong>{{ "%.5f"|format(plan.planned_entry) if plan.planned_entry else 'N/A' }}</strong>
+                    </div>
+                    <div class="col-3 text-center">
+                        <small class="text-muted d-block">Stop Loss</small>
+                        <strong class="text-danger">{{ "%.5f"|format(plan.planned_stop_loss) if plan.planned_stop_loss else 'N/A' }}</strong>
+                    </div>
+                    <div class="col-3 text-center">
+                        <small class="text-muted d-block">Take Profit</small>
+                        <strong class="text-success">{{ "%.5f"|format(plan.planned_take_profit) if plan.planned_take_profit else 'N/A' }}</strong>
+                    </div>
+                    <div class="col-3 text-center">
+                        <small class="text-muted d-block">Lot Size</small>
+                        <strong>{{ plan.planned_lot_size }}</strong>
+                    </div>
+                </div>
+                
+                <!-- R:R -->
+                <div class="alert {% if plan.planned_rr_ratio and plan.planned_rr_ratio >= 2 %}alert-success{% elif plan.planned_rr_ratio and plan.planned_rr_ratio >= 1 %}alert-warning{% else %}alert-danger{% endif %} text-center mb-4">
+                    <strong>Planned R:R = 1:{{ "%.2f"|format(plan.planned_rr_ratio) if plan.planned_rr_ratio else '?' }}</strong>
+                </div>
+                
+                <!-- Checklist -->
+                <h6 class="text-muted mb-3"><i class="fas fa-clipboard-check"></i> Checklist ({{ plan.get_checklist_score() }}/4)</h6>
+                <div class="mb-4">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-{% if plan.market_structure_confirmed %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
+                        <span>Market structure confirmed</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-{% if plan.liquidity_taken %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
+                        <span>Liquidity taken</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-{% if plan.confirmation_candle_formed %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
+                        <span>Confirmation candle formed</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-{% if plan.session_aligned %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
+                        <span>Session aligned</span>
+                    </div>
+                </div>
+                
+                <!-- Notes -->
+                {% if plan.pre_trade_notes %}
+                <h6 class="text-muted mb-2"><i class="fas fa-sticky-note"></i> Notes</h6>
+                <p class="mb-3">{{ plan.pre_trade_notes }}</p>
+                {% endif %}
+                
+                <!-- Screenshot Before -->
+                {% if plan.screenshot_before_path %}
+                <h6 class="text-muted mb-2"><i class="fas fa-camera"></i> Chart (Before)</h6>
+                <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}" 
+                     class="img-fluid rounded shadow-sm" alt="Before Screenshot">
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">
+                    <i class="fas fa-star"></i> Plan Quality: 
+                    <strong class="{% if plan.plan_quality_score and plan.plan_quality_score >= 80 %}text-success{% elif plan.plan_quality_score and plan.plan_quality_score >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                        {{ plan.plan_quality_score or 0 }}/100
+                    </strong>
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: After Trade -->
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header {% if plan.status == 'REVIEWED' %}bg-success{% else %}bg-secondary{% endif %}">
+                <h5 class="mb-0">
+                    <i class="fas fa-arrow-left"></i> AFTER Trade (Review)
+                    {% if plan.status != 'REVIEWED' %}
+                    <span class="badge bg-warning float-end">Pending</span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if plan.status == 'REVIEWED' %}
+                    <!-- P&L Result -->
+                    <div class="text-center mb-4 p-3 rounded {% if plan.actual_pnl and plan.actual_pnl >= 0 %}bg-success bg-opacity-10{% else %}bg-danger bg-opacity-10{% endif %}">
+                        <h2 class="{% if plan.actual_pnl and plan.actual_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {% if plan.actual_pnl >= 0 %}
+                                <i class="fas fa-trophy"></i> +${{ "%.2f"|format(plan.actual_pnl) }}
+                            {% else %}
+                                <i class="fas fa-times-circle"></i> -${{ "%.2f"|format(plan.actual_pnl|abs) }}
+                            {% endif %}
+                        </h2>
+                        <small class="text-muted">Profit/Loss</small>
+                    </div>
+                    
+                    <!-- Actual Execution -->
+                    <h6 class="text-muted mb-3"><i class="fas fa-exchange-alt"></i> Actual Execution</h6>
+                    <div class="row mb-4">
+                        <div class="col-6 text-center">
+                            <small class="text-muted d-block">Actual Entry</small>
+                            <strong>{{ "%.5f"|format(plan.actual_entry) if plan.actual_entry else 'N/A' }}</strong>
+                        </div>
+                        <div class="col-6 text-center">
+                            <small class="text-muted d-block">Actual Exit</small>
+                            <strong>{{ "%.5f"|format(plan.actual_exit) if plan.actual_exit else 'N/A' }}</strong>
+                        </div>
+                    </div>
+                    
+                    <!-- Grade & Emotion -->
+                    <div class="row mb-4">
+                        <div class="col-6 text-center">
+                            <small class="text-muted d-block">Trade Grade</small>
+                            <span class="badge fs-4 {% if plan.trade_grade == 'A' %}bg-success{% elif plan.trade_grade == 'B' %}bg-info{% elif plan.trade_grade == 'C' %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ plan.trade_grade }}
+                            </span>
+                        </div>
+                        <div class="col-6 text-center">
+                            <small class="text-muted d-block">Emotion</small>
+                            <strong>{{ plan.emotion_after or 'N/A' }}</strong>
+                        </div>
+                    </div>
+                    
+                    <!-- Reflection Notes -->
+                    {% if plan.reflection_notes %}
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-lightbulb"></i> Reflection</h6>
+                        <p class="mb-0">{{ plan.reflection_notes }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Screenshot After -->
+                    {% if plan.screenshot_after_path %}
+                    <h6 class="text-muted mb-2"><i class="fas fa-camera"></i> Chart (After)</h6>
+                    <img src="{{ url_for('static', filename=plan.screenshot_after_path) }}" 
+                         class="img-fluid rounded shadow-sm" alt="After Screenshot">
+                    {% endif %}
+                    
+                {% else %}
+                    <!-- Not Reviewed Yet -->
+                    <div class="text-center py-5">
+                        <i class="fas fa-clock fa-4x text-muted mb-3"></i>
+                        <h4>Trade Not Yet Completed</h4>
+                        <p class="text-muted">Complete the trade and review it after execution.</p>
+                        <a href="{{ url_for('planner.execute_plan', plan_id=plan.id) }}" class="btn btn-success btn-lg">
+                            <i class="fas fa-check"></i> Complete Trade Now
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+            {% if plan.status == 'REVIEWED' %}
+            <div class="card-footer">
+                <small class="text-muted">
+                    <i class="fas fa-chart-line"></i> Execution Quality: 
+                    <strong class="{% if plan.execution_quality_score and plan.execution_quality_score >= 80 %}text-success{% elif plan.execution_quality_score and plan.execution_quality_score >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                        {{ plan.execution_quality_score or 0 }}/100
+                    </strong>
+                    | Reviewed {{ plan.reviewed_at.strftime('%B %d, %Y') if plan.reviewed_at else 'N/A' }}
+                </small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="d-flex gap-3 justify-content-between mb-5">
+    <a href="{{ url_for('planner.index') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Planner
+    </a>
+    
+    <form action="{{ url_for('planner.delete_plan', plan_id=plan.id) }}" method="POST" 
+          onsubmit="return confirm('Delete this trade plan? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger">
+            <i class="fas fa-trash"></i> Delete Plan
+        </button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Trade Planner - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1 class="page-title">
+                <i class="fas fa-clipboard-list"></i> Trade Planner
+            </h1>
+            <p class="page-subtitle">Plan before you trade, reflect after you execute</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('planner.new_plan') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus-circle"></i> New Trade Plan
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Plans</div>
+            <div class="stat-value">{{ stats.total }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card warning">
+            <div class="stat-label">Planning</div>
+            <div class="stat-value">{{ stats.planning }}</div>
+            <small class="text-muted">Waiting to execute</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card info">
+            <div class="stat-label">Executed</div>
+            <div class="stat-value">{{ stats.executed }}</div>
+            <small class="text-muted">Need review</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card success">
+            <div class="stat-label">Reviewed</div>
+            <div class="stat-value">{{ stats.reviewed }}</div>
+            <small class="text-muted">Completed</small>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Status</label>
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Plans</option>
+                    <option value="planning" {% if status_filter == 'planning' %}selected{% endif %}>📝 Planning</option>
+                    <option value="executed" {% if status_filter == 'executed' %}selected{% endif %}>⏳ Executed</option>
+                    <option value="reviewed" {% if status_filter == 'reviewed' %}selected{% endif %}>✅ Reviewed</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Trade Plans List -->
+<div class="table-container">
+    {% if plans.items %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Symbol</th>
+                        <th>Direction</th>
+                        <th>Entry</th>
+                        <th>SL / TP</th>
+                        <th>Lot Size</th>
+                        <th>R:R</th>
+                        <th>P&L</th>
+                        <th>Grade</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plan in plans.items %}
+                    <tr style="cursor: pointer;" onclick="window.location='{{ url_for('planner.view_plan', plan_id=plan.id) }}'">
+                        <td>
+                            <div>{{ plan.created_at|datetime('%m/%d/%y') }}</div>
+                            <small class="text-muted">{{ plan.created_at|datetime('%H:%M') }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ plan.symbol }}</strong>
+                            {% if plan.strategy %}
+                                <br><small class="text-muted">{{ plan.strategy }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if plan.direction == 'BUY' %}success{% else %}danger{% endif %}">
+                                {{ plan.direction }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if plan.actual_entry %}
+                                {{ "%.5f"|format(plan.actual_entry) }}
+                            {% else %}
+                                <span class="text-muted">{{ "%.5f"|format(plan.planned_entry) }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small class="text-danger">SL: {{ "%.2f"|format(plan.planned_stop_loss) }}</small><br>
+                            <small class="text-success">TP: {{ "%.2f"|format(plan.planned_take_profit) }}</small>
+                        </td>
+                        <td>{{ plan.planned_lot_size }}</td>
+                        <td>
+                            {% if plan.planned_rr_ratio %}
+                                <span class="badge {% if plan.planned_rr_ratio >= 2 %}bg-success{% elif plan.planned_rr_ratio >= 1 %}bg-warning{% else %}bg-danger{% endif %}">
+                                    1:{{ "%.1f"|format(plan.planned_rr_ratio) }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if plan.actual_pnl is not none %}
+                                <strong class="{% if plan.actual_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                                    ${{ "%.2f"|format(plan.actual_pnl) }}
+                                </strong>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if plan.trade_grade %}
+                                <span class="badge {% if plan.trade_grade == 'A' %}bg-success{% elif plan.trade_grade == 'B' %}bg-info{% elif plan.trade_grade == 'C' %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ plan.trade_grade }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if plan.status == 'PLANNING' %}
+                                <span class="badge bg-warning">📝 Planning</span>
+                            {% elif plan.status == 'EXECUTED' %}
+                                <span class="badge bg-info">⏳ Executed</span>
+                            {% else %}
+                                <span class="badge bg-success">✅ Reviewed</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end" onclick="event.stopPropagation();">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('planner.view_plan', plan_id=plan.id) }}" 
+                                   class="btn btn-outline-primary" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if plan.status == 'PLANNING' %}
+                                    <a href="{{ url_for('planner.execute_plan', plan_id=plan.id) }}" 
+                                       class="btn btn-outline-success" title="Complete Trade">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                {% endif %}
+                                <button type="button" 
+                                        class="btn btn-outline-danger" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#deleteModal{{ plan.id }}" 
+                                        title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+
+                            <!-- Delete Modal -->
+                            <div class="modal fade" id="deleteModal{{ plan.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Delete Trade Plan</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Delete this trade plan?</p>
+                                            <div class="alert alert-warning">
+                                                <strong>{{ plan.symbol }} {{ plan.direction }}</strong>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <form method="POST" action="{{ url_for('planner.delete_plan', plan_id=plan.id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-danger">Delete</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if plans.pages > 1 %}
+        <nav class="p-3">
+            <ul class="pagination justify-content-center mb-0">
+                {% if plans.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('planner.index', page=plans.prev_num, status=status_filter) }}">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% for page_num in plans.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == plans.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('planner.index', page=page_num, status=status_filter) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if plans.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('planner.index', page=plans.next_num, status=status_filter) }}">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">No Trade Plans Yet</h4>
+            <p class="text-muted">Start planning your trades to build discipline!</p>
+            <a href="{{ url_for('planner.new_plan') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus-circle"></i> Create First Plan
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

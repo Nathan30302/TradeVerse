@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1 class="page-title">
+                <i class="fas fa-calendar"></i> Trading Calendar
+            </h1>
+            <p class="page-subtitle">Visualize your trading activity and performance</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('trade.add') }}" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Add Trade
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Month Navigation -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <a href="{{ url_for('dashboard.calendar', year=year, month=month-1 if month > 1 else 12) }}" 
+                   class="btn btn-outline-primary">
+                    <i class="fas fa-chevron-left"></i> Previous Month
+                </a>
+            </div>
+            <div class="col-md-4 text-center">
+                <h3 class="mb-0">
+                    {{ ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'][month-1] }} 
+                    {{ year }}
+                </h3>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('dashboard.calendar', year=year, month=month+1 if month < 12 else 1) }}" 
+                   class="btn btn-outline-primary">
+                    Next Month <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Calendar Grid -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="calendar-grid">
+            <!-- Day Headers -->
+            <div class="calendar-header">
+                <div class="calendar-day-header">Sunday</div>
+                <div class="calendar-day-header">Monday</div>
+                <div class="calendar-day-header">Tuesday</div>
+                <div class="calendar-day-header">Wednesday</div>
+                <div class="calendar-day-header">Thursday</div>
+                <div class="calendar-day-header">Friday</div>
+                <div class="calendar-day-header">Saturday</div>
+            </div>
+
+            <!-- Calendar Days -->
+            <div class="calendar-body">
+                {% set start_day = (trades_by_day.keys()|list|first if trades_by_day else 1) %}
+                {% for day in range(1, days_in_month + 1) %}
+                    <div class="calendar-day {% if day in trades_by_day %}has-trades{% endif %} 
+                         {% if daily_pnl.get(day, 0) > 0 %}profit-day{% elif daily_pnl.get(day, 0) < 0 %}loss-day{% endif %}">
+                        
+                        <div class="day-number">{{ day }}</div>
+                        
+                        {% if day in trades_by_day %}
+                            <div class="day-content">
+                                <div class="trade-count">
+                                    <i class="fas fa-chart-line"></i> {{ trades_by_day[day]|length }} trades
+                                </div>
+                                
+                                {% if daily_pnl.get(day) %}
+                                    <div class="day-pnl {% if daily_pnl[day] >= 0 %}profit{% else %}loss{% endif %}">
+                                        {{ daily_pnl[day]|currency(current_user.preferred_currency) }}
+                                    </div>
+                                {% endif %}
+
+                                <!-- Trade symbols -->
+                                <div class="trade-symbols">
+                                    {% for trade in trades_by_day[day][:3] %}
+                                        <span class="badge badge-sm bg-{% if trade.trade_type == 'BUY' %}success{% else %}danger{% endif %}">
+                                            {{ trade.symbol }}
+                                        </span>
+                                    {% endfor %}
+                                    {% if trades_by_day[day]|length > 3 %}
+                                        <span class="badge badge-sm bg-secondary">
+                                            +{{ trades_by_day[day]|length - 3 }} more
+                                        </span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- View details button -->
+                                <button class="btn btn-sm btn-outline-primary mt-2 w-100" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#dayModal{{ day }}">
+                                    View Details
+                                </button>
+                            </div>
+
+                            <!-- Day Details Modal -->
+                            <div class="modal fade" id="dayModal{{ day }}" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">
+                                                Trades on {{ ['January', 'February', 'March', 'April', 'May', 'June', 
+                                                'July', 'August', 'September', 'October', 'November', 'December'][month-1] }} 
+                                                {{ day }}, {{ year }}
+                                            </h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Time</th>
+                                                            <th>Symbol</th>
+                                                            <th>Type</th>
+                                                            <th>P/L</th>
+                                                            <th>Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for trade in trades_by_day[day] %}
+                                                        <tr>
+                                                            <td>{{ trade.entry_date|datetime('%H:%M') }}</td>
+                                                            <td><strong>{{ trade.symbol }}</strong></td>
+                                                            <td>
+                                                                <span class="badge bg-{% if trade.trade_type == 'BUY' %}success{% else %}danger{% endif %}">
+                                                                    {{ trade.trade_type }}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                {% if trade.profit_loss %}
+                                                                    <span class="{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
+                                                                        {{ trade.get_result_emoji() }}
+                                                                        {{ trade.profit_loss|currency(current_user.preferred_currency) }}
+                                                                    </span>
+                                                                {% else %}
+                                                                    <span class="text-muted">Open</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                <a href="{{ url_for('trade.view', trade_id=trade.id) }}" 
+                                                                   class="btn btn-sm btn-outline-primary">
+                                                                    View
+                                                                </a>
+                                                            </td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                    <tfoot>
+                                                        <tr>
+                                                            <td colspan="3"><strong>Daily Total</strong></td>
+                                                            <td>
+                                                                <strong class="{% if daily_pnl[day] >= 0 %}profit{% else %}loss{% endif %}">
+                                                                    {{ daily_pnl[day]|currency(current_user.preferred_currency) }}
+                                                                </strong>
+                                                            </td>
+                                                            <td></td>
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="day-content text-center text-muted">
+                                <small>No trades</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Calendar Legend -->
+<div class="card mt-4">
+    <div class="card-body">
+        <h6 class="mb-3"><i class="fas fa-info-circle"></i> Legend</h6>
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="p-3 border rounded" style="background-color: #d1fae5;">
+                    <strong class="text-success">Green</strong>
+                    <p class="mb-0 small">Profitable Day</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded" style="background-color: #fee2e2;">
+                    <strong class="text-danger">Red</strong>
+                    <p class="mb-0 small">Loss Day</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded" style="background-color: #e0e7ff;">
+                    <strong class="text-primary">Blue</strong>
+                    <p class="mb-0 small">Break Even</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded" style="background-color: #f3f4f6;">
+                    <strong class="text-muted">Gray</strong>
+                    <p class="mb-0 small">No Trades</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.calendar-grid {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.calendar-day-header {
+    padding: 1rem;
+    text-align: center;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+}
+
+.calendar-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background-color: #e2e8f0;
+}
+
+.calendar-day {
+    background-color: white;
+    min-height: 120px;
+    padding: 0.75rem;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.calendar-day:hover {
+    background-color: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.calendar-day.profit-day {
+    background-color: #d1fae5;
+}
+
+.calendar-day.loss-day {
+    background-color: #fee2e2;
+}
+
+.day-number {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+.day-content {
+    font-size: 0.875rem;
+}
+
+.trade-count {
+    color: #6366f1;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.day-pnl {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.trade-symbols {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.badge-sm {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .calendar-day {
+        min-height: 80px;
+        padding: 0.5rem;
+    }
+    
+    .day-number {
+        font-size: 1rem;
+    }
+    
+    .calendar-day-header {
+        padding: 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+</style>
+{% endblock %}

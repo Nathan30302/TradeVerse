@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}New Trade Plan - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('planner.index') }}">Trade Planner</a></li>
+            <li class="breadcrumb-item active">New Plan</li>
+        </ol>
+    </nav>
+    <h1 class="page-title">
+        <i class="fas fa-clipboard-list"></i> Before Trade Planning
+    </h1>
+    <p class="page-subtitle">Plan your trade BEFORE you execute. This builds discipline!</p>
+</div>
+
+<form method="POST" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    
+    <div class="row">
+        <!-- Left Column: Main Form -->
+        <div class="col-lg-8">
+            <!-- Trade Setup -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Trade Setup</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form.symbol.label(class="form-label fw-bold") }}
+                            {{ form.symbol(class="form-control form-control-lg", placeholder="XAUUSD, EURUSD, NAS100...") }}
+                            {% for error in form.symbol.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {{ form.direction.label(class="form-label fw-bold") }}
+                            {{ form.direction(class="form-select form-select-lg", id="direction") }}
+                            {% for error in form.direction.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Planned Levels -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-crosshairs"></i> Planned Levels</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            {{ form.planned_entry.label(class="form-label fw-bold") }}
+                            {{ form.planned_entry(class="form-control", placeholder="Entry price", id="planned_entry") }}
+                            {% for error in form.planned_entry.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-3">
+                            {{ form.planned_stop_loss.label(class="form-label fw-bold") }}
+                            {{ form.planned_stop_loss(class="form-control", placeholder="Stop loss", id="planned_sl") }}
+                            {% for error in form.planned_stop_loss.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-3">
+                            {{ form.planned_take_profit.label(class="form-label fw-bold") }}
+                            {{ form.planned_take_profit(class="form-control", placeholder="Take profit", id="planned_tp") }}
+                            {% for error in form.planned_take_profit.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-3">
+                            {{ form.planned_lot_size.label(class="form-label fw-bold") }}
+                            {{ form.planned_lot_size(class="form-control", placeholder="0.01") }}
+                            {% for error in form.planned_lot_size.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Auto-calculated R:R -->
+                    <div class="mt-4 p-3 bg-light rounded">
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Planned Risk:Reward</small>
+                                <strong id="planned_rr" class="h3 text-primary">—</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Risk (pips/points)</small>
+                                <strong id="risk_dist" class="h5">—</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Reward (pips/points)</small>
+                                <strong id="reward_dist" class="h5">—</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strategy -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chess"></i> Strategy</h5>
+                </div>
+                <div class="card-body">
+                    {{ form.strategy.label(class="form-label fw-bold") }}
+                    {{ form.strategy(class="form-select") }}
+                    {% for error in form.strategy.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-sticky-note"></i> Trade Plan Notes</h5>
+                </div>
+                <div class="card-body">
+                    {{ form.pre_trade_notes.label(class="form-label fw-bold") }}
+                    {{ form.pre_trade_notes(class="form-control", rows="4", placeholder="Why are you taking this trade? What's your analysis?") }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Checklist & Screenshot -->
+        <div class="col-lg-4">
+            <!-- Pre-Trade Checklist -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check"></i> Pre-Trade Checklist</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check mb-3">
+                        {{ form.market_structure_confirmed(class="form-check-input", id="check1") }}
+                        <label class="form-check-label" for="check1">
+                            <i class="fas fa-chart-bar text-primary"></i> Market structure confirmed
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        {{ form.liquidity_taken(class="form-check-input", id="check2") }}
+                        <label class="form-check-label" for="check2">
+                            <i class="fas fa-tint text-info"></i> Liquidity taken
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        {{ form.confirmation_candle_formed(class="form-check-input", id="check3") }}
+                        <label class="form-check-label" for="check3">
+                            <i class="fas fa-check-circle text-success"></i> Confirmation candle formed
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        {{ form.session_aligned(class="form-check-input", id="check4") }}
+                        <label class="form-check-label" for="check4">
+                            <i class="fas fa-clock text-secondary"></i> Session aligned
+                        </label>
+                    </div>
+                    
+                    <hr>
+                    <div class="text-center">
+                        <span id="checklist_score" class="badge bg-secondary fs-6">0/4 Complete</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screenshot Upload -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-camera"></i> Before Screenshot</h5>
+                </div>
+                <div class="card-body">
+                    {{ form.screenshot_before(class="form-control", id="screenshot_before") }}
+                    <small class="text-muted">Upload your chart analysis screenshot</small>
+                    
+                    <div id="preview_container" class="mt-3 d-none">
+                        <img id="screenshot_preview" class="img-fluid rounded shadow-sm" alt="Preview">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="card border-info">
+                <div class="card-body">
+                    <h6 class="text-info"><i class="fas fa-lightbulb"></i> Pro Tips</h6>
+                    <ul class="small mb-0 ps-3">
+                        <li>Always define your exit BEFORE entry</li>
+                        <li>Aim for minimum 1:2 R:R</li>
+                        <li>Complete all checklist items</li>
+                        <li>If in doubt, stay out</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Submit Buttons -->
+    <div class="d-flex gap-3 justify-content-end mb-5">
+        <a href="{{ url_for('planner.index') }}" class="btn btn-secondary btn-lg px-4">
+            <i class="fas fa-times"></i> Cancel
+        </a>
+        {{ form.submit(class="btn btn-primary btn-lg px-5") }}
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Calculate R:R
+function calculateRR() {
+    const entry = parseFloat(document.getElementById('planned_entry').value) || 0;
+    const sl = parseFloat(document.getElementById('planned_sl').value) || 0;
+    const tp = parseFloat(document.getElementById('planned_tp').value) || 0;
+    
+    if (entry && sl && tp) {
+        const risk = Math.abs(entry - sl);
+        const reward = Math.abs(tp - entry);
+        
+        if (risk > 0) {
+            const rr = (reward / risk).toFixed(2);
+            document.getElementById('planned_rr').textContent = `1:${rr}`;
+            document.getElementById('risk_dist').textContent = risk.toFixed(5);
+            document.getElementById('reward_dist').textContent = reward.toFixed(5);
+            
+            const rrEl = document.getElementById('planned_rr');
+            if (rr >= 2) rrEl.className = 'h3 text-success';
+            else if (rr >= 1) rrEl.className = 'h3 text-warning';
+            else rrEl.className = 'h3 text-danger';
+        }
+    }
+}
+
+['planned_entry', 'planned_sl', 'planned_tp'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', calculateRR);
+});
+
+// Screenshot preview
+const screenshotInput = document.getElementById('screenshot_before');
+if (screenshotInput) {
+    screenshotInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('screenshot_preview').src = e.target.result;
+                document.getElementById('preview_container').classList.remove('d-none');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+// Checklist counter
+document.querySelectorAll('[id^="check"]').forEach(cb => {
+    cb.addEventListener('change', function() {
+        const checked = document.querySelectorAll('[id^="check"]:checked').length;
+        const badge = document.getElementById('checklist_score');
+        badge.textContent = `${checked}/4 Complete`;
+        
+        if (checked === 4) badge.className = 'badge bg-success fs-6';
+        else if (checked >= 2) badge.className = 'badge bg-warning fs-6';
+        else badge.className = 'badge bg-secondary fs-6';
+    });
+});
+</script>
+{% endblock %}

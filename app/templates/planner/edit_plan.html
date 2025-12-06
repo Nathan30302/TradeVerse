@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Plan - {{ plan.symbol }} - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .planner-card {
+        border: none;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .planner-card-header {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+    }
+    
+    .planner-card-body {
+        padding: 2rem;
+    }
+    
+    .form-section {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-section-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .checklist-group {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .checklist-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem 1rem;
+        background: white;
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .checklist-item:hover {
+        border-color: #f59e0b;
+    }
+    
+    .checklist-item:has(input:checked) {
+        border-color: #10b981;
+        background: #f0fdf4;
+    }
+    
+    .checklist-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #475569;
+        margin: 0;
+        cursor: pointer;
+    }
+    
+    .rr-display {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        text-align: center;
+        margin-top: 1rem;
+    }
+    
+    .rr-display-label {
+        font-size: 0.875rem;
+        opacity: 0.8;
+        margin-bottom: 0.25rem;
+    }
+    
+    .rr-display-value {
+        font-size: 2rem;
+        font-weight: 800;
+    }
+    
+    .screenshot-upload {
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .screenshot-upload:hover {
+        border-color: #f59e0b;
+        background: #fffbeb;
+    }
+    
+    .current-screenshot {
+        max-width: 100%;
+        max-height: 150px;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .checklist-group {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="planner-card">
+            <div class="planner-card-header">
+                <h4 class="mb-1">
+                    <i class="fas fa-edit"></i> Edit Trade Plan
+                </h4>
+                <p class="mb-0 opacity-75">{{ plan.symbol }} - {{ plan.direction }}</p>
+            </div>
+            
+            <div class="planner-card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Basic Trade Info -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-info-circle text-primary"></i>
+                            Trade Details
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Symbol / Pair</label>
+                                {{ form.symbol(class="form-control form-control-lg", value=plan.symbol) }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Direction</label>
+                                <select name="direction" class="form-select form-select-lg">
+                                    <option value="BUY" {% if plan.direction == 'BUY' %}selected{% endif %}>📈 Buy (Long)</option>
+                                    <option value="SELL" {% if plan.direction == 'SELL' %}selected{% endif %}>📉 Sell (Short)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Price Levels -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-crosshairs text-success"></i>
+                            Price Levels
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Planned Entry</label>
+                                {{ form.planned_entry(class="form-control", id="planned_entry", value=plan.planned_entry, step="0.01") }}
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Stop Loss</label>
+                                {{ form.planned_stop_loss(class="form-control", id="planned_stop_loss", value=plan.planned_stop_loss, step="0.01") }}
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Take Profit</label>
+                                {{ form.planned_take_profit(class="form-control", id="planned_take_profit", value=plan.planned_take_profit, step="0.01") }}
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Lot Size</label>
+                                {{ form.planned_lot_size(class="form-control", value=plan.planned_lot_size, step="0.01") }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Strategy</label>
+                                <select name="strategy" class="form-select">
+                                    <option value="">Select strategy...</option>
+                                    <option value="Breakout" {% if plan.strategy == 'Breakout' %}selected{% endif %}>💥 Breakout</option>
+                                    <option value="Retest" {% if plan.strategy == 'Retest' %}selected{% endif %}>🔄 Retest</option>
+                                    <option value="Trend Continuation" {% if plan.strategy == 'Trend Continuation' %}selected{% endif %}>📈 Trend Continuation</option>
+                                    <option value="Reversal" {% if plan.strategy == 'Reversal' %}selected{% endif %}>🔃 Reversal</option>
+                                    <option value="SMC" {% if plan.strategy == 'SMC' %}selected{% endif %}>🎯 Smart Money Concepts (SMC)</option>
+                                    <option value="Scalping" {% if plan.strategy == 'Scalping' %}selected{% endif %}>⚡ Scalping</option>
+                                    <option value="Swing" {% if plan.strategy == 'Swing' %}selected{% endif %}>🌊 Swing Trading</option>
+                                    <option value="Supply/Demand" {% if plan.strategy == 'Supply/Demand' %}selected{% endif %}>📊 Supply & Demand</option>
+                                    <option value="Liquidity Grab" {% if plan.strategy == 'Liquidity Grab' %}selected{% endif %}>💧 Liquidity Grab</option>
+                                    <option value="Fair Value Gap" {% if plan.strategy == 'Fair Value Gap' %}selected{% endif %}>📉 Fair Value Gap</option>
+                                    <option value="Other" {% if plan.strategy == 'Other' %}selected{% endif %}>📝 Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="rr-display">
+                            <div class="rr-display-label">Planned Risk:Reward</div>
+                            <div class="rr-display-value" id="rr-ratio">1:{{ "%.2f"|format(plan.planned_rr_ratio) if plan.planned_rr_ratio else '--' }}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Checklist -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-check-square text-warning"></i>
+                            Pre-Trade Checklist
+                        </div>
+                        
+                        <div class="checklist-group">
+                            <label class="checklist-item">
+                                <input type="checkbox" name="market_structure_confirmed" class="form-check-input" {% if plan.market_structure_confirmed %}checked{% endif %}>
+                                <span class="checklist-label">Market structure confirmed</span>
+                            </label>
+                            
+                            <label class="checklist-item">
+                                <input type="checkbox" name="liquidity_taken" class="form-check-input" {% if plan.liquidity_taken %}checked{% endif %}>
+                                <span class="checklist-label">Liquidity taken</span>
+                            </label>
+                            
+                            <label class="checklist-item">
+                                <input type="checkbox" name="confirmation_candle_formed" class="form-check-input" {% if plan.confirmation_candle_formed %}checked{% endif %}>
+                                <span class="checklist-label">Confirmation candle formed</span>
+                            </label>
+                            
+                            <label class="checklist-item">
+                                <input type="checkbox" name="session_aligned" class="form-check-input" {% if plan.session_aligned %}checked{% endif %}>
+                                <span class="checklist-label">Session aligned</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Screenshot -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-camera text-info"></i>
+                            Before Screenshot
+                        </div>
+                        
+                        {% if plan.screenshot_before_path %}
+                        <div class="text-center mb-3">
+                            <p class="text-muted small mb-2">Current screenshot:</p>
+                            <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}" class="current-screenshot" alt="Current">
+                        </div>
+                        {% endif %}
+                        
+                        <div class="screenshot-upload" onclick="document.getElementById('screenshot_before').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p class="mb-1 fw-bold">Upload New Screenshot</p>
+                            <p class="mb-0 text-muted small">Click to replace existing screenshot</p>
+                            {{ form.screenshot_before(class="d-none", id="screenshot_before") }}
+                        </div>
+                    </div>
+                    
+                    <!-- Notes -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-sticky-note text-secondary"></i>
+                            Notes
+                        </div>
+                        
+                        <textarea name="pre_trade_notes" class="form-control" rows="4" 
+                                  placeholder="Why are you taking this trade?">{{ plan.pre_trade_notes or '' }}</textarea>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="d-flex gap-3">
+                        <a href="{{ url_for('planner.view_plan', plan_id=plan.id) }}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-warning btn-lg flex-grow-1">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function calculateRR() {
+    const entry = parseFloat(document.getElementById('planned_entry').value) || 0;
+    const sl = parseFloat(document.getElementById('planned_stop_loss').value) || 0;
+    const tp = parseFloat(document.getElementById('planned_take_profit').value) || 0;
+    
+    if (entry && sl && tp) {
+        const risk = Math.abs(entry - sl);
+        const reward = Math.abs(tp - entry);
+        
+        if (risk > 0) {
+            const rr = (reward / risk).toFixed(2);
+            document.getElementById('rr-ratio').textContent = '1:' + rr;
+        }
+    }
+}
+
+document.getElementById('planned_entry').addEventListener('input', calculateRR);
+document.getElementById('planned_stop_loss').addEventListener('input', calculateRR);
+document.getElementById('planned_take_profit').addEventListener('input', calculateRR);
+</script>
+{% endblock %}

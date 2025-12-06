@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+
+{% block title %}Add Trade - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Cooldown Warning -->
+{% if active_cooldown %}
+<div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-hourglass-half fa-2x me-3"></i>
+        <div class="flex-grow-1">
+            <h5 class="alert-heading mb-1">⏳ Cooldown Active</h5>
+            <p class="mb-0">
+                You have <strong>{{ active_cooldown.time_remaining_str() }}</strong> remaining.
+                Triggered by: <strong>{{ active_cooldown.trigger_emotion }}</strong>
+            </p>
+        </div>
+        <a href="{{ url_for('trade.cooldown_status') }}" class="btn btn-warning ms-3">
+            View Status
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <h1 class="page-title">
+        <i class="fas fa-plus-circle"></i> Log New Trade
+    </h1>
+    <p class="page-subtitle">Record your trade with all the important details</p>
+</div>
+
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <form method="POST" action="{{ url_for('trade.add') }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if active_cooldown %}
+            <input type="hidden" name="override_cooldown" id="override_cooldown" value="false">
+            {% endif %}
+            
+            <!-- Basic Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="symbol" class="form-label fw-bold">Symbol *</label>
+                            <select class="form-select" id="symbol" name="symbol" required>
+                                <option value="">Choose instrument...</option>
+                                {% for instrument in config.INSTRUMENTS %}
+                                    <option value="{{ instrument }}">{{ instrument }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="trade_type" class="form-label fw-bold">Trade Type *</label>
+                            <select class="form-select" id="trade_type" name="trade_type" required>
+                                <option value="">Select...</option>
+                                <option value="BUY">BUY (Long) 📈</option>
+                                <option value="SELL">SELL (Short) 📉</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="lot_size" class="form-label fw-bold">Lot Size *</label>
+                            <input type="number" step="0.01" class="form-control" id="lot_size" 
+                                   name="lot_size" value="1.0" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price Levels -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Price Levels</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="entry_price" class="form-label fw-bold">Entry Price *</label>
+                            <input type="number" step="0.00001" class="form-control" id="entry_price" 
+                                   name="entry_price" required placeholder="1.20000">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="stop_loss" class="form-label fw-bold">Stop Loss</label>
+                            <input type="number" step="0.00001" class="form-control" id="stop_loss" 
+                                   name="stop_loss" placeholder="1.19500">
+                            <small class="text-muted">Risk management</small>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="take_profit" class="form-label fw-bold">Take Profit</label>
+                            <input type="number" step="0.00001" class="form-control" id="take_profit" 
+                                   name="take_profit" placeholder="1.21000">
+                            <small class="text-muted">Target profit</small>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="exit_price" class="form-label fw-bold">Exit Price (if closed)</label>
+                            <input type="number" step="0.00001" class="form-control" id="exit_price" 
+                                   name="exit_price" placeholder="1.20500">
+                        </div>
+                    </div>
+
+                    <div class="mt-3 p-3" style="background-color: #f8f9fa; border-radius: 10px;">
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Risk:Reward Ratio</small>
+                                <strong id="rr_display" class="h5">—</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Risk (pips/points)</small>
+                                <strong id="risk_display" class="h5">—</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Reward (pips/points)</small>
+                                <strong id="reward_display" class="h5">—</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Date & Time -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clock"></i> Date & Time</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="entry_date" class="form-label fw-bold">Entry Date/Time *</label>
+                            <input type="datetime-local" class="form-control" id="entry_date" 
+                                   name="entry_date" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="exit_date" class="form-label fw-bold">Exit Date/Time (if closed)</label>
+                            <input type="datetime-local" class="form-control" id="exit_date" 
+                                   name="exit_date">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strategy & Session -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chess"></i> Strategy & Session</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="strategy" class="form-label fw-bold">Strategy</label>
+                            <select class="form-select" id="strategy" name="strategy">
+                                <option value="">Select strategy...</option>
+                                {% for strategy in config.STRATEGIES %}
+                                    <option value="{{ strategy }}">{{ strategy }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="session_type" class="form-label fw-bold">Trading Session</label>
+                            <select class="form-select" id="session_type" name="session_type">
+                                <option value="">Select session...</option>
+                                {% for session in config.SESSION_TYPES %}
+                                    <option value="{{ session }}">{{ session }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="timeframe" class="form-label fw-bold">Timeframe</label>
+                            <select class="form-select" id="timeframe" name="timeframe">
+                                <option value="">Select...</option>
+                                <option value="1M">1 Minute</option>
+                                <option value="5M">5 Minutes</option>
+                                <option value="15M">15 Minutes</option>
+                                <option value="30M">30 Minutes</option>
+                                <option value="1H">1 Hour</option>
+                                <option value="4H">4 Hours</option>
+                                <option value="1D">1 Day</option>
+                                <option value="1W">1 Week</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Psychology -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-brain"></i> Psychology & Quality</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="emotion" class="form-label fw-bold">Emotion</label>
+                            <select class="form-select" id="emotion" name="emotion">
+                                <option value="">How did you feel?</option>
+                                {% for emotion in config.EMOTIONS %}
+                                    <option value="{{ emotion }}">{{ emotion }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="confidence_level" class="form-label fw-bold">Confidence Level</label>
+                            <select class="form-select" id="confidence_level" name="confidence_level">
+                                <option value="">Select...</option>
+                                <option value="10">10 - Extremely Confident 🔥</option>
+                                <option value="9">9 - Very Confident</option>
+                                <option value="8">8 - Confident</option>
+                                <option value="7">7 - Fairly Confident</option>
+                                <option value="6">6 - Somewhat Confident</option>
+                                <option value="5">5 - Neutral</option>
+                                <option value="4">4 - Slightly Unsure</option>
+                                <option value="3">3 - Unsure</option>
+                                <option value="2">2 - Very Unsure</option>
+                                <option value="1">1 - Extremely Unsure ⚠️</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="setup_quality" class="form-label fw-bold">Setup Quality</label>
+                            <select class="form-select" id="setup_quality" name="setup_quality">
+                                <option value="">Rate setup...</option>
+                                <option value="5">⭐⭐⭐⭐⭐ Perfect</option>
+                                <option value="4">⭐⭐⭐⭐ Good</option>
+                                <option value="3">⭐⭐⭐ Average</option>
+                                <option value="2">⭐⭐ Poor</option>
+                                <option value="1">⭐ Very Poor</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="execution_quality" class="form-label fw-bold">Execution Quality</label>
+                            <select class="form-select" id="execution_quality" name="execution_quality">
+                                <option value="">Rate execution...</option>
+                                <option value="5">⭐⭐⭐⭐⭐ Perfect</option>
+                                <option value="4">⭐⭐⭐⭐ Good</option>
+                                <option value="3">⭐⭐⭐ Average</option>
+                                <option value="2">⭐⭐ Poor</option>
+                                <option value="1">⭐ Very Poor</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="discipline_score" class="form-label fw-bold">Discipline Score</label>
+                            <select class="form-select" id="discipline_score" name="discipline_score">
+                                <option value="">Rate discipline...</option>
+                                <option value="10">10 - Perfect Discipline 🎯</option>
+                                <option value="9">9</option>
+                                <option value="8">8</option>
+                                <option value="7">7</option>
+                                <option value="6">6</option>
+                                <option value="5">5</option>
+                                <option value="4">4</option>
+                                <option value="3">3</option>
+                                <option value="2">2</option>
+                                <option value="1">1 - No Discipline ⚠️</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-sticky-note"></i> Trade Notes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="pre_trade_plan" class="form-label fw-bold">Pre-Trade Plan</label>
+                        <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" 
+                                  placeholder="What was your plan? Why did you take this trade?"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="post_trade_notes" class="form-label fw-bold">Post-Trade Notes</label>
+                        <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3" 
+                                  placeholder="What happened? Any observations or lessons?"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compliance -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check"></i> Compliance & Risk</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="checklist_completed" 
+                                       name="checklist_completed">
+                                <label class="form-check-label fw-bold" for="checklist_completed">
+                                    ✅ Pre-trade checklist completed
+                                </label>
+                                <br><small class="text-muted">Did you follow your trading checklist?</small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="playbook_followed" 
+                                       name="playbook_followed" checked>
+                                <label class="form-check-label fw-bold" for="playbook_followed">
+                                    📖 Playbook rules followed
+                                </label>
+                                <br><small class="text-muted">Did you stick to your trading plan?</small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="commission" class="form-label fw-bold">Commission/Fees</label>
+                            <input type="number" step="0.01" class="form-control" id="commission" 
+                                   name="commission" placeholder="0.00">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="swap" class="form-label fw-bold">Swap/Overnight Fee</label>
+                            <input type="number" step="0.01" class="form-control" id="swap" 
+                                   name="swap" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="d-flex gap-3 justify-content-end mb-5">
+                <a href="{{ url_for('trade.list') }}" class="btn btn-secondary btn-lg px-5">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    <i class="fas fa-save"></i> Save Trade
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Set current datetime as default
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('entry_date').value = now.toISOString().slice(0, 16);
+});
+
+// Calculate R:R ratio
+function calculateRR() {
+    const entry = parseFloat(document.getElementById('entry_price').value) || 0;
+    const sl = parseFloat(document.getElementById('stop_loss').value) || 0;
+    const tp = parseFloat(document.getElementById('take_profit').value) || 0;
+    
+    if (entry && sl && tp) {
+        const risk = Math.abs(entry - sl);
+        const reward = Math.abs(tp - entry);
+        
+        if (risk > 0) {
+            const rr = (reward / risk).toFixed(2);
+            document.getElementById('rr_display').textContent = `1:${rr}`;
+            document.getElementById('risk_display').textContent = risk.toFixed(5);
+            document.getElementById('reward_display').textContent = reward.toFixed(5);
+            
+            // Color code the R:R
+            const rrElement = document.getElementById('rr_display');
+            if (rr >= 2) {
+                rrElement.style.color = '#10b981'; // Green
+            } else if (rr >= 1) {
+                rrElement.style.color = '#f59e0b'; // Orange
+            } else {
+                rrElement.style.color = '#ef4444'; // Red
+            }
+        }
+    } else {
+        document.getElementById('rr_display').textContent = '—';
+        document.getElementById('risk_display').textContent = '—';
+        document.getElementById('reward_display').textContent = '—';
+    }
+}
+
+// Attach listeners
+['entry_price', 'stop_loss', 'take_profit'].forEach(id => {
+    document.getElementById(id).addEventListener('input', calculateRR);
+});
+</script>
+{% endblock %}
