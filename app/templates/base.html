@@ -136,6 +136,25 @@
             min-height: calc(100vh - 73px);
         }
         
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .card-body {
+                padding: 1rem;
+            }
+            
+            .page-header {
+                margin-bottom: 1.5rem !important;
+            }
+            
+            .stat-card {
+                margin-bottom: 1rem;
+            }
+        }
+        
         /* Cards */
         .card {
             border: none;
@@ -148,6 +167,15 @@
         .card:hover {
             box-shadow: 0 8px 24px rgba(0,0,0,0.12);
             transform: translateY(-4px);
+        }
+        
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            font-weight: 600;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
         }
         
         .card-header {

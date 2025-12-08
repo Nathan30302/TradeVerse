@@ -27,7 +27,7 @@ class TradePlan(db.Model):
     
     # ==================== BEFORE TRADE (Pre-Trade Planning) ====================
     # Basic Trade Info
-    symbol = db.Column(db.String(20), default='XAUUSD', nullable=False)
+    symbol = db.Column(db.String(20), nullable=False)
     direction = db.Column(db.String(10), nullable=False)  # BUY or SELL
     
     # Planned Levels

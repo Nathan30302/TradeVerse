@@ -51,9 +51,12 @@
 <div class="row">
     <!-- Left Column: Before Trade -->
     <div class="col-lg-6">
-        <div class="card mb-4">
-            <div class="card-header bg-primary">
-                <h5 class="mb-0"><i class="fas fa-arrow-right"></i> BEFORE Trade (Plan)</h5>
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-clipboard-list"></i> Plan (Before)
+                    <small class="d-block mt-1 opacity-75" style="font-size: 0.85rem;">Pre-trade planning and setup</small>
+                </h5>
             </div>
             <div class="card-body">
                 <!-- Trade Setup -->
@@ -124,9 +127,21 @@
                 
                 <!-- Screenshot Before -->
                 {% if plan.screenshot_before_path %}
-                <h6 class="text-muted mb-2"><i class="fas fa-camera"></i> Chart (Before)</h6>
-                <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}" 
-                     class="img-fluid rounded shadow-sm" alt="Before Screenshot">
+                <h6 class="text-muted mb-2">
+                    <i class="fas fa-camera"></i> Chart (Before)
+                    <small class="text-muted ms-2">Click to enlarge</small>
+                </h6>
+                <div class="screenshot-thumbnail-container">
+                    <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}" 
+                         class="img-fluid rounded shadow-sm screenshot-thumbnail" 
+                         alt="Before trade screenshot"
+                         data-bs-toggle="modal" 
+                         data-bs-target="#screenshotModal"
+                         data-screenshot-src="{{ url_for('static', filename=plan.screenshot_before_path) }}"
+                         style="cursor: pointer; transition: transform 0.2s;"
+                         onmouseover="this.style.transform='scale(1.02)'"
+                         onmouseout="this.style.transform='scale(1)'">
+                </div>
                 {% endif %}
             </div>
             <div class="card-footer">
@@ -142,12 +157,13 @@
     
     <!-- Right Column: After Trade -->
     <div class="col-lg-6">
-        <div class="card mb-4">
-            <div class="card-header {% if plan.status == 'REVIEWED' %}bg-success{% else %}bg-secondary{% endif %}">
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header {% if plan.status == 'REVIEWED' %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
                 <h5 class="mb-0">
-                    <i class="fas fa-arrow-left"></i> AFTER Trade (Review)
+                    <i class="fas fa-clipboard-check"></i> Execution (After)
+                    <small class="d-block mt-1 opacity-75" style="font-size: 0.85rem;">Post-trade review and results</small>
                     {% if plan.status != 'REVIEWED' %}
-                    <span class="badge bg-warning float-end">Pending</span>
+                    <span class="badge bg-warning text-dark float-end mt-1">Pending</span>
                     {% endif %}
                 </h5>
             </div>
@@ -202,9 +218,21 @@
                     
                     <!-- Screenshot After -->
                     {% if plan.screenshot_after_path %}
-                    <h6 class="text-muted mb-2"><i class="fas fa-camera"></i> Chart (After)</h6>
-                    <img src="{{ url_for('static', filename=plan.screenshot_after_path) }}" 
-                         class="img-fluid rounded shadow-sm" alt="After Screenshot">
+                    <h6 class="text-muted mb-2">
+                        <i class="fas fa-camera"></i> Chart (After)
+                        <small class="text-muted ms-2">Click to enlarge</small>
+                    </h6>
+                    <div class="screenshot-thumbnail-container">
+                        <img src="{{ url_for('static', filename=plan.screenshot_after_path) }}" 
+                             class="img-fluid rounded shadow-sm screenshot-thumbnail" 
+                             alt="After trade screenshot"
+                             data-bs-toggle="modal" 
+                             data-bs-target="#screenshotModal"
+                             data-screenshot-src="{{ url_for('static', filename=plan.screenshot_after_path) }}"
+                             style="cursor: pointer; transition: transform 0.2s;"
+                             onmouseover="this.style.transform='scale(1.02)'"
+                             onmouseout="this.style.transform='scale(1)'">
+                    </div>
                     {% endif %}
                     
                 {% else %}
@@ -248,4 +276,35 @@
         </button>
     </form>
 </div>
+
+<!-- Screenshot Lightbox Modal -->
+<div class="modal fade" id="screenshotModal" tabindex="-1" aria-labelledby="screenshotModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white" id="screenshotModalLabel">Trade Screenshot</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img id="modalScreenshot" src="" class="img-fluid" alt="Trade screenshot" style="max-height: 80vh;">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Lightbox functionality for screenshots
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('screenshotModal');
+    const modalImg = document.getElementById('modalScreenshot');
+    
+    modal.addEventListener('show.bs.modal', function(event) {
+        const trigger = event.relatedTarget;
+        const screenshotSrc = trigger.getAttribute('data-screenshot-src');
+        modalImg.src = screenshotSrc;
+    });
+});
+</script>
 {% endblock %}

@@ -3,7 +3,7 @@ Trade Planner Routes
 Redesigned for standalone Before/After trade planning workflow
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
 from app import db
 from app.models.trade_plan import TradePlan
@@ -310,3 +310,44 @@ def review_trade(trade_id):
     
     flash('No plan found for this trade.', 'warning')
     return redirect(url_for('planner.new_plan'))
+
+
+# ==================== API: Calculate P&L ====================
+
+@bp.route('/api/calculate-pnl', methods=['POST'])
+@login_required
+def api_calculate_pnl():
+    """
+    API endpoint to calculate P&L using the unified calculator
+    Returns the same calculation that the backend uses
+    """
+    from app.utils.pnl_calculator import calculate_pnl
+    
+    try:
+        data = request.get_json()
+        symbol = data.get('symbol', '').upper().strip()
+        trade_type = data.get('trade_type', 'BUY').upper()
+        entry_price = float(data.get('entry_price', 0))
+        exit_price = float(data.get('exit_price', 0))
+        lot_size = float(data.get('lot_size', 0.01))
+        
+        if not all([symbol, entry_price, exit_price, lot_size]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        pnl, pips, asset_desc = calculate_pnl(
+            symbol=symbol,
+            trade_type=trade_type,
+            entry_price=entry_price,
+            exit_price=exit_price,
+            lot_size=lot_size
+        )
+        
+        return jsonify({
+            'success': True,
+            'pnl': round(pnl, 2),
+            'pips': round(pips, 1),
+            'asset_type': asset_desc
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400

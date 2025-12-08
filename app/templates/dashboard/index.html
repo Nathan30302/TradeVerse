@@ -91,16 +91,16 @@
 
 {% block content %}
 <!-- Page Header -->
-<div class="page-header mb-4">
+<div class="page-header mb-5">
     <div class="row align-items-center">
         <div class="col">
-            <h1 class="page-title">
+            <h1 class="page-title mb-2">
                 <i class="fas fa-tachometer-alt"></i> Dashboard
             </h1>
-            <p class="page-subtitle">Welcome back, <strong>{{ current_user.username }}</strong>! 👋</p>
+            <p class="page-subtitle mb-0">Welcome back, <strong>{{ current_user.username }}</strong>! 👋</p>
         </div>
         <div class="col-auto">
-            <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg">
+            <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg shadow-sm" aria-label="Add a new trade">
                 <i class="fas fa-plus-circle"></i> Add Trade
             </a>
         </div>
@@ -164,7 +164,7 @@
 {% endif %}
 
 <!-- Statistics Cards -->
-<div class="row g-4 mb-4">
+<div class="row g-4 mb-5">
     <div class="col-md-3">
         <div class="stat-card">
             <div class="stat-label">Total Trades</div>
