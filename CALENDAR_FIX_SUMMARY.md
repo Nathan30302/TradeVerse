@@ -106,3 +106,4 @@ The Calendar "View Details" modal now:
 - ✅ User-friendly interface
 
 
+
