@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+# Worker image for RQ
+WORKDIR /app
+
+# Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy only requirements first for caching
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Copy project
+COPY . /app
+
+ENV FLASK_APP=run.py
+ENV PYTHONUNBUFFERED=1
+
+# Default command: run RQ worker for 'imports' queue
+CMD ["rq", "worker", "imports"]

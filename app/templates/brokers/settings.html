@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Broker Settings - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0"><i class="fas fa-plug me-2"></i>Broker Connections</h1>
+            <p class="text-secondary mt-2">Connect your broker accounts for automatic trade importing and accurate P&L calculations.</p>
+        </div>
+    </div>
+
+    <!-- Connected Brokers -->
+    {% if user_credentials %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-link me-2"></i>Your Connected Brokers</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Broker</th>
+                                    <th>Account</th>
+                                    <th>Currency</th>
+                                    <th>Type</th>
+                                    <th>Last Sync</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cred in user_credentials %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ cred.broker.name if cred.broker else 'Unknown' }}</strong>
+                                        {% if cred.nickname %}
+                                        <br><small class="text-muted">{{ cred.nickname }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ cred.account_id or 'N/A' }}</td>
+                                    <td>{{ cred.account_currency }}</td>
+                                    <td>
+                                        {% if cred.is_demo %}
+                                        <span class="badge bg-info">Demo</span>
+                                        {% else %}
+                                        <span class="badge bg-success">Live</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if cred.last_sync_at %}
+                                        {{ cred.last_sync_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% else %}
+                                        Never
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if cred.last_sync_status == 'success' %}
+                                        <span class="badge bg-success">Connected</span>
+                                        {% elif cred.last_sync_status == 'error' %}
+                                        <span class="badge bg-danger">Error</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Unknown</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            {% if cred.broker and cred.broker.api_supported %}
+                                            <button type="button" class="btn btn-outline-primary" 
+                                                    onclick="testConnection({{ cred.id }})" title="Test Connection">
+                                                <i class="fas fa-sync"></i>
+                                            </button>
+                                            <a href="{{ url_for('imports.api_import', credential_id=cred.id) }}" 
+                                               class="btn btn-outline-success" title="Import Trades">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    onclick="disconnectBroker({{ cred.id }})" title="Disconnect">
+                                                <i class="fas fa-unlink"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Available Brokers -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-building me-2"></i>Available Brokers</h5>
+                    <div class="input-group" style="max-width: 300px;">
+                        <input type="text" class="form-control" id="brokerSearch" placeholder="Search brokers...">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="brokerGrid">
+                        {% for broker in brokers %}
+                        <div class="col-md-6 col-lg-4 mb-4 broker-card" data-name="{{ broker.name|lower }}">
+                            <div class="card h-100 {% if broker.id in connected_broker_ids %}border-success{% endif %}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title mb-0">{{ broker.name }}</h5>
+                                        <div>
+                                            {% if broker.api_supported %}
+                                            <span class="badge bg-primary" title="API Import Available">
+                                                <i class="fas fa-plug"></i> API
+                                            </span>
+                                            {% endif %}
+                                            {% if broker.id in connected_broker_ids %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> Connected
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <p class="card-text text-muted small">{{ broker.description or 'Trading broker' }}</p>
+                                    
+                                    <div class="mb-3">
+                                        <small class="text-muted">Import Methods:</small><br>
+                                        {% for fmt in broker.import_formats or [] %}
+                                        <span class="badge bg-secondary me-1">{{ fmt }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <div class="d-flex gap-2">
+                                        {% if broker.api_supported %}
+                                        <a href="{{ url_for('brokers.connect_broker_page', broker_id=broker.id) }}" 
+                                           class="btn btn-primary btn-sm flex-grow-1">
+                                            <i class="fas fa-plug me-1"></i>Connect API
+                                        </a>
+                                        {% endif %}
+                                        <a href="{{ url_for('imports.new_import_page', broker=broker.id) }}" 
+                                           class="btn btn-outline-secondary btn-sm flex-grow-1">
+                                            <i class="fas fa-upload me-1"></i>Import File
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('brokerSearch').addEventListener('input', function(e) {
+    const query = e.target.value.toLowerCase();
+    document.querySelectorAll('.broker-card').forEach(card => {
+        const name = card.dataset.name;
+        card.style.display = name.includes(query) ? '' : 'none';
+    });
+});
+
+function testConnection(credentialId) {
+    fetch(`/brokers/api/test-connection/${credentialId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Connection successful!');
+            location.reload();
+        } else {
+            alert('Connection failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => alert('Error: ' + err.message));
+}
+
+function disconnectBroker(credentialId) {
+    if (!confirm('Are you sure you want to disconnect this broker? Your imported trades will remain.')) {
+        return;
+    }
+    
+    fetch(`/brokers/api/disconnect/${credentialId}`, {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Broker disconnected');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => alert('Error: ' + err.message));
+}
+</script>
+{% endblock %}

@@ -30,24 +30,24 @@ def make_shell_context():
 def init_db():
     """Initialize the database"""
     db.create_all()
-    print('✅ Database initialized successfully!')
+    print('Database initialized successfully!')
 
 @app.cli.command()
 def reset_db():
     """Reset the database (WARNING: Deletes all data!)"""
-    response = input('⚠️  This will delete ALL data. Are you sure? (yes/no): ')
+    response = input('WARNING: This will delete ALL data. Are you sure? (yes/no): ')
     if response.lower() == 'yes':
         db.drop_all()
         db.create_all()
-        print('✅ Database reset successfully!')
+        print('Database reset successfully!')
     else:
-        print('❌ Database reset cancelled.')
+        print('Database reset cancelled.')
 
 if __name__ == '__main__':
-    print('🚀 Starting TradeVerse...')
-    print('📊 Professional Trading Journal')
-    print('🌐 Open your browser to: http://localhost:5000')
-    print('⏹️  Press CTRL+C to stop\n')
+    print('Starting TradeVerse...')
+    print('Professional Trading Journal')
+    print('Open your browser to: http://localhost:5000')
+    print('Press CTRL+C to stop\n')
     
     app.run(
         host='0.0.0.0',

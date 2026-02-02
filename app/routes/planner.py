@@ -201,6 +201,86 @@ def execute_plan(plan_id):
     return render_template('planner/execute_plan.html', form=form, plan=plan)
 
 
+@bp.route('/<int:plan_id>/start', methods=['POST'])
+@login_required
+def start_execution(plan_id):
+    """
+    Start execution: create a Trade record from a TradePlan and link them.
+    This prevents duplicate manual entry — clicking Execute will create the trade
+    and transition the plan to EXECUTED. Redirects to the trade view for further actions.
+    """
+    from app.models.trade import Trade
+
+    plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
+
+    # If already linked to a trade, redirect to that trade
+    if getattr(plan, 'executed', False) or getattr(plan, 'executed_trade_id', None) or getattr(plan, 'trade_id', None):
+        existing_id = getattr(plan, 'executed_trade_id', None) or getattr(plan, 'trade_id', None)
+        flash('This plan has already been executed and linked to a trade.', 'info')
+        if existing_id:
+            return redirect(url_for('trade.view', trade_id=existing_id))
+        return redirect(url_for('planner.view_plan', plan_id=plan.id))
+
+    if plan.status == 'REVIEWED':
+        flash('This plan has already been reviewed.', 'info')
+        return redirect(url_for('planner.view_plan', plan_id=plan.id))
+
+    try:
+        # Allow overriding planned values from an inline modal form
+        trade_type = (request.form.get('trade_type') or plan.direction or 'BUY').upper()
+        # parse numeric fields safely
+        def to_float(val, default=None):
+            try:
+                return float(val) if val is not None and val != '' else default
+            except Exception:
+                return default
+
+        entry_price = to_float(request.form.get('entry_price'), plan.planned_entry or 0.0)
+        stop_loss = to_float(request.form.get('stop_loss'), plan.planned_stop_loss)
+        take_profit = to_float(request.form.get('take_profit'), plan.planned_take_profit)
+        lot_size = to_float(request.form.get('lot_size'), plan.planned_lot_size or 1.0)
+        strategy = request.form.get('strategy') or plan.strategy
+        pre_trade_plan = request.form.get('pre_trade_plan') or plan.pre_trade_notes or ''
+
+        # Create trade using planned or overridden values
+        trade = Trade(
+            user_id=current_user.id,
+            symbol=(plan.symbol or '').upper(),
+            trade_type=trade_type,
+            lot_size=lot_size,
+            entry_price=entry_price,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            entry_date=plan.executed_at or datetime.utcnow(),
+            pre_trade_plan=pre_trade_plan,
+            strategy=strategy
+        )
+
+        db.session.add(trade)
+        db.session.flush()  # get trade.id
+
+        # Link plan -> trade and mark executed
+        # Support both legacy `trade_id` and new `executed` fields
+        try:
+            plan.trade_id = trade.id
+        except Exception:
+            pass
+        plan.executed = True
+        plan.executed_trade_id = trade.id
+        plan.mark_as_executed()
+
+        db.session.commit()
+
+        flash('Plan executed: trade created under My Trades.', 'success')
+        return redirect(url_for('trade.view', trade_id=trade.id))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ Error executing plan: {str(e)}', 'danger')
+        current_app.logger.exception('Error starting execution for plan %s', plan_id)
+        return redirect(url_for('planner.view_plan', plan_id=plan.id))
+
+
 # ==================== Edit Trade Plan ====================
 
 @bp.route('/<int:plan_id>/edit', methods=['GET', 'POST'])

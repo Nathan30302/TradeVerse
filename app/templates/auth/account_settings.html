@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <!-- Page Header -->
+        <div class="page-header mb-5">
+            <h1 class="page-title">
+                <i class="fas fa-user-circle"></i> Account Settings
+            </h1>
+            <p class="page-subtitle">Manage your profile, preferences, and subscription</p>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="true">
+                    <i class="fas fa-user me-2"></i>Profile
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="appearance-tab" data-bs-toggle="tab" data-bs-target="#appearance" type="button" role="tab" aria-controls="appearance" aria-selected="false">
+                    <i class="fas fa-paint-brush me-2"></i>Appearance
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="billing-tab" data-bs-toggle="tab" data-bs-target="#billing" type="button" role="tab" aria-controls="billing" aria-selected="false">
+                    <i class="fas fa-credit-card me-2"></i>Billing
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab" aria-controls="security" aria-selected="false">
+                    <i class="fas fa-shield-alt me-2"></i>Security
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Profile Tab -->
+            <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-user me-2"></i>Profile Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('auth.profile') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="theme" id="form-theme" value="{{ current_user.theme or 'light' }}">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name or '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Username</label>
+                                    <input type="text" class="form-control" value="{{ current_user.username }}" disabled>
+                                </div>
+                            </div>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Timezone</label>
+                                    <select name="timezone" class="form-select">
+                                        <option value="UTC" {% if current_user.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                                        <option value="EST" {% if current_user.timezone == 'EST' %}selected{% endif %}>Eastern Time</option>
+                                        <option value="CST" {% if current_user.timezone == 'CST' %}selected{% endif %}>Central Time</option>
+                                        <option value="MST" {% if current_user.timezone == 'MST' %}selected{% endif %}>Mountain Time</option>
+                                        <option value="PST" {% if current_user.timezone == 'PST' %}selected{% endif %}>Pacific Time</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Bio</label>
+                                    <textarea name="bio" class="form-control" rows="3" placeholder="Tell us about yourself...">{{ current_user.bio or '' }}</textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Preferred Currency</label>
+                                    <select name="preferred_currency" class="form-select">
+                                        <option value="USD" {% if current_user.preferred_currency == 'USD' %}selected{% endif %}>USD ($)</option>
+                                        <option value="EUR" {% if current_user.preferred_currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
+                                        <option value="GBP" {% if current_user.preferred_currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
+                                        <option value="JPY" {% if current_user.preferred_currency == 'JPY' %}selected{% endif %}>JPY (¥)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Appearance Tab -->
+            <div class="tab-pane fade" id="appearance" role="tabpanel" aria-labelledby="appearance-tab">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-paint-brush me-2"></i>Theme & Appearance</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="mb-4">Choose Your Theme</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <div class="theme-card" data-theme="light" onclick="window.applyTheme('light');">
+                                    <div class="mb-3">
+                                        <div class="rounded" style="width: 60px; height: 60px; background: linear-gradient(135deg, #6366f1, #8b5cf6); margin: 0 auto;"></div>
+                                    </div>
+                                    <h6>Light</h6>
+                                    <p class="small text-muted">Clean and minimal</p>
+                                    <button type="button" class="btn btn-sm btn-primary mt-2 theme-select-btn" data-theme="light">
+                                        <i class="fas fa-check me-1"></i>Select
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="theme-card" data-theme="dark" onclick="window.applyTheme('dark');">
+                                    <div class="mb-3">
+                                        <div class="rounded" style="width: 60px; height: 60px; background: linear-gradient(135deg, #1e293b, #374151); margin: 0 auto;"></div>
+                                    </div>
+                                    <h6>Dark</h6>
+                                    <p class="small text-muted">Easy on the eyes</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2 theme-select-btn" data-theme="dark">
+                                        <i class="fas fa-check me-1"></i>Select
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="theme-card" data-theme="blue" onclick="window.applyTheme('blue');">
+                                    <div class="mb-3">
+                                        <div class="rounded" style="width: 60px; height: 60px; background: linear-gradient(135deg, #0ea5e9, #06b6d4); margin: 0 auto;"></div>
+                                    </div>
+                                    <h6>Blue</h6>
+                                    <p class="small text-muted">Modern and vibrant</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2 theme-select-btn" data-theme="blue">
+                                        <i class="fas fa-check me-1"></i>Select
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-muted small"><i class="fas fa-info-circle me-2"></i>Theme changes instantly and are automatically saved to your account.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Billing Tab -->
+            <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Billing & Subscription</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-5">
+                            <div class="col-md-6">
+                                <h6 class="mb-3">Current Plan</h6>
+                                <div class="alert alert-info">
+                                    <h5 class="mb-0">Free Trial</h5>
+                                    <small>Expires in {{ (30 - (current_user.created_at.now() - current_user.created_at).days)|abs }} days</small>
+                                </div>
+                                <p class="text-muted small mt-3">Your free trial includes:</p>
+                                <ul class="list-unstyled small text-muted">
+                                    <li><i class="fas fa-check text-success me-2"></i>Unlimited trades</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>Basic analytics</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>AI trade feedback</li>
+                                    <li><i class="fas fa-times text-danger me-2"></i>Advanced analytics (coming with Pro)</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="mb-3">Upgrade to Pro</h6>
+                                <div class="card border-2" style="border-color: #6366f1;">
+                                    <div class="card-body">
+                                        <h5 class="mb-2">Pro Plan</h5>
+                                        <div class="display-6 mb-3">$9<small>/mo</small></div>
+                                        <ul class="list-unstyled small mb-4">
+                                            <li><i class="fas fa-check text-success me-2"></i>Everything in Free</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Advanced analytics</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Data export (CSV, JSON)</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>API access</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Priority support</li>
+                                        </ul>
+                                        <button class="btn btn-primary btn-sm w-100" disabled>
+                                            Coming Soon
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h6 class="mb-3">Billing History</h6>
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{{ current_user.created_at.strftime('%B %d, %Y') }}</td>
+                                    <td>Free Trial Started</td>
+                                    <td>-</td>
+                                    <td><span class="badge bg-success">Active</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Tab -->
+            <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Security & Privacy</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="mb-4">Password Management</h6>
+                        <div class="mb-4">
+                            <p class="text-muted small">Last changed: {{ current_user.updated_at.strftime('%B %d, %Y') if current_user.updated_at else 'Never' }}</p>
+                            <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-key me-2"></i>Change Password
+                            </a>
+                        </div>
+
+                        <hr>
+
+                        <h6 class="mb-4">Login History</h6>
+                        <div class="alert alert-info">
+                            <i class="fas fa-laptop me-2"></i>
+                            <strong>Current Session:</strong> Last login {{ current_user.last_login.strftime('%B %d, %Y at %I:%M %p') if current_user.last_login else 'Never' }}
+                        </div>
+
+                        <hr>
+
+                        <h6 class="mb-4">Data & Privacy</h6>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-download me-2"></i>Export My Data
+                            </button>
+                        </div>
+                        <p class="text-muted small">Download all your trades, plans, and performance data in CSV format.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateThemeUI(theme) {
+        document.querySelectorAll('.theme-select-btn').forEach(btn => {
+            if (btn.getAttribute('data-theme') === theme) {
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-primary');
+                btn.innerHTML = '<i class="fas fa-check me-1"></i>Selected';
+            } else {
+                btn.classList.add('btn-outline-primary');
+                btn.classList.remove('btn-primary');
+                btn.innerHTML = '<i class="fas fa-check me-1"></i>Select';
+            }
+        });
+    }
+
+    // Initialize UI on load
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentTheme = localStorage.getItem('tv_theme') || document.body.getAttribute('data-server-theme') || 'light';
+        updateThemeUI(currentTheme);
+    });
+</script>
+{% endblock %}

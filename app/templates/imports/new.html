@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}New Import - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+    <div class="mb-4">
+        <a href="{{ url_for('imports.import_page') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back to Imports
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0"><i class="fas fa-file-import me-2"></i>New Import</h4>
+        </div>
+        <div class="card-body">
+            <!-- Step 1: Select Broker -->
+            <div class="mb-4">
+                <h5 class="mb-3">Step 1: Select Your Broker</h5>
+                <div class="row" id="brokerGrid">
+                    {% for broker in brokers %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card broker-card h-100 {% if selected_broker == broker.id %}border-primary{% endif %}" 
+                             data-broker-id="{{ broker.id }}"
+                             data-api-supported="{{ 'true' if broker.api_supported else 'false' }}"
+                             style="cursor: pointer;"
+                             onclick="selectBroker('{{ broker.id }}', {{ 'true' if broker.api_supported else 'false' }})">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">{{ broker.name }}</h6>
+                                <div class="mb-2">
+                                    {% if broker.api_supported %}
+                                    <span class="badge bg-primary">API</span>
+                                    {% endif %}
+                                    {% for fmt in broker.import_formats or [] %}
+                                    <span class="badge bg-secondary">{{ fmt }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card broker-card h-100" 
+                             data-broker-id="generic"
+                             data-api-supported="false"
+                             style="cursor: pointer;"
+                             onclick="selectBroker('generic', false)">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">Other / Generic</h6>
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary">CSV</span>
+                                    <span class="badge bg-secondary">MT4/MT5</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Choose Method -->
+            <div id="methodSection" style="display: none;">
+                <hr>
+                <h5 class="mb-3">Step 2: Choose Import Method</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3" id="apiMethodCard" style="display: none;">
+                        <div class="card h-100 method-card" onclick="selectMethod('api')" style="cursor: pointer;">
+                            <div class="card-body text-center">
+                                <i class="fas fa-plug fa-3x text-primary mb-3"></i>
+                                <h5>API Import</h5>
+                                <p class="text-muted small">Connect directly to your broker's API for automatic imports</p>
+                                <span class="badge bg-success">Recommended</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 method-card" onclick="selectMethod('file')" style="cursor: pointer;">
+                            <div class="card-body text-center">
+                                <i class="fas fa-file-upload fa-3x text-secondary mb-3"></i>
+                                <h5>File Upload</h5>
+                                <p class="text-muted small">Upload a CSV or MT4/MT5 statement export</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Execute -->
+            <div id="executeSection" style="display: none;">
+                <hr>
+                <h5 class="mb-3">Step 3: <span id="step3Title">Import</span></h5>
+                <div id="executeContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedBroker = '{{ selected_broker }}';
+let selectedMethod = '{{ selected_method }}';
+
+function selectBroker(brokerId, apiSupported) {
+    selectedBroker = brokerId;
+    
+    document.querySelectorAll('.broker-card').forEach(card => {
+        card.classList.remove('border-primary');
+        if (card.dataset.brokerId === brokerId) {
+            card.classList.add('border-primary');
+        }
+    });
+    
+    document.getElementById('methodSection').style.display = 'block';
+    document.getElementById('apiMethodCard').style.display = apiSupported ? 'block' : 'none';
+    document.getElementById('executeSection').style.display = 'none';
+}
+
+function selectMethod(method) {
+    selectedMethod = method;
+    
+    document.querySelectorAll('.method-card').forEach(card => {
+        card.classList.remove('border-primary');
+    });
+    event.currentTarget.classList.add('border-primary');
+    
+    const executeSection = document.getElementById('executeSection');
+    const executeContent = document.getElementById('executeContent');
+    const step3Title = document.getElementById('step3Title');
+    
+    executeSection.style.display = 'block';
+    
+    if (method === 'api') {
+        step3Title.textContent = 'Connect & Import';
+        
+        // Check for existing connection
+        fetch('/brokers/api/my-connections')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const conn = data.connections.find(c => c.broker_id === selectedBroker);
+                    if (conn) {
+                        executeContent.innerHTML = `
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-2"></i>
+                                You have an existing connection to this broker.
+                            </div>
+                            <p>Account: <strong>${conn.nickname || conn.account_id || 'Unknown'}</strong></p>
+                            <button type="button" class="btn btn-primary" onclick="startAPIImport(${conn.id})">
+                                <i class="fas fa-download me-2"></i>Import Trades Now
+                            </button>
+                        `;
+                    } else {
+                        executeContent.innerHTML = `
+                            <p>You need to connect your broker first to use API imports.</p>
+                            <a href="/brokers/connect/${selectedBroker}" class="btn btn-primary">
+                                <i class="fas fa-plug me-2"></i>Connect Broker
+                            </a>
+                        `;
+                    }
+                }
+            });
+    } else {
+        step3Title.textContent = 'Upload File';
+        executeContent.innerHTML = `
+            <p>Upload your trade history file:</p>
+            <a href="/imports/upload?broker=${selectedBroker}" class="btn btn-primary">
+                <i class="fas fa-file-upload me-2"></i>Go to File Upload
+            </a>
+        `;
+    }
+}
+
+async function startAPIImport(credentialId) {
+    const executeContent = document.getElementById('executeContent');
+    executeContent.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary mb-3"></div>
+            <p>Importing trades from broker API...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch(`/imports/api-import/${credentialId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            executeContent.innerHTML = `
+                <div class="alert alert-success">
+                    <h5><i class="fas fa-check-circle me-2"></i>Import Complete!</h5>
+                    <p class="mb-0">${data.message}</p>
+                </div>
+                <div class="row text-center mb-3">
+                    <div class="col-4">
+                        <h4 class="text-success">${data.trades_imported}</h4>
+                        <small>Imported</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-warning">${data.trades_skipped}</h4>
+                        <small>Skipped</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-danger">${data.trades_failed || 0}</h4>
+                        <small>Failed</small>
+                    </div>
+                </div>
+                <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+            `;
+        } else {
+            executeContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>${data.error || 'Import failed'}
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="location.reload()">Try Again</button>
+            `;
+        }
+    } catch (err) {
+        executeContent.innerHTML = `
+            <div class="alert alert-danger">Error: ${err.message}</div>
+            <button type="button" class="btn btn-secondary" onclick="location.reload()">Try Again</button>
+        `;
+    }
+}
+
+// Auto-select if broker was passed in URL
+if (selectedBroker) {
+    const card = document.querySelector(`[data-broker-id="${selectedBroker}"]`);
+    if (card) {
+        selectBroker(selectedBroker, card.dataset.apiSupported === 'true');
+    }
+}
+</script>
+{% endblock %}

@@ -104,8 +104,17 @@ class TradePlan(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # ==================== Execution Link (new) ====================
+    # Flag to indicate this plan was executed into a Trade record
+    executed = db.Column(db.Boolean, default=False, nullable=False)
+    # Link to the Trade created when executing this plan (optional, non-unique)
+    executed_trade_id = db.Column(db.Integer, db.ForeignKey('trades.id'), nullable=True)
+    
     # ==================== Relationships ====================
-    trade = db.relationship('Trade', backref='plan', uselist=False)
+    # Relationship to legacy linked Trade (uses trade_id)
+    trade = db.relationship('Trade', foreign_keys=[trade_id], backref=db.backref('plan', uselist=False), uselist=False)
+    # Relationship to the Trade created when executing this plan
+    executed_trade = db.relationship('Trade', foreign_keys=[executed_trade_id], backref=db.backref('executed_plan', uselist=False), uselist=False)
     user = db.relationship('User', backref='trade_plans')
     
     # ==================== Methods ====================

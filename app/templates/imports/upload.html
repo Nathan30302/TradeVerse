@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Trades - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 800px;">
+    <div class="mb-4">
+        <a href="{{ url_for('imports.import_page') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back to Imports
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0"><i class="fas fa-file-upload me-2"></i>Upload Trade File</h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info mb-4">
+                <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Supported Formats</h6>
+                <ul class="mb-0">
+                    <li><strong>CSV</strong> - Standard comma-separated files from most brokers</li>
+                    <li><strong>MT4/MT5 Statement</strong> - HTML statement export from MetaTrader</li>
+                </ul>
+            </div>
+
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="mb-4">
+                    <label for="broker" class="form-label">Select Broker</label>
+                    <select class="form-select" id="broker" name="broker" required>
+                        <option value="">Choose broker...</option>
+                        {% for broker in brokers %}
+                        <option value="{{ broker.id }}">{{ broker.name }}</option>
+                        {% endfor %}
+                        <option value="generic">Other / Generic CSV</option>
+                    </select>
+                    <div class="form-text">Select your broker for accurate symbol mapping</div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="file" class="form-label">Trade File</label>
+                    <div class="upload-area p-5 text-center border border-2 border-dashed rounded" 
+                         id="dropZone" style="cursor: pointer;">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <p class="mb-2">Drag & drop your file here, or click to browse</p>
+                        <p class="text-muted small">Supports CSV, HTM, HTML files</p>
+                        <input type="file" class="form-control d-none" id="file" name="file" 
+                               accept=".csv,.htm,.html,.txt" required>
+                    </div>
+                    <div id="fileInfo" class="mt-2" style="display: none;">
+                        <span class="badge bg-success me-2"><i class="fas fa-file me-1"></i><span id="fileName"></span></span>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="previewUpload()">
+                            <i class="fas fa-eye me-2"></i>Preview Import
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+                            <i class="fas fa-upload me-2"></i>Import Trades
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Preview Results -->
+            <div id="previewSection" style="display: none;">
+                <hr>
+                <h5><i class="fas fa-search me-2"></i>Import Preview</h5>
+                <div id="previewContent"></div>
+            </div>
+
+            <!-- Import Results -->
+            <div id="resultSection" style="display: none;">
+                <hr>
+                <div id="resultContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How to Export Guide -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>How to Export from Your Broker</h5>
+        </div>
+        <div class="card-body">
+            <div class="accordion" id="exportGuide">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mt4Guide">
+                            MetaTrader 4/5
+                        </button>
+                    </h2>
+                    <div id="mt4Guide" class="accordion-collapse collapse" data-bs-parent="#exportGuide">
+                        <div class="accordion-body">
+                            <ol>
+                                <li>Open MetaTrader and go to <strong>Terminal</strong> (Ctrl+T)</li>
+                                <li>Click the <strong>Account History</strong> tab</li>
+                                <li>Right-click and select your date range</li>
+                                <li>Right-click again and select <strong>Save as Detailed Report</strong></li>
+                                <li>Save as HTML file and upload here</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#oandaGuide">
+                            OANDA
+                        </button>
+                    </h2>
+                    <div id="oandaGuide" class="accordion-collapse collapse" data-bs-parent="#exportGuide">
+                        <div class="accordion-body">
+                            <ol>
+                                <li>Log into your OANDA fxTrade account</li>
+                                <li>Go to <strong>Account</strong> → <strong>History</strong></li>
+                                <li>Select date range and click <strong>Export</strong></li>
+                                <li>Choose CSV format and download</li>
+                            </ol>
+                            <p class="text-muted mt-2">Or connect via API for automatic imports!</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#binanceGuide">
+                            Binance
+                        </button>
+                    </h2>
+                    <div id="binanceGuide" class="accordion-collapse collapse" data-bs-parent="#exportGuide">
+                        <div class="accordion-body">
+                            <ol>
+                                <li>Log into Binance and go to <strong>Orders</strong> → <strong>Trade History</strong></li>
+                                <li>Select the trading pair and date range</li>
+                                <li>Click <strong>Export Trade History</strong></li>
+                                <li>Download the CSV file</li>
+                            </ol>
+                            <p class="text-muted mt-2">Tip: API connection allows for more complete history!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('file');
+const fileInfo = document.getElementById('fileInfo');
+const fileName = document.getElementById('fileName');
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-primary', 'bg-light');
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('border-primary', 'bg-light');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-primary', 'bg-light');
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        showFileInfo(e.dataTransfer.files[0]);
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) {
+        showFileInfo(e.target.files[0]);
+    }
+});
+
+function showFileInfo(file) {
+    fileName.textContent = file.name;
+    fileInfo.style.display = 'block';
+    dropZone.style.display = 'none';
+}
+
+function clearFile() {
+    fileInput.value = '';
+    fileInfo.style.display = 'none';
+    dropZone.style.display = 'block';
+    document.getElementById('previewSection').style.display = 'none';
+}
+
+async function previewUpload() {
+    const formData = new FormData(document.getElementById('uploadForm'));
+    formData.append('dry_run', 'true');
+    
+    if (!fileInput.files.length) {
+        alert('Please select a file first');
+        return;
+    }
+    
+    const previewSection = document.getElementById('previewSection');
+    const previewContent = document.getElementById('previewContent');
+    
+    previewContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p>Parsing file...</p></div>';
+    previewSection.style.display = 'block';
+    
+    try {
+        const response = await fetch('/imports/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const result = data.result;
+            let html = `
+                <div class="alert alert-success">
+                    <strong>Preview Complete!</strong> Found ${result.total_parsed} trades
+                </div>
+                <div class="row mb-3">
+                    <div class="col-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-primary">${result.total_parsed}</h3>
+                                <small>Total Trades</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-success">${result.total_mapped}</h3>
+                                <small>Mapped</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-warning">${result.total_parsed - result.total_mapped}</h3>
+                                <small>Unmapped</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (result.trades && result.trades.length > 0) {
+                html += `
+                    <h6>Sample Trades (first 5):</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Mapped To</th>
+                                    <th>Direction</th>
+                                    <th>Lots</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                    <th>P/L</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                for (let i = 0; i < Math.min(5, result.trades.length); i++) {
+                    const t = result.trades[i];
+                    html += `
+                        <tr>
+                            <td>${t.broker_symbol}</td>
+                            <td>${t.canonical_symbol || '-'}</td>
+                            <td><span class="badge ${t.direction === 'buy' ? 'bg-success' : 'bg-danger'}">${t.direction}</span></td>
+                            <td>${t.lot_size}</td>
+                            <td>${t.entry_price}</td>
+                            <td>${t.exit_price || '-'}</td>
+                            <td>${t.profit_loss ? t.profit_loss.toFixed(2) : '-'}</td>
+                        </tr>
+                    `;
+                }
+                
+                html += '</tbody></table></div>';
+            }
+            
+            previewContent.innerHTML = html;
+        } else {
+            previewContent.innerHTML = `<div class="alert alert-danger">${data.error || 'Preview failed'}</div>`;
+        }
+    } catch (err) {
+        previewContent.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+    }
+}
+
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitBtn = document.getElementById('submitBtn');
+    const resultSection = document.getElementById('resultSection');
+    const resultContent = document.getElementById('resultContent');
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importing...';
+    
+    resultContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p>Importing trades...</p></div>';
+    resultSection.style.display = 'block';
+    
+    try {
+        const response = await fetch('/imports/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            resultContent.innerHTML = `
+                <div class="alert alert-success">
+                    <h5><i class="fas fa-check-circle me-2"></i>Import Successful!</h5>
+                    <p class="mb-0">${data.message}</p>
+                </div>
+                <div class="row">
+                    <div class="col-4 text-center">
+                        <h4 class="text-success">${data.trades_imported}</h4>
+                        <small>Imported</small>
+                    </div>
+                    <div class="col-4 text-center">
+                        <h4 class="text-warning">${data.trades_skipped}</h4>
+                        <small>Skipped (duplicates)</small>
+                    </div>
+                    <div class="col-4 text-center">
+                        <h4 class="text-danger">${data.trades_failed}</h4>
+                        <small>Failed</small>
+                    </div>
+                </div>
+                <div class="mt-3 text-center">
+                    <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+                    <button type="button" class="btn btn-outline-secondary ms-2" onclick="location.reload()">Import More</button>
+                </div>
+            `;
+        } else {
+            resultContent.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.error || 'Import failed'}</div>`;
+        }
+    } catch (err) {
+        resultContent.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+    }
+    
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Import Trades';
+});
+</script>
+{% endblock %}

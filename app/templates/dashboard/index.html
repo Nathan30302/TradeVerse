@@ -421,6 +421,10 @@ fetch("{{ url_for('dashboard.equity_curve_api') }}")
     .then(response => response.json())
     .then(data => {
         const ctx = document.getElementById('equityChart').getContext('2d');
+        // Read CSS variables for tooltip colors to match current theme
+        const css = getComputedStyle(document.documentElement);
+        const tooltipTitleColor = css.getPropertyValue('--text-primary').trim() || '#fff';
+        const tooltipBodyColor = css.getPropertyValue('--text-primary').trim() || '#fff';
         new Chart(ctx, {
             type: 'line',
             data: {
@@ -444,8 +448,8 @@ fetch("{{ url_for('dashboard.equity_curve_api') }}")
                     tooltip: {
                         backgroundColor: 'rgba(0,0,0,0.8)',
                         padding: 12,
-                        titleColor: '#fff',
-                        bodyColor: '#fff',
+                        titleColor: tooltipTitleColor,
+                        bodyColor: tooltipBodyColor,
                         callbacks: {
                             label: function(context) {
                                 return 'Equity: $' + context.parsed.y.toFixed(2);

@@ -311,6 +311,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // P/L Chart (Doughnut)
+            const css = getComputedStyle(document.documentElement);
+            const chartBorderColor = css.getPropertyValue('--card-border').trim() || '#fff';
             new Chart(document.getElementById('pnlChart'), {
                 type: 'doughnut',
                 data: {
@@ -319,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         data: data.total_pnl.map(v => Math.abs(v)),
                         backgroundColor: data.colors,
                         borderWidth: 2,
-                        borderColor: '#fff'
+                        borderColor: chartBorderColor
                     }]
                 },
                 options: {

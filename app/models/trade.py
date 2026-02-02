@@ -25,6 +25,7 @@ class Trade(db.Model):
     
     # ==================== Foreign Keys ====================
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    instrument_id = db.Column(db.Integer, db.ForeignKey('instruments.id'), nullable=True, index=True)
     
     # ==================== Basic Trade Info ====================
     symbol = db.Column(db.String(20), nullable=False, index=True)
@@ -91,6 +92,7 @@ class Trade(db.Model):
     broker = db.Column(db.String(50))
     account_number = db.Column(db.String(50))
     trade_id = db.Column(db.String(100))  # Broker's trade ID
+    imported_source_id = db.Column(db.Integer, db.ForeignKey('imported_trade_sources.id'), nullable=True, index=True)
     
     # ==================== Table Constraints ====================
     __table_args__ = (
@@ -360,5 +362,6 @@ class Trade(db.Model):
             'exit_date': self.exit_date.isoformat() if self.exit_date else None,
             'strategy': self.strategy,
             'emotion': self.emotion,
+            'imported_source_id': self.imported_source_id,
             'is_winner': self.is_winner()
         }

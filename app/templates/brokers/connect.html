@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Connect {{ broker.name }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 700px;">
+    <div class="mb-4">
+        <a href="{{ url_for('brokers.broker_settings_page') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back to Brokers
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0"><i class="fas fa-plug me-2"></i>Connect {{ broker.name }}</h4>
+        </div>
+        <div class="card-body">
+            <!-- Privacy Notice -->
+            <div class="alert alert-info mb-4">
+                <h6 class="alert-heading"><i class="fas fa-shield-alt me-2"></i>Privacy & Security</h6>
+                <p class="mb-2">By connecting your broker account:</p>
+                <ul class="mb-2">
+                    <li>We will <strong>only read</strong> your trade history</li>
+                    <li>We will <strong>never</strong> place trades or modify your account</li>
+                    <li>Your API keys are <strong>encrypted</strong> and stored securely</li>
+                    <li>You can <strong>revoke access</strong> at any time</li>
+                </ul>
+                <p class="mb-0"><small>Your credentials are encrypted using industry-standard encryption. We never log or expose your API keys.</small></p>
+            </div>
+
+            {% if broker.api_docs_url %}
+            <div class="alert alert-secondary mb-4">
+                <h6 class="alert-heading"><i class="fas fa-book me-2"></i>How to get API credentials</h6>
+                <p class="mb-2">Visit your {{ broker.name }} account settings to generate API keys:</p>
+                <a href="{{ broker.api_docs_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-external-link-alt me-1"></i>{{ broker.name }} API Documentation
+                </a>
+            </div>
+            {% endif %}
+
+            <form id="connectForm">
+                <input type="hidden" name="broker_id" value="{{ broker.id }}">
+
+                <div class="mb-3">
+                    <label for="nickname" class="form-label">Account Nickname (optional)</label>
+                    <input type="text" class="form-control" id="nickname" name="nickname" 
+                           placeholder="e.g., My Trading Account">
+                </div>
+
+                <div class="mb-3">
+                    <label for="account_id" class="form-label">
+                        Account ID {% if broker.id == 'oanda' %}(OANDA Account Number){% endif %}
+                    </label>
+                    <input type="text" class="form-control" id="account_id" name="account_id" 
+                           placeholder="{% if broker.id == 'oanda' %}101-001-12345678-001{% else %}Your account ID{% endif %}">
+                    <div class="form-text">Your broker account identifier</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="account_currency" class="form-label">Account Currency</label>
+                    <select class="form-select" id="account_currency" name="account_currency">
+                        {% for curr in broker.account_currency_options or ['USD', 'EUR', 'GBP'] %}
+                        <option value="{{ curr }}" {% if curr == 'USD' %}selected{% endif %}>{{ curr }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="api_key" class="form-label">
+                        {% if broker.id == 'oanda' %}Access Token{% else %}API Key{% endif %}
+                    </label>
+                    <input type="password" class="form-control" id="api_key" name="api_key" required
+                           placeholder="{% if broker.id == 'oanda' %}Your OANDA access token{% else %}Your API key{% endif %}">
+                    <div class="form-text">
+                        {% if broker.id == 'oanda' %}
+                        Generate this in your OANDA fxTrade account under "Manage API Access"
+                        {% else %}
+                        Your broker API key
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if broker.id in ['binance', 'bybit'] %}
+                <div class="mb-3">
+                    <label for="api_secret" class="form-label">API Secret</label>
+                    <input type="password" class="form-control" id="api_secret" name="api_secret" required
+                           placeholder="Your API secret">
+                    <div class="form-text">The secret key provided when you created your API key</div>
+                </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_demo" name="is_demo">
+                        <label class="form-check-label" for="is_demo">
+                            This is a demo/practice account
+                        </label>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="consent" name="consent" required>
+                        <label class="form-check-label" for="consent">
+                            <strong>I consent</strong> to TradeVerse accessing my {{ broker.name }} trade history 
+                            using the API credentials I provide. I understand I can revoke this access at any time.
+                        </label>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                        <i class="fas fa-plug me-2"></i>Connect {{ broker.name }}
+                    </button>
+                </div>
+            </form>
+
+            <div id="resultMessage" class="mt-4" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('connectForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('submitBtn');
+    const resultDiv = document.getElementById('resultMessage');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Connecting...';
+    resultDiv.style.display = 'none';
+    
+    const formData = new FormData(this);
+    const payload = {
+        broker_id: formData.get('broker_id'),
+        nickname: formData.get('nickname'),
+        account_id: formData.get('account_id'),
+        account_currency: formData.get('account_currency'),
+        is_demo: formData.get('is_demo') === 'on',
+        consent: formData.get('consent') === 'on',
+        credentials: {
+            api_key: formData.get('api_key'),
+            api_secret: formData.get('api_secret') || null
+        }
+    };
+    
+    try {
+        const response = await fetch('/brokers/api/connect', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.className = 'mt-4 alert alert-success';
+            resultDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>' + data.message + 
+                '<br><a href="{{ url_for('brokers.broker_settings_page') }}" class="alert-link">Return to broker settings</a>';
+        } else {
+            resultDiv.className = 'mt-4 alert alert-danger';
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + (data.error || 'Connection failed');
+        }
+        resultDiv.style.display = 'block';
+        
+    } catch (err) {
+        resultDiv.className = 'mt-4 alert alert-danger';
+        resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Error: ' + err.message;
+        resultDiv.style.display = 'block';
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plug me-2"></i>Connect {{ broker.name }}';
+});
+</script>
+{% endblock %}

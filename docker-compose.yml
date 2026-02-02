@@ -1,0 +1,63 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+
+  web:
+    build: .
+    command: flask run --host=0.0.0.0
+    environment:
+      - FLASK_APP=run.py
+      - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - '5000:5000'
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - FLASK_APP=run.py
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+
+  rq-dashboard:
+    image: rq-dashboard:latest
+    ports:
+      - '9181:9181'
+    environment:
+      - RQ_DASHBOARD_REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '9090:9090'
+    depends_on:
+      - redis
+      - web
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - '3000:3000'
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+
+volumes:
+  redis-data:

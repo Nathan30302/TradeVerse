@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Import History - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-0"><i class="fas fa-history me-2"></i>Import History</h1>
+                <p class="text-secondary mt-2">View all your past trade imports</p>
+            </div>
+            <a href="{{ url_for('imports.import_page') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>New Import
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if imports %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Source</th>
+                            <th>Broker</th>
+                            <th>File</th>
+                            <th>Date Range</th>
+                            <th>Imported</th>
+                            <th>Skipped</th>
+                            <th>Failed</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for imp in imports %}
+                        <tr>
+                            <td>{{ imp.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if imp.source_type == 'api' %}
+                                <span class="badge bg-primary"><i class="fas fa-plug me-1"></i>API</span>
+                                {% else %}
+                                <span class="badge bg-secondary"><i class="fas fa-file me-1"></i>File</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ imp.broker_name or imp.broker_id or 'Unknown' }}</td>
+                            <td>
+                                {% if imp.filename %}
+                                <small>{{ imp.filename }}</small>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if imp.date_range_start and imp.date_range_end %}
+                                <small>{{ imp.date_range_start.strftime('%Y-%m-%d') }} to {{ imp.date_range_end.strftime('%Y-%m-%d') }}</small>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td><span class="text-success">{{ imp.trades_imported }}</span></td>
+                            <td><span class="text-warning">{{ imp.trades_skipped }}</span></td>
+                            <td><span class="text-danger">{{ imp.trades_failed }}</span></td>
+                            <td>
+                                {% if imp.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                                {% elif imp.status == 'failed' %}
+                                <span class="badge bg-danger">Failed</span>
+                                {% elif imp.status == 'importing' %}
+                                <span class="badge bg-warning">In Progress</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ imp.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5>No imports yet</h5>
+                <p class="text-muted">Start by importing your trade history from your broker.</p>
+                <a href="{{ url_for('imports.import_page') }}" class="btn btn-primary">
+                    <i class="fas fa-file-import me-2"></i>Import Trades
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2,6 +2,10 @@
 
 {% block title %}Edit Trade - {{ app_name }}{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/instrument-picker.css') }}">
+{% endblock %}
+
 {% block content %}
 <!-- Page Header -->
 <div class="page-header mb-4">
@@ -24,14 +28,19 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label for="symbol" class="form-label fw-bold">Symbol *</label>
-                            <select class="form-select" id="symbol" name="symbol" required>
-                                {% for instrument in config.INSTRUMENTS %}
-                                    <option value="{{ instrument }}" {% if instrument == trade.symbol %}selected{% endif %}>
-                                        {{ instrument }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                            <label for="instrument-selector" class="form-label fw-bold">Instrument *</label>
+                            <div class="instrument-picker-container">
+                                <button type="button" id="instrument-selector" class="btn btn-outline-primary w-100 mb-2">
+                                    <i class="fas fa-search"></i> Select Instrument
+                                </button>
+                                <input type="hidden" id="instrument_id" name="instrument_id" value="{{ trade.instrument_id or '' }}">
+                                <input type="text" id="symbol" name="symbol" class="form-control" readonly required value="{{ trade.symbol }}">
+                                <button id="clear-instrument-selection" class="btn btn-outline-secondary btn-sm mt-1" title="Clear selection">
+                                    <i class="fas fa-times"></i> Clear
+                                </button>
+                                <div id="instrument-dropdown" class="instrument-dropdown"></div>
+                                <div id="instrument-meta" class="mt-2 text-sm text-muted"></div>
+                            </div>
                         </div>
 
                         <div class="col-md-4">
@@ -43,7 +52,11 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label for="lot_size" class="form-label fw-bold">Lot Size *</label>
+                            <label for="lot_size" class="form-label fw-bold">Lot Size *
+                                <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-bs-toggle="tooltip" title="Lot size is the quantity you trade. For FX, 1.0 = 1 standard lot (100,000 units). For CFDs and crypto, lot definitions vary by instrument.">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </label>
                             <input type="number" step="0.01" class="form-control" id="lot_size" 
                                    name="lot_size" value="{{ trade.lot_size }}" required>
                         </div>
@@ -255,4 +268,23 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/instrument-picker.js') }}"></script>
+<script>
+// If instrument id exists, trigger a change to calculate P&L when user edits prices
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
+    } catch (e) { }
+    const instId = document.getElementById('instrument_id')?.value;
+    if (instId) {
+        // dispatch custom event to trigger calculator
+        const ev = new Event('instrumentChanged', { bubbles: true });
+        document.getElementById('symbol')?.dispatchEvent(ev);
+    }
+});
+</script>
 {% endblock %}

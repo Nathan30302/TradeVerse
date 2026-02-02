@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Trial Information - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-hourglass-end me-2"></i>Your Free Trial</h4>
+                </div>
+                <div class="card-body">
+                    {% if not trial_expired %}
+                    <div class="mb-4">
+                        <h6>Days Remaining</h6>
+                        <div class="progress" style="height: 30px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ 100 - trial_percent }}%;" aria-valuenow="{{ days_remaining }}" aria-valuemin="0" aria-valuemax="30">
+                                <strong>{{ days_remaining }} days left</strong>
+                            </div>
+                        </div>
+                        <small class="text-muted mt-2 d-block">{{ days_used }} of {{ trial_days }} days used</small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Your trial expires on <strong>{{ (current_user.created_at + timedelta(days=trial_days)).strftime('%B %d, %Y') }}</strong>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Your free trial has expired. Please upgrade to continue using TradeVerse.
+                    </div>
+                    {% endif %}
+
+                    <h6 class="mt-4 mb-3">Trial Features</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Unlimited trades</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Basic analytics</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Trade journaling</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>AI feedback</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-times text-danger me-2"></i>Data export</li>
+                                <li class="mb-2"><i class="fas fa-times text-danger me-2"></i>Advanced analytics</li>
+                                <li class="mb-2"><i class="fas fa-times text-danger me-2"></i>API access</li>
+                                <li class="mb-2"><i class="fas fa-times text-danger me-2"></i>Priority support</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h6 class="mb-3">Upgrade to Pro</h6>
+                    <p class="text-muted">Get access to all premium features and unlock your trading potential.</p>
+                    
+                    <div class="row g-2">
+                        <div class="col-auto">
+                            <a href="{{ url_for('monetization.pricing') }}" class="btn btn-primary">
+                                <i class="fas fa-star me-2"></i>View Pricing
+                            </a>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

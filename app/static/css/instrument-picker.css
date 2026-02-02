@@ -1,0 +1,320 @@
+/**
+ * Instrument Picker Styles
+ * Modern, theme-compatible category-first selector UI
+ */
+
+/* Container */
+.instrument-picker-container {
+    position: relative;
+    width: 100%;
+}
+
+/* Selector Button */
+#instrument-selector {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background-color: var(--bg-primary, #ffffff);
+    color: var(--text-primary, #333333);
+    text-align: left;
+}
+
+#instrument-selector:hover {
+    border-color: #0d6efd;
+    background-color: #f8f9fa;
+}
+
+#instrument-selector.btn-success {
+    border-color: #198754;
+    background-color: #d1edff;
+    color: #0a58ca;
+}
+
+#instrument-selector:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+    outline: none;
+}
+
+/* Dark theme */
+:root.dark #instrument-selector {
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    border-color: #444444;
+}
+
+:root.dark #instrument-selector:hover {
+    background-color: #3a3a3a;
+}
+
+:root.dark #instrument-selector.btn-success {
+    background-color: #1a4d7a;
+    color: #5dade2;
+}
+
+/* Dropdown Container */
+#instrument-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-primary, #ffffff);
+    border: 2px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+#instrument-dropdown.show {
+    display: block;
+}
+
+/* Dark theme dropdown */
+:root.dark #instrument-dropdown {
+    background-color: #2a2a2a;
+    border-color: #444444;
+}
+
+/* Category Header */
+.category-header {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary, #6c757d);
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+:root.dark .category-header {
+    color: #999999;
+    border-bottom-color: #444444;
+}
+
+/* Back Button */
+.back-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary, #6c757d);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+}
+
+.back-btn:hover {
+    background-color: #f8f9fa;
+    color: var(--text-primary, #333333);
+}
+
+:root.dark .back-btn:hover {
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+}
+
+/* Category Grid */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.5rem;
+    padding: 1rem;
+}
+
+/* Category Buttons */
+.category-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 0.5rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    color: var(--text-primary, #333333);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.category-btn:hover {
+    border-color: #0d6efd;
+    background-color: #e7f3ff;
+    transform: translateY(-1px);
+}
+
+.category-btn i {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+:root.dark .category-btn {
+    background-color: #3a3a3a;
+    border-color: #555555;
+    color: #e0e0e0;
+}
+
+:root.dark .category-btn:hover {
+    border-color: #5dade2;
+    background-color: #4a4a4a;
+}
+
+/* Instruments List */
+.instruments-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Instrument Items */
+.instrument-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.instrument-item:hover {
+    background-color: #f8f9fa;
+}
+
+.instrument-item:last-child {
+    border-bottom: none;
+}
+
+.instrument-symbol {
+    font-weight: 600;
+    color: var(--text-primary, #333333);
+    font-size: 0.9rem;
+}
+
+.instrument-name {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #6c757d);
+    margin-top: 0.25rem;
+}
+
+:root.dark .instrument-item:hover {
+    background-color: #3a3a3a;
+}
+
+:root.dark .instrument-item {
+    border-bottom-color: #444444;
+}
+
+:root.dark .instrument-symbol {
+    color: #e0e0e0;
+}
+
+:root.dark .instrument-name {
+    color: #b0b0b0;
+}
+
+/* Dropdown Hints */
+.dropdown-hint {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-secondary, #6c757d);
+    font-size: 0.9rem;
+}
+
+:root.dark .dropdown-hint {
+    color: #999999;
+}
+
+/* Clear Button */
+#clear-instrument-selection {
+    border: none;
+    background: none;
+    color: var(--text-secondary, #6c757d);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+}
+
+#clear-instrument-selection:hover {
+    background-color: #f8f9fa;
+    color: #dc3545;
+}
+
+:root.dark #clear-instrument-selection:hover {
+    background-color: #3a3a3a;
+    color: #ff6b6b;
+}
+
+/* P&L Display */
+#pnl-display {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 6px;
+    background-color: #f8f9fa;
+}
+
+:root.dark #pnl-display {
+    background-color: #2a2a2a;
+}
+
+.pnl-value {
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-weight: bold;
+}
+
+.pnl-pips {
+    margin-top: 0.5rem;
+    font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #instrument-dropdown {
+        max-height: 300px;
+    }
+
+    .category-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .category-btn {
+        padding: 0.75rem 0.25rem;
+        font-size: 0.8rem;
+    }
+
+    .category-btn i {
+        font-size: 1.2rem;
+    }
+}
+
+/* Scrollbar styling */
+#instrument-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+#instrument-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#instrument-dropdown::-webkit-scrollbar-thumb {
+    background: #bbb;
+    border-radius: 3px;
+}
+
+#instrument-dropdown::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+:root.dark #instrument-dropdown::-webkit-scrollbar-thumb {
+    background: #555;
+}
+
+:root.dark #instrument-dropdown::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}

@@ -15,9 +15,13 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <!-- Tailwind CSS CDN (optional utility classes for polish) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <!-- Custom CSS -->
     <style>
         :root {
+            /* Light Theme - Default */
             --primary: #6366f1;
             --primary-dark: #4f46e5;
             --secondary: #8b5cf6;
@@ -27,8 +31,25 @@
             --info: #3b82f6;
             --dark: #1e293b;
             --light: #f8fafc;
+            
+            /* Light Mode Colors */
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --card-bg: #ffffff;
+            --card-border: #e2e8f0;
+            --form-bg: #ffffff;
+            --form-border: #cbd5e1;
+            --form-text: #1e293b;
+            --form-label: #475569;
+            --table-hover: #f1f5f9;
+            --tab-text: #64748b;
+            --tab-active: #6366f1;
+            --tab-border: #e2e8f0;
             --sidebar-bg: #0f172a;
             --sidebar-hover: #1e293b;
+            --sidebar-text: #ffffff;
         }
         
         * {
@@ -39,9 +60,199 @@
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--light);
-            color: var(--dark);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
             line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* DARK THEME */
+        body[data-theme="dark"],
+        [data-server-theme="dark"] body {
+            --primary: #6366f1 !important;
+            --secondary: #8b5cf6 !important;
+            --text-primary: #e6eef8 !important;
+            --text-secondary: #cbd5e1 !important;
+            --bg-primary: #0f0f0f !important;
+            --bg-secondary: #1a202c !important;
+            --card-bg: #1a202c !important;
+            --card-border: #374151 !important;
+            --form-bg: #111827 !important;
+            --form-border: #4b5563 !important;
+            --form-text: #e6eef8 !important;
+            --form-label: #cbd5e1 !important;
+            --table-hover: #1f2937 !important;
+            --tab-text: #9ca3af !important;
+            --tab-active: #60a5fa !important;
+            --tab-border: #374151 !important;
+            --sidebar-bg: #111827 !important;
+            --sidebar-hover: #1f2937 !important;
+            --sidebar-text: #f3f4f6 !important;
+            background-color: #0f0f0f !important;
+            color: #e6eef8 !important;
+        }
+
+        /* BLUE THEME */
+        body[data-theme="blue"],
+        [data-server-theme="blue"] body {
+            --primary: #0ea5e9 !important;
+            --secondary: #06b6d4 !important;
+            --text-primary: #f0f9ff !important;
+            --text-secondary: #bae6fd !important;
+            --bg-primary: #0c2a47 !important;
+            --bg-secondary: #164e63 !important;
+            --card-bg: #0f3a52 !important;
+            --card-border: #0e7490 !important;
+            --form-bg: #082f49 !important;
+            --form-border: #0e7490 !important;
+            --form-text: #ecf0f1 !important;
+            --form-label: #bae6fd !important;
+            --table-hover: #164e63 !important;
+            --tab-text: #7dd3fc !important;
+            --tab-active: #06b6d4 !important;
+            --tab-border: #0e7490 !important;
+            --sidebar-bg: #082f49 !important;
+            --sidebar-hover: #0f3a52 !important;
+            --sidebar-text: #ecf0f1 !important;
+            background-color: #0c2a47 !important;
+            color: #f0f9ff !important;
+        }
+
+        /* Typography Theme Aware */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--text-primary);
+        }
+
+        .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
+        /* Card Theme Aware */
+        .card {
+            background-color: var(--card-bg) !important;
+            border-color: var(--card-border) !important;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .card-header {
+            background-color: var(--bg-secondary) !important;
+            border-color: var(--card-border) !important;
+            color: var(--text-primary);
+        }
+
+        /* Form Elements Theme Aware */
+        .form-control,
+        .form-select,
+        textarea {
+            background-color: var(--form-bg) !important;
+            color: var(--form-text) !important;
+            border-color: var(--form-border) !important;
+            transition: all 0.3s ease;
+        }
+
+        .form-control::placeholder,
+        textarea::placeholder {
+            color: var(--text-secondary) !important;
+        }
+
+        .form-control:focus,
+        .form-select:focus,
+        textarea:focus {
+            background-color: var(--form-bg) !important;
+            color: var(--form-text) !important;
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25) !important;
+        }
+
+        /* Table Theme Aware */
+        table {
+            color: var(--text-primary);
+        }
+
+        thead th {
+            background-color: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--card-border) !important;
+        }
+
+        tbody tr:hover {
+            background-color: var(--table-hover) !important;
+        }
+
+        tbody td {
+            border-color: var(--card-border) !important;
+        }
+
+        /* Alert Styling - Theme Aware */
+        .alert {
+            background-color: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--card-border) !important;
+        }
+
+        .alert-info {
+            background-color: rgba(59, 130, 246, 0.1) !important;
+            border-color: #3b82f6 !important;
+            color: #0c4a6e !important;
+        }
+
+        .alert-success {
+            background-color: rgba(34, 197, 94, 0.1) !important;
+            border-color: #22c55e !important;
+            color: #15803d !important;
+        }
+
+        .alert-warning {
+            background-color: rgba(245, 158, 11, 0.1) !important;
+            border-color: #f59e0b !important;
+            color: #92400e !important;
+        }
+
+        .alert-danger {
+            background-color: rgba(239, 68, 68, 0.1) !important;
+            border-color: #ef4444 !important;
+            color: #7f1d1d !important;
+        }
+
+        body[data-theme="dark"] .alert-info {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #93c5fd !important;
+        }
+
+        body[data-theme="dark"] .alert-success {
+            background-color: rgba(34, 197, 94, 0.15) !important;
+            color: #86efac !important;
+        }
+
+        body[data-theme="dark"] .alert-warning {
+            background-color: rgba(245, 158, 11, 0.15) !important;
+            color: #fcd34d !important;
+        }
+
+        body[data-theme="dark"] .alert-danger {
+            background-color: rgba(239, 68, 68, 0.15) !important;
+            color: #fca5a5 !important;
+        }
+
+        body[data-theme="blue"] .alert-info {
+            background-color: rgba(59, 130, 246, 0.2) !important;
+            color: #bfdbfe !important;
+        }
+
+        body[data-theme="blue"] .alert-success {
+            background-color: rgba(34, 197, 94, 0.2) !important;
+            color: #bbf7d0 !important;
+        }
+
+        body[data-theme="blue"] .alert-warning {
+            background-color: rgba(245, 158, 11, 0.2) !important;
+            color: #fed7aa !important;
+        }
+
+        body[data-theme="blue"] .alert-danger {
+            background-color: rgba(239, 68, 68, 0.2) !important;
+            color: #fecaca !important;
         }
         
         /* Navigation */
@@ -78,13 +289,14 @@
         }
         
         .btn-navbar {
-            background-color: white;
+            background-color: var(--card-bg);
             color: var(--primary);
             border: none;
             padding: 0.5rem 1.5rem;
             border-radius: 8px;
             font-weight: 600;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         
         .btn-navbar:hover {
@@ -101,7 +313,8 @@
         }
         
         .sidebar .nav-link {
-            color: rgba(255,255,255,0.7) !important;
+            color: var(--sidebar-text) !important;
+            opacity: 0.8;
             padding: 0.875rem 1.5rem !important;
             margin: 0.25rem 1rem;
             border-radius: 10px;
@@ -120,7 +333,8 @@
         
         .sidebar .nav-link:hover {
             background-color: var(--sidebar-hover);
-            color: white !important;
+            color: var(--sidebar-text) !important;
+            opacity: 1;
             transform: translateX(5px);
         }
         
@@ -128,6 +342,44 @@
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white !important;
             box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Nav Tabs - Settings Page */
+        .nav-tabs {
+            border-bottom: 3px solid var(--tab-border) !important;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--tab-text) !important;
+            border: 2px solid transparent;
+            border-bottom: 3px solid transparent;
+            border-radius: 10px 10px 0 0;
+            padding: 0.875rem 1.5rem !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background-color: var(--bg-secondary);
+            margin-bottom: -3px;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: var(--tab-active) !important;
+            background-color: var(--card-bg);
+            border-bottom-color: var(--tab-active);
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: var(--card-bg) !important;
+            color: var(--tab-active) !important;
+            border-bottom-color: var(--tab-active) !important;
+            border-bottom-width: 3px;
+            font-weight: 600;
+        }
+
+        .nav-tabs .nav-link i {
+            margin-right: 0.5rem;
+            transition: all 0.3s ease;
         }
         
         /* Main Content */
@@ -168,15 +420,19 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.12);
             transform: translateY(-4px);
         }
-        
-        .card-header {
-            padding: 1.25rem 1.5rem;
-            font-weight: 600;
-        }
-        
-        .card-body {
-            padding: 1.5rem;
-        }
+
+            .card-header {
+                background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+                color: white;
+                border-radius: 14px 14px 0 0 !important;
+                padding: 1.5rem;
+                font-weight: 600;
+                border: none;
+            }
+
+            .card-body {
+                padding: 2rem;
+            }
         
         .card-header {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -193,12 +449,14 @@
         
         /* Stat Cards */
         .stat-card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 16px;
             padding: 1.5rem;
             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
             border-left: 4px solid var(--primary);
             transition: all 0.3s ease;
+            color: var(--text-primary);
+        }
         }
         
         .stat-card:hover {
@@ -224,7 +482,7 @@
         
         .stat-label {
             font-size: 0.875rem;
-            color: #64748b;
+            color: var(--text-secondary);
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -233,7 +491,7 @@
         .stat-value {
             font-size: 2rem;
             font-weight: 700;
-            color: var(--dark);
+            color: var(--text-primary);
             margin: 0.5rem 0;
         }
         
@@ -249,6 +507,18 @@
             font-weight: 600;
             transition: all 0.3s ease;
             border: none;
+        }
+
+        /* Theme dot used in the navbar toggle */
+        .theme-dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+            background: var(--theme-accent, #6366f1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
         
         .btn-primary {
@@ -289,7 +559,7 @@
         
         /* Tables */
         .table-container {
-            background: white;
+            background: var(--card-bg);
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
@@ -300,8 +570,8 @@
         }
         
         .table thead th {
-            background-color: var(--light);
-            color: var(--dark);
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
             font-weight: 600;
             text-transform: uppercase;
             font-size: 0.75rem;
@@ -315,7 +585,7 @@
         }
         
         .table tbody tr:hover {
-            background-color: var(--light);
+            background-color: var(--table-hover);
         }
         
         .table td {
@@ -334,19 +604,29 @@
         /* Forms */
         .form-label {
             font-weight: 600;
-            color: var(--dark);
-            margin-bottom: 0.5rem;
+            color: var(--form-label);
+            margin-bottom: 0.75rem;
+            display: block;
         }
         
         .form-control, .form-select {
-            border: 2px solid #e2e8f0;
+            border: 2px solid var(--form-border);
             border-radius: 10px;
             padding: 0.75rem 1rem;
             transition: all 0.3s ease;
+            background-color: var(--form-bg);
+            color: var(--form-text);
+        }
+        
+        .form-control::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
         }
         
         .form-control:focus, .form-select:focus {
             border-color: var(--primary);
+            background-color: var(--form-bg);
+            color: var(--form-text);
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
         
@@ -369,12 +649,12 @@
         .page-title {
             font-size: 2rem;
             font-weight: 800;
-            color: var(--dark);
+            color: var(--text-primary);
             margin-bottom: 0.5rem;
         }
         
         .page-subtitle {
-            color: #64748b;
+            color: var(--text-secondary);
             font-size: 1rem;
         }
         
@@ -412,6 +692,41 @@
         }
         
         /* Accessibility: Skip Link */
+            /* Theme Selection Cards */
+            .theme-card {
+                background: var(--card-bg);
+                border: 2px solid var(--card-border);
+                border-radius: 12px;
+                padding: 1.5rem;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                color: var(--text-primary);
+            }
+
+            .theme-card:hover {
+                border-color: var(--primary);
+                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+                transform: translateY(-2px);
+            }
+
+            .theme-card.active {
+                border-color: var(--primary);
+                background: rgba(99, 102, 241, 0.1);
+                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            }
+
+            .theme-card h6 {
+                color: var(--text-primary);
+                font-weight: 600;
+                margin: 1rem 0 0.5rem 0;
+            }
+
+            .theme-card p {
+                color: var(--text-secondary);
+                font-size: 0.875rem;
+            }
+
         .skip-link {
             position: absolute;
             top: -40px;
@@ -510,11 +825,194 @@
             right: 1rem;
             z-index: 1100;
         }
+
+        /* AI Suggestions Layout - prevents overlap and enforces consistent spacing */
+        .ai-suggestions {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .ai-suggestions {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .ai-suggestion {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(2,6,23,0.04);
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .ai-suggestion .meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        /* Hero Card */
+        .hero-card {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--card-bg) 100%);
+            color: var(--text-primary);
+        }
+
+        .hero-title { color: var(--text-primary); }
+        .hero-subtitle { color: var(--text-secondary); }
+
+        /* Segmented Control for Theme Selection */
+        .theme-segmented {
+            display: inline-flex;
+            background-color: rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 4px;
+            gap: 2px;
+        }
+
+        .theme-option {
+            padding: 6px 10px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .theme-option:hover {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .theme-option.active {
+            background-color: rgba(255,255,255,0.25);
+            color: white;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+        }
+
+        .theme-option-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Premium Dropdown Menu Styling */
+        .dropdown-menu {
+            border: none !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15) !important;
+            background-color: #ffffff !important;
+            padding: 8px 0 !important;
+            margin-top: 0.5rem !important;
+            min-width: 240px !important;
+            overflow: hidden;
+        }
+
+        .dropdown-menu .dropdown-item {
+            padding: 10px 16px !important;
+            color: #1e293b !important;
+            font-weight: 500 !important;
+            font-size: 14px !important;
+            transition: all 0.2s ease !important;
+            border-left: 3px solid transparent !important;
+        }
+
+        .dropdown-menu .dropdown-item:hover {
+            background-color: #f1f5f9 !important;
+            color: #6366f1 !important;
+            border-left-color: #6366f1 !important;
+            padding-left: 14px !important;
+        }
+
+        .dropdown-menu .dropdown-item.text-danger {
+            color: #ef4444 !important;
+        }
+
+        .dropdown-menu .dropdown-item.text-danger:hover {
+            background-color: #fee2e2 !important;
+            border-left-color: #ef4444 !important;
+        }
+
+        .dropdown-divider {
+            margin: 8px 0 !important;
+            border-top: 1px solid #e2e8f0 !important;
+        }
+
+        /* Theme segmented control in dropdown */
+        .dropdown-menu .theme-segmented {
+            background-color: #f1f5f9 !important;
+            margin: 4px 0;
+        }
+
+        .dropdown-menu .theme-option {
+            color: #64748b !important;
+            font-size: 11px !important;
+            padding: 5px 8px !important;
+            flex: 1;
+        }
+
+        .dropdown-menu .theme-option:hover {
+            color: #1e293b !important;
+        }
+
+        .dropdown-menu .theme-option.active {
+            background-color: rgba(99, 102, 241, 0.1) !important;
+            color: #6366f1 !important;
+            box-shadow: none !important;
+            border-radius: 6px !important;
+        }
+
+        /* Profile avatar styling */
+        .navbar .dropdown-toggle img {
+            border: 2px solid rgba(255,255,255,0.3) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .navbar .dropdown-toggle:hover img {
+            border-color: rgba(255,255,255,0.7) !important;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.2) !important;
+        }
+
+        /* Dropdown section labels */
+        .dropdown-menu .dropdown-item.section-label {
+            cursor: default !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            color: #94a3b8 !important;
+            letter-spacing: 0.5px !important;
+            padding: 12px 16px 6px 16px !important;
+        }
+
+        .dropdown-menu .dropdown-item.section-label:hover {
+            background-color: transparent !important;
+            border-left-color: transparent !important;
+            color: #94a3b8 !important;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{{ current_user.theme or 'light' }}{% else %}{% endif %}">
+
+    {# Load theme-specific stylesheet to set :root variables server-side and avoid FOUC. #}
+    {% set theme_name = current_user.theme if current_user.is_authenticated else 'light' %}
+    <link id="theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + (theme_name or 'light') + '.css') }}">
+
+    {# Expose CSRF token as a hidden input so JS fetches can read it reliably #}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <!-- Skip to main content link for accessibility -->
     <a href="#main-content" class="visually-hidden-focusable skip-link">Skip to main content</a>
     
@@ -533,39 +1031,45 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center">
                     {% if current_user.is_authenticated %}
-                        <li class="nav-item">
+                        <li class="nav-item d-none d-lg-block">
                             <a class="nav-link" href="{{ url_for('dashboard.index') }}">
                                 <i class="fas fa-tachometer-alt"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
-                               data-bs-toggle="dropdown">
-                                <i class="fas fa-user-circle"></i> {{ current_user.username }}
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <img src="{{ current_user.avatar_url or url_for('static', filename='img/default-avatar.png') }}" alt="avatar" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;margin-right:8px;">
+                                <span>{{ current_user.username }}</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
-                                    <i class="fas fa-user"></i> Profile
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('auth.settings') }}">
-                                    <i class="fas fa-cog"></i> Settings
-                                </a></li>
+                                <li class="dropdown-item section-label">Account</li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}"><i class="fas fa-user me-2"></i> Profile</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.login_history') }}"><i class="fas fa-history me-2"></i> View login history</a></li>
+                                <li class="dropdown-item">
+                                    <small class="text-muted">Member since</small>
+                                    <div style="font-weight:700;">{% if current_user.created_at %}{{ current_user.created_at.strftime('%b %Y') }}{% else %}—{% endif %}</div>
+                                </li>
+                                <li><a class="dropdown-item" href="{{ url_for('trade.list') }}"><i class="fas fa-list me-2"></i> Trades taken <span class="badge bg-secondary ms-2">{{ current_user.trades.count() }}</span></a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.settings') }}"><i class="fas fa-cog me-2"></i> Settings</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
-                                    <i class="fas fa-sign-out-alt"></i> Logout
-                                </a></li>
+                                <li class="dropdown-item section-label">Appearance</li>
+                                <li class="px-3 py-2">
+                                    <div class="theme-segmented" id="theme-segmented" style="width:100%;justify-content:space-around;">
+                                        <button class="theme-option active" data-theme="light" title="Light theme"><span class="theme-option-dot"></span>Light</button>
+                                        <button class="theme-option" data-theme="dark" title="Dark theme"><span class="theme-option-dot"></span>Dark</button>
+                                        <button class="theme-option" data-theme="blue" title="Blue theme"><span class="theme-option-dot"></span>Blue</button>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                             </ul>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.login') }}">
-                                <i class="fas fa-sign-in-alt"></i> Login
-                            </a>
+                            <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Login</a>
                         </li>
-                        <li class="nav-item">
-                            <a href="{{ url_for('auth.register') }}" class="btn btn-navbar ms-2">
-                                Get Started Free
-                            </a>
+                        <li class="nav-item ms-2">
+                            <a href="{{ url_for('auth.register') }}" class="btn btn-navbar">Sign Up</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -636,14 +1140,27 @@
                                 <span>Emotions</span>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'auth.settings' %}active{% endif %}" 
+                               href="{{ url_for('auth.settings') }}">
+                                <i class="fas fa-cog"></i>
+                                <span>Settings</span>
+                            </a>
+                        </li>
                         <li class="nav-item mt-3">
                             <small class="text-muted px-3">PLANNING</small>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if 'planner' in request.endpoint %}active{% endif %}" 
+                            <a class="nav-link {% if 'planner' in request.endpoint %}active{% endif %}"
                                href="{{ url_for('planner.index') }}">
                                 <i class="fas fa-clipboard-list"></i>
                                 <span>Trade Planner</span>
+                            </a>
+                        </li>
+                        <li class="nav-item mt-3">
+                            <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Logout</span>
                             </a>
                         </li>
                     </ul>
@@ -700,6 +1217,118 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
+    <script>
+        // Theme switcher: persists selection and updates CSS variables with instant visual feedback
+        (function(){
+            function applyTheme(name, persist=true, notifyServer=true){
+                // Validate incoming theme
+                if(!['light','dark','blue'].includes(name)) return;
+
+                // Set data-theme attribute on body for CSS variable switching
+                document.body.setAttribute('data-theme', name);
+
+                // Update theme stylesheet link so CSS file-based overrides load (prevents FOUC on reload)
+                const themeLink = document.getElementById('theme-css');
+                if(themeLink){
+                    themeLink.href = '/static/css/themes/' + name + '.css';
+                }
+
+                // Update hidden form input for server-side saves (if present)
+                const themeInput = document.querySelector('input[name="theme"]');
+                if(themeInput) themeInput.value = name;
+
+                // Update localStorage if persist enabled
+                if(persist) localStorage.setItem('tv_theme', name);
+
+                // Update theme buttons/segmented controls if present
+                const themeOptions = document.querySelectorAll('.theme-option, [data-theme]');
+                themeOptions.forEach(btn => {
+                    try{
+                        const dt = btn.getAttribute('data-theme');
+                        if (dt === name) {
+                            btn.classList.add('active');
+                            if (btn.classList.contains('btn')) {
+                                btn.classList.remove('btn-outline-primary');
+                                btn.classList.add('btn-primary');
+                            }
+                        } else {
+                            btn.classList.remove('active');
+                            if (btn.classList.contains('btn')) {
+                                btn.classList.add('btn-outline-primary');
+                                btn.classList.remove('btn-primary');
+                            }
+                        }
+                    }catch(e){/* ignore malformed elements */}
+                });
+
+                // Update theme-card active state
+                document.querySelectorAll('.theme-card').forEach(c => c.classList.toggle('active', c.dataset.theme === name));
+
+                // Notify server for authenticated users to persist theme in DB
+                if(notifyServer) {
+                    try {
+                        const userId = document.body.getAttribute('data-user-id');
+                        if(userId){
+                            const csrf = document.querySelector('input[name="csrf_token"]')?.value || '';
+                            fetch('/auth/set-theme', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type':'application/json',
+                                    'X-CSRFToken': csrf
+                                },
+                                body: JSON.stringify({theme: name})
+                            }).then(resp => {
+                                if(!resp.ok) console.warn('Theme save failed:', resp.statusText);
+                            }).catch(err => console.log('Theme save failed silently:', err));
+                        }
+                    } catch(e){ console.log('Theme notification error:', e); }
+                }
+            }
+
+            // Expose applyTheme globally for use by other scripts
+            window.applyTheme = applyTheme;
+
+            // Setup segmented control click handlers
+            const themeOptions = document.querySelectorAll('.theme-option');
+            themeOptions.forEach(btn => {
+                btn.addEventListener('click', function(){
+                    const theme = this.getAttribute('data-theme');
+                    applyTheme(theme, true, true);
+                });
+            });
+
+            // Initialize theme on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                const serverTheme = document.body.getAttribute('data-server-theme');
+                const saved = localStorage.getItem('tv_theme');
+                
+                // Priority: server theme > saved theme > system preference > light
+                if(serverTheme) {
+                    applyTheme(serverTheme, true, false);
+                } else if(saved) {
+                    applyTheme(saved, true, false);
+                } else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    applyTheme('dark', true, false);
+                } else {
+                    applyTheme('light', true, false);
+                }
+            });
+
+            // Also initialize immediately in case DOMContentLoaded already fired
+            const serverTheme = document.body.getAttribute('data-server-theme');
+            const saved = localStorage.getItem('tv_theme');
+            if(serverTheme) {
+                applyTheme(serverTheme, true, false);
+            } else if(saved) {
+                applyTheme(saved, true, false);
+            } else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                applyTheme('dark', true, false);
+            } else {
+                applyTheme('light', true, false);
+            }
+        })();
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

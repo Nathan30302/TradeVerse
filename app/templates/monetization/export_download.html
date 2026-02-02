@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Export Data - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-6 mx-auto">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-download me-2"></i>Data Export Ready</h4>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-file-csv" style="font-size: 3rem; color: #28a745;"></i>
+                    </div>
+                    
+                    <h5 class="mb-3">Your data is ready to download</h5>
+                    <p class="text-muted mb-4">
+                        All your trades, trade plans, and performance data have been exported to CSV format.
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <strong>Filename:</strong> {{ filename }}
+                    </div>
+
+                    <div class="d-grid gap-2 mb-4">
+                        <button class="btn btn-success btn-lg" onclick="downloadCSV()">
+                            <i class="fas fa-download me-2"></i>Download CSV
+                        </button>
+                    </div>
+
+                    <hr>
+
+                    <p class="text-muted small mb-3">What's included:</p>
+                    <ul class="list-unstyled text-start small">
+                        <li><i class="fas fa-check text-success me-2"></i>All trade records</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Trade plans</li>
+                        <li><i class="fas fa-check text-success me-2"></i>P&L calculations</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Timestamps and metadata</li>
+                    </ul>
+
+                    <div class="mt-4">
+                        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function downloadCSV() {
+        const csv = `{{ csv_data|tojson }}`;
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(CSV.parse(csv)));
+        element.setAttribute('download', '{{ filename }}');
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+
+    // Simple CSV parsing (in case JSON isn't properly escaped)
+    const CSV = {
+        parse: function(csv) {
+            return csv.replace(/"/g, '');
+        }
+    };
+</script>
+{% endblock %}
