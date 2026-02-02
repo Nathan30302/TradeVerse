@@ -295,17 +295,25 @@
             </div>
             <div class="card-body">
                 {% if feedbacks %}
+                    <div class="ai-suggestions">
                     {% for feedback in feedbacks %}
-                        <div class="alert {% if feedback.feedback_type == 'positive' %}alert-success{% elif feedback.feedback_type == 'warning' %}alert-warning{% else %}alert-danger{% endif %} py-2 mb-2">
-                            <span class="me-1">{{ feedback.icon }}</span>
-                            {{ feedback.message }}
-                            {% if feedback.impact_score != 0 %}
-                                <span class="badge {% if feedback.impact_score > 0 %}bg-success{% else %}bg-danger{% endif %} float-end">
-                                    {% if feedback.impact_score > 0 %}+{% endif %}{{ feedback.impact_score }}
-                                </span>
-                            {% endif %}
+                        <div class="ai-suggestion alert {% if feedback.feedback_type == 'positive' %}alert-success{% elif feedback.feedback_type == 'warning' %}alert-warning{% else %}alert-danger{% endif %} py-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="meta">{{ feedback.category|capitalize }}</div>
+                                    <div><span class="me-1">{{ feedback.icon }}</span> {{ feedback.message }}</div>
+                                </div>
+                                {% if feedback.impact_score != 0 %}
+                                <div>
+                                    <span class="badge {% if feedback.impact_score > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if feedback.impact_score > 0 %}+{% endif %}{{ feedback.impact_score }}
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
                     {% endfor %}
+                    </div>
                 {% else %}
                     <p class="text-muted text-center mb-2">No feedback yet.</p>
                     <p class="text-center mb-0">

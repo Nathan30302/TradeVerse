@@ -25,7 +25,14 @@
     <div class="card-body">
         <div class="row align-items-center">
             <div class="col-md-4">
-                <a href="{{ url_for('dashboard.calendar', year=year, month=month-1 if month > 1 else 12) }}" 
+                {% if month > 1 %}
+                    {% set prev_month = month - 1 %}
+                    {% set prev_year = year %}
+                {% else %}
+                    {% set prev_month = 12 %}
+                    {% set prev_year = year - 1 %}
+                {% endif %}
+                <a href="{{ url_for('dashboard.calendar', year=prev_year, month=prev_month) }}" 
                    class="btn btn-outline-primary">
                     <i class="fas fa-chevron-left"></i> Previous Month
                 </a>
@@ -36,9 +43,32 @@
                         'July', 'August', 'September', 'October', 'November', 'December'][month-1] }} 
                     {{ year }}
                 </h3>
+                <!-- Year & Month Selection -->
+                <div class="mt-2">
+                    <select id="yearSelect" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                        {% for y in range(2020, 2031) %}
+                            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="monthSelect" class="form-select form-select-sm d-inline-block ms-2" style="width: auto;">
+                        {% for m in range(1, 13) %}
+                            <option value="{{ m }}" {% if m == month %}selected{% endif %}>
+                                {{ ['January', 'February', 'March', 'April', 'May', 'June', 
+                                    'July', 'August', 'September', 'October', 'November', 'December'][m-1] }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
             <div class="col-md-4 text-end">
-                <a href="{{ url_for('dashboard.calendar', year=year, month=month+1 if month < 12 else 1) }}" 
+                {% if month < 12 %}
+                    {% set next_month = month + 1 %}
+                    {% set next_year = year %}
+                {% else %}
+                    {% set next_month = 1 %}
+                    {% set next_year = year + 1 %}
+                {% endif %}
+                <a href="{{ url_for('dashboard.calendar', year=next_year, month=next_month) }}" 
                    class="btn btn-outline-primary">
                     Next Month <i class="fas fa-chevron-right"></i>
                 </a>
@@ -100,80 +130,12 @@
                                 <!-- View details button -->
                                 <button class="btn btn-sm btn-outline-primary mt-2 w-100" 
                                         data-bs-toggle="modal" 
-                                        data-bs-target="#dayModal{{ day }}">
+                                        data-bs-target="#dayModal{{ day }}"
+                                        data-day="{{ day }}"
+                                        data-month="{{ month }}"
+                                        data-year="{{ year }}">
                                     View Details
                                 </button>
-                            </div>
-
-                            <!-- Day Details Modal -->
-                            <div class="modal fade" id="dayModal{{ day }}" tabindex="-1">
-                                <div class="modal-dialog modal-lg">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">
-                                                Trades on {{ ['January', 'February', 'March', 'April', 'May', 'June', 
-                                                'July', 'August', 'September', 'October', 'November', 'December'][month-1] }} 
-                                                {{ day }}, {{ year }}
-                                            </h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Time</th>
-                                                            <th>Symbol</th>
-                                                            <th>Type</th>
-                                                            <th>P/L</th>
-                                                            <th>Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% for trade in trades_by_day[day] %}
-                                                        <tr>
-                                                            <td>{{ trade.entry_date|datetime('%H:%M') }}</td>
-                                                            <td><strong>{{ trade.symbol }}</strong></td>
-                                                            <td>
-                                                                <span class="badge bg-{% if trade.trade_type == 'BUY' %}success{% else %}danger{% endif %}">
-                                                                    {{ trade.trade_type }}
-                                                                </span>
-                                                            </td>
-                                                            <td>
-                                                                {% if trade.profit_loss %}
-                                                                    <span class="{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-                                                                        {{ trade.get_result_emoji() }}
-                                                                        {{ trade.profit_loss|currency(current_user.preferred_currency) }}
-                                                                    </span>
-                                                                {% else %}
-                                                                    <span class="text-muted">Open</span>
-                                                                {% endif %}
-                                                            </td>
-                                                            <td>
-                                                                <a href="{{ url_for('trade.view', trade_id=trade.id) }}" 
-                                                                   class="btn btn-sm btn-outline-primary">
-                                                                    View
-                                                                </a>
-                                                            </td>
-                                                        </tr>
-                                                        {% endfor %}
-                                                    </tbody>
-                                                    <tfoot>
-                                                        <tr>
-                                                            <td colspan="3"><strong>Daily Total</strong></td>
-                                                            <td>
-                                                                <strong class="{% if daily_pnl[day] >= 0 %}profit{% else %}loss{% endif %}">
-                                                                    {{ daily_pnl[day]|currency(current_user.preferred_currency) }}
-                                                                </strong>
-                                                            </td>
-                                                            <td></td>
-                                                        </tr>
-                                                    </tfoot>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         {% else %}
                             <div class="day-content text-center text-muted">
@@ -186,6 +148,210 @@
         </div>
     </div>
 </div>
+
+<!-- Day Details Modals - Placed outside calendar grid to prevent rendering issues -->
+{% for day in range(1, days_in_month + 1) %}
+    {% if day in trades_by_day %}
+    <div class="modal fade" id="dayModal{{ day }}" tabindex="-1" aria-labelledby="dayModalLabel{{ day }}" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="dayModalLabel{{ day }}">
+                        <i class="fas fa-calendar-day"></i> Trades on {{ ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'][month-1] }} 
+                        {{ day }}, {{ year }}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Daily Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card border-primary">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-2">Total Trades</h6>
+                                    <h3 class="mb-0 text-primary">{{ trades_by_day[day]|length }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-{% if daily_pnl.get(day, 0) >= 0 %}success{% else %}danger{% endif %}">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-2">Daily P/L</h6>
+                                    <h3 class="mb-0 {% if daily_pnl.get(day, 0) >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ daily_pnl.get(day, 0)|currency(current_user.preferred_currency) }}
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-info">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-2">Win Rate</h6>
+                                    <h3 class="mb-0 text-info">
+                                        {% set wins = trades_by_day[day]|selectattr('profit_loss', '>', 0)|list|length %}
+                                        {% set total_closed = trades_by_day[day]|selectattr('profit_loss', '!=', none)|list|length %}
+                                        {% if total_closed > 0 %}
+                                            {{ ((wins / total_closed) * 100)|round(1) }}%
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trade Details -->
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Symbol</th>
+                                    <th>Type</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                    <th>SL</th>
+                                    <th>TP</th>
+                                    <th>Lot</th>
+                                    <th>R:R</th>
+                                    <th>P/L</th>
+                                    <th>Session</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trade in trades_by_day[day] %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ trade.entry_date|datetime('%H:%M') }}</strong>
+                                        <br><small class="text-muted">{{ trade.timeframe or 'N/A' }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ trade.symbol }}</strong>
+                                        {% if trade.strategy %}
+                                            <br><small class="text-muted">{{ trade.strategy }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if trade.trade_type == 'BUY' %}success{% else %}danger{% endif %}">
+                                            {{ trade.trade_type }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if trade.entry_price %}
+                                            <strong>{{ "%.5f"|format(trade.entry_price) }}</strong>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if trade.exit_price %}
+                                            <strong>{{ "%.5f"|format(trade.exit_price) }}</strong>
+                                        {% else %}
+                                            <span class="text-muted">Open</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if trade.stop_loss %}
+                                            <span class="text-danger">{{ "%.5f"|format(trade.stop_loss) }}</span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if trade.take_profit %}
+                                            <span class="text-success">{{ "%.5f"|format(trade.take_profit) }}</span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ trade.lot_size }}</td>
+                                    <td>
+                                        {% if trade.risk_reward_ratio %}
+                                            <span class="badge bg-info">1:{{ "%.2f"|format(trade.risk_reward_ratio) }}</span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if trade.profit_loss is not none %}
+                                            <span class="{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %} fw-bold">
+                                                {{ trade.get_result_emoji() }}
+                                                {{ trade.profit_loss|currency(current_user.preferred_currency) }}
+                                            </span>
+                                            {% if trade.profit_loss_pips %}
+                                                <br><small class="text-muted">{{ trade.profit_loss_pips }} pips</small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">Open</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if trade.session_type %}
+                                            <span class="badge bg-secondary">{{ trade.session_type }}</span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('trade.view', trade_id=trade.id) }}" 
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="View full trade details">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="9"><strong>Daily Total</strong></td>
+                                    <td>
+                                        <strong class="{% if daily_pnl.get(day, 0) >= 0 %}profit{% else %}loss{% endif %}">
+                                            {{ daily_pnl.get(day, 0)|currency(current_user.preferred_currency) }}
+                                        </strong>
+                                    </td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Additional Trade Information -->
+                    {% for trade in trades_by_day[day] %}
+                        {% if trade.post_trade_notes or trade.pre_trade_plan %}
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <strong>{{ trade.symbol }} {{ trade.trade_type }}</strong> - {{ trade.entry_date|datetime('%H:%M') }}
+                            </div>
+                            <div class="card-body">
+                                {% if trade.pre_trade_plan %}
+                                <div class="mb-2">
+                                    <strong class="text-primary"><i class="fas fa-clipboard-list"></i> Pre-Trade Plan:</strong>
+                                    <p class="mb-0">{{ trade.pre_trade_plan }}</p>
+                                </div>
+                                {% endif %}
+                                {% if trade.post_trade_notes %}
+                                <div>
+                                    <strong class="text-info"><i class="fas fa-sticky-note"></i> Post-Trade Notes:</strong>
+                                    <p class="mb-0">{{ trade.post_trade_notes }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
 
 <!-- Calendar Legend -->
 <div class="card mt-4">
@@ -229,8 +395,8 @@
 .calendar-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    background-color: #f8fafc;
-    border-bottom: 2px solid #e2e8f0;
+    background-color: var(--bg-secondary);
+    border-bottom: 2px solid var(--card-border);
 }
 
 .calendar-day-header {
@@ -247,11 +413,11 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
-    background-color: #e2e8f0;
+    background-color: var(--card-border);
 }
 
 .calendar-day {
-    background-color: white;
+    background-color: var(--card-bg);
     min-height: 120px;
     padding: 0.75rem;
     position: relative;
@@ -259,7 +425,7 @@
 }
 
 .calendar-day:hover {
-    background-color: #f8fafc;
+    background-color: var(--table-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
@@ -321,6 +487,75 @@
         padding: 0.5rem;
         font-size: 0.75rem;
     }
-}
+    }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Calendar navigation dropdowns
+document.addEventListener('DOMContentLoaded', function() {
+    const yearSelect = document.getElementById('yearSelect');
+    const monthSelect = document.getElementById('monthSelect');
+    const calendarBaseUrl = '{{ url_for("dashboard.calendar") }}';
+    
+    // Function to update calendar with selected year and month
+    function updateCalendar() {
+        const selectedYear = yearSelect.value;
+        const selectedMonth = monthSelect.value;
+        const url = calendarBaseUrl + '?year=' + selectedYear + '&month=' + selectedMonth;
+        window.location.href = url;
+    }
+    
+    // Add event listeners to both dropdowns
+    if (yearSelect) {
+        yearSelect.addEventListener('change', updateCalendar);
+    }
+    
+    if (monthSelect) {
+        monthSelect.addEventListener('change', updateCalendar);
+    }
+    
+    // Ensure modals load correctly and prevent flickering
+    // Initialize all modals properly
+    const modals = document.querySelectorAll('.modal');
+    
+    modals.forEach(function(modal) {
+        // Prevent modal from showing before data is ready
+        modal.addEventListener('show.bs.modal', function(event) {
+            // Ensure modal content is visible
+            const modalBody = this.querySelector('.modal-body');
+            if (modalBody) {
+                modalBody.style.opacity = '1';
+            }
+        });
+        
+        // Reset modal on hide
+        modal.addEventListener('hidden.bs.modal', function(event) {
+            // Clean up any lingering styles
+            const modalBody = this.querySelector('.modal-body');
+            if (modalBody) {
+                modalBody.style.opacity = '1';
+            }
+        });
+    });
+    
+    // Fix any potential Bootstrap modal initialization issues
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        // Ensure all modals are properly initialized
+        modals.forEach(function(modalEl) {
+            try {
+                new bootstrap.Modal(modalEl, {
+                    backdrop: true,
+                    keyboard: true,
+                    focus: true
+                });
+            } catch (e) {
+                // Modal already initialized, ignore
+                console.debug('Modal already initialized:', e);
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

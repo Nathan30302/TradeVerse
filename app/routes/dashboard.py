@@ -155,6 +155,12 @@ def calendar():
     year = request.args.get('year', datetime.now().year, type=int)
     month = request.args.get('month', datetime.now().month, type=int)
     
+    # Validate year range (reasonable bounds)
+    if year < 2000:
+        year = 2000
+    elif year > 2100:
+        year = 2100
+    
     # Handle month overflow
     if month > 12:
         month = 1

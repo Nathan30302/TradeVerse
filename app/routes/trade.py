@@ -53,6 +53,7 @@ def add():
         try:
             # Get basic trade info
             symbol = request.form.get('symbol', '').strip().upper()
+            instrument_id = request.form.get('instrument_id')
             trade_type = request.form.get('trade_type', '').upper()
             lot_size = float(request.form.get('lot_size', 1.0))
             entry_price = float(request.form.get('entry_price'))
@@ -113,6 +114,13 @@ def add():
                 checklist_completed=checklist_completed,
                 playbook_followed=playbook_followed
             )
+
+            # Attach instrument FK if provided
+            if instrument_id:
+                try:
+                    trade.instrument_id = int(instrument_id)
+                except ValueError:
+                    pass
             
             # Set optional fields
             if exit_price:
@@ -322,6 +330,13 @@ def edit(trade_id):
         try:
             # Update basic info
             trade.symbol = request.form.get('symbol', '').strip().upper()
+            # Update instrument_id if provided
+            instrument_id = request.form.get('instrument_id')
+            if instrument_id:
+                try:
+                    trade.instrument_id = int(instrument_id)
+                except ValueError:
+                    pass
             trade.trade_type = request.form.get('trade_type', '').upper()
             trade.lot_size = float(request.form.get('lot_size', 1.0))
             trade.entry_price = float(request.form.get('entry_price'))

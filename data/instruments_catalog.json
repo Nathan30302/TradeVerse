@@ -1,0 +1,47 @@
+[
+  {
+    "symbol": "EURUSD",
+    "name": "Euro / US Dollar",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["EURUSD", "EUR/USD", "EUR"]
+  },
+  {
+    "symbol": "SPX",
+    "name": "S&P 500",
+    "type": "index",
+    "category": "index",
+    "tick_value": 1.0,
+    "price_decimals": 2,
+    "aliases": ["SPX", "S&P500", "US500", "S&P 500", "USA"]
+  },
+  {
+    "symbol": "NDX",
+    "name": "Nasdaq 100",
+    "type": "index",
+    "category": "index",
+    "tick_value": 1.0,
+    "price_decimals": 2,
+    "aliases": ["NDX", "NAS100", "NASDAQ100", "NAS"]
+  },
+  {
+    "symbol": "XAUUSD",
+    "name": "Gold / US Dollar",
+    "type": "commodity",
+    "category": "commodity",
+    "pip_size": 0.01,
+    "contract_size": 100,
+    "price_decimals": 2,
+    "aliases": ["XAUUSD", "GOLD", "XAU"]
+  },
+  {
+    "symbol": "BTCUSD",
+    "name": "Bitcoin / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 2,
+    "aliases": ["BTCUSD", "BTC", "XBT"]
+  }
+]

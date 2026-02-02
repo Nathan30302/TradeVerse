@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Pricing - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="py-5" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-3">Simple, Transparent Pricing</h1>
+        <p class="lead">Choose the perfect plan for your trading journey</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row g-4 justify-content-center">
+        {% for plan in plans %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100" style="{% if plan.recommended %}border: 2px solid #6366f1; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);{% endif %}">
+                {% if plan.recommended %}
+                <div class="badge bg-warning text-dark position-absolute" style="top: -12px; right: 20px;">RECOMMENDED</div>
+                {% endif %}
+                
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title mb-2">{{ plan.name }}</h5>
+                    <p class="text-muted small">{{ plan.description }}</p>
+                    
+                    <div class="my-4">
+                        <div class="display-5 fw-bold">{{ plan.price }}</div>
+                        <small class="text-muted">{{ plan.period }}</small>
+                    </div>
+                    
+                    <ul class="list-unstyled mb-4 flex-grow-1" role="list" aria-label="Plan features">
+                        {% for feature in plan.features %}
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            <span class="small">{{ feature }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    {% if plan.cta_disabled %}
+                    <button class="btn btn-secondary w-100" disabled aria-disabled="true" aria-label="{{ plan.name }} unavailable">{{ plan.cta }}</button>
+                    {% else %}
+                    <button class="btn btn-primary w-100" onclick="upgradeClick('{{ plan.name|lower }}')" aria-label="Upgrade to {{ plan.name }}">
+                        {{ plan.cta }}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- FAQ Section -->
+    <div class="row mt-5">
+        <div class="col-lg-8 mx-auto">
+            <h3 class="mb-4 text-center">Frequently Asked Questions</h3>
+            <div class="accordion" id="faqAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                            Can I change my plan anytime?
+                        </button>
+                    </h2>
+                    <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately.
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                            Is there a free trial?
+                        </button>
+                    </h2>
+                    <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Yes! All new users get a 30-day free trial with full Free plan features. No credit card required.
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                            What payment methods do you accept?
+                        </button>
+                    </h2>
+                    <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            We accept all major credit cards and PayPal. Billing is monthly or annual (with discount).
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                            Can I cancel anytime?
+                        </button>
+                    </h2>
+                    <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Absolutely. Cancel your subscription at any time with no penalties. You'll retain access through the end of your billing period.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function upgradeClick(plan) {
+        const isAuth = {{ 'true' if current_user.is_authenticated else 'false' }};
+        if (isAuth) {
+            // Redirect to the subscribe endpoint which initiates Stripe Checkout
+            const base = "{{ url_for('monetization.subscribe', plan='__PLAN__') }}";
+            const url = base.replace('__PLAN__', encodeURIComponent(plan));
+            window.location.href = url;
+        } else {
+            // Redirect to login
+            window.location.href = '{{ url_for("auth.login") }}?next={{ url_for("monetization.pricing") }}';
+        }
+    }
+</script>
+{% endblock %}

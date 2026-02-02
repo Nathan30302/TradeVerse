@@ -122,6 +122,30 @@
             </div>
         </div>
 
+        <!-- Appearance -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-paint-brush"></i> Appearance</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Choose your preferred theme. This setting is saved to your account and will apply when you sign in on any device.</p>
+                <div class="d-flex align-items-center gap-3">
+                    <button class="swatch btn p-2" data-theme="light" title="Light theme" style="border-radius:10px;border:2px solid var(--card-border);background:linear-gradient(135deg,var(--card-bg),var(--bg-secondary));">
+                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--secondary));"></div>
+                    </button>
+                    <button class="swatch btn p-2" data-theme="dark" title="Dark theme" style="border-radius:10px;border:2px solid var(--card-border);background:linear-gradient(135deg,#0b1220,#1f2937);">
+                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#94a3b8,#6b7280);"></div>
+                    </button>
+                    <button class="swatch btn p-2" data-theme="blue" title="Blue theme" style="border-radius:10px;border:2px solid var(--card-border);background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));">
+                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--secondary));"></div>
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">Current saved theme: <strong id="server-theme">{{ current_user.theme or 'light' }}</strong></small>
+                </div>
+            </div>
+        </div>
+
         <!-- Integrations -->
         <div class="card">
             <div class="card-header">
@@ -161,6 +185,36 @@
 </div>
 
 <!-- Delete Account Modal -->
+
+<script>
+    document.addEventListener('DOMContentLoaded', function(){
+        const swatches = document.querySelectorAll('.swatch');
+        swatches.forEach(s => s.addEventListener('click', async function(e){
+            const theme = this.getAttribute('data-theme');
+            try{
+                const csrf = document.querySelector('input[name="csrf_token"]')?.value || '';
+                const res = await fetch('/auth/set-theme', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json', 'X-CSRFToken': csrf},
+                    body: JSON.stringify({theme})
+                });
+                if(res.ok){
+                    // update UI
+                    document.getElementById('server-theme').textContent = theme;
+                    // apply immediately using global applyTheme if available
+                    if(window.applyTheme) window.applyTheme(theme, true, false);
+                } else {
+                    const json = await res.json().catch(()=>({}));
+                    alert('Could not save theme: ' + (json.error||res.statusText));
+                }
+            }catch(err){
+                console.error('Error saving theme', err);
+                alert('Failed to save theme');
+            }
+        }));
+    });
+</script>
+
 <div class="modal fade" id="deleteAccountModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">

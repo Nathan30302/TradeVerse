@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Import Trades - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0"><i class="fas fa-file-import me-2"></i>Import Trades</h1>
+            <p class="text-secondary mt-2">Import your trading history from broker exports or via API connection.</p>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-upload fa-3x mb-3"></i>
+                    <h5>Upload File</h5>
+                    <p class="small">Import from CSV, MT4/MT5 statement</p>
+                    <a href="{{ url_for('imports.upload_file') }}" class="btn btn-light">
+                        <i class="fas fa-file-upload me-1"></i>Upload File
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 bg-success text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-plug fa-3x mb-3"></i>
+                    <h5>API Import</h5>
+                    <p class="small">Connect broker API for automatic imports</p>
+                    <a href="{{ url_for('brokers.broker_settings_page') }}" class="btn btn-light">
+                        <i class="fas fa-cog me-1"></i>Manage Brokers
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 bg-info text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-history fa-3x mb-3"></i>
+                    <h5>Import History</h5>
+                    <p class="small">View past imports and statistics</p>
+                    <a href="{{ url_for('imports.import_history') }}" class="btn btn-light">
+                        <i class="fas fa-list me-1"></i>View History
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connected Brokers with API -->
+    {% if user_connections %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-plug me-2"></i>Quick API Import</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for conn in user_connections %}
+                        {% if conn.broker and conn.broker.api_supported %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ conn.broker.name }}</h6>
+                                    <p class="small text-muted mb-2">
+                                        {{ conn.nickname or conn.account_id or 'Account' }}
+                                        {% if conn.is_demo %}<span class="badge bg-info">Demo</span>{% endif %}
+                                    </p>
+                                    <p class="small text-muted mb-3">
+                                        Last sync: {{ conn.last_sync_at.strftime('%Y-%m-%d') if conn.last_sync_at else 'Never' }}
+                                    </p>
+                                    <button type="button" class="btn btn-primary btn-sm w-100"
+                                            onclick="importFromAPI({{ conn.id }})">
+                                        <i class="fas fa-download me-1"></i>Import Trades
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Imports -->
+    {% if recent_imports %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Imports</h5>
+                    <a href="{{ url_for('imports.import_history') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Source</th>
+                                    <th>Broker</th>
+                                    <th>Trades</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for imp in recent_imports %}
+                                <tr>
+                                    <td>{{ imp.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if imp.source_type == 'api' %}
+                                        <span class="badge bg-primary">API</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ imp.filename or 'File' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ imp.broker_name or imp.broker_id or 'Unknown' }}</td>
+                                    <td>
+                                        <span class="text-success">{{ imp.trades_imported }}</span>
+                                        {% if imp.trades_skipped > 0 %}
+                                        / <span class="text-warning">{{ imp.trades_skipped }} skipped</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if imp.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                        {% elif imp.status == 'failed' %}
+                                        <span class="badge bg-danger">Failed</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">{{ imp.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Import Progress Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Importing Trades</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4" id="importModalBody">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <p>Fetching trades from broker API...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function importFromAPI(credentialId) {
+    const modal = new bootstrap.Modal(document.getElementById('importModal'));
+    const modalBody = document.getElementById('importModalBody');
+    
+    modal.show();
+    
+    try {
+        const response = await fetch(`/imports/api-import/${credentialId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({dry_run: false})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            modalBody.innerHTML = `
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h5>Import Complete</h5>
+                <p>${data.trades_imported} trades imported</p>
+                <p class="text-muted">${data.trades_skipped} duplicates skipped</p>
+                <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+            `;
+        } else {
+            modalBody.innerHTML = `
+                <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+                <h5>Import Failed</h5>
+                <p class="text-danger">${data.error || 'Unknown error'}</p>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            `;
+        }
+    } catch (err) {
+        modalBody.innerHTML = `
+            <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+            <h5>Error</h5>
+            <p class="text-danger">${err.message}</p>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        `;
+    }
+}
+</script>
+{% endblock %}

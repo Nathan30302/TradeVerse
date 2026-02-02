@@ -40,6 +40,7 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('auth.profile') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="username" class="form-label fw-bold">Username</label>
@@ -106,6 +107,9 @@
                                 <option value="dark" {% if current_user.theme == 'dark' %}selected{% endif %}>
                                     🌙 Dark
                                 </option>
+                                <option value="blue" {% if current_user.theme == 'blue' %}selected{% endif %}>
+                                    💙 Blue
+                                </option>
                             </select>
                         </div>
                     </div>
@@ -115,10 +119,6 @@
                             <i class="fas fa-save"></i> Save Changes
                         </button>
                     </div>
-                    <form method="POST" action="{{ url_for('auth.profile') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-    
-    <!-- rest of form -->
                 </form>
             </div>
         </div>

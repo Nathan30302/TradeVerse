@@ -51,6 +51,10 @@
                     <div class="row g-4">
                         <div class="col-md-6">
                             {{ form.actual_entry.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="The actual price at which you entered the trade (may differ from planned entry)"></i>
                             {{ form.actual_entry(class="form-control form-control-lg", placeholder="Actual entry price", id="actual_entry") }}
                             {% for error in form.actual_entry.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -60,6 +64,10 @@
                         
                         <div class="col-md-6">
                             {{ form.actual_exit.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="The actual price at which you exited the trade (stop loss, take profit, or manual exit)"></i>
                             {{ form.actual_exit(class="form-control form-control-lg", placeholder="Actual exit price", id="actual_exit") }}
                             {% for error in form.actual_exit.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -87,6 +95,10 @@
                     <div class="row g-4">
                         <div class="col-md-6">
                             {{ form.emotion_after.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="How did you feel after completing this trade? This helps track emotional patterns"></i>
                             {{ form.emotion_after(class="form-select form-select-lg") }}
                             {% for error in form.emotion_after.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -95,6 +107,10 @@
                         
                         <div class="col-md-6">
                             {{ form.trade_grade.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Grade your execution: A = Perfect, B = Good, C = Needs improvement, D = Poor"></i>
                             {{ form.trade_grade(class="form-select form-select-lg") }}
                             {% for error in form.trade_grade.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -206,7 +222,14 @@
 
 {% block extra_js %}
 <script>
-// P&L Preview Calculator
+// Initialize Bootstrap tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // P&L Preview Calculator - Uses backend API for accurate calculation
 function calculatePnL() {
     const actualEntry = parseFloat(document.getElementById('actual_entry').value) || 0;
     const actualExit = parseFloat(document.getElementById('actual_exit').value) || 0;
@@ -214,44 +237,50 @@ function calculatePnL() {
     const direction = '{{ plan.direction }}';
     const symbol = '{{ plan.symbol }}';
     
-    if (actualEntry && actualExit) {
-        let priceDiff = direction === 'BUY' ? actualExit - actualEntry : actualEntry - actualExit;
-        let pnl = 0;
-        
-        // Asset type detection and calculation
-        if (symbol.includes('XAU') || symbol.includes('GOLD')) {
-            // Gold: $100 per $1 move per 1.0 lot
-            pnl = priceDiff * 100 * lotSize;
-        } else if (symbol.includes('JPY')) {
-            // JPY pairs
-            pnl = priceDiff * 6400 * lotSize;
-        } else if (symbol.includes('NAS') || symbol.includes('US30') || symbol.includes('US500')) {
-            // Indices
-            pnl = priceDiff * 10 * lotSize;
-        } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
-            // Crypto
-            pnl = priceDiff * lotSize;
-        } else if (symbol.startsWith('USD') && !symbol.endsWith('USD')) {
-            // USD base pairs (USDCAD, USDCHF)
-            const pips = priceDiff / 0.0001;
-            const pipValue = 10.0 / actualExit;
-            pnl = pips * pipValue * lotSize;
-        } else {
-            // Standard forex
-            const pips = priceDiff / 0.0001;
-            pnl = pips * 10 * lotSize;
-        }
-        
-        const pnlEl = document.getElementById('pnl_preview');
-        pnlEl.textContent = '$' + pnl.toFixed(2);
-        
-        if (pnl > 0) {
-            pnlEl.className = 'h2 text-success';
-        } else if (pnl < 0) {
-            pnlEl.className = 'h2 text-danger';
-        } else {
+    if (actualEntry && actualExit && lotSize) {
+        // Call backend API to get accurate P&L calculation
+        fetch('{{ url_for("planner.api_calculate_pnl") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                symbol: symbol,
+                trade_type: direction,
+                entry_price: actualEntry,
+                exit_price: actualExit,
+                lot_size: lotSize
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const pnlEl = document.getElementById('pnl_preview');
+            if (data.success) {
+                const pnl = data.pnl;
+                pnlEl.textContent = '$' + pnl.toFixed(2);
+                
+                if (pnl > 0) {
+                    pnlEl.className = 'h2 text-success';
+                } else if (pnl < 0) {
+                    pnlEl.className = 'h2 text-danger';
+                } else {
+                    pnlEl.className = 'h2 text-secondary';
+                }
+            } else {
+                pnlEl.textContent = '$0.00';
+                pnlEl.className = 'h2 text-secondary';
+            }
+        })
+        .catch(error => {
+            console.error('Error calculating P&L:', error);
+            const pnlEl = document.getElementById('pnl_preview');
+            pnlEl.textContent = '$0.00';
             pnlEl.className = 'h2 text-secondary';
-        }
+        });
+    } else {
+        const pnlEl = document.getElementById('pnl_preview');
+        pnlEl.textContent = '$0.00';
+        pnlEl.className = 'h2 text-secondary';
     }
 }
 

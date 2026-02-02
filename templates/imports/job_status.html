@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Import Job Status</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px }
+    .card { border: 1px solid #ddd; padding: 16px; border-radius: 6px }
+  </style>
+</head>
+<body>
+  <h1>Import Job <span id="job-id"></span></h1>
+  <div class="card">
+    <p>Status: <strong id="status">loading</strong></p>
+    <p>Created at: <span id="created_at">-</span></p>
+    <p>Started at: <span id="started_at">-</span></p>
+    <p>Finished at: <span id="finished_at">-</span></p>
+    <p>Saved trades: <span id="saved">-</span></p>
+    <p>Errors: <pre id="errors">-</pre></p>
+  </div>
+
+<script>
+  const jobId = {{ job_id }};
+  document.getElementById('job-id').innerText = jobId;
+  function fetchJob(){
+    fetch(`/api/imports/jobs/${jobId}`)
+      .then(r=>r.json())
+      .then(data=>{
+        document.getElementById('status').innerText = data.status || 'n/a';
+        document.getElementById('created_at').innerText = data.created_at || '-';
+        document.getElementById('started_at').innerText = data.started_at || '-';
+        document.getElementById('finished_at').innerText = data.finished_at || '-';
+        document.getElementById('saved').innerText = data.saved || '-';
+        document.getElementById('errors').innerText = JSON.stringify(data.errors || '-', null, 2);
+      })
+      .catch(err=> console.error(err));
+  }
+  fetchJob();
+  setInterval(fetchJob, 5000);
+</script>
+</body>
+</html>

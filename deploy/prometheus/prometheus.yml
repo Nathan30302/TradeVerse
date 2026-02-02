@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'tradeverse'
+    static_configs:
+      - targets: ['web:5000']
+        labels:
+          service: web
+  - job_name: 'tradeverse-worker'
+    static_configs:
+      - targets: ['worker:9171']
+        labels:
+          service: worker
+  - job_name: 'rq'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['redis:6379']
+        labels:
+          service: redis

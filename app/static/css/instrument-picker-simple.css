@@ -1,0 +1,242 @@
+/**
+ * Simple Horizontal Instrument Picker Styles
+ * Clean, stable design for category-based selection
+ */
+
+/* Container */
+.instrument-picker-container {
+    width: 100%;
+}
+
+/* Category Tabs */
+.instrument-categories {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.category-tab {
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #dee2e6;
+    background-color: #f8f9fa;
+    color: #495057;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    white-space: nowrap;
+}
+
+.category-tab:hover {
+    border-color: #0d6efd;
+    background-color: #e3f2fd;
+    color: #0d6efd;
+}
+
+.category-tab.active {
+    border-color: #0d6efd;
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* Dark theme support */
+:root.dark .category-tab {
+    background-color: #2a2a2a;
+    border-color: #444444;
+    color: #e0e0e0;
+}
+
+:root.dark .category-tab:hover {
+    border-color: #5dade2;
+    background-color: rgba(93, 173, 226, 0.1);
+    color: #5dade2;
+}
+
+:root.dark .category-tab.active {
+    border-color: #5dade2;
+    background-color: #5dade2;
+    color: white;
+}
+
+/* Instrument List */
+.instrument-list {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.5rem 0;
+    scrollbar-width: thin;
+    scrollbar-color: #ccc transparent;
+}
+
+.instrument-list::-webkit-scrollbar {
+    height: 4px;
+}
+
+.instrument-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.instrument-list::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 2px;
+}
+
+.instrument-list::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+/* Instrument Items */
+.instrument-item {
+    flex: 0 0 auto;
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #dee2e6;
+    background-color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    min-width: 80px;
+    max-width: 120px;
+}
+
+.instrument-item:hover {
+    border-color: #0d6efd;
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.instrument-item.selected {
+    border-color: #198754;
+    background-color: #d1edff;
+    color: #198754;
+    font-weight: 600;
+}
+
+.instrument-symbol {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 0.125rem;
+}
+
+.instrument-name {
+    font-size: 0.75rem;
+    color: #6c757d;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Dark theme for instruments */
+:root.dark .instrument-item {
+    background-color: #2a2a2a;
+    border-color: #444444;
+    color: #e0e0e0;
+}
+
+:root.dark .instrument-item:hover {
+    border-color: #5dade2;
+    background-color: #3a3a3a;
+}
+
+:root.dark .instrument-item.selected {
+    border-color: #198754;
+    background-color: #1a3a2e;
+    color: #198754;
+}
+
+:root.dark .instrument-symbol {
+    color: #ffffff;
+}
+
+:root.dark .instrument-name {
+    color: #b0b0b0;
+}
+
+/* Selected Instrument Display */
+.selected-instrument {
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    min-height: 2rem;
+    display: flex;
+    align-items: center;
+}
+
+.selected-instrument strong {
+    color: #198754;
+}
+
+/* Dark theme for selected display */
+:root.dark .selected-instrument {
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+}
+
+:root.dark .selected-instrument strong {
+    color: #40c057;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .instrument-categories {
+        gap: 0.25rem;
+    }
+
+    .category-tab {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .instrument-list {
+        gap: 0.375rem;
+    }
+
+    .instrument-item {
+        min-width: 70px;
+        max-width: 100px;
+        padding: 0.375rem 0.5rem;
+    }
+
+    .instrument-symbol {
+        font-size: 0.8rem;
+    }
+
+    .instrument-name {
+        font-size: 0.7rem;
+    }
+}
+
+/* Loading state */
+.instrument-list.loading {
+    justify-content: center;
+    align-items: center;
+    min-height: 60px;
+}
+
+.instrument-list.loading::after {
+    content: "Loading instruments...";
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+/* Empty state */
+.instrument-list.empty {
+    justify-content: center;
+    align-items: center;
+    min-height: 60px;
+}
+
+.instrument-list.empty::after {
+    content: "No instruments found";
+    color: #6c757d;
+    font-size: 0.875rem;
+}

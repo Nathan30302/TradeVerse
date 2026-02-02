@@ -241,4 +241,40 @@ def settings():
     
     Advanced account configuration
     """
-    return render_template('auth/settings.html')
+    # Render the consolidated account settings page
+    return render_template('auth/account_settings.html')
+
+
+
+@bp.route('/login-history')
+@login_required
+def login_history():
+    """
+    Login History
+
+    Simple view showing recent login activity. Currently displays last login timestamp
+    and a friendly note. This can be extended to a full audit trail later.
+    """
+    last_login = current_user.last_login
+    # Placeholder: in future, query a LoginHistory model if available
+    return render_template('auth/login_history.html', last_login=last_login)
+
+@bp.route('/set-theme', methods=['POST'])
+@login_required
+def set_theme():
+    """
+    AJAX endpoint to persist user's theme preference
+    Expects JSON: { "theme": "light|dark|blue" }
+    """
+    try:
+        data = request.get_json(force=True)
+        theme = (data.get('theme') or 'light').strip().lower()
+        if theme not in ('light','dark','blue'):
+            return {'ok': False, 'error': 'invalid_theme'}, 400
+        current_user.theme = theme
+        db.session.commit()
+        return {'ok': True, 'theme': theme}
+    except Exception as e:
+        db.session.rollback()
+        print(f"set_theme error: {e}")
+        return {'ok': False, 'error': 'server_error'}, 500

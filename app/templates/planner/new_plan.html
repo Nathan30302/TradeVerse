@@ -32,6 +32,10 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             {{ form.symbol.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Trading symbol (e.g., XAUUSD for gold, EURUSD for Euro/USD, NAS100 for Nasdaq)"></i>
                             {{ form.symbol(class="form-control form-control-lg", placeholder="XAUUSD, EURUSD, NAS100...") }}
                             {% for error in form.symbol.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -40,6 +44,10 @@
                         
                         <div class="col-md-6">
                             {{ form.direction.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="BUY if you expect price to go up, SELL if you expect price to go down"></i>
                             {{ form.direction(class="form-select form-select-lg", id="direction") }}
                             {% for error in form.direction.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -58,6 +66,10 @@
                     <div class="row g-3">
                         <div class="col-md-3">
                             {{ form.planned_entry.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Price at which you plan to enter the trade"></i>
                             {{ form.planned_entry(class="form-control", placeholder="Entry price", id="planned_entry") }}
                             {% for error in form.planned_entry.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -66,6 +78,10 @@
                         
                         <div class="col-md-3">
                             {{ form.planned_stop_loss.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Price at which you will exit to limit losses if trade goes against you"></i>
                             {{ form.planned_stop_loss(class="form-control", placeholder="Stop loss", id="planned_sl") }}
                             {% for error in form.planned_stop_loss.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -74,6 +90,10 @@
                         
                         <div class="col-md-3">
                             {{ form.planned_take_profit.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Price at which you will exit to lock in profits when trade moves in your favor"></i>
                             {{ form.planned_take_profit(class="form-control", placeholder="Take profit", id="planned_tp") }}
                             {% for error in form.planned_take_profit.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -82,6 +102,10 @@
                         
                         <div class="col-md-3">
                             {{ form.planned_lot_size.label(class="form-label fw-bold") }}
+                            <i class="fas fa-question-circle text-muted ms-1" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="top" 
+                               title="Position size in lots (e.g., 0.01 = micro lot, 0.10 = mini lot, 1.0 = standard lot)"></i>
                             {{ form.planned_lot_size(class="form-control", placeholder="0.01") }}
                             {% for error in form.planned_lot_size.errors %}
                                 <div class="text-danger small">{{ error }}</div>
@@ -219,6 +243,17 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+// Initialize Bootstrap tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+
+<script>
 <script>
 // Calculate R:R
 function calculateRR() {
