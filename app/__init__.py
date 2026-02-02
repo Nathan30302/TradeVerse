@@ -37,29 +37,39 @@ def create_app(config_name='default'):
     
     # Create Flask app instance
     app = Flask(__name__)
-    
+
     # Load configuration
     app.config.from_object(config[config_name])
+
+    # Override for Vercel/serverless: use in-memory SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+
+    # Set upload folder to /tmp for serverless
+    app.config['UPLOAD_FOLDER'] = '/tmp/uploads' if os.path.exists('/tmp') else None
+
+    # Comment out bootstrap secrets for serverless
     # Attempt to bootstrap secrets (e.g., Fernet key) from Vault/AWS at startup
-    try:
-        from app.utils.credential_manager import bootstrap_secrets
-        found = bootstrap_secrets()
-        if not found and config_name == 'production':
-            raise RuntimeError('Encryption key not found in environment or secret store (Vault/AWS)')
-    except Exception as e:
-        # In non-production, continue but log
-        app.logger.debug(f'Secret bootstrap: {e}')
-    
+    # try:
+    #     from app.utils.credential_manager import bootstrap_secrets
+    #     found = bootstrap_secrets()
+    #     if not found and config_name == 'production':
+    #         raise RuntimeError('Encryption key not found in environment or secret store (Vault/AWS)')
+    # except Exception as e:
+    #     # In non-production, continue but log
+    #     app.logger.debug(f'Secret bootstrap: {e}')
+
+    # Comment out instance folder creation for read-only file system
     # Ensure instance folder exists
-    try:
-        os.makedirs(app.instance_path)
-    except OSError:
-        pass
-    
+    # try:
+    #     os.makedirs(app.instance_path)
+    # except OSError:
+    #     pass
+
+    # Comment out upload folder creation for read-only file system
     # Ensure upload folder exists
-    upload_folder = app.config.get('UPLOAD_FOLDER')
-    if upload_folder:
-        os.makedirs(upload_folder, exist_ok=True)
+    # upload_folder = app.config.get('UPLOAD_FOLDER')
+    # if upload_folder:
+    #     os.makedirs(upload_folder, exist_ok=True)
     
     # Initialize extensions with app
     db.init_app(app)
