@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Add Trade - {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/instrument-picker-simple.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <form method="POST" action="{{ url_for('trade.add') }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Basic Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Instrument *</label>
+                            <div class="instrument-picker-container">
+                                <!-- Category Tabs -->
+                                <div class="instrument-categories mb-2">
+                                    <button type="button" class="category-tab active" data-category="forex">
+                                        <i class="fas fa-exchange-alt"></i> Forex
+                                    </button>
+                                    <button type="button" class="category-tab" data-category="index">
+                                        <i class="fas fa-chart-line"></i> Indices
+                                    </button>
+                                    <button type="button" class="category-tab" data-category="crypto">
+                                        <i class="fas fa-bitcoin-sign"></i> Crypto
+                                    </button>
+                                    <button type="button" class="category-tab" data-category="commodity">
+                                        <i class="fas fa-oil-can"></i> Metals
+                                    </button>
+                                </div>
+
+                                <!-- Instrument List -->
+                                <div class="instrument-list" id="instrument-list">
+                                    <!-- Instruments will be loaded here -->
+                                </div>
+
+                                <!-- Selected Instrument Display -->
+                                <div class="selected-instrument mt-2" id="selected-instrument">
+                                    <small class="text-muted">No instrument selected</small>
+                                </div>
+
+                                <!-- Hidden inputs for form submission -->
+                                <input type="hidden" id="instrument_id" name="instrument_id">
+                                <input type="hidden" id="symbol" name="symbol">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="trade_type" class="form-label fw-bold">Trade Type *</label>
+                            <select class="form-select" id="trade_type" name="trade_type" required>
+                                <option value="">Select...</option>
+                                <option value="BUY">BUY (Long) 📈</option>
+                                <option value="SELL">SELL (Short) 📉</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="lot_size" class="form-label fw-bold">Lot Size *</label>
+                            <input type="number" step="0.01" class="form-control" id="lot_size"
+                                   name="lot_size" value="1.0" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price Levels -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Price Levels</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="entry_price" class="form-label fw-bold">Entry Price *</label>
+                            <input type="number" step="0.00001" class="form-control" id="entry_price"
+                                   name="entry_price" required placeholder="1.20000">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="stop_loss" class="form-label fw-bold">Stop Loss</label>
+                            <input type="number" step="0.00001" class="form-control" id="stop_loss"
+                                   name="stop_loss" placeholder="1.19500">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="take_profit" class="form-label fw-bold">Take Profit</label>
+                            <input type="number" step="0.00001" class="form-control" id="take_profit"
+                                   name="take_profit" placeholder="1.21000">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="exit_price" class="form-label fw-bold">Exit Price (if closed)</label>
+                            <input type="number" step="0.00001" class="form-control" id="exit_price"
+                                   name="exit_price" placeholder="1.20500">
+                        </div>
+                    </div>
+
+                    <div class="mt-3 p-3" style="background-color: #f8f9fa; border-radius: 10px;">
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Risk:Reward Ratio</small>
+                                <strong id="rr_display" class="h5">—</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Risk (pips/points)</small>
+                                <strong id="risk_display" class="h5">—</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Reward (pips/points)</small>
+                                <strong id="reward_display" class="h5">—</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="d-flex gap-3 justify-content-end mb-5">
+                <a href="{{ url_for('trade.list') }}" class="btn btn-secondary btn-lg px-5">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    <i class="fas fa-save"></i> Save Trade
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/instrument-picker-simple.js') }}"></script>
+<script>
+// Calculate R:R ratio
+function calculateRR() {
+    const entry = parseFloat(document.getElementById('entry_price').value) || 0;
+    const sl = parseFloat(document.getElementById('stop_loss').value) || 0;
+    const tp = parseFloat(document.getElementById('take_profit').value) || 0;
+
+    if (entry && sl && tp) {
+        const risk = Math.abs(entry - sl);
+        const reward = Math.abs(tp - entry);
+
+        if (risk > 0) {
+            const rr = (reward / risk).toFixed(2);
+            document.getElementById('rr_display').textContent = `1:${rr}`;
+            document.getElementById('risk_display').textContent = risk.toFixed(5);
+            document.getElementById('reward_display').textContent = reward.toFixed(5);
+
+            // Color code the R:R
+            const rrElement = document.getElementById('rr_display');
+            if (rr >= 2) {
+                rrElement.style.color = '#10b981'; // Green
+            } else if (rr >= 1) {
+                rrElement.style.color = '#f59e0b'; // Orange
+            } else {
+                rrElement.style.color = '#ef4444'; // Red
+            }
+        }
+    } else {
+        document.getElementById('rr_display').textContent = '—';
+        document.getElementById('risk_display').textContent = '—';
+        document.getElementById('reward_display').textContent = '—';
+    }
+}
+
+// Attach listeners
+['entry_price', 'stop_loss', 'take_profit'].forEach(id => {
+    document.getElementById(id).addEventListener('input', calculateRR);
+});
+</script>
+{% endblock %}
