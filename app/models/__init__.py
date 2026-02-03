@@ -9,6 +9,7 @@ from app.models.trade_plan import TradePlan
 from app.models.performance_score import PerformanceScore
 from app.models.trade_feedback import TradeFeedback
 from app.models.cooldown import Cooldown
+from app.models.broker import BrokerProfile, UserBrokerCredential, ImportedTradeSource
 
 __all__ = [
     'User',
@@ -18,5 +19,8 @@ __all__ = [
     'TradePlan',
     'PerformanceScore',
     'TradeFeedback',
-    'Cooldown'
+    'Cooldown',
+    'BrokerProfile',
+    'UserBrokerCredential',
+    'ImportedTradeSource'
 ]

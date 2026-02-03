@@ -190,16 +190,17 @@ def create_app(config_name='default'):
                 app.logger.debug(f"FTS index build skipped: {e}")
                 app._fts_built = True  # Don't retry
 
+    # Comment out Prometheus metrics for Vercel deployment
     # Expose Prometheus metrics if prometheus_client is available
-    try:
-        from prometheus_client import make_wsgi_app
-        from werkzeug.middleware.dispatcher import DispatcherMiddleware
-        # mount the prometheus WSGI app at /metrics
-        app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
-            '/metrics': make_wsgi_app()
-        })
-    except Exception:
-        app.logger.debug('prometheus_client not available; /metrics disabled')
+    # try:
+    #     from prometheus_client import make_wsgi_app
+    #     from werkzeug.middleware.dispatcher import DispatcherMiddleware
+    #     # mount the prometheus WSGI app at /metrics
+    #     app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
+    #         '/metrics': make_wsgi_app()
+    #     })
+    # except Exception:
+    #     app.logger.debug('prometheus_client not available; /metrics disabled')
     
     # Register template filters
     register_template_filters(app)

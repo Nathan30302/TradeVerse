@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '20251212_add_imported_source_fk_to_trades'
-down_revision = '45dc2b738986'
+down_revision = '20251212_add_broker_tables'
 branch_labels = None
 depends_on = None
 
