@@ -194,11 +194,15 @@ class ProductionConfig(Config):
     DEBUG = False
     SESSION_COOKIE_SECURE = True  # Require HTTPS
     SQLALCHEMY_ECHO = False
-    
+
     # Override secret key to require environment variable
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:
         raise ValueError("SECRET_KEY environment variable must be set in production!")
+
+    # Use /tmp for uploads in production (ephemeral but works for free tier)
+    UPLOAD_FOLDER = '/tmp/uploads'
+    TRADE_SCREENSHOTS_FOLDER = '/tmp/uploads/trade_screenshots'
 
 class TestingConfig(Config):
     """Testing environment configuration"""

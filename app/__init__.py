@@ -41,12 +41,6 @@ def create_app(config_name='default'):
     # Load configuration
     app.config.from_object(config[config_name])
 
-    # Override for Vercel/serverless: use in-memory SQLite
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-
-    # Set upload folder to /tmp for serverless
-    app.config['UPLOAD_FOLDER'] = '/tmp/uploads' if os.path.exists('/tmp') else None
-
     # Comment out bootstrap secrets for serverless
     # Attempt to bootstrap secrets (e.g., Fernet key) from Vault/AWS at startup
     # try:
