@@ -10,14 +10,22 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Helper function to fix database URL for SQLAlchemy 2.0
+def fix_database_url(url):
+    """Convert postgres:// to postgresql:// for SQLAlchemy 2.0 compatibility"""
+    if url and url.startswith('postgres://'):
+        return url.replace('postgres://', 'postgresql://', 1)
+    return url
+
 class Config:
     """Base configuration - shared across all environments"""
     
     # Flask Core
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-please-change-in-production'
     
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///tradeverse.db'
+    # Database - Fix URL scheme for SQLAlchemy 2.0
+    _raw_db_url = os.environ.get('DATABASE_URL') or 'sqlite:///tradeverse.db'
+    SQLALCHEMY_DATABASE_URI = fix_database_url(_raw_db_url)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False  # Set to True to see SQL queries
     
