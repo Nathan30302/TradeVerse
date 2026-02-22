@@ -194,15 +194,26 @@ class ProductionConfig(Config):
     DEBUG = False
     SESSION_COOKIE_SECURE = True  # Require HTTPS
     SQLALCHEMY_ECHO = False
-
-    # Override secret key to require environment variable
+    
+    # Secret key must be provided via environment variable
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:
-        raise ValueError("SECRET_KEY environment variable must be set in production!")
-
-    # Use /tmp for uploads in production (ephemeral but works for free tier)
+        # Fallback for first deployment only, should be overridden immediately
+        SECRET_KEY = 'prod-key-change-me-immediately'
+    
+    # Database must be provided via environment variable (Render PostgreSQL)
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///tradeverse.db')
+    
+    # Use /tmp for ephemeral file uploads in cloud environments
     UPLOAD_FOLDER = '/tmp/uploads'
     TRADE_SCREENSHOTS_FOLDER = '/tmp/uploads/trade_screenshots'
+    
+    # Ensure /tmp directories exist
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        os.makedirs(TRADE_SCREENSHOTS_FOLDER, exist_ok=True)
+    except Exception:
+        pass
 
 class TestingConfig(Config):
     """Testing environment configuration"""

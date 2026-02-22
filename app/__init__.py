@@ -52,18 +52,19 @@ def create_app(config_name='default'):
     #     # In non-production, continue but log
     #     app.logger.debug(f'Secret bootstrap: {e}')
 
-    # Comment out instance folder creation for read-only file system
-    # Ensure instance folder exists
-    # try:
-    #     os.makedirs(app.instance_path)
-    # except OSError:
-    #     pass
+    # Ensure instance folder exists (skip on read-only filesystems)
+    try:
+        os.makedirs(app.instance_path)
+    except (OSError, PermissionError):
+        pass
 
-    # Comment out upload folder creation for read-only file system
-    # Ensure upload folder exists
-    # upload_folder = app.config.get('UPLOAD_FOLDER')
-    # if upload_folder:
-    #     os.makedirs(upload_folder, exist_ok=True)
+    # Ensure upload folder exists (skip if path is in /tmp or read-only)
+    upload_folder = app.config.get('UPLOAD_FOLDER')
+    if upload_folder and not upload_folder.startswith('/tmp'):
+        try:
+            os.makedirs(upload_folder, exist_ok=True)
+        except (OSError, PermissionError):
+            pass
     
     # Initialize extensions with app
     db.init_app(app)
@@ -184,17 +185,16 @@ def create_app(config_name='default'):
                 app.logger.debug(f"FTS index build skipped: {e}")
                 app._fts_built = True  # Don't retry
 
-    # Comment out Prometheus metrics for Vercel deployment
-    # Expose Prometheus metrics if prometheus_client is available
-    # try:
-    #     from prometheus_client import make_wsgi_app
-    #     from werkzeug.middleware.dispatcher import DispatcherMiddleware
-    #     # mount the prometheus WSGI app at /metrics
-    #     app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
-    #         '/metrics': make_wsgi_app()
-    #     })
-    # except Exception:
-    #     app.logger.debug('prometheus_client not available; /metrics disabled')
+    # Expose Prometheus metrics if prometheus_client is available (optional)
+    try:
+        from prometheus_client import make_wsgi_app
+        from werkzeug.middleware.dispatcher import DispatcherMiddleware
+        # mount the prometheus WSGI app at /metrics
+        app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
+            '/metrics': make_wsgi_app()
+        })
+    except Exception:
+        app.logger.debug('prometheus_client not available; /metrics disabled')
     
     # Register template filters
     register_template_filters(app)
