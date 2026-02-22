@@ -187,13 +187,13 @@ def create_app(config_name='default'):
 
     # Expose Prometheus metrics if prometheus_client is available (optional)
     try:
-        from prometheus_client import make_wsgi_app
+        from prometheus_client import make_wsgi_app  # type: ignore
         from werkzeug.middleware.dispatcher import DispatcherMiddleware
         # mount the prometheus WSGI app at /metrics
         app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
             '/metrics': make_wsgi_app()
         })
-    except Exception:
+    except (ImportError, Exception):
         app.logger.debug('prometheus_client not available; /metrics disabled')
     
     # Register template filters
