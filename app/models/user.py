@@ -141,7 +141,7 @@ class User(UserMixin, db.Model):
         # Count open vs closed trades
         open_trades = all_trades.filter(Trade.status == 'OPEN').count()
         closed_trades = all_trades.filter(Trade.status == 'CLOSED').count()
-        
+
         stats['open_trades'] = open_trades
         stats['closed_trades'] = closed_trades
         
@@ -151,7 +151,11 @@ class User(UserMixin, db.Model):
             Trade.profit_loss.isnot(None)
         ).all()
         
+        # If there are no closed trades with P/L data, still return counts but keep numerical stats at defaults
         if not closed_trades_list:
+            # Ensure win_rate and total_pnl are explicitly zero
+            stats['win_rate'] = 0.0
+            stats['total_pnl'] = 0.0
             return stats
         
         # Calculate P/L statistics
@@ -161,12 +165,17 @@ class User(UserMixin, db.Model):
         stats['winning_trades'] = len(winning_trades)
         stats['losing_trades'] = len(losing_trades)
         
+        # Use number of closed trades that have P/L values as the denominator for win rate and expectancy
+        closed_with_pnl_count = len(closed_trades_list)
+
         # Win rate
-        if closed_trades > 0:
-            stats['win_rate'] = (len(winning_trades) / closed_trades) * 100
-        
-        # Total P/L
-        stats['total_pnl'] = sum(t.profit_loss for t in closed_trades_list)
+        if closed_with_pnl_count > 0:
+            stats['win_rate'] = (len(winning_trades) / closed_with_pnl_count) * 100
+        else:
+            stats['win_rate'] = 0.0
+
+        # Total P/L - sum safely treating None as 0
+        stats['total_pnl'] = sum((t.profit_loss or 0) for t in closed_trades_list)
         
         # Average win/loss
         if winning_trades:
@@ -191,9 +200,9 @@ class User(UserMixin, db.Model):
         if gross_loss > 0:
             stats['profit_factor'] = gross_profit / gross_loss
         
-        # Expectancy (Average P/L per trade)
-        if closed_trades > 0:
-            stats['expectancy'] = stats['total_pnl'] / closed_trades
+        # Expectancy (Average P/L per trade) - use closed_with_pnl_count
+        if closed_with_pnl_count > 0:
+            stats['expectancy'] = stats['total_pnl'] / closed_with_pnl_count
         
         return stats
     

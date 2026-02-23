@@ -21,35 +21,40 @@
     <!-- Custom CSS -->
     <style>
         :root {
-            /* Light Theme - Default */
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --secondary: #8b5cf6;
+            /* Premium Fintech Colors (Dark Mode Optimized) */
+            --primary: #5b21b6;
+            --primary-light: #7c3aed;
+            --primary-dark: #4c1d95;
+            --secondary: #0f766e;
             --success: #10b981;
+            --success-glow: #6ee7b7;
             --danger: #ef4444;
+            --danger-glow: #fca5a5;
             --warning: #f59e0b;
             --info: #3b82f6;
+            --gold: #d4af37;
+            --gold-light: #f0d9a8;
             --dark: #1e293b;
             --light: #f8fafc;
             
-            /* Light Mode Colors */
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8fafc;
-            --card-bg: #ffffff;
-            --card-border: #e2e8f0;
-            --form-bg: #ffffff;
-            --form-border: #cbd5e1;
-            --form-text: #1e293b;
-            --form-label: #475569;
-            --table-hover: #f1f5f9;
-            --tab-text: #64748b;
-            --tab-active: #6366f1;
-            --tab-border: #e2e8f0;
-            --sidebar-bg: #0f172a;
-            --sidebar-hover: #1e293b;
-            --sidebar-text: #ffffff;
+            /* Dark Mode (Default for Trading) */
+            --text-primary: #f0f9ff;
+            --text-secondary: #cbd5e1;
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --card-bg: #0f172a;
+            --card-border: #30363d;
+            --form-bg: #0d1117;
+            --form-border: #30363d;
+            --form-text: #e6eef8;
+            --form-label: #c9d1d9;
+            --table-hover: #1e293b;
+            --tab-text: #8b949e;
+            --tab-active: #58a6ff;
+            --tab-border: #30363d;
+            --sidebar-bg: #0d1117;
+            --sidebar-hover: #161b22;
+            --sidebar-text: #c9d1d9;
         }
         
         * {
@@ -66,30 +71,31 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* DARK THEME */
+        /* DARK THEME (Premium) */
         body[data-theme="dark"],
         [data-server-theme="dark"] body {
-            --primary: #6366f1 !important;
-            --secondary: #8b5cf6 !important;
-            --text-primary: #e6eef8 !important;
+            --primary: #5b21b6 !important;
+            --primary-light: #7c3aed !important;
+            --secondary: #0f766e !important;
+            --text-primary: #f0f9ff !important;
             --text-secondary: #cbd5e1 !important;
-            --bg-primary: #0f0f0f !important;
-            --bg-secondary: #1a202c !important;
-            --card-bg: #1a202c !important;
-            --card-border: #374151 !important;
-            --form-bg: #111827 !important;
-            --form-border: #4b5563 !important;
+            --bg-primary: #0d1117 !important;
+            --bg-secondary: #161b22 !important;
+            --card-bg: #0f172a !important;
+            --card-border: #30363d !important;
+            --form-bg: #0d1117 !important;
+            --form-border: #30363d !important;
             --form-text: #e6eef8 !important;
-            --form-label: #cbd5e1 !important;
-            --table-hover: #1f2937 !important;
-            --tab-text: #9ca3af !important;
-            --tab-active: #60a5fa !important;
-            --tab-border: #374151 !important;
-            --sidebar-bg: #111827 !important;
-            --sidebar-hover: #1f2937 !important;
-            --sidebar-text: #f3f4f6 !important;
-            background-color: #0f0f0f !important;
-            color: #e6eef8 !important;
+            --form-label: #c9d1d9 !important;
+            --table-hover: #1e293b !important;
+            --tab-text: #8b949e !important;
+            --tab-active: #58a6ff !important;
+            --tab-border: #30363d !important;
+            --sidebar-bg: #0d1117 !important;
+            --sidebar-hover: #161b22 !important;
+            --sidebar-text: #c9d1d9 !important;
+            background-color: #0d1117 !important;
+            color: #f0f9ff !important;
         }
 
         /* BLUE THEME */
@@ -116,6 +122,42 @@
             --sidebar-text: #ecf0f1 !important;
             background-color: #0c2a47 !important;
             color: #f0f9ff !important;
+        }
+
+        /* Animation Keyframes */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes cardLift {
+            from { transform: translateY(0); box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+            to { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.16); }
+        }
+
+        @keyframes softGlow {
+            0%, 100% { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+            50% { box-shadow: 0 4px 20px rgba(91, 33, 182, 0.2); }
+        }
+
+        @keyframes priceUp {
+            from { color: var(--success-glow); opacity: 0.8; }
+            to { color: var(--success); opacity: 1; }
+        }
+
+        @keyframes priceDown {
+            from { color: var(--danger-glow); opacity: 0.8; }
+            to { color: var(--danger); opacity: 1; }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
         }
 
         /* Typography Theme Aware */
@@ -407,61 +449,55 @@
             }
         }
         
-        /* Cards */
+/* Cards - Premium Fintech Style */
         .card {
-            border: none;
+            border: 1px solid var(--card-border);
             border-radius: 16px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
             margin-bottom: 1.5rem;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: var(--card-bg);
+            overflow: hidden;
         }
         
         .card:hover {
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(91, 33, 182, 0.25);
+            transform: translateY(-6px);
+            animation: softGlow 2s ease-in-out;
         }
-
-            .card-header {
-                background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
-                color: white;
-                border-radius: 14px 14px 0 0 !important;
-                padding: 1.5rem;
-                font-weight: 600;
-                border: none;
-            }
-
-            .card-body {
-                padding: 2rem;
-            }
         
         .card-header {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             color: white;
-            border-radius: 16px 16px 0 0 !important;
-            padding: 1.25rem 1.5rem;
-            font-weight: 600;
+            border-radius: 15px 15px 0 0;
+            padding: 1.5rem;
+            font-weight: 700;
             border: none;
+            box-shadow: 0 2px 8px rgba(91, 33, 182, 0.15);
+            letter-spacing: 0.3px;
         }
         
         .card-body {
-            padding: 1.5rem;
+            padding: 2rem;
+            background-color: var(--card-bg);
         }
         
-        /* Stat Cards */
+        /* Stat Cards - Premium Fintech Style */
         .stat-card {
             background: var(--card-bg);
             border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 1.75rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            border: 1px solid var(--card-border);
             border-left: 4px solid var(--primary);
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             color: var(--text-primary);
-        }
         }
         
         .stat-card:hover {
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(91, 33, 182, 0.25);
+            transform: translateY(-6px);
+            animation: softGlow 2s ease-in-out;
         }
         
         .stat-card.success {
@@ -522,21 +558,41 @@
         }
         
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            box-shadow: 0 4px 16px rgba(91, 33, 182, 0.3);
+            color: white;
+            border: none;
+            font-weight: 600;
         }
         
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(91, 33, 182, 0.5);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(91, 33, 182, 0.3);
         }
         
         .btn-success {
-            background-color: var(--success);
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
         }
         
         .btn-danger {
-            background-color: var(--danger);
+            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
         }
         
         .btn-lg {
@@ -605,29 +661,38 @@
         .form-label {
             font-weight: 600;
             color: var(--form-label);
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.875rem;
             display: block;
+            font-size: 0.975rem;
+            letter-spacing: 0.3px;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
         }
         
         .form-control, .form-select {
             border: 2px solid var(--form-border);
             border-radius: 10px;
-            padding: 0.75rem 1rem;
+            padding: 0.875rem 1.25rem;
             transition: all 0.3s ease;
             background-color: var(--form-bg);
             color: var(--form-text);
+            font-size: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         
         .form-control::placeholder {
             color: var(--text-secondary);
-            opacity: 0.7;
+            opacity: 0.6;
         }
         
         .form-control:focus, .form-select:focus {
             border-color: var(--primary);
             background-color: var(--form-bg);
             color: var(--form-text);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            box-shadow: 0 0 0 4px rgba(91, 33, 182, 0.15), 0 4px 12px rgba(91, 33, 182, 0.2);
+            outline: none;
         }
         
         /* Profit/Loss Colors */
@@ -789,27 +854,373 @@
             margin-bottom: 1rem;
         }
 
-        /* Live Quotes in Navbar */
+        /* Live Quotes in Navbar - Premium Ticker */
         .live-quotes {
             display: flex;
-            gap: 1rem;
+            gap: 1.5rem;
             align-items: center;
-            padding: 0.25rem 0.5rem;
-            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
             color: white;
             font-weight: 600;
-            font-size: 0.95rem;
-            backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            font-size: 0.9rem;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+            min-width: 300px;
+            overflow-x: auto;
+            scroll-behavior: smooth;
         }
 
-        .live-quotes .quote-item { display: flex; gap: 0.5rem; align-items: center; }
-        .live-quotes .quote-symbol { font-weight: 700; letter-spacing: 0.6px; }
-        .live-quotes .quote-price { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace; font-weight:700; }
-        .live-quotes .quote-change.positive { color: var(--success); }
-        .live-quotes .quote-change.negative { color: var(--danger); }
-        .live-quotes .quote-change { font-weight:700 }
+        .live-quotes:hover {
+            background: rgba(0,0,0,0.25);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .live-quotes .quote-item {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            white-space: nowrap;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .live-quotes .quote-symbol {
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            color: white;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .live-quotes .quote-icon {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            transition: color 0.3s ease;
+        }
+
+        .live-quotes .quote-price {
+            font-family: ui-monospace, 'Courier New', monospace;
+            font-weight: 700;
+            color: #f0d9a8;
+            letter-spacing: 0.4px;
+        }
+
+        .live-quotes .quote-change.positive {
+            color: var(--success-glow);
+            font-weight: 700;
+        }
+
+        .live-quotes .quote-change.positive::before {
+            content: '↑ ';
+        }
+
+        .live-quotes .quote-change.negative {
+            color: var(--danger-glow);
+            font-weight: 700;
+        }
+
+        .live-quotes .quote-change.negative::before {
+            content: '↓ ';
+        }
+
+        /* Single-slot instrument rotator (no scrolling) */
+        .instrument-rotator .instrument-slot {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.45rem 0.75rem;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            min-width: 240px;
+            max-width: 340px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .instrument-rotator .instrument-icon i {
+            font-size: 1.05rem;
+            color: var(--primary-light);
+            opacity: 0.9;
+        }
+
+        .instrument-symbol {
+            font-weight: 800;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+            color: white;
+            font-size: 0.95rem;
+            min-width: 50px;
+        }
+
+        .instrument-name {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            flex: 1;
+            text-align: center;
+        }
+
+        .instrument-change {
+            font-weight: 700;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+            min-width: 60px;
+            justify-content: flex-end;
+        }
+
+        .instrument-change::before {
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .instrument-change.positive {
+            color: var(--success);
+            background: rgba(16,185,129,0.08);
+            border: 1px solid rgba(16,185,129,0.1);
+        }
+
+        .instrument-change.positive::before {
+            content: '↑';
+        }
+
+        .instrument-change.negative {
+            color: var(--danger);
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.1);
+        }
+
+        .instrument-change.negative::before {
+            content: '↓';
+        }
+
+        /* Smooth fade for instrument changes */
+        .instrument-slot.fade-in {
+            animation: instrumentFade 0.35s ease;
+        }
+
+        @keyframes instrumentFade {
+            0% { opacity: 0.6; transform: translateY(-2px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Dynamic Island styling - Theme aware using CSS variables */
+        .dynamic-island {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+            /* Dark theme default - darker background for contrast */
+            background: rgba(30, 30, 30, 0.85);
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 0.5rem 0.9rem;
+            border-radius: 999px; /* pill shape */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            min-height: 46px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.08) inset, 0 0 1px rgba(255,255,255,0.1);
+            transform: translateZ(0);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            color: #f1f5f9;
+        }
+
+        .dynamic-island::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .dynamic-island .di-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 0 0.45rem;
+            min-width: 64px;
+        }
+
+        .dynamic-island:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.1) inset, 0 0 2px rgba(255,255,255,0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Light theme - high contrast dark charcoal background */
+        body[data-theme="light"] .dynamic-island {
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(51, 65, 85, 0.25);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.5) inset, 0 0 1px rgba(255,255,255,0.15);
+            color: #ffffff;
+        }
+
+        body[data-theme="light"] .dynamic-island:hover {
+            background: rgba(15, 23, 42, 0.96);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.6) inset, 0 0 2px rgba(255,255,255,0.2);
+        }
+
+        /* Blue theme - dark navy/black glass, NOT blue */
+        body[data-theme="blue"] .dynamic-island {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1.5px solid rgba(14, 165, 233, 0.25);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.06) inset, 0 0 12px rgba(14, 165, 233, 0.08);
+            color: #f0f9ff;
+        }
+
+        body[data-theme="blue"] .dynamic-island:hover {
+            background: rgba(15, 23, 42, 0.95);
+            border-color: rgba(14, 165, 233, 0.35);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.08) inset, 0 0 16px rgba(14, 165, 233, 0.12);
+        }
+
+        .dynamic-island .di-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        /* Text colors per theme */
+        body[data-theme="light"] .dynamic-island .di-label,
+        body[data-theme="blue"] .dynamic-island .di-label {
+            color: #cbd5e1;
+        }
+
+        body:not([data-theme="light"]):not([data-theme="blue"]) .dynamic-island .di-label {
+            color: var(--text-secondary);
+        }
+
+        .dynamic-island .di-value {
+            font-size: 0.95rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.01em;
+        }
+
+        /* Value colors per theme */
+        body[data-theme="light"] .dynamic-island .di-value,
+        body[data-theme="blue"] .dynamic-island .di-value {
+            color: #f1f5f9;
+        }
+
+        body:not([data-theme="light"]):not([data-theme="blue"]) .dynamic-island .di-value {
+            color: var(--text-primary);
+        }
+
+        .dynamic-island .di-divider {
+            width: 1px;
+            height: 28px;
+            background: rgba(255,255,255,0.12);
+            margin: 0 4px;
+        }
+
+        /* Theme-aware divider - lighter for readability */
+        body[data-theme="light"] .dynamic-island .di-divider,
+        body[data-theme="blue"] .dynamic-island .di-divider {
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* Subtle update animation */
+        .di-update {
+            animation: diPulse 0.9s ease;
+        }
+
+        @keyframes diPulse {
+            0% { transform: scale(1); opacity: 0.95; }
+            50% { transform: scale(1.03); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.98; }
+        }
+
+        /* Profit/Loss color transitions for Dynamic Island P/L value */
+        .dynamic-island .di-value {
+            transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* When profit value is shown */
+        .dynamic-island .di-value.profit {
+            color: var(--success);
+            text-shadow: 0 0 8px rgba(16,185,129,0.3);
+        }
+
+        /* When loss value is shown */
+        .dynamic-island .di-value.loss {
+            color: var(--danger);
+            text-shadow: 0 0 8px rgba(239,68,68,0.3);
+        }
+
+        /* Live Market Ticker Widget */
+        .market-ticker {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .ticker-item:hover {
+            background: rgba(255,255,255,0.1);
+            transform: scale(1.05);
+        }
+
+        .ticker-symbol {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ticker-price {
+            font-family: ui-monospace, 'Courier New', monospace;
+            color: #d4af37;
+        }
+
+        .ticker-change {
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .ticker-change.up {
+            color: var(--success);
+        }
+
+        .ticker-change.down {
+            color: var(--danger);
+        }
+        
+        /* Ticker track and continuous scroll */
+        .ticker-track {
+            display: flex;
+            gap: 1.75rem;
+            align-items: center;
+            will-change: transform;
+            white-space: nowrap;
+        }
+
+        @keyframes scroll-left {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
         
         /* Quick Actions Floating Button */
         .fab-container {
@@ -1045,9 +1456,40 @@
                 <i class="fas fa-chart-line"></i>
                 <span>{{ app_name }}</span>
             </a>
-            <!-- Live rotating quotes (shows on md+) -->
-            <div id="live-quotes" class="live-quotes d-none d-md-flex ms-4">
-                <div class="quote-item text-nowrap"><span class="quote-symbol">—</span>&nbsp;<span class="quote-price">—</span>&nbsp;<span class="quote-change">—</span></div>
+            
+            <!-- Instrument display (single-slot rotator) + Dynamic Island -->
+            <div class="d-flex align-items-center ms-4" style="gap:1rem;">
+                <div id="instrument-rotator" class="instrument-rotator d-none d-md-flex align-items-center">
+                    <div class="instrument-slot">
+                        <span class="instrument-icon me-2"><i class="fas fa-chart-line"></i></span>
+                        <span class="instrument-symbol">—</span>
+                        <span class="instrument-name text-muted ms-2">—</span>
+                        <span class="instrument-price ms-3">—</span>
+                        <span class="instrument-change ms-2">—</span>
+                    </div>
+                </div>
+
+                <div id="dynamic-island" class="dynamic-island d-none d-md-flex align-items-center">
+                    <div class="di-item">
+                        <div class="di-label">P/L Today</div>
+                        <div class="di-value" id="di-pl">—</div>
+                    </div>
+                    <div class="di-divider"></div>
+                    <div class="di-item">
+                        <div class="di-label">Active</div>
+                        <div class="di-value" id="di-active">—</div>
+                    </div>
+                    <div class="di-divider"></div>
+                    <div class="di-item">
+                        <div class="di-label">Vol</div>
+                        <div class="di-value" id="di-vol">—</div>
+                    </div>
+                    <div class="di-divider"></div>
+                    <div class="di-item">
+                        <div class="di-label">Top Move</div>
+                        <div class="di-value" id="di-top">—</div>
+                    </div>
+                </div>
             </div>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -1356,50 +1798,231 @@
     </script>
 
     <script>
-        // Live quotes widget: fetch small set of quotes and rotate them
+        // Instrument rotator (single fixed slot) + Dynamic Island
         (function(){
-            let quotes = [];
-            let idx = 0;
-            const container = document.getElementById('live-quotes');
+            const fallbackData = [
+                { symbol: 'BTC', code: 'BTCUSD', name: 'Bitcoin', change: 2.35, icon: 'fab fa-bitcoin' },
+                { symbol: 'XAU', code: 'XAUUSD', name: 'Gold', change: 0.18, icon: 'fas fa-gem' },
+                { symbol: 'NAS100', code: 'NAS100', name: 'Nasdaq 100', change: 1.92, icon: 'fas fa-chart-line' },
+                { symbol: 'US30', code: 'US30', name: 'US30', change: -0.45, icon: 'fas fa-chart-bar' },
+                { symbol: 'US500', code: 'US500', name: 'S&P 500', change: 1.15, icon: 'fas fa-line-chart' },
+                { symbol: 'EUR', code: 'EURUSD', name: 'EUR/USD', change: -0.42, icon: 'fas fa-euro-sign' }
+            ];
 
-            async function fetchQuotes(){
-                try{
-                    const resp = await fetch('/api/db/instruments/quotes?limit=8');
-                    if(!resp.ok) return;
-                    const data = await resp.json();
-                    if(data && data.quotes) {
-                        quotes = data.quotes;
-                        idx = 0;
-                        renderQuote();
-                    }
-                }catch(e){ console.warn('Quotes fetch failed', e); }
+            const rotator = document.getElementById('instrument-rotator');
+            const island = document.getElementById('dynamic-island');
+            const slot = rotator ? rotator.querySelector('.instrument-slot') : null;
+
+            let instruments = fallbackData.slice();
+            let idx = 0;
+            const rotateInterval = 4000; // ms
+
+            function formatPrice(p){
+                if (Math.abs(p) >= 1000) return Intl.NumberFormat().format(Math.round(p));
+                return Number(p).toFixed(4).replace(/\.0000$/, '');
             }
 
-            function renderQuote(){
-                if(!container) return;
-                if(!quotes || quotes.length === 0) return;
-                const q = quotes[idx % quotes.length];
-                container.innerHTML = `<div class="quote-item"><span class="quote-symbol">${q.symbol}</span>&nbsp;<span class="quote-price">${q.price}</span>&nbsp;<span class="quote-change ${q.change_pct >= 0 ? 'positive' : 'negative'}">${q.change_pct >= 0 ? '+' : ''}${q.change_pct}%</span></div>`;
-                // simple fade effect
-                container.classList.remove('fade-in');
-                void container.offsetWidth;
-                container.classList.add('fade-in');
+            function applyInstrument(it){
+                if(!slot) return;
+                const iconHtml = it.icon ? `<i class="${it.icon}"></i>` : '<i class="fas fa-chart-line"></i>';
+                const changeClass = (it.change || 0) >= 0 ? 'positive' : 'negative';
+                const sign = (it.change || 0) >= 0 ? '+' : '';
+                // Smooth fade transition - show only name, % change with arrow and color (no prices)
+                slot.classList.remove('fade-in');
+                void slot.offsetWidth;
+                slot.innerHTML = `<span class=\"instrument-icon\">${iconHtml}</span><span class=\"instrument-symbol\">${it.symbol}</span><span class=\"instrument-name\">${it.name}</span><span class=\"instrument-change ${changeClass}\">${sign}${(it.change||0).toFixed(2)}%</span>`;
+                slot.classList.add('fade-in');
+            }
+
+            function rotateOnce(){
+                if(!instruments || instruments.length === 0) return;
+                const it = instruments[idx % instruments.length];
+                applyInstrument(it);
                 idx++;
             }
 
-            // Rotate every 4 seconds
-            let rot;
-            function startRotation(){
-                clearInterval(rot);
-                rot = setInterval(renderQuote, 4000);
+            async function fetchInstruments(){
+                try{
+                    const resp = await fetch('/api/db/instruments/quotes?limit=8');
+                    if(!resp.ok) return false;
+                    const data = await resp.json();
+                    if(data && data.quotes && data.quotes.length){
+                        // map to our shape
+                        instruments = data.quotes.map(q => ({
+                            symbol: q.symbol || q.code || q.ticker || 'N/A',
+                            code: q.code || q.symbol || q.ticker,
+                            name: q.name || q.symbol || q.code || '',
+                            price: q.price || q.last || q.bid || 0,
+                            change: typeof q.change_pct !== 'undefined' ? parseFloat(q.change_pct) : (q.change || 0),
+                            icon: (q.symbol||'').toLowerCase().includes('btc') ? 'fab fa-bitcoin' : 'fas fa-chart-line'
+                        }));
+                        return true;
+                    }
+                }catch(e){ /* silent fallback */ }
+                return false;
             }
 
-            // Initialize
-            document.addEventListener('DOMContentLoaded', function(){
-                fetchQuotes().then(() => startRotation());
-                // refresh quotes every 30s
-                setInterval(fetchQuotes, 30000);
-            });
+            // Animated counter for island metrics
+            function animateCounter(el, startVal, endVal, duration=600){
+                if(!el || startVal === endVal) return;
+                let startTime = null;
+                const step = (timestamp) => {
+                    if (!startTime) startTime = timestamp;
+                    const progress = Math.min((timestamp - startTime) / duration, 1);
+                    const current = startVal + (endVal - startVal) * progress;
+                    if(el.dataset.isPercentage === 'true'){
+                        el.textContent = Math.round(current);
+                    } else if(el.dataset.isCurrency === 'true'){
+                        el.textContent = (current >= 0 ? '+' : '') + current.toFixed(2);
+                    } else {
+                        el.textContent = Math.round(current);
+                    }
+                    if(progress < 1) requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
+            }
+
+            // Dynamic island update: fetch server-authoritative stats
+            async function updateIslandFromServer(){
+                if(!island) return;
+                try{
+                    const userId = document.body.getAttribute('data-user-id');
+                    if(!userId) {
+                        // not authenticated, use fallback
+                        updateIslandFallback();
+                        return;
+                    }
+                    const resp = await fetch('/dashboard/api/stats');
+                    if(!resp.ok) return updateIslandFallback();
+                    const data = await resp.json();
+                    if(!data) return updateIslandFallback();
+
+                    // Get elements
+                    const plEl = document.getElementById('di-pl');
+                    const activeEl = document.getElementById('di-active');
+                    const volEl = document.getElementById('di-vol');
+                    const topEl = document.getElementById('di-top');
+
+                    // Extract values from server response
+                    const newPL = parseFloat(data.total_pnl || 0);
+                    const newActive = parseInt(data.open_trades || 0);
+                    const newVol = (data.avg_rr ? parseFloat(data.avg_rr).toFixed(2) : '—');
+                    const newWinRate = parseFloat(data.win_rate || 0);
+
+                    // Update P/L with animated counter and color transition
+                    if(plEl) {
+                        const oldPL = parseFloat(plEl.textContent) || 0;
+                        const sign = newPL >= 0 ? '+' : '';
+                        
+                        // animate counter
+                        animateCounter(plEl, oldPL, newPL, 700);
+                        
+                        // set currency flag
+                        plEl.dataset.isCurrency = 'true';
+                        
+                        // color transition with pulse
+                        const wasProfit = plEl.classList.contains('profit');
+                        const isProfit = newPL >= 0;
+                        
+                        if(wasProfit !== isProfit){
+                            plEl.classList.remove('profit', 'loss');
+                            plEl.classList.add(isProfit ? 'profit' : 'loss');
+                        }
+                        
+                        // add update pulse animation
+                        plEl.classList.remove('di-update');
+                        void plEl.offsetWidth; // reflow
+                        plEl.classList.add('di-update');
+                        setTimeout(()=>plEl.classList.remove('di-update'), 900);
+                    }
+
+                    // Update Active Trades
+                    if(activeEl) {
+                        const oldActive = parseInt(activeEl.textContent) || 0;
+                        animateCounter(activeEl, oldActive, newActive, 600);
+                        activeEl.classList.remove('di-update');
+                        void activeEl.offsetWidth;
+                        activeEl.classList.add('di-update');
+                        setTimeout(()=>activeEl.classList.remove('di-update'), 900);
+                    }
+
+                    // Update Vol (Avg R:R as volatility proxy)
+                    if(volEl) {
+                        const oldVol = volEl.textContent;
+                        volEl.textContent = newVol;
+                        volEl.classList.remove('di-update');
+                        void volEl.offsetWidth;
+                        volEl.classList.add('di-update');
+                        setTimeout(()=>volEl.classList.remove('di-update'), 900);
+                    }
+
+                    // Update Top Move (Win Rate as proxy for best performer)
+                    if(topEl) {
+                        const oldTop = topEl.textContent;
+                        topEl.textContent = newWinRate.toFixed(1) + '%';
+                        topEl.dataset.isPercentage = 'true';
+                        topEl.classList.remove('di-update');
+                        void topEl.offsetWidth;
+                        topEl.classList.add('di-update');
+                        setTimeout(()=>topEl.classList.remove('di-update'), 900);
+                    }
+                }catch(e){ console.log('island update error (silent)'); updateIslandFallback(); }
+            }
+
+            // Fallback: compute simple metrics if server unreachable
+            function updateIslandFallback(){
+                if(!island) return;
+                const pl = instruments.reduce((acc,it) => acc + ((it.change||0)/100) * (it.price||0) * 0.02, 0);
+                const active = Math.max(0, Math.round(Math.abs(pl) / 1000) + Math.floor(Math.random()*3));
+                const changes = instruments.map(i => Math.abs(i.change||0));
+                const vol = changes.length ? (Math.sqrt(changes.reduce((s,v)=>s+v*v,0)/changes.length).toFixed(2)) : '—';
+                const top = instruments.slice().sort((a,b)=>Math.abs(b.change||0)-Math.abs(a.change||0))[0];
+
+                const plEl = document.getElementById('di-pl');
+                const activeEl = document.getElementById('di-active');
+                const volEl = document.getElementById('di-vol');
+                const topEl = document.getElementById('di-top');
+
+                if(plEl) {
+                    animateCounter(plEl, parseFloat(plEl.textContent) || 0, pl, 500);
+                    plEl.dataset.isCurrency = 'true';
+                    plEl.classList.toggle('profit', pl >= 0);
+                    plEl.classList.toggle('loss', pl < 0);
+                    plEl.classList.add('di-update');
+                    setTimeout(()=>plEl.classList.remove('di-update'),900);
+                }
+                if(activeEl) {
+                    animateCounter(activeEl, parseInt(activeEl.textContent) || 0, active, 500);
+                    activeEl.classList.add('di-update');
+                    setTimeout(()=>activeEl.classList.remove('di-update'),900);
+                }
+                if(volEl) {
+                    volEl.textContent = vol;
+                    volEl.classList.add('di-update');
+                    setTimeout(()=>volEl.classList.remove('di-update'),900);
+                }
+                if(topEl) {
+                    if(top) topEl.textContent = `${top.symbol} ${top.change>=0?'+':''}${(top.change||0).toFixed(2)}%`;
+                    else topEl.textContent = '—';
+                    topEl.classList.add('di-update');
+                    setTimeout(()=>topEl.classList.remove('di-update'),900);
+                }
+            }
+
+            async function init(){
+                // try fetching live instruments, otherwise use fallback
+                const ok = await fetchInstruments();
+                // ensure rotator and island visible on md+ only
+                if(rotator) rotator.classList.remove('d-none');
+                if(island) island.classList.remove('d-none');
+                rotateOnce();
+                setInterval(rotateOnce, rotateInterval);
+                // update island periodically with server stats
+                updateIslandFromServer();
+                setInterval(updateIslandFromServer, 10000);
+            }
+
+            document.addEventListener('DOMContentLoaded', init);
         })();
     </script>
 

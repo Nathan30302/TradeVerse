@@ -155,7 +155,7 @@ temp_homepage.html
 scripts/output/
 
 # Environment examples (don't commit real secrets)
-.env.example
+# keep .env.example tracked as an example file
 
 # Spyder project settings
 .spyderproject

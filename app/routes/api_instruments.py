@@ -344,32 +344,54 @@ def db_instrument_counts():
 @bp.route('/db/instruments/quotes', methods=['GET'])
 @login_required
 def db_instrument_quotes():
-    """Return a small set of instruments with simulated live-quote data.
-
-    This endpoint is intentionally non-intrusive: if the app has
-    real-time price feeds they can be plugged in later. For now we
-    provide a lightweight simulation for the UI that does not change
-    core business logic.
+    """Return trader-focused instruments for the Dynamic Island rotator.
+    
+    Returns a curated list of professional trader instruments:
+    - BTCUSD (Bitcoin)
+    - XAUUSD (Gold)
+    - NAS100 (Nasdaq 100)
+    - US30 (Dow Jones)
+    - US500 (S&P 500)
+    - EURUSD (EUR/USD)
+    
+    Uses simulated price data for demonstration. Can be replaced with
+    real-time feeds from market data providers without changing the UI.
     """
-    import random
     from app.models.instrument import Instrument
+    from app.services.simulated_market import market
 
-    limit = min(int(request.args.get('limit', 8)), 20)
-    # Pick first N active instruments ordered by symbol
-    instruments = Instrument.query.filter(Instrument.is_active == True).order_by(Instrument.symbol).limit(limit).all()
+    # Curated list of trader-focused instruments (consistent across all pages)
+    trader_focused = ['BTCUSD', 'XAUUSD', 'NAS100', 'US30', 'US500', 'EURUSD']
 
+    limit = min(int(request.args.get('limit', 6)), 10)
+
+    # Load any DB instrument objects for better name/decimals
+    inst_objs = {}
+    db_insts = Instrument.query.filter(Instrument.symbol.in_(trader_focused)).all()
+    for i in db_insts:
+        inst_objs[i.symbol] = i
+
+    # Use the simulated market singleton which maintains prior price state
+    symbols = trader_focused[:limit]
+    quotes = market.get_quotes(symbols, instrument_objs=inst_objs)
+
+    # If the DB had no entries for some instruments, names may be placeholders; fill with friendly labels
+    fallback_names = {
+        'BTCUSD': 'Bitcoin',
+        'XAUUSD': 'Gold',
+        'NAS100': 'Nasdaq 100',
+        'US30': 'US30',
+        'US500': 'S&P 500',
+        'EURUSD': 'EUR/USD'
+    }
     out = []
-    for inst in instruments:
-        # base simulated price: use tick_value or 1.0
-        base = float(inst.tick_value or 1.0)
-        # simulate a price in a sensible range
-        price = round(base * (1 + random.uniform(-0.02, 0.02)), inst.price_decimals or 2)
-        change_pct = round(((price - base) / base) * 100, 2)
+    for q in quotes:
+        name = q.get('name') or fallback_names.get(q['symbol'], q['symbol'])
         out.append({
-            'symbol': inst.symbol,
-            'name': inst.name,
-            'price': price,
-            'change_pct': change_pct
+            'symbol': q['symbol'],
+            'name': name,
+            'price': q['price'],
+            'change_pct': q['change_pct']
         })
 
     return jsonify({'success': True, 'quotes': out})

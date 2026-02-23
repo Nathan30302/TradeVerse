@@ -140,6 +140,28 @@ def analytics():
                          session_stats=session_stats,
                          day_stats=day_stats)
 
+
+@bp.route('/api/stats')
+@login_required
+def stats_api():
+    """
+    Returns user's current statistics as JSON for live UI updates
+    """
+    stats = current_user.get_stats()
+    # Ensure numeric fields are serializable
+    safe = {
+        'total_trades': stats.get('total_trades', 0),
+        'open_trades': stats.get('open_trades', 0),
+        'closed_trades': stats.get('closed_trades', 0),
+        'winning_trades': stats.get('winning_trades', 0),
+        'losing_trades': stats.get('losing_trades', 0),
+        'win_rate': float(stats.get('win_rate', 0.0)),
+        'total_pnl': float(stats.get('total_pnl', 0.0)),
+        'avg_rr': float(stats.get('avg_rr', 0.0)),
+        'trades_today': int(stats.get('trades_today', 0)) if stats.get('trades_today') is not None else 0
+    }
+    return jsonify(safe)
+
 # ==================== Calendar View ====================
 
 @bp.route('/calendar')
