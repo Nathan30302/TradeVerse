@@ -425,19 +425,45 @@ class PnLEngine:
         )
 
 
-def calculate_pnl(
-    instrument_symbol: str,
-    entry_price: float,
-    exit_price: float,
-    size: float,
-    size_type: str = 'lots',
-    trade_direction: str = 'buy',
-    instrument_meta: Optional[Dict[str, Any]] = None,
-    broker_profile: Optional[Dict[str, Any]] = None,
-    account_currency: str = 'USD'
-) -> PnLResult:
-    """Convenience function for P&L calculation."""
-    return PnLEngine.calculate(
+def calculate_pnl(*args, **kwargs) -> Dict[str, Any]:
+    """Flexible convenience wrapper for P&L calculation.
+
+    Supports two calling signatures for backward compatibility:
+    1) calculate_pnl(symbol, instrument_meta_dict, entry_price, exit_price, size, ...)
+    2) calculate_pnl(symbol, entry_price, exit_price, size, size_type=..., instrument_meta=..., ...)
+
+    Always returns a dict (result.to_dict()).
+    """
+    # Default values
+    size_type = kwargs.pop('size_type', 'lots')
+    trade_direction = kwargs.pop('trade_direction', 'buy')
+    broker_profile = kwargs.pop('broker_profile', None)
+    account_currency = kwargs.pop('account_currency', 'USD')
+
+    # If caller used keyword args (common in tests), pull values from kwargs
+    if 'instrument_symbol' in kwargs:
+        instrument_symbol = kwargs.pop('instrument_symbol')
+        entry_price = kwargs.pop('entry_price')
+        exit_price = kwargs.pop('exit_price')
+        size = kwargs.pop('size')
+        instrument_meta = kwargs.pop('instrument_meta', None)
+    else:
+        # Detect signature: if second positional arg is a dict, treat it as instrument_meta
+        if len(args) >= 2 and isinstance(args[1], dict):
+            instrument_symbol = args[0]
+            instrument_meta = args[1]
+            entry_price = args[2]
+            exit_price = args[3]
+            size = args[4]
+        else:
+            # Legacy ordering: symbol, entry_price, exit_price, size
+            instrument_symbol = args[0]
+            entry_price = args[1]
+            exit_price = args[2]
+            size = args[3]
+            instrument_meta = kwargs.pop('instrument_meta', None)
+
+    result = PnLEngine.calculate(
         instrument_symbol=instrument_symbol,
         entry_price=entry_price,
         exit_price=exit_price,
@@ -448,6 +474,12 @@ def calculate_pnl(
         broker_profile=broker_profile,
         account_currency=account_currency
     )
+
+    # Return serializable dict for tests and callers
+    if isinstance(result, PnLResult):
+        return result.to_dict()
+    # If older code returns dict already
+    return dict(result)
 
 
 def calculate_pip_value(

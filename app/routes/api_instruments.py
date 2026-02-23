@@ -7,6 +7,7 @@ Provides endpoints for:
 - Broker listing
 """
 from flask import Blueprint, request, jsonify
+from sqlalchemy import func
 from flask_login import login_required, current_user
 
 from app.services.instrument_catalog import (
@@ -321,3 +322,54 @@ def db_instruments():
             'price_decimals': inst.price_decimals
         })
     return jsonify({'success': True, 'results': out, 'total': len(out)})
+
+
+@bp.route('/db/instruments/counts', methods=['GET'])
+@login_required
+def db_instrument_counts():
+    """Return total instruments and counts per category."""
+    from app.models.instrument import Instrument
+    # Total
+    total = Instrument.query.filter(Instrument.is_active == True).count()
+    # Per category
+    rows = Instrument.query.with_entities(Instrument.category, func.count(Instrument.id)).filter(Instrument.is_active == True).group_by(Instrument.category).all()
+    counts = {}
+    for cat, cnt in rows:
+        key = (cat or '').strip()
+        counts[key] = cnt
+
+    return jsonify({'success': True, 'total': total, 'by_category': counts})
+
+
+@bp.route('/db/instruments/quotes', methods=['GET'])
+@login_required
+def db_instrument_quotes():
+    """Return a small set of instruments with simulated live-quote data.
+
+    This endpoint is intentionally non-intrusive: if the app has
+    real-time price feeds they can be plugged in later. For now we
+    provide a lightweight simulation for the UI that does not change
+    core business logic.
+    """
+    import random
+    from app.models.instrument import Instrument
+
+    limit = min(int(request.args.get('limit', 8)), 20)
+    # Pick first N active instruments ordered by symbol
+    instruments = Instrument.query.filter(Instrument.is_active == True).order_by(Instrument.symbol).limit(limit).all()
+
+    out = []
+    for inst in instruments:
+        # base simulated price: use tick_value or 1.0
+        base = float(inst.tick_value or 1.0)
+        # simulate a price in a sensible range
+        price = round(base * (1 + random.uniform(-0.02, 0.02)), inst.price_decimals or 2)
+        change_pct = round(((price - base) / base) * 100, 2)
+        out.append({
+            'symbol': inst.symbol,
+            'name': inst.name,
+            'price': price,
+            'change_pct': change_pct
+        })
+
+    return jsonify({'success': True, 'quotes': out})

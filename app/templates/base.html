@@ -788,6 +788,28 @@
             opacity: 0.3;
             margin-bottom: 1rem;
         }
+
+        /* Live Quotes in Navbar */
+        .live-quotes {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.95rem;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .live-quotes .quote-item { display: flex; gap: 0.5rem; align-items: center; }
+        .live-quotes .quote-symbol { font-weight: 700; letter-spacing: 0.6px; }
+        .live-quotes .quote-price { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace; font-weight:700; }
+        .live-quotes .quote-change.positive { color: var(--success); }
+        .live-quotes .quote-change.negative { color: var(--danger); }
+        .live-quotes .quote-change { font-weight:700 }
         
         /* Quick Actions Floating Button */
         .fab-container {
@@ -1023,6 +1045,10 @@
                 <i class="fas fa-chart-line"></i>
                 <span>{{ app_name }}</span>
             </a>
+            <!-- Live rotating quotes (shows on md+) -->
+            <div id="live-quotes" class="live-quotes d-none d-md-flex ms-4">
+                <div class="quote-item text-nowrap"><span class="quote-symbol">—</span>&nbsp;<span class="quote-price">—</span>&nbsp;<span class="quote-change">—</span></div>
+            </div>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -1326,6 +1352,54 @@
             } else {
                 applyTheme('light', true, false);
             }
+        })();
+    </script>
+
+    <script>
+        // Live quotes widget: fetch small set of quotes and rotate them
+        (function(){
+            let quotes = [];
+            let idx = 0;
+            const container = document.getElementById('live-quotes');
+
+            async function fetchQuotes(){
+                try{
+                    const resp = await fetch('/api/db/instruments/quotes?limit=8');
+                    if(!resp.ok) return;
+                    const data = await resp.json();
+                    if(data && data.quotes) {
+                        quotes = data.quotes;
+                        idx = 0;
+                        renderQuote();
+                    }
+                }catch(e){ console.warn('Quotes fetch failed', e); }
+            }
+
+            function renderQuote(){
+                if(!container) return;
+                if(!quotes || quotes.length === 0) return;
+                const q = quotes[idx % quotes.length];
+                container.innerHTML = `<div class="quote-item"><span class="quote-symbol">${q.symbol}</span>&nbsp;<span class="quote-price">${q.price}</span>&nbsp;<span class="quote-change ${q.change_pct >= 0 ? 'positive' : 'negative'}">${q.change_pct >= 0 ? '+' : ''}${q.change_pct}%</span></div>`;
+                // simple fade effect
+                container.classList.remove('fade-in');
+                void container.offsetWidth;
+                container.classList.add('fade-in');
+                idx++;
+            }
+
+            // Rotate every 4 seconds
+            let rot;
+            function startRotation(){
+                clearInterval(rot);
+                rot = setInterval(renderQuote, 4000);
+            }
+
+            // Initialize
+            document.addEventListener('DOMContentLoaded', function(){
+                fetchQuotes().then(() => startRotation());
+                // refresh quotes every 30s
+                setInterval(fetchQuotes, 30000);
+            });
         })();
     </script>
 

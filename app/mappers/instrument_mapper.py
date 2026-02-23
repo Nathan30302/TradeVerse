@@ -339,9 +339,36 @@ class InstrumentMapper:
 mapper = InstrumentMapper()
 
 
-def map_broker_symbol(broker_symbol: str, broker_id: str) -> MappingResult:
-    """Convenience function to map a single symbol."""
-    return mapper.map_symbol(broker_symbol, broker_id)
+def map_broker_symbol(arg1: str, arg2: str):
+    """Flexible wrapper: accepts either (symbol, broker_id) -> returns MappingResult,
+    or (broker_id, symbol) -> returns (canonical, confidence, details) tuple.
+
+    Heuristic: if arg1 matches a known broker id in mapper._brokers, treat as (broker_id, symbol)
+    and return a tuple for older callers/tests that expect tuple unpacking. Otherwise return
+    the MappingResult object as before.
+    """
+    # Determine if first arg is a broker id
+    first_is_broker = arg1 in mapper._brokers
+
+    if first_is_broker:
+        broker_id = arg1
+        broker_symbol = arg2
+        result = mapper.map_symbol(broker_symbol, broker_id)
+        details = {
+            'original_symbol': result.original_symbol,
+            'canonical_symbol': result.canonical_symbol,
+            'confidence': result.confidence,
+            'match_type': result.match_type,
+            'instrument_metadata': result.instrument_metadata,
+            'adjustments': result.adjustments,
+            'warnings': result.warnings,
+        }
+        return result.canonical_symbol, result.confidence, details
+    else:
+        # treat as (broker_symbol, broker_id) and return MappingResult for callers that expect object
+        broker_symbol = arg1
+        broker_id = arg2
+        return mapper.map_symbol(broker_symbol, broker_id)
 
 
 def get_broker_profile(broker_id: str) -> Optional[Dict[str, Any]]:

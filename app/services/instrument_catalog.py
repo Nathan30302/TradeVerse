@@ -299,3 +299,8 @@ def search_instruments(
 def get_instrument_metadata(symbol: str) -> Optional[Dict[str, Any]]:
     """Convenience function to get instrument metadata."""
     return catalog.get_metadata(symbol)
+
+
+def get_catalog() -> InstrumentCatalog:
+    """Return the singleton InstrumentCatalog instance (backwards compat)."""
+    return catalog
