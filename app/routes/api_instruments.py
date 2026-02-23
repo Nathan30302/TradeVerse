@@ -279,3 +279,45 @@ def get_instrument_stats():
             'by_type': types
         }
     })
+
+
+@bp.route('/db/instruments/categories', methods=['GET'])
+@login_required
+def db_instrument_categories():
+    """Return available categories from DB instruments."""
+    from app.models.instrument import Instrument
+    cats = {}
+    q = Instrument.query.with_entities(Instrument.category).distinct().all()
+    cat_list = [c[0] for c in q if c[0]]
+    # Map to simple object
+    for c in cat_list:
+        key = c.lower() if isinstance(c, str) else str(c)
+        cats[key] = {'name': c}
+    return jsonify({'success': True, 'categories': cats})
+
+
+@bp.route('/db/instruments', methods=['GET'])
+@login_required
+def db_instruments():
+    """Return instruments stored in DB for a given category (or all)."""
+    from app.models.instrument import Instrument
+    category = request.args.get('category', '').strip()
+    limit = min(int(request.args.get('limit', 1000)), 5000)
+    q = Instrument.query.filter(Instrument.is_active == True)
+    if category:
+        q = q.filter(Instrument.category.ilike(f"%{category}%"))
+    instruments = q.order_by(Instrument.symbol).limit(limit).all()
+    out = []
+    for inst in instruments:
+        out.append({
+            'id': inst.id,
+            'symbol': inst.symbol,
+            'name': inst.name,
+            'type': inst.instrument_type,
+            'category': inst.category,
+            'pip_size': inst.pip_size,
+            'tick_value': inst.tick_value,
+            'contract_size': inst.contract_size,
+            'price_decimals': inst.price_decimals
+        })
+    return jsonify({'success': True, 'results': out, 'total': len(out)})

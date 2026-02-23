@@ -20,7 +20,8 @@ class SimpleInstrumentPicker {
 
     async loadCategories() {
         try {
-            const response = await fetch(`${this.apiUrl}/categories`);
+            // Use DB-backed categories endpoint
+            const response = await fetch('/api/db/instruments/categories');
             if (response.ok) {
                 const categories = await response.json();
                 this.renderCategoryTabs(categories);
@@ -91,10 +92,10 @@ class SimpleInstrumentPicker {
 
     async loadInstrumentsForCategory(category) {
         try {
-            const response = await fetch(`${this.apiUrl}?category=${category}&limit=10000`);
+            const response = await fetch(`/api/db/instruments?category=${category}&limit=10000`);
             if (response.ok) {
                 const instruments = await response.json();
-                this.renderInstruments(instruments);
+                this.renderInstruments(instruments.results || []);
             }
         } catch (error) {
             console.error('Failed to load instruments:', error);
