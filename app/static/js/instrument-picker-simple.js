@@ -1,6 +1,9 @@
 /**
  * Simple Horizontal Instrument Picker
  * Category-based selection with horizontal scrolling
+ * 
+ * FIXED: Now properly handles category loading without overriding template tabs
+ * when database has fewer categories than template.
  */
 
 class SimpleInstrumentPicker {
@@ -9,37 +12,76 @@ class SimpleInstrumentPicker {
         this.selectedInstrument = null;
         this.currentCategory = 'forex';
         this.instruments = {};
+        // Store the initial category from template to prevent switching
+        this._initialCategorySet = false;
         this.init();
     }
 
     async init() {
-        await this.loadCategories();
+        // Setup event listeners FIRST before any async operations
         this.setupEventListeners();
+        
+        // THEN load categories - but DON'T replace if DB has fewer
+        await this.loadCategories();
+        
+        // Load instruments for current category
         this.loadInstrumentsForCategory(this.currentCategory);
+        
+        // Add debug logging
+        console.log('[InstrumentPicker] Initialized with category:', this.currentCategory);
     }
 
     async loadCategories() {
         try {
+            console.log('[InstrumentPicker] Loading categories from API...');
+            
             // Use DB-backed categories endpoint
             const resp = await fetch('/api/db/instruments/categories');
             if (!resp.ok) {
-                console.warn('Could not load categories, status=', resp.status);
+                console.warn('[InstrumentPicker] Could not load categories, status=', resp.status);
                 return;
             }
 
             const data = await resp.json();
+            console.log('[InstrumentPicker] API response:', data);
 
             // API returns { success: True, categories: { key: {name: '...'}} }
             const categories = data && data.categories ? data.categories : null;
 
             // If categories not present, leave existing tabs in the template intact
             if (!categories) {
+                console.log('[InstrumentPicker] No categories in API response, keeping template tabs');
                 return;
             }
 
-            this.renderCategoryTabs(categories);
+            const categoryKeys = Object.keys(categories);
+            console.log('[InstrumentPicker] Categories from DB:', categoryKeys.length, categoryKeys);
+
+            // FIXED: Only update tabs if DB has MORE or EQUAL categories than template
+            // This prevents replacing 8 sectors with 5
+            const templateTabs = document.querySelectorAll('.category-tab');
+            const templateCount = templateTabs.length;
+            
+            console.log(`[InstrumentPicker] Template has ${templateCount} tabs, DB has ${categoryKeys.length} categories`);
+
+            if (categoryKeys.length >= templateCount) {
+                // DB has same or more categories - safe to update
+                this.renderCategoryTabs(categories);
+                console.log('[InstrumentPicker] Updated tabs from DB');
+            } else {
+                // DB has fewer categories - keep template tabs to show all 8 sectors
+                console.log('[InstrumentPicker] Keeping template tabs (DB has fewer categories)');
+                
+                // But still try to switch to first available category from DB if current not found
+                const currentTabExists = categoryKeys.includes(this.currentCategory);
+                if (!currentTabExists && categoryKeys.length > 0) {
+                    console.log('[InstrumentPicker] Switching to first available DB category:', categoryKeys[0]);
+                    this.currentCategory = categoryKeys[0];
+                    this.loadInstrumentsForCategory(this.currentCategory);
+                }
+            }
         } catch (error) {
-            console.error('Failed to load categories:', error);
+            console.error('[InstrumentPicker] Failed to load categories:', error);
         }
     }
 
