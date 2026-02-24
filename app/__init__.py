@@ -95,7 +95,7 @@ def create_app(config_name='default'):
         # Create database tables
         db.create_all()
         
-        # Seed instruments from catalog on startup
+        # Seed instruments from EXNESS catalog on startup
         _seed_instruments(app)
         
         # Auto-add missing columns for local dev (SQLite) to avoid OperationalError
@@ -209,7 +209,7 @@ def create_app(config_name='default'):
 
 
 def _seed_instruments(app):
-    """Seed instruments from catalog on startup."""
+    """Seed instruments from EXNESS full catalog on startup."""
     import json
     from app.models.instrument import Instrument, DEFAULT_INSTRUMENTS
     
@@ -217,50 +217,66 @@ def _seed_instruments(app):
     if Instrument.query.first() is not None:
         return
     
-    # Try to load from project root data folder
+    # Try to load from project root data folder - use EXNESS full catalog
     project_root = os.path.dirname(os.path.dirname(app.root_path))
-    catalog_path = os.path.join(project_root, 'data', 'instruments_catalog.json')
+    
+    # First try exness_full_catalog.json (has 400+ instruments with 8 sectors)
+    catalog_path = os.path.join(project_root, 'data', 'exness_full_catalog.json')
     
     seed_list = DEFAULT_INSTRUMENTS
     if os.path.exists(catalog_path):
         try:
             with open(catalog_path, 'r', encoding='utf-8') as fh:
-                seed_list = json.load(fh)
-                app.logger.info(f"Loaded {len(seed_list)} instruments from catalog")
+                data = json.load(fh)
+                # Handle both formats: {"meta":..., "instruments": [...]} or just [...]
+                if isinstance(data, dict) and 'instruments' in data:
+                    seed_list = data['instruments']
+                elif isinstance(data, list):
+                    seed_list = data
+                app.logger.info(f"Loaded {len(seed_list)} instruments from exness_full_catalog")
         except Exception as e:
-            app.logger.warning(f"Failed to load instruments catalog: {e}")
-            seed_list = DEFAULT_INSTRUMENTS
-    
-    for inst_data in seed_list:
-        existing = Instrument.query.filter_by(symbol=inst_data['symbol']).first()
-        if not existing:
-            description = inst_data.get('description')
-            # If aliases provided, store them inside description as JSON
-            if 'aliases' in inst_data:
+            app.logger.warning(f"Failed to load exness_full_catalog: {e}")
+            # Fallback to instruments_catalog.json
+            catalog_path = os.path.join(project_root, 'data', 'instruments_catalog.json')
+            if os.path.exists(catalog_path):
                 try:
-                    desc_obj = {'aliases': inst_data.get('aliases', [])}
-                    if description:
-                        desc_obj['note'] = description
-                    description = json.dumps(desc_obj)
-                except Exception:
-                    description = None
-
+                    with open(catalog_path, 'r', encoding='utf-8') as fh:
+                        seed_list = json.load(fh)
+                        app.logger.info(f"Loaded {len(seed_list)} instruments from instruments_catalog")
+                except Exception as e2:
+                    app.logger.warning(f"Failed to load instruments_catalog: {e2}")
+    
+    # Deduplicate by symbol to avoid unique constraint errors
+    seen_symbols = set()
+    unique_instruments = []
+    for inst_data in seed_list:
+        symbol = inst_data.get('symbol', '').upper()
+        if symbol and symbol not in seen_symbols:
+            seen_symbols.add(symbol)
+            unique_instruments.append(inst_data)
+    
+    app.logger.info(f"Seeding {len(unique_instruments)} unique instruments")
+    
+    for inst_data in unique_instruments:
+        existing = Instrument.query.filter_by(symbol=inst_data['symbol'].upper()).first()
+        if not existing:
+            # Map the EXNESS fields to our model fields
             instrument = Instrument(
-                symbol=inst_data['symbol'],
-                name=inst_data['name'],
-                instrument_type=inst_data.get('type', inst_data.get('instrument_type', 'stock')),
-                category=inst_data.get('category', 'other'),
+                symbol=inst_data.get('symbol', '').upper(),
+                name=inst_data.get('name', inst_data.get('symbol', '')),
+                instrument_type=inst_data.get('instrument_type', 'forex'),
+                category=inst_data.get('category', 'Forex'),
                 pip_size=inst_data.get('pip_size', 0.0001),
                 tick_value=inst_data.get('tick_value', 1.0),
-                contract_size=inst_data.get('contract_size', 1.0),
-                price_decimals=inst_data.get('price_decimals', 4),
-                description=description
+                contract_size=inst_data.get('contract_size', 100000),
+                price_decimals=inst_data.get('price_decimals', 5),
+                is_active=True
             )
             db.session.add(instrument)
 
     try:
         db.session.commit()
-        app.logger.info(f"Seeded {len(seed_list)} instruments successfully")
+        app.logger.info(f"Successfully seeded instruments")
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Failed to seed instruments: {e}")
