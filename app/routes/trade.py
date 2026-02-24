@@ -180,8 +180,8 @@ def add():
             flash(f'❌ Invalid input: {str(e)}', 'danger')
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Add trade error: {e}")
             flash(f'❌ Error adding trade: {str(e)}', 'danger')
-            print(f"Add trade error: {e}")
     
     return render_template('trade/add.html', active_cooldown=active_cooldown)
 

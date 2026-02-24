@@ -140,7 +140,7 @@ def detect_asset_type(symbol: str) -> AssetType:
     for index in INDICES:
         if index in symbol_upper:
             return AssetType.INDEX
-    
+
     # Check for crypto
     for crypto in CRYPTOS:
         if crypto in symbol_upper:
@@ -208,15 +208,28 @@ def calculate_pnl(
     
     asset_type = detect_asset_type(symbol)
     config = ASSET_CONFIGS.get(asset_type, ASSET_CONFIGS[AssetType.FOREX_STANDARD])
-    
+
     # Calculate price difference based on direction
     if trade_type.upper() == 'BUY':
         price_diff = exit_price - entry_price
     else:  # SELL
         price_diff = entry_price - exit_price
-    
+
+    # Attempt to load instrument metadata from DB for more accurate calculations
+    instrument = None
+    try:
+        from app.models.instrument import Instrument
+        instrument = Instrument.query.filter(Instrument.symbol.ilike(symbol)).first()
+    except Exception:
+        instrument = None
+
+    # Determine pip/tick size (prefer DB metadata)
+    pip_size = config.pip_size
+    if instrument and getattr(instrument, 'pip_size', None):
+        pip_size = instrument.pip_size
+
     # Calculate pips
-    pips = price_diff / config.pip_size if config.pip_size != 0 else 0
+    pips = price_diff / pip_size if pip_size and pip_size != 0 else 0
     
     # Calculate P&L based on asset type
     if asset_type == AssetType.FOREX_STANDARD:
@@ -231,16 +244,21 @@ def calculate_pnl(
         #
         # Detect if USD is base currency (pip value needs conversion)
         symbol_upper = symbol.upper()
-        if symbol_upper.startswith('USD') and not symbol_upper.endswith('USD'):
-            # USD is base currency (USDCAD, USDCHF, etc.)
-            # Pip value in USD = $10 / exchange_rate
-            # Using exit price as the exchange rate for conversion
-            pip_value_per_lot = 10.0 / exit_price if exit_price else 10.0
+        # If we have DB instrument metadata, compute using contract_size (units per lot)
+        if instrument:
+            contract_size = instrument.contract_size or config.contract_size
+            pnl = price_diff * contract_size * lot_size
         else:
-            # USD is quote currency or other pairs
-            pip_value_per_lot = 10.0
-        
-        pnl = pips * pip_value_per_lot * lot_size
+            if symbol_upper.startswith('USD') and not symbol_upper.endswith('USD'):
+                # USD is base currency (USDCAD, USDCHF, etc.)
+                # Pip value in USD = $10 / exchange_rate
+                # Using exit price as the exchange rate for conversion
+                pip_value_per_lot = 10.0 / exit_price if exit_price else 10.0
+            else:
+                # USD is quote currency or other pairs
+                pip_value_per_lot = 10.0
+
+            pnl = pips * pip_value_per_lot * lot_size
         
     elif asset_type == AssetType.FOREX_JPY:
         # JPY pairs: 1 pip = 0.01

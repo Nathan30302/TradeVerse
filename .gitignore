@@ -144,6 +144,19 @@ ENV/
 env.bak/
 venv.bak/
 
+# Project-specific files
+# SQLite/dev DBs
+tradeverse.db
+*.db
+*.sqlite
+
+# Local test artifacts and temporary files
+temp_homepage.html
+scripts/output/
+
+# Environment examples (don't commit real secrets)
+# keep .env.example tracked as an example file
+
 # Spyder project settings
 .spyderproject
 .spyproject

@@ -26,6 +26,15 @@ class Instrument(db.Model):
     tick_value = db.Column(db.Float, default=1.0)   # For Indices: value per point
     contract_size = db.Column(db.Float, default=1.0)  # For Commodities: units per contract
     price_decimals = db.Column(db.Integer, default=4)  # Decimal places for price display
+    # Extended metadata for Exness-style instruments
+    base_currency = db.Column(db.String(10), nullable=True)
+    quote_currency = db.Column(db.String(10), nullable=True)
+    lot_min = db.Column(db.Float, default=0.01)
+    lot_max = db.Column(db.Float, default=100.0)
+    lot_step = db.Column(db.Float, default=0.01)
+    tick_size = db.Column(db.Float, default=0.01)
+    margin_rate = db.Column(db.Float, nullable=True)  # e.g., 0.02 means 2% margin requirement
+    pnl_method = db.Column(db.String(50), default='by_asset')  # how P&L should be computed
     
     # Category for UI Organization
     category = db.Column(db.String(50), default='other')  # forex, index, crypto, stock, commodity
@@ -65,6 +74,14 @@ class Instrument(db.Model):
             'tick_value': self.tick_value,
             'contract_size': self.contract_size,
             'price_decimals': self.price_decimals,
+            'base_currency': self.base_currency,
+            'quote_currency': self.quote_currency,
+            'lot_min': self.lot_min,
+            'lot_max': self.lot_max,
+            'lot_step': self.lot_step,
+            'tick_size': self.tick_size,
+            'margin_rate': self.margin_rate,
+            'pnl_method': self.pnl_method,
             'description': self.description,
             'aliases': aliases
         }

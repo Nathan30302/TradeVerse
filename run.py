@@ -49,8 +49,11 @@ if __name__ == '__main__':
     print('Open your browser to: http://localhost:5000')
     print('Press CTRL+C to stop\n')
     
+    # Respect the configured DEBUG flag so running locally in production mode
+    # doesn't accidentally enable the debugger. For production use Gunicorn
+    # via the Procfile which loads `app.wsgi:app`.
     app.run(
         host='0.0.0.0',
         port=5000,
-        debug=True
+        debug=app.config.get('DEBUG', False)
     )

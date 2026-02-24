@@ -7,6 +7,7 @@ Provides endpoints for:
 - Broker listing
 """
 from flask import Blueprint, request, jsonify
+from sqlalchemy import func
 from flask_login import login_required, current_user
 
 from app.services.instrument_catalog import (
@@ -279,3 +280,118 @@ def get_instrument_stats():
             'by_type': types
         }
     })
+
+
+@bp.route('/db/instruments/categories', methods=['GET'])
+@login_required
+def db_instrument_categories():
+    """Return available categories from DB instruments."""
+    from app.models.instrument import Instrument
+    cats = {}
+    q = Instrument.query.with_entities(Instrument.category).distinct().all()
+    cat_list = [c[0] for c in q if c[0]]
+    # Map to simple object
+    for c in cat_list:
+        key = c.lower() if isinstance(c, str) else str(c)
+        cats[key] = {'name': c}
+    return jsonify({'success': True, 'categories': cats})
+
+
+@bp.route('/db/instruments', methods=['GET'])
+@login_required
+def db_instruments():
+    """Return instruments stored in DB for a given category (or all)."""
+    from app.models.instrument import Instrument
+    category = request.args.get('category', '').strip()
+    limit = min(int(request.args.get('limit', 1000)), 5000)
+    q = Instrument.query.filter(Instrument.is_active == True)
+    if category:
+        q = q.filter(Instrument.category.ilike(f"%{category}%"))
+    instruments = q.order_by(Instrument.symbol).limit(limit).all()
+    out = []
+    for inst in instruments:
+        out.append({
+            'id': inst.id,
+            'symbol': inst.symbol,
+            'name': inst.name,
+            'type': inst.instrument_type,
+            'category': inst.category,
+            'pip_size': inst.pip_size,
+            'tick_value': inst.tick_value,
+            'contract_size': inst.contract_size,
+            'price_decimals': inst.price_decimals
+        })
+    return jsonify({'success': True, 'results': out, 'total': len(out)})
+
+
+@bp.route('/db/instruments/counts', methods=['GET'])
+@login_required
+def db_instrument_counts():
+    """Return total instruments and counts per category."""
+    from app.models.instrument import Instrument
+    # Total
+    total = Instrument.query.filter(Instrument.is_active == True).count()
+    # Per category
+    rows = Instrument.query.with_entities(Instrument.category, func.count(Instrument.id)).filter(Instrument.is_active == True).group_by(Instrument.category).all()
+    counts = {}
+    for cat, cnt in rows:
+        key = (cat or '').strip()
+        counts[key] = cnt
+
+    return jsonify({'success': True, 'total': total, 'by_category': counts})
+
+
+@bp.route('/db/instruments/quotes', methods=['GET'])
+@login_required
+def db_instrument_quotes():
+    """Return trader-focused instruments for the Dynamic Island rotator.
+    
+    Returns a curated list of professional trader instruments:
+    - BTCUSD (Bitcoin)
+    - XAUUSD (Gold)
+    - NAS100 (Nasdaq 100)
+    - US30 (Dow Jones)
+    - US500 (S&P 500)
+    - EURUSD (EUR/USD)
+    
+    Uses simulated price data for demonstration. Can be replaced with
+    real-time feeds from market data providers without changing the UI.
+    """
+    from app.models.instrument import Instrument
+    from app.services.simulated_market import market
+
+    # Curated list of trader-focused instruments (consistent across all pages)
+    trader_focused = ['BTCUSD', 'XAUUSD', 'NAS100', 'US30', 'US500', 'EURUSD']
+
+    limit = min(int(request.args.get('limit', 6)), 10)
+
+    # Load any DB instrument objects for better name/decimals
+    inst_objs = {}
+    db_insts = Instrument.query.filter(Instrument.symbol.in_(trader_focused)).all()
+    for i in db_insts:
+        inst_objs[i.symbol] = i
+
+    # Use the simulated market singleton which maintains prior price state
+    symbols = trader_focused[:limit]
+    quotes = market.get_quotes(symbols, instrument_objs=inst_objs)
+
+    # If the DB had no entries for some instruments, names may be placeholders; fill with friendly labels
+    fallback_names = {
+        'BTCUSD': 'Bitcoin',
+        'XAUUSD': 'Gold',
+        'NAS100': 'Nasdaq 100',
+        'US30': 'US30',
+        'US500': 'S&P 500',
+        'EURUSD': 'EUR/USD'
+    }
+    out = []
+    for q in quotes:
+        name = q.get('name') or fallback_names.get(q['symbol'], q['symbol'])
+        out.append({
+            'symbol': q['symbol'],
+            'name': name,
+            'price': q['price'],
+            'change_pct': q['change_pct']
+        })
+
+    return jsonify({'success': True, 'quotes': out})
