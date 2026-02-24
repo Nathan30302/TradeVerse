@@ -96,8 +96,8 @@ class Trade(db.Model):
     
     # ==================== Table Constraints ====================
     __table_args__ = (
-        CheckConstraint('trade_type IN ("BUY", "SELL")', name='check_trade_type'),
-        CheckConstraint('status IN ("OPEN", "CLOSED", "CANCELLED")', name='check_status'),
+        CheckConstraint("trade_type IN ('BUY', 'SELL')", name='check_trade_type'),
+        CheckConstraint("status IN ('OPEN', 'CLOSED', 'CANCELLED')", name='check_status'),
         CheckConstraint('lot_size > 0', name='check_lot_size'),
     )
     
