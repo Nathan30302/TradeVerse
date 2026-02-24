@@ -26,17 +26,29 @@
                             <div class="instrument-picker-container">
                                 <!-- Category Tabs -->
                                 <div class="instrument-categories mb-2">
-                                    <button type="button" class="category-tab active" data-category="forex">
-                                        <i class="fas fa-exchange-alt"></i> Forex
-                                    </button>
-                                    <button type="button" class="category-tab" data-category="index">
-                                        <i class="fas fa-chart-line"></i> Indices
-                                    </button>
-                                    <button type="button" class="category-tab" data-category="crypto">
+                                    <button type="button" class="category-tab active" data-category="crypto">
                                         <i class="fas fa-bitcoin-sign"></i> Crypto
                                     </button>
-                                    <button type="button" class="category-tab" data-category="commodity">
-                                        <i class="fas fa-oil-can"></i> Metals
+                                    <button type="button" class="category-tab" data-category="crypto_cross">
+                                        <i class="fas fa-link"></i> Crypto Cross
+                                    </button>
+                                    <button type="button" class="category-tab" data-category="energies">
+                                        <i class="fas fa-bolt"></i> Energies
+                                    </button>
+                                    <button type="button" class="category-tab" data-category="forex">
+                                        <i class="fas fa-exchange-alt"></i> Forex
+                                    </button>
+                                    <button type="button" class="category-tab" data-category="forex_indicator">
+                                        <i class="fas fa-chart-line"></i> Forex Indicator
+                                    </button>
+                                    <button type="button" class="category-tab" data-category="idx_large">
+                                        <i class="fas fa-building-columns"></i> IDX Large
+                                    </button>
+                                    <button type="button" class="category-tab" data-category="index">
+                                        <i class="fas fa-chart-bar"></i> Indices
+                                    </button>
+                                    <button type="button" class="category-tab" data-category="stocks">
+                                        <i class="fas fa-stock"></i> Stocks
                                     </button>
                                 </div>
 
@@ -216,12 +228,12 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <label for="pre_trade_plan" class="form-label fw-bold">Pre-Trade Plan</label>
-                        <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3"></textarea>
+                        <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" placeholder="Why are you taking this trade? What is your setup? What confirms your entry?"></textarea>
                     </div>
 
                     <div class="mb-3">
                         <label for="post_trade_notes" class="form-label fw-bold">Post-Trade Notes</label>
-                        <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3"></textarea>
+                        <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3" placeholder="What went well? What could improve? Did you follow your plan?"></textarea>
                     </div>
                 </div>
             </div>
