@@ -175,7 +175,9 @@ def ensure_instruments():
     """
     # Seed from a catalog file if present, otherwise fallback to DEFAULT_INSTRUMENTS
     if Instrument.query.first() is None:
-        catalog_path = os.path.join(current_app.root_path, 'data', 'instruments_catalog.json')
+        # Look in project root data folder, not app/data
+        project_root = os.path.dirname(os.path.dirname(current_app.root_path))
+        catalog_path = os.path.join(project_root, 'data', 'instruments_catalog.json')
         seed_list = DEFAULT_INSTRUMENTS
         if os.path.exists(catalog_path):
             try:

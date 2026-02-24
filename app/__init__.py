@@ -95,6 +95,9 @@ def create_app(config_name='default'):
         # Create database tables
         db.create_all()
         
+        # Seed instruments from catalog on startup
+        _seed_instruments(app)
+        
         # Auto-add missing columns for local dev (SQLite) to avoid OperationalError
         # This is a workaround for dev environments without proper migrations
         from sqlalchemy import inspect, text
@@ -203,6 +206,65 @@ def create_app(config_name='default'):
     register_context_processors(app)
     
     return app
+
+
+def _seed_instruments(app):
+    """Seed instruments from catalog on startup."""
+    import json
+    from app.models.instrument import Instrument, DEFAULT_INSTRUMENTS
+    
+    # Check if instruments already exist
+    if Instrument.query.first() is not None:
+        return
+    
+    # Try to load from project root data folder
+    project_root = os.path.dirname(os.path.dirname(app.root_path))
+    catalog_path = os.path.join(project_root, 'data', 'instruments_catalog.json')
+    
+    seed_list = DEFAULT_INSTRUMENTS
+    if os.path.exists(catalog_path):
+        try:
+            with open(catalog_path, 'r', encoding='utf-8') as fh:
+                seed_list = json.load(fh)
+                app.logger.info(f"Loaded {len(seed_list)} instruments from catalog")
+        except Exception as e:
+            app.logger.warning(f"Failed to load instruments catalog: {e}")
+            seed_list = DEFAULT_INSTRUMENTS
+    
+    for inst_data in seed_list:
+        existing = Instrument.query.filter_by(symbol=inst_data['symbol']).first()
+        if not existing:
+            description = inst_data.get('description')
+            # If aliases provided, store them inside description as JSON
+            if 'aliases' in inst_data:
+                try:
+                    desc_obj = {'aliases': inst_data.get('aliases', [])}
+                    if description:
+                        desc_obj['note'] = description
+                    description = json.dumps(desc_obj)
+                except Exception:
+                    description = None
+
+            instrument = Instrument(
+                symbol=inst_data['symbol'],
+                name=inst_data['name'],
+                instrument_type=inst_data.get('type', inst_data.get('instrument_type', 'stock')),
+                category=inst_data.get('category', 'other'),
+                pip_size=inst_data.get('pip_size', 0.0001),
+                tick_value=inst_data.get('tick_value', 1.0),
+                contract_size=inst_data.get('contract_size', 1.0),
+                price_decimals=inst_data.get('price_decimals', 4),
+                description=description
+            )
+            db.session.add(instrument)
+
+    try:
+        db.session.commit()
+        app.logger.info(f"Seeded {len(seed_list)} instruments successfully")
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Failed to seed instruments: {e}")
+
 
 def register_error_handlers(app):
     """Register custom error handlers"""

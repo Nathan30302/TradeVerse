@@ -1,5 +1,139 @@
 [
   {
+    "symbol": "BTCUSD",
+    "name": "Bitcoin / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 2,
+    "aliases": ["BTCUSD", "BTC", "XBT", "Bitcoin"]
+  },
+  {
+    "symbol": "ETHUSD",
+    "name": "Ethereum / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 2,
+    "aliases": ["ETHUSD", "ETH", "Ethereum"]
+  },
+  {
+    "symbol": "XRPUSD",
+    "name": "Ripple / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 4,
+    "aliases": ["XRPUSD", "XRP", "Ripple"]
+  },
+  {
+    "symbol": "SOLUSD",
+    "name": "Solana / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 2,
+    "aliases": ["SOLUSD", "SOL", "Solana"]
+  },
+  {
+    "symbol": "ADAUSD",
+    "name": "Cardano / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 4,
+    "aliases": ["ADAUSD", "ADA", "Cardano"]
+  },
+  {
+    "symbol": "DOTUSD",
+    "name": "Polkadot / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 2,
+    "aliases": ["DOTUSD", "DOT", "Polkadot"]
+  },
+  {
+    "symbol": "DOGEUSD",
+    "name": "Dogecoin / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 5,
+    "aliases": ["DOGEUSD", "DOGE", "Dogecoin"]
+  },
+  {
+    "symbol": "AVAXUSD",
+    "name": "Avalanche / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 2,
+    "aliases": ["AVAXUSD", "AVAX", "Avalanche"]
+  },
+  {
+    "symbol": "LINKUSD",
+    "name": "Chainlink / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 2,
+    "aliases": ["LINKUSD", "LINK", "Chainlink"]
+  },
+  {
+    "symbol": "MATICUSD",
+    "name": "Polygon / US Dollar",
+    "type": "crypto",
+    "category": "crypto",
+    "price_decimals": 4,
+    "aliases": ["MATICUSD", "MATIC", "Polygon"]
+  },
+  {
+    "symbol": "ETHBTC",
+    "name": "Ethereum / Bitcoin",
+    "type": "crypto",
+    "category": "crypto_cross",
+    "price_decimals": 4,
+    "aliases": ["ETHBTC", "ETH/BTC"]
+  },
+  {
+    "symbol": "XRPBTC",
+    "name": "Ripple / Bitcoin",
+    "type": "crypto",
+    "category": "crypto_cross",
+    "price_decimals": 8,
+    "aliases": ["XRPBTC", "XRP/BTC"]
+  },
+  {
+    "symbol": "SOLBTC",
+    "name": "Solana / Bitcoin",
+    "type": "crypto",
+    "category": "crypto_cross",
+    "price_decimals": 6,
+    "aliases": ["SOLBTC", "SOL/BTC"]
+  },
+  {
+    "symbol": "WTIUSD",
+    "name": "WTI Crude Oil",
+    "type": "commodity",
+    "category": "energies",
+    "pip_size": 0.01,
+    "contract_size": 1000,
+    "price_decimals": 2,
+    "aliases": ["WTIUSD", "WTI", " Crude Oil", "OIL"]
+  },
+  {
+    "symbol": "BRNUSD",
+    "name": "Brent Crude Oil",
+    "type": "commodity",
+    "category": "energies",
+    "pip_size": 0.01,
+    "contract_size": 1000,
+    "price_decimals": 2,
+    "aliases": ["BRNUSD", "BRN", "Brent"]
+  },
+  {
+    "symbol": "NATGAS",
+    "name": "Natural Gas",
+    "type": "commodity",
+    "category": "energies",
+    "pip_size": 0.001,
+    "contract_size": 10000,
+    "price_decimals": 3,
+    "aliases": ["NATGAS", "NG", "Natural Gas"]
+  },
+  {
     "symbol": "EURUSD",
     "name": "Euro / US Dollar",
     "type": "forex",
@@ -9,13 +143,175 @@
     "aliases": ["EURUSD", "EUR/USD", "EUR"]
   },
   {
+    "symbol": "GBPUSD",
+    "name": "British Pound / US Dollar",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["GBPUSD", "GBP/USD", "GBP", "Cable"]
+  },
+  {
+    "symbol": "USDJPY",
+    "name": "US Dollar / Japanese Yen",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.01,
+    "price_decimals": 2,
+    "aliases": ["USDJPY", "USD/JPY", "JPY"]
+  },
+  {
+    "symbol": "AUDUSD",
+    "name": "Australian Dollar / US Dollar",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["AUDUSD", "AUD/USD", "AUD"]
+  },
+  {
+    "symbol": "USDCAD",
+    "name": "US Dollar / Canadian Dollar",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["USDCAD", "USD/CAD", "CAD"]
+  },
+  {
+    "symbol": "USDCHF",
+    "name": "US Dollar / Swiss Franc",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["USDCHF", "USD/CHF", "CHF"]
+  },
+  {
+    "symbol": "NZDUSD",
+    "name": "New Zealand Dollar / US Dollar",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["NZDUSD", "NZD/USD", "NZD", "Kiwi"]
+  },
+  {
+    "symbol": "EURGBP",
+    "name": "Euro / British Pound",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["EURGBP", "EUR/GBP"]
+  },
+  {
+    "symbol": "EURJPY",
+    "name": "Euro / Japanese Yen",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.01,
+    "price_decimals": 2,
+    "aliases": ["EURJPY", "EUR/JPY"]
+  },
+  {
+    "symbol": "GBPJPY",
+    "name": "British Pound / Japanese Yen",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.01,
+    "price_decimals": 2,
+    "aliases": ["GBPJPY", "GBP/JPY"]
+  },
+  {
+    "symbol": "AUDJPY",
+    "name": "Australian Dollar / Japanese Yen",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.01,
+    "price_decimals": 2,
+    "aliases": ["AUDJPY", "AUD/JPY"]
+  },
+  {
+    "symbol": "EURAUD",
+    "name": "Euro / Australian Dollar",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["EURAUD", "EUR/AUD"]
+  },
+  {
+    "symbol": "GBPAUD",
+    "name": "British Pound / Australian Dollar",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["GBPAUD", "GBP/AUD"]
+  },
+  {
+    "symbol": "AUDNZD",
+    "name": "Australian Dollar / New Zealand Dollar",
+    "type": "forex",
+    "category": "forex",
+    "pip_size": 0.0001,
+    "price_decimals": 4,
+    "aliases": ["AUDNZD", "AUD/NZD"]
+  },
+  {
+    "symbol": "US30",
+    "name": "US Wall Street 30",
+    "type": "index",
+    "category": "idx_large",
+    "tick_value": 1.0,
+    "price_decimals": 1,
+    "aliases": ["US30", "DJI", "Dow Jones", "Wall Street"]
+  },
+  {
+    "symbol": "US100",
+    "name": "US Tech 100",
+    "type": "index",
+    "category": "idx_large",
+    "tick_value": 1.0,
+    "price_decimals": 1,
+    "aliases": ["US100", "NDX", "Nasdaq 100", "NASDAQ100"]
+  },
+  {
+    "symbol": "US500",
+    "name": "US S&P 500",
+    "type": "index",
+    "category": "idx_large",
+    "tick_value": 1.0,
+    "price_decimals": 1,
+    "aliases": ["US500", "SPX", "S&P500", "S&P 500"]
+  },
+  {
+    "symbol": "GER40",
+    "name": "Germany 40",
+    "type": "index",
+    "category": "idx_large",
+    "tick_value": 1.0,
+    "price_decimals": 1,
+    "aliases": ["GER40", "DAX", "Germany 40", "DAX40"]
+  },
+  {
+    "symbol": "UK100",
+    "name": "UK 100",
+    "type": "index",
+    "category": "idx_large",
+    "tick_value": 1.0,
+    "price_decimals": 1,
+    "aliases": ["UK100", "FTSE", "FTSE100", "FTSE 100"]
+  },
+  {
     "symbol": "SPX",
     "name": "S&P 500",
     "type": "index",
     "category": "index",
     "tick_value": 1.0,
     "price_decimals": 2,
-    "aliases": ["SPX", "S&P500", "US500", "S&P 500", "USA"]
+    "aliases": ["SPX", "S&P500", "US500", "S&P 500"]
   },
   {
     "symbol": "NDX",
@@ -27,6 +323,33 @@
     "aliases": ["NDX", "NAS100", "NASDAQ100", "NAS"]
   },
   {
+    "symbol": "FTSE",
+    "name": "FTSE 100",
+    "type": "index",
+    "category": "index",
+    "tick_value": 1.0,
+    "price_decimals": 2,
+    "aliases": ["FTSE", "FTSE100", "UK100"]
+  },
+  {
+    "symbol": "DAX",
+    "name": "DAX 40",
+    "type": "index",
+    "category": "index",
+    "tick_value": 1.0,
+    "price_decimals": 2,
+    "aliases": ["DAX", "DAX40", "GER40"]
+  },
+  {
+    "symbol": "NIFTY",
+    "name": "India Nifty 50",
+    "type": "index",
+    "category": "index",
+    "tick_value": 1.0,
+    "price_decimals": 1,
+    "aliases": ["NIFTY", "NIFTY50", "India50"]
+  },
+  {
     "symbol": "XAUUSD",
     "name": "Gold / US Dollar",
     "type": "commodity",
@@ -34,14 +357,96 @@
     "pip_size": 0.01,
     "contract_size": 100,
     "price_decimals": 2,
-    "aliases": ["XAUUSD", "GOLD", "XAU"]
+    "aliases": ["XAUUSD", "GOLD", "XAU", "Gold"]
   },
   {
-    "symbol": "BTCUSD",
-    "name": "Bitcoin / US Dollar",
-    "type": "crypto",
-    "category": "crypto",
+    "symbol": "XAGUSD",
+    "name": "Silver / US Dollar",
+    "type": "commodity",
+    "category": "commodity",
+    "pip_size": 0.01,
+    "contract_size": 5000,
     "price_decimals": 2,
-    "aliases": ["BTCUSD", "BTC", "XBT"]
+    "aliases": ["XAGUSD", "SILVER", "XAG", "Silver"]
+  },
+  {
+    "symbol": "AAPL",
+    "name": "Apple Inc.",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["AAPL", "Apple"]
+  },
+  {
+    "symbol": "MSFT",
+    "name": "Microsoft Corporation",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["MSFT", "Microsoft"]
+  },
+  {
+    "symbol": "GOOGL",
+    "name": "Alphabet Inc.",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["GOOGL", "Google", "Alphabet"]
+  },
+  {
+    "symbol": "AMZN",
+    "name": "Amazon.com Inc.",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["AMZN", "Amazon"]
+  },
+  {
+    "symbol": "TSLA",
+    "name": "Tesla Inc.",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["TSLA", "Tesla"]
+  },
+  {
+    "symbol": "NVDA",
+    "name": "NVIDIA Corporation",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["NVDA", "Nvidia"]
+  },
+  {
+    "symbol": "META",
+    "name": "Meta Platforms Inc.",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["META", "Facebook", "Meta"]
+  },
+  {
+    "symbol": "JPM",
+    "name": "JPMorgan Chase & Co.",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["JPM", "JPMorgan"]
+  },
+  {
+    "symbol": "V",
+    "name": "Visa Inc.",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["V", "Visa"]
+  },
+  {
+    "symbol": "WMT",
+    "name": "Walmart Inc.",
+    "type": "stock",
+    "category": "stocks",
+    "price_decimals": 2,
+    "aliases": ["WMT", "Walmart"]
   }
 ]
