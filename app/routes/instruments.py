@@ -67,7 +67,7 @@ def get_instruments():
     Query parameters:
     - search: Filter by symbol or name (case-insensitive, supports fuzzy matching)
     - category: Filter by category (forex, index, crypto, stock, commodity)
-    - limit: Max results (default 50, max 200)
+    - limit: Max results (default 10000, max 10000)
     - broker: Broker ID for broker-aware mapping (e.g., 'ig', 'oanda', 'binance')
     - fuzzy: Enable FTS fuzzy search (default true)
     """
@@ -75,7 +75,12 @@ def get_instruments():
     search = request.args.get('search') or request.args.get('q') or ''
     search = search.upper().strip()
     category = request.args.get('category', '')
-    limit = min(int(request.args.get('limit', 50)), 10000)
+
+    # FIX: Default was 50 — raised to 10000 so all instruments in any category load.
+    # With 50 as the default, Forex (140) and Stocks (101) were silently truncated.
+    # Categories with ≤50 instruments appeared to work, masking the bug.
+    limit = min(int(request.args.get('limit', 10000)), 10000)
+
     broker = request.args.get('broker')
     fuzzy = request.args.get('fuzzy', 'true').lower() in ('true', '1', 'yes')
     

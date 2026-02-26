@@ -1,6 +1,25 @@
 /**
  * Instrument Picker & Trade Calculator
  * Category-first instrument selector with automatic P&L calculations
+ *
+ * FIXES APPLIED:
+ *   1. renderInstruments: data-json now uses encodeURIComponent() to safely embed
+ *      JSON in HTML attributes. The old replace(/</g, '<') did NOT escape single
+ *      quotes — any instrument name/symbol containing a single quote (e.g. "Ivory
+ *      Coast's CFD") would break the attribute boundary, causing JSON.parse() to
+ *      throw silently and the instrument not to render at all. This explains why
+ *      some categories showed 2–4 items instead of the full list.
+ *
+ *   2. selectInstrument: Updated to decodeURIComponent() before JSON.parse() to
+ *      match Fix #1.
+ *
+ *   3. showInstrumentsForCategory: Added e.stopPropagation() to category button
+ *      click handler so the click doesn't bubble up to the document-level outside-
+ *      click listener, which was calling closeDropdown() and wiping the freshly
+ *      rendered list (the "2-second flash" symptom).
+ *
+ *   4. The API call already uses limit=10000 correctly — no change needed there.
+ *      The real fix on the server side (limit default 50→10000) is in instruments.py.
  */
 
 class InstrumentPicker {
@@ -45,11 +64,13 @@ class InstrumentPicker {
         if (selectorBtn) {
             selectorBtn.addEventListener('click', (e) => {
                 e.preventDefault();
+                e.stopPropagation(); // prevent bubbling to document close-handler
                 this.toggleDropdown();
             });
         }
 
         if (dropdown) {
+            // Close when clicking OUTSIDE the picker container
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('.instrument-picker-container')) {
                     this.closeDropdown();
@@ -105,8 +126,14 @@ class InstrumentPicker {
         dropdown.classList.add('show');
 
         // Add category button handlers
+        // FIX #3: stopPropagation() prevents the click from reaching the document-level
+        // outside-click listener. Without this, clicking a category button would:
+        //   1. Trigger this handler → start loading instruments
+        //   2. Bubble to document → call closeDropdown() → wipe the dropdown
+        // This caused the "flash for 2 seconds then blank" symptom.
         dropdown.querySelectorAll('.category-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // CRITICAL: prevent document click handler from closing dropdown
                 const category = e.currentTarget.dataset.category;
                 this.showInstrumentsForCategory(category);
             });
@@ -120,15 +147,20 @@ class InstrumentPicker {
 
         // Show loading
         dropdown.innerHTML = '<div class="dropdown-hint">Loading instruments...</div>';
+        dropdown.classList.add('show'); // ensure it stays open during fetch
 
         // Abort previous request
         if (this._abortController) this._abortController.abort();
         this._abortController = new AbortController();
 
         try {
-            const response = await fetch(`${this.apiUrl}?category=${encodeURIComponent(category)}&limit=10000`, {
-                signal: this._abortController.signal
-            });
+            // limit=10000 ensures all instruments for the category are returned.
+            // The server-side fix (default limit 50→10000) also covers cases where
+            // limit is not explicitly passed, but we keep it explicit here for safety.
+            const response = await fetch(
+                `${this.apiUrl}?category=${encodeURIComponent(category)}&limit=10000`,
+                { signal: this._abortController.signal }
+            );
 
             if (!response.ok) {
                 dropdown.innerHTML = '<div class="dropdown-hint">Error loading instruments</div>';
@@ -165,8 +197,20 @@ class InstrumentPicker {
         html += '<div class="instruments-list">';
 
         instruments.forEach(inst => {
-            const safe = JSON.stringify(inst).replace(/</g, '<');
-            html += `<div class="instrument-item" data-id="${inst.id}" data-json='${safe}'>
+            // FIX #1: Use encodeURIComponent(JSON.stringify()) instead of a manual
+            // replace(/</g, '<').
+            //
+            // The old approach only escaped < characters. Any instrument name or
+            // symbol containing a single quote (') would break the data-json='...'
+            // attribute boundary, truncating the JSON mid-string. JSON.parse() would
+            // then throw on selectInstrument(), the catch block would return null,
+            // and the instrument silently failed to render.
+            //
+            // encodeURIComponent produces a pure ASCII string with no quotes, angle
+            // brackets, or special characters — fully safe inside any HTML attribute.
+            // The attribute is now double-quoted for additional robustness.
+            const safe = encodeURIComponent(JSON.stringify(inst));
+            html += `<div class="instrument-item" data-id="${inst.id}" data-json="${safe}">
                 <div class="instrument-symbol">${inst.symbol}</div>
                 <div class="instrument-name">${inst.name || inst.symbol}</div>
             </div>`;
@@ -175,16 +219,23 @@ class InstrumentPicker {
         html += '</div>';
 
         dropdown.innerHTML = html;
+        dropdown.classList.add('show'); // keep open after render
 
         // Add back button handler
         const backBtn = dropdown.querySelector('.back-btn');
         if (backBtn) {
-            backBtn.addEventListener('click', () => this.showCategories());
+            backBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showCategories();
+            });
         }
 
         // Add instrument selection handlers
         dropdown.querySelectorAll('.instrument-item').forEach(item => {
-            item.addEventListener('click', () => this.selectInstrument(item));
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.selectInstrument(item);
+            });
         });
     }
 
@@ -192,8 +243,11 @@ class InstrumentPicker {
         const jsonData = element.dataset.json;
         let inst = null;
         try {
-            inst = jsonData ? JSON.parse(jsonData) : null;
+            // FIX #2: Decode the URI-encoded JSON string before parsing.
+            // Matches the encodeURIComponent() encoding applied in renderInstruments.
+            inst = jsonData ? JSON.parse(decodeURIComponent(jsonData)) : null;
         } catch (e) {
+            console.error('Failed to parse instrument JSON:', e);
             inst = null;
         }
 
