@@ -29,11 +29,11 @@ class InstrumentPicker {
                 this.categories = Object.keys(categoryCounts).sort();
             } else {
                 // Fallback categories
-                this.categories = ['forex', 'index', 'crypto', 'commodity', 'stock'];
+                this.categories = ['forex', 'crypto_cross', 'crypto', 'indices', 'stocks', 'commodity', 'forexindicator'];
             }
         } catch (error) {
             console.error('Failed to load categories:', error);
-            this.categories = ['forex', 'index', 'crypto', 'commodity', 'stock'];
+            this.categories = ['forex', 'crypto_cross', 'crypto', 'indices', 'stocks', 'commodity', 'forexindicator'];
         }
     }
 
@@ -288,9 +288,15 @@ class InstrumentPicker {
         const labels = {
             'forex': 'Forex',
             'index': 'Indices',
+            'indices': 'Indices',
             'crypto': 'Cryptocurrency',
-            'commodity': 'Commodities',
-            'stock': 'Stocks'
+            'crypto_cross': 'Crypto Cross',
+            'commodity': 'Energies',
+            'energies': 'Energies',
+            'stock': 'Stocks',
+            'stocks': 'Stocks',
+            'forexindicator': 'Forex Indicator',
+            'forex_indicator': 'Forex Indicator'
         };
         return labels[category] || category.charAt(0).toUpperCase() + category.slice(1);
     }
@@ -299,9 +305,15 @@ class InstrumentPicker {
         const icons = {
             'forex': 'fas fa-exchange-alt',
             'index': 'fas fa-chart-line',
+            'indices': 'fas fa-chart-line',
             'crypto': 'fab fa-bitcoin',
+            'crypto_cross': 'fab fa-bitcoin',
             'commodity': 'fas fa-oil-can',
-            'stock': 'fas fa-building'
+            'energies': 'fas fa-oil-can',
+            'stock': 'fas fa-building',
+            'stocks': 'fas fa-building',
+            'forexindicator': 'fas fa-chart-line',
+            'forex_indicator': 'fas fa-chart-line'
         };
         return icons[category] || 'fas fa-question';
     }

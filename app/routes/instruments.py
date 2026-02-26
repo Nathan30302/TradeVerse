@@ -17,6 +17,46 @@ import difflib
 
 bp = Blueprint('instruments', __name__, url_prefix='/api/instruments')
 
+# Category mapping: frontend category names -> database category names (case-insensitive)
+# The catalog uses: Forex, Crypto Cross, Crypto, Energies, Indices, Stocks, IDX-Large, Forex Indicator
+# Frontend expects: forex, crypto, index, stock, commodity
+CATEGORY_MAP = {
+    # Frontend category (lowercase) -> list of possible DB category values
+    'forex': ['Forex', 'forex', 'FOREX'],
+    'crypto': ['Crypto', 'crypto', 'CRYPT'],
+    'crypto_cross': ['Crypto Cross', 'crypto cross', 'CRYPTO_CROSS'],
+    'index': ['Indices', 'indices', 'INDEX', 'IDX-Large', 'idx-large'],
+    'indices': ['Indices', 'indices', 'INDEX', 'IDX-Large', 'idx-large'],
+    'stock': ['Stocks', 'stocks', 'STOCK'],
+    'stocks': ['Stocks', 'stocks', 'STOCK'],
+    'commodity': ['Energies', 'energies', 'COMMODITY'],
+    'energies': ['Energies', 'energies', 'COMMODITY'],
+    'forex_indicator': ['Forex Indicator', 'forex indicator', 'FOREX_INDICATOR'],
+    'forexindicator': ['Forex Indicator', 'forex indicator', 'FOREX_INDICATOR'],
+}
+
+# Reverse mapping: DB category -> frontend category
+DB_TO_FRONTEND = {
+    'Forex': 'forex',
+    'Crypto Cross': 'crypto_cross',
+    'Crypto': 'crypto',
+    'Energies': 'commodity',
+    'Indices': 'indices',
+    'Stocks': 'stocks',
+    'IDX-Large': 'indices',
+    'Forex Indicator': 'forexindicator',
+}
+
+def normalize_category_for_frontend(db_category):
+    """Convert database category to frontend-friendly category name."""
+    if not db_category:
+        return 'other'
+    return DB_TO_FRONTEND.get(db_category, db_category.lower())
+
+def get_db_categories_for_frontend(frontend_category):
+    """Get list of possible database category values for a frontend category."""
+    return CATEGORY_MAP.get(frontend_category.lower(), [frontend_category])
+
 @bp.route('', methods=['GET'])
 def get_instruments():
     """
@@ -41,7 +81,12 @@ def get_instruments():
     if not search:
         query = Instrument.query.filter_by(is_active=True)
         if category:
-            query = query.filter_by(category=category.lower())
+            # Use case-insensitive category filtering with mapping
+            db_categories = get_db_categories_for_frontend(category)
+            # Use OR conditions to match any of the possible DB category values
+            from sqlalchemy import or_
+            category_conditions = [Instrument.category == cat for cat in db_categories]
+            query = query.filter(or_(*category_conditions))
         instruments = query.order_by(Instrument.symbol).limit(limit).all()
         return jsonify([i.to_dict() for i in instruments])
 
@@ -156,15 +201,62 @@ def get_instrument_by_symbol(symbol):
 
 @bp.route('/categories', methods=['GET'])
 def get_categories():
-    """Get available instrument categories with count"""
-    categories = db.session.query(
+    """Get available instrument categories with count (normalized for frontend)"""
+    # Get raw categories from DB
+    raw_categories = db.session.query(
         Instrument.category,
         db.func.count(Instrument.id).label('count')
     ).filter_by(is_active=True).group_by(Instrument.category).all()
     
-    return jsonify({
-        cat: count for cat, count in categories
-    })
+    # Group by frontend category and sum counts
+    frontend_categories = {}
+    for db_cat, count in raw_categories:
+        frontend_cat = normalize_category_for_frontend(db_cat)
+        if frontend_cat in frontend_categories:
+            frontend_categories[frontend_cat] += count
+        else:
+            frontend_categories[frontend_cat] = count
+    
+    return jsonify(frontend_categories)
+
+
+@bp.route('/categories/frontend', methods=['GET'])
+def get_frontend_categories():
+    """Get categories formatted specifically for the frontend picker UI.
+    
+    Returns categories with labels, icons, and counts that match the expected UI format.
+    """
+    # Get all active instruments grouped by normalized category
+    raw_categories = db.session.query(
+        Instrument.category,
+        db.func.count(Instrument.id).label('count')
+    ).filter_by(is_active=True).group_by(Instrument.category).all()
+    
+    # Build frontend-friendly category list with icons and labels
+    category_info = {
+        'forex': {'label': 'Forex', 'icon': 'fas fa-exchange-alt', 'count': 0},
+        'crypto_cross': {'label': 'Crypto Cross', 'icon': 'fab fa-bitcoin', 'count': 0},
+        'crypto': {'label': 'Crypto', 'icon': 'fab fa-bitcoin', 'count': 0},
+        'indices': {'label': 'Indices', 'icon': 'fas fa-chart-line', 'count': 0},
+        'stocks': {'label': 'Stocks', 'icon': 'fas fa-building', 'count': 0},
+        'commodity': {'label': 'Energies', 'icon': 'fas fa-oil-can', 'count': 0},
+        'forexindicator': {'label': 'Forex Indicator', 'icon': 'fas fa-chart-line', 'count': 0},
+    }
+    
+    for db_cat, count in raw_categories:
+        frontend_cat = normalize_category_for_frontend(db_cat)
+        if frontend_cat in category_info:
+            category_info[frontend_cat]['count'] += count
+        elif db_cat and db_cat.lower() in category_info:
+            category_info[db_cat.lower()]['count'] += count
+    
+    # Filter out empty categories and format for frontend
+    result = {}
+    for key, info in category_info.items():
+        if info['count'] > 0:
+            result[key] = info['count']
+    
+    return jsonify(result)
 
 
 @bp.before_request
