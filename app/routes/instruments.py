@@ -20,6 +20,7 @@ bp = Blueprint('instruments', __name__, url_prefix='/api/instruments')
 # Category mapping: frontend category names -> database category names (case-insensitive)
 # The catalog uses: Forex, Crypto Cross, Crypto, Energies, Indices, Stocks, IDX-Large, Forex Indicator
 # Frontend expects: forex, crypto, index, stock, commodity
+# Note: idx_large maps to Indices in the database (IDX-Large)
 CATEGORY_MAP = {
     # Frontend category (lowercase) -> list of possible DB category values
     'forex': ['Forex', 'forex', 'FOREX'],
@@ -27,6 +28,7 @@ CATEGORY_MAP = {
     'crypto_cross': ['Crypto Cross', 'crypto cross', 'CRYPTO_CROSS'],
     'index': ['Indices', 'indices', 'INDEX', 'IDX-Large', 'idx-large'],
     'indices': ['Indices', 'indices', 'INDEX', 'IDX-Large', 'idx-large'],
+    'idx_large': ['IDX-Large', 'idx-large', 'Indices', 'indices', 'INDEX'],
     'stock': ['Stocks', 'stocks', 'STOCK'],
     'stocks': ['Stocks', 'stocks', 'STOCK'],
     'commodity': ['Energies', 'energies', 'COMMODITY'],
@@ -43,7 +45,7 @@ DB_TO_FRONTEND = {
     'Energies': 'commodity',
     'Indices': 'indices',
     'Stocks': 'stocks',
-    'IDX-Large': 'indices',
+    'IDX-Large': 'idx_large',
     'Forex Indicator': 'forexindicator',
 }
 
