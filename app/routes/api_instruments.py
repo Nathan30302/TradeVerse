@@ -282,32 +282,103 @@ def get_instrument_stats():
     })
 
 
+# Map DB category names to frontend-friendly names
+DB_TO_FRONTEND_CATEGORY = {
+    'Forex': 'forex',
+    'Crypto Cross': 'crypto_cross',
+    'Crypto': 'crypto',
+    'Energies': 'commodity',
+    'Indices': 'indices',
+    'Stocks': 'stocks',
+    'IDX-Large': 'idx_large',
+    'Forex Indicator': 'forexindicator',
+}
+
 @bp.route('/db/instruments/categories', methods=['GET'])
 @login_required
 def db_instrument_categories():
-    """Return available categories from DB instruments."""
+    """Return available categories from DB instruments with frontend-compatible keys."""
     from app.models.instrument import Instrument
     cats = {}
     q = Instrument.query.with_entities(Instrument.category).distinct().all()
     cat_list = [c[0] for c in q if c[0]]
-    # Map to simple object
+    
+    # Map DB category names to frontend-friendly names
     for c in cat_list:
-        key = c.lower() if isinstance(c, str) else str(c)
-        cats[key] = {'name': c}
+        frontend_key = DB_TO_FRONTEND_CATEGORY.get(c, c.lower())
+        cats[frontend_key] = {'name': c}
+    
+    # Also add all the known categories even if not in DB (for template tabs)
+    known_categories = {
+        'crypto': {'name': 'Crypto'},
+        'crypto_cross': {'name': 'Crypto Cross'},
+        'energies': {'name': 'Energies'},
+        'forex': {'name': 'Forex'},
+        'forex_indicator': {'name': 'Forex Indicator'},
+        'forexindicator': {'name': 'Forex Indicator'},
+        'idx_large': {'name': 'IDX Large'},
+        'index': {'name': 'Indices'},
+        'indices': {'name': 'Indices'},
+        'stocks': {'name': 'Stocks'},
+    }
+    
+    for key, val in known_categories.items():
+        if key not in cats:
+            cats[key] = val
+    
+    print(f"[db_instrument_categories] Returning {len(cats)} categories: {list(cats.keys())}")
     return jsonify({'success': True, 'categories': cats})
 
+
+# Category mapping: frontend category names -> database category names
+# This is the SAME mapping used in app/routes/instruments.py
+FRONTEND_TO_DB_CATEGORY = {
+    'forex': ['Forex'],
+    'crypto_cross': ['Crypto Cross'],
+    'crypto': ['Crypto'],
+    'indices': ['Indices', 'IDX-Large'],
+    'idx_large': ['IDX-Large', 'Indices'],
+    'stocks': ['Stocks'],
+    'commodity': ['Energies'],
+    'energies': ['Energies'],
+    'forexindicator': ['Forex Indicator'],
+    'forex_indicator': ['Forex Indicator'],
+}
 
 @bp.route('/db/instruments', methods=['GET'])
 @login_required
 def db_instruments():
     """Return instruments stored in DB for a given category (or all)."""
     from app.models.instrument import Instrument
+    from sqlalchemy import or_
+    
     category = request.args.get('category', '').strip()
     limit = min(int(request.args.get('limit', 1000)), 5000)
     q = Instrument.query.filter(Instrument.is_active == True)
+    
     if category:
-        q = q.filter(Instrument.category.ilike(f"%{category}%"))
+        # First check if there's a direct mapping
+        db_categories = FRONTEND_TO_DB_CATEGORY.get(category.lower(), [category])
+        
+        # Build OR filter for all possible DB category values
+        filters = []
+        for db_cat in db_categories:
+            filters.append(Instrument.category.ilike(f"%{db_cat}%"))
+        
+        # Also try the raw category value (for backward compatibility)
+        filters.append(Instrument.category.ilike(f"%{category}%"))
+        
+        # Apply the filter
+        if filters:
+            q = q.filter(or_(*filters))
+    
     instruments = q.order_by(Instrument.symbol).limit(limit).all()
+    
+    # Debug: log what we're returning
+    print(f"[db_instruments] category={category}, found={len(instruments)}")
+    categories_found = set(inst.category for inst in instruments if inst.category)
+    print(f"[db_instruments] categories in results: {categories_found}")
+    
     out = []
     for inst in instruments:
         out.append({
