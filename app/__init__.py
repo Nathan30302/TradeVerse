@@ -145,9 +145,7 @@ def create_app(config_name='default'):
     app.register_blueprint(imports_routes.bp)
     app.register_blueprint(api_instruments.bp)
 
-    # TEMPORARY: Admin reset route — REMOVE AFTER USE
-    from app.routes.admin_reset import bp as admin_reset_bp
-    app.register_blueprint(admin_reset_bp)
+
     
     # Register error handlers
     register_error_handlers(app)
