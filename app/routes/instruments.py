@@ -284,53 +284,27 @@ def ensure_instruments():
     Runs on first API call to populate instruments.
     """
     # Seed from a catalog file if present, otherwise fallback to DEFAULT_INSTRUMENTS
-    if Instrument.query.first() is None:
-        # Look in project root data folder - use EXNESS full catalog
-        project_root = os.path.dirname(os.path.dirname(current_app.root_path))
-        
-        # First try exness_full_catalog.json (has 400+ instruments with 8 sectors)
-        catalog_path = os.path.join(project_root, 'data', 'exness_full_catalog.json')
-        
-        seed_list = DEFAULT_INSTRUMENTS
-        if os.path.exists(catalog_path):
-            try:
-                with open(catalog_path, 'r', encoding='utf-8') as fh:
-                    data = json.load(fh)
-                    # Handle both formats: {"meta":..., "instruments": [...]} or just [...]
-                    if isinstance(data, dict) and 'instruments' in data:
-                        seed_list = data['instruments']
-                    elif isinstance(data, list):
-                        seed_list = data
-            except Exception:
-                seed_list = DEFAULT_INSTRUMENTS
+    import os
 
-        # Deduplicate by symbol to avoid unique constraint errors
-        seen_symbols = set()
-        unique_instruments = []
-        for inst_data in seed_list:
-            symbol = inst_data.get('symbol', '').upper()
-            if symbol and symbol not in seen_symbols:
-                seen_symbols.add(symbol)
-                unique_instruments.append(inst_data)
-
-        for inst_data in unique_instruments:
-            existing = Instrument.query.filter_by(symbol=inst_data['symbol'].upper()).first()
-            if not existing:
-                # Map the EXNESS fields to our model fields
-                instrument = Instrument(
-                    symbol=inst_data.get('symbol', '').upper(),
-                    name=inst_data.get('name', inst_data.get('symbol', '')),
-                    instrument_type=inst_data.get('instrument_type', 'forex'),
-                    category=inst_data.get('category', 'Forex'),
-                    pip_size=inst_data.get('pip_size', 0.0001),
-                    tick_value=inst_data.get('tick_value', 1.0),
-                    contract_size=inst_data.get('contract_size', 100000),
-                    price_decimals=inst_data.get('price_decimals', 5),
-                    is_active=True
-                )
-                db.session.add(instrument)
-
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
+[{
+	"resource": "/c:/Users/NATHAN/Desktop/TradeVerse/app/routes/instruments.py",
+	"owner": "Pylance5",
+	"code": {
+		"value": "reportUndefinedVariable",
+		"target": {
+			"$mid": 1,
+			"path": "/microsoft/pylance-release/blob/main/docs/diagnostics/reportUndefinedVariable.md",
+			"scheme": "https",
+			"authority": "github.com"
+		}
+	},
+	"severity": 4,
+	"message": "\"InstrumentAlias\" is not defined",
+	"source": "Pylance",
+	"startLineNumber": 293,
+	"startColumn": 13,
+	"endLineNumber": 293,
+	"endColumn": 28,
+	"modelVersionId": 1484,
+	"origin": "extHost1"
+}]
