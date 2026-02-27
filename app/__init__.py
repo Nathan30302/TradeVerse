@@ -24,15 +24,6 @@ csrf = CSRFProtect()
 def create_app(config_name='default'):
     """
     Application Factory Pattern
-    
-    Creates and configures the Flask application with all extensions,
-    blueprints, error handlers, and custom filters.
-    
-    Args:
-        config_name: Configuration environment ('development', 'production', 'testing')
-    
-    Returns:
-        Configured Flask application instance
     """
     
     # Create Flask app instance
@@ -40,17 +31,6 @@ def create_app(config_name='default'):
 
     # Load configuration
     app.config.from_object(config[config_name])
-
-    # Comment out bootstrap secrets for serverless
-    # Attempt to bootstrap secrets (e.g., Fernet key) from Vault/AWS at startup
-    # try:
-    #     from app.utils.credential_manager import bootstrap_secrets
-    #     found = bootstrap_secrets()
-    #     if not found and config_name == 'production':
-    #         raise RuntimeError('Encryption key not found in environment or secret store (Vault/AWS)')
-    # except Exception as e:
-    #     # In non-production, continue but log
-    #     app.logger.debug(f'Secret bootstrap: {e}')
 
     # Ensure instance folder exists (skip on read-only filesystems)
     try:
@@ -99,7 +79,6 @@ def create_app(config_name='default'):
         _seed_instruments(app)
         
         # Auto-add missing columns for local dev (SQLite) to avoid OperationalError
-        # This is a workaround for dev environments without proper migrations
         from sqlalchemy import inspect, text
         url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
         is_sqlite = url and url.startswith('sqlite')
@@ -158,12 +137,17 @@ def create_app(config_name='default'):
     # Register monetization blueprint
     from app.routes import monetization
     app.register_blueprint(monetization.bp)
+
     # Broker & import APIs
     from app.routes import brokers as brokers_routes, imports as imports_routes
     from app.routes import api_instruments
     app.register_blueprint(brokers_routes.bp)
     app.register_blueprint(imports_routes.bp)
     app.register_blueprint(api_instruments.bp)
+
+    # TEMPORARY: Admin reset route — REMOVE AFTER USE
+    from app.routes.admin_reset import bp as admin_reset_bp
+    app.register_blueprint(admin_reset_bp)
     
     # Register error handlers
     register_error_handlers(app)
@@ -173,7 +157,6 @@ def create_app(config_name='default'):
     try:
         commands.register_commands(app)
     except Exception:
-        # If registration fails for any reason, continue without CLI commands
         app.logger.debug('Failed to register CLI commands')
     
     # Build FTS index on first request (delayed startup)
@@ -186,13 +169,12 @@ def create_app(config_name='default'):
                 app._fts_built = True
             except Exception as e:
                 app.logger.debug(f"FTS index build skipped: {e}")
-                app._fts_built = True  # Don't retry
+                app._fts_built = True
 
-    # Expose Prometheus metrics if prometheus_client is available (optional)
+    # Expose Prometheus metrics if available
     try:
         from prometheus_client import make_wsgi_app  # type: ignore
         from werkzeug.middleware.dispatcher import DispatcherMiddleware
-        # mount the prometheus WSGI app at /metrics
         app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
             '/metrics': make_wsgi_app()
         })
@@ -209,44 +191,62 @@ def create_app(config_name='default'):
 
 
 def _seed_instruments(app):
-    """Seed instruments from EXNESS full catalog on startup."""
+    """
+    Seed instruments from EXNESS full catalog on startup.
+
+    FIX: Previously checked `if Instrument.query.first() is not None: return`
+    which skipped reseeding when the old 17-stub instruments were present.
+    Now checks the actual count — if fewer than 200 instruments exist,
+    it reseeds with the full DEFAULT_INSTRUMENTS catalog (257 instruments).
+    """
     import json
     from app.models.instrument import Instrument, DEFAULT_INSTRUMENTS
-    
-    # Check if instruments already exist
-    if Instrument.query.first() is not None:
+
+    current_count = Instrument.query.count()
+
+    # If we already have a full catalog, skip seeding
+    if current_count >= 200:
+        app.logger.info(f"Instruments already seeded: {current_count} instruments found.")
         return
-    
-    # Try to load from project root data folder - use EXNESS full catalog
-    project_root = os.path.dirname(os.path.dirname(app.root_path))
-    
-    # First try exness_full_catalog.json (has 400+ instruments with 8 sectors)
-    catalog_path = os.path.join(project_root, 'data', 'exness_full_catalog.json')
-    
-    seed_list = DEFAULT_INSTRUMENTS
-    if os.path.exists(catalog_path):
+
+    # If partial/stub data exists, clear it first
+    if current_count > 0:
+        app.logger.info(f"Found only {current_count} instruments (stub data). Clearing and reseeding...")
         try:
-            with open(catalog_path, 'r', encoding='utf-8') as fh:
-                data = json.load(fh)
-                # Handle both formats: {"meta":..., "instruments": [...]} or just [...]
-                if isinstance(data, dict) and 'instruments' in data:
-                    seed_list = data['instruments']
-                elif isinstance(data, list):
-                    seed_list = data
-                app.logger.info(f"Loaded {len(seed_list)} instruments from exness_full_catalog")
+            db.session.execute(db.text('DELETE FROM instrument_aliases'))
+            db.session.execute(db.text('DELETE FROM instruments'))
+            db.session.commit()
         except Exception as e:
-            app.logger.warning(f"Failed to load exness_full_catalog: {e}")
-            # Fallback to instruments_catalog.json
-            catalog_path = os.path.join(project_root, 'data', 'instruments_catalog.json')
-            if os.path.exists(catalog_path):
-                try:
-                    with open(catalog_path, 'r', encoding='utf-8') as fh:
-                        seed_list = json.load(fh)
-                        app.logger.info(f"Loaded {len(seed_list)} instruments from instruments_catalog")
-                except Exception as e2:
-                    app.logger.warning(f"Failed to load instruments_catalog: {e2}")
+            db.session.rollback()
+            app.logger.error(f"Failed to clear stub instruments: {e}")
+            return
+
+    # Try to load from catalog JSON file first
+    seed_list = DEFAULT_INSTRUMENTS
     
-    # Deduplicate by symbol to avoid unique constraint errors
+    # Look in the app's own directory and parent directories
+    search_paths = [
+        os.path.join(app.root_path, '..', 'data', 'exness_full_catalog.json'),
+        os.path.join(app.root_path, '..', '..', 'data', 'exness_full_catalog.json'),
+        os.path.join(app.root_path, 'data', 'exness_full_catalog.json'),
+    ]
+    
+    for catalog_path in search_paths:
+        catalog_path = os.path.normpath(catalog_path)
+        if os.path.exists(catalog_path):
+            try:
+                with open(catalog_path, 'r', encoding='utf-8') as fh:
+                    data = json.load(fh)
+                    if isinstance(data, dict) and 'instruments' in data:
+                        seed_list = data['instruments']
+                    elif isinstance(data, list):
+                        seed_list = data
+                app.logger.info(f"Loaded {len(seed_list)} instruments from {catalog_path}")
+                break
+            except Exception as e:
+                app.logger.warning(f"Failed to load catalog from {catalog_path}: {e}")
+
+    # Deduplicate by symbol
     seen_symbols = set()
     unique_instruments = []
     for inst_data in seed_list:
@@ -254,29 +254,27 @@ def _seed_instruments(app):
         if symbol and symbol not in seen_symbols:
             seen_symbols.add(symbol)
             unique_instruments.append(inst_data)
-    
-    app.logger.info(f"Seeding {len(unique_instruments)} unique instruments")
-    
+
+    app.logger.info(f"Seeding {len(unique_instruments)} unique instruments...")
+
     for inst_data in unique_instruments:
-        existing = Instrument.query.filter_by(symbol=inst_data['symbol'].upper()).first()
-        if not existing:
-            # Map the EXNESS fields to our model fields
-            instrument = Instrument(
-                symbol=inst_data.get('symbol', '').upper(),
-                name=inst_data.get('name', inst_data.get('symbol', '')),
-                instrument_type=inst_data.get('instrument_type', 'forex'),
-                category=inst_data.get('category', 'Forex'),
-                pip_size=inst_data.get('pip_size', 0.0001),
-                tick_value=inst_data.get('tick_value', 1.0),
-                contract_size=inst_data.get('contract_size', 100000),
-                price_decimals=inst_data.get('price_decimals', 5),
-                is_active=True
-            )
-            db.session.add(instrument)
+        instrument = Instrument(
+            symbol=inst_data.get('symbol', '').upper(),
+            name=inst_data.get('name', inst_data.get('symbol', '')),
+            instrument_type=inst_data.get('instrument_type', 'forex'),
+            category=inst_data.get('category', 'Forex'),
+            pip_size=inst_data.get('pip_size', 0.0001),
+            tick_value=inst_data.get('tick_value', 1.0),
+            contract_size=inst_data.get('contract_size', 100000),
+            price_decimals=inst_data.get('price_decimals', 5),
+            is_active=True
+        )
+        db.session.add(instrument)
 
     try:
         db.session.commit()
-        app.logger.info(f"Successfully seeded instruments")
+        final_count = Instrument.query.count()
+        app.logger.info(f"Successfully seeded {final_count} instruments.")
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Failed to seed instruments: {e}")
@@ -287,19 +285,17 @@ def register_error_handlers(app):
     
     @app.errorhandler(404)
     def not_found_error(error):
-        """Handle 404 Not Found errors"""
         return render_template('errors/404.html'), 404
     
     @app.errorhandler(500)
     def internal_error(error):
-        """Handle 500 Internal Server errors"""
         db.session.rollback()
         return render_template('errors/500.html'), 500
     
     @app.errorhandler(403)
     def forbidden_error(error):
-        """Handle 403 Forbidden errors"""
         return render_template('errors/403.html'), 403
+
 
 def register_template_filters(app):
     """Register custom Jinja2 template filters"""
@@ -308,7 +304,6 @@ def register_template_filters(app):
     
     @app.template_filter('datetime')
     def format_datetime(value, format='%Y-%m-%d %H:%M'):
-        """Format datetime objects"""
         if value is None:
             return ""
         if isinstance(value, str):
@@ -320,18 +315,13 @@ def register_template_filters(app):
     
     @app.template_filter('currency')
     def format_currency(value, currency='USD'):
-        """Format currency values"""
         if value is None:
             value = 0
-        
         symbols = {
             'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
             'CHF': 'Fr', 'AUD': 'A$', 'CAD': 'C$', 'NZD': 'NZ$'
         }
-        
         symbol = symbols.get(currency, '$')
-        
-        # Format with comma separators
         if value >= 0:
             return f"{symbol}{value:,.2f}"
         else:
@@ -339,26 +329,24 @@ def register_template_filters(app):
     
     @app.template_filter('percentage')
     def format_percentage(value, decimals=2):
-        """Format percentage values"""
         if value is None:
             return "0%"
         return f"{value:.{decimals}f}%"
     
     @app.template_filter('rr_ratio')
     def format_rr_ratio(value):
-        """Format risk-reward ratio"""
         if value is None:
             return "N/A"
         return f"1:{value:.2f}"
 
+
 def register_context_processors(app):
-    """Register context processors to make variables available in all templates"""
+    """Register context processors"""
     
     import random
     
     @app.context_processor
     def inject_globals():
-        """Inject global variables into all templates"""
         return {
             'app_name': app.config.get('APP_NAME'),
             'app_tagline': app.config.get('APP_TAGLINE'),
