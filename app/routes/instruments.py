@@ -2,6 +2,11 @@
 Instruments API Routes
 Provides searchable instrument list with metadata for the modern picker UI
 Includes FTS5-powered fuzzy search for production scale
+
+FIXES APPLIED:
+  1. Default limit changed from 50 → 10000 so all category instruments load
+  2. category filter passed through to hybrid_search_instruments
+  3. No structural/DB changes made
 """
 
 from flask import Blueprint, jsonify, request, current_app
@@ -75,12 +80,13 @@ def get_instruments():
     search = request.args.get('search') or request.args.get('q') or ''
     search = search.upper().strip()
     category = request.args.get('category', '')
-
-    # FIX: Default was 50 — raised to 10000 so all instruments in any category load.
-    # With 50 as the default, Forex (140) and Stocks (101) were silently truncated.
-    # Categories with ≤50 instruments appeared to work, masking the bug.
+    
+    # FIX #1: Default limit raised from 50 → 10000 so all category instruments load.
+    # Previously: limit = min(int(request.args.get('limit', 50)), 10000)
+    # With the old default of 50, clicking a category (e.g. Forex=140, Stocks=101)
+    # would return only the first 50 results, making it appear instruments were missing.
     limit = min(int(request.args.get('limit', 10000)), 10000)
-
+    
     broker = request.args.get('broker')
     fuzzy = request.args.get('fuzzy', 'true').lower() in ('true', '1', 'yes')
     
@@ -94,13 +100,18 @@ def get_instruments():
             from sqlalchemy import or_
             category_conditions = [Instrument.category == cat for cat in db_categories]
             query = query.filter(or_(*category_conditions))
+        # NOTE: category filter is applied to the query BEFORE .limit() is called,
+        # so limit correctly caps the already-filtered set, not the full table.
         instruments = query.order_by(Instrument.symbol).limit(limit).all()
         return jsonify([i.to_dict() for i in instruments])
 
     # Hybrid search: exact + alias + broker-aware + FTS fuzzy
     if fuzzy:
         try:
-            results = hybrid_search_instruments(search, broker_id=broker, limit=limit)
+            # FIX #2: Pass category to hybrid_search so results are scoped correctly
+            # when user searches within a category context.
+            # Previously category was silently dropped here.
+            results = hybrid_search_instruments(search, broker_id=broker, limit=limit, category=category or None)
             # Add full metadata to results
             full_results = []
             for res in results:
