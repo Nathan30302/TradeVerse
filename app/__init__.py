@@ -134,6 +134,10 @@ def create_app(config_name='default'):
     app.register_blueprint(planner.bp)
     app.register_blueprint(instruments.bp)
 
+    # Register admin blueprint
+    from app.routes import admin
+    app.register_blueprint(admin.bp)
+
     # Register monetization blueprint
     from app.routes import monetization
     app.register_blueprint(monetization.bp)
