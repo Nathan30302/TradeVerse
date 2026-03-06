@@ -1434,6 +1434,103 @@
             border-left-color: transparent !important;
             color: #94a3b8 !important;
         }
+
+        /* ============================================
+           RESPONSIVE IMPROVEMENTS - Mobile First
+           ============================================ */
+        
+        /* Extra Small Devices (phones, less than 576px) */
+        @media (max-width: 575.98px) {
+            body { font-size: 14px; line-height: 1.5; }
+            h1, .h1 { font-size: 1.5rem; }
+            h2, .h2 { font-size: 1.35rem; }
+            h3, .h3 { font-size: 1.2rem; }
+            h4, .h4 { font-size: 1.1rem; }
+            .page-title { font-size: 1.25rem; }
+            .page-subtitle { font-size: 0.85rem; }
+            .navbar { padding: 0.5rem 0; }
+            .navbar-brand { font-size: 1.1rem; }
+            .navbar-brand i { font-size: 1.3rem; }
+            .navbar .d-flex.align-items-center.ms-4 { display: none !important; }
+            .main-content { padding: 0.75rem; }
+            .card { border-radius: 12px; margin-bottom: 1rem; }
+            .card-header { padding: 1rem; font-size: 0.95rem; border-radius: 11px 11px 0 0; }
+            .card-body { padding: 1rem; }
+            .stat-card { padding: 1rem; border-radius: 12px; margin-bottom: 0.75rem; }
+            .stat-label { font-size: 0.7rem; }
+            .stat-value { font-size: 1.25rem; }
+            .stat-change { font-size: 0.75rem; }
+            .form-label { font-size: 0.85rem; margin-bottom: 0.5rem; }
+            .form-control, .form-select { padding: 0.625rem 0.875rem; font-size: 0.9rem; }
+            .btn { padding: 0.5rem 1rem; font-size: 0.875rem; }
+            .btn-lg { padding: 0.625rem 1.25rem; font-size: 1rem; }
+            .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.75rem; }
+            .table-container { border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .table { font-size: 0.85rem; }
+            .table th, .table td { padding: 0.5rem 0.625rem; white-space: nowrap; }
+            .badge { padding: 0.25rem 0.5rem; font-size: 0.7rem; }
+            .alert { padding: 0.75rem 1rem; font-size: 0.85rem; }
+            .page-header { margin-bottom: 1rem !important; }
+            .page-header .row { flex-direction: column; align-items: flex-start !important; }
+            .page-header .col-auto { width: 100%; margin-top: 0.75rem; }
+            .page-header .btn-lg { width: 100%; text-align: center; }
+            .row.g-4 { gap: 0.75rem !important; }
+            .row.g-4 > * { margin-bottom: 0.75rem; }
+            .fab-container { bottom: 1rem; right: 1rem; }
+            .fab { width: 48px; height: 48px; font-size: 1.25rem; }
+            .instrument-categories { display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 0.5rem; padding-bottom: 0.5rem; scrollbar-width: none; }
+            .instrument-categories::-webkit-scrollbar { display: none; }
+            .category-tab { flex: 0 0 auto; padding: 0.4rem 0.75rem; font-size: 0.75rem; white-space: nowrap; }
+            #header-instrument-code { font-size: 0.7rem; }
+            .card-body canvas { max-height: 250px; }
+            .sidebar { display: none !important; }
+            .dropdown-menu { width: 100%; max-width: 100%; }
+            footer { padding: 1.5rem 0; margin-top: 2rem; }
+            footer p { font-size: 0.8rem; }
+            input, select, textarea { font-size: 16px !important; }
+        }
+
+        /* Small Devices (landscape phones, 576px - 767px) */
+        @media (min-width: 576px) and (max-width: 767.98px) {
+            .main-content { padding: 1rem; }
+            .stat-card { padding: 1.25rem; }
+            .stat-value { font-size: 1.5rem; }
+            .page-title { font-size: 1.5rem; }
+            .card-body { padding: 1.25rem; }
+            .card-body canvas { max-height: 300px; }
+        }
+
+        /* Medium Devices (tablets, 768px - 991px) */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .main-content { padding: 1.5rem; }
+            .stat-value { font-size: 1.75rem; }
+            .card-body { padding: 1.5rem; }
+            .sidebar { min-width: 180px; }
+            .sidebar .nav-link { padding: 0.75rem 1rem !important; font-size: 0.9rem; }
+            .card-body canvas { max-height: 350px; }
+        }
+
+        /* Large Devices (desktops, 992px+) */
+        @media (min-width: 992px) {
+            .sidebar { display: block !important; }
+            .main-content { padding: 2rem; }
+        }
+
+        /* Touch-friendly improvements */
+        @media (hover: none) and (pointer: coarse) {
+            .btn, .nav-link, .category-tab, .form-check-input { min-height: 44px; }
+            .form-check-input { width: 22px; height: 22px; }
+            .table-responsive, .instrument-list, .instrument-categories { -webkit-overflow-scrolling: touch; }
+        }
+
+        /* Mobile form adjustments */
+        @media (max-width: 767.98px) {
+            .form-group { margin-bottom: 1rem; }
+            .d-flex.gap-3 { flex-direction: column; gap: 0.5rem !important; }
+            .d-flex.gap-3 .btn { width: 100%; }
+            .stat-card .text-center { text-align: left !important; }
+            .stat-card .d-flex { flex-direction: column; align-items: flex-start !important; }
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
