@@ -7,7 +7,7 @@ from app import db
 from datetime import datetime
 from sqlalchemy import CheckConstraint
 from sqlalchemy.orm import relationship
-from app.utils.pnl_calculator import calculate_pnl, detect_asset_type, AssetType
+from app.utils.pnl_calculator import detect_asset_type, AssetType
 
 class Trade(db.Model):
     """
@@ -108,14 +108,15 @@ class Trade(db.Model):
     # ==================== P/L Calculation ====================
     def calculate_pnl(self):
         """
-        Calculate profit/loss for the trade using universal P&L calculator.
+        Calculate profit/loss for the trade using Exness-style P&L calculator.
         
-        Supports all asset types:
-        - Forex Standard: EURUSD, GBPUSD, USDCAD, etc. (pip = 0.0001)
-        - Forex JPY: USDJPY, EURJPY, etc. (pip = 0.01)
-        - Indices: NAS100, US30, US500, etc.
-        - Crypto: BTCUSD, ETHUSD, etc.
-        - Metals: XAUUSD, XAGUSD
+        Uses category-specific formulas based on instrument metadata:
+        - Forex: contract_size * price_diff * lot_size
+        - Crypto: price_diff * lot_size (1 lot = 1 unit)
+        - Indices: tick_value * price_diff * lot_size
+        - IDX-Large: amplified contract multiplier
+        - Stocks: price_diff * shares
+        - Commodities/Energies: contract_size * price_diff * lot_size
         
         Returns:
             float: Profit/loss amount
@@ -123,8 +124,11 @@ class Trade(db.Model):
         if not self.exit_price:
             return None
         
-        # Use universal P&L calculator
-        pnl, pips, asset_desc = calculate_pnl(
+        # Lazy import to avoid circular import
+        from app.services.exness_pnl_calculator import calculate_pnl as exness_calculate_pnl
+        
+        # Use Exness-style P&L calculator with category-specific formulas
+        pnl, pips, method = exness_calculate_pnl(
             symbol=self.symbol,
             trade_type=self.trade_type,
             entry_price=self.entry_price,
