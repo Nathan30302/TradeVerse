@@ -1540,6 +1540,9 @@
     {# Load theme-specific stylesheet to set :root variables server-side and avoid FOUC. #}
     {% set theme_name = current_user.theme if current_user.is_authenticated else 'light' %}
     <link id="theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + (theme_name or 'light') + '.css') }}">
+    <!-- Mobile Navigation CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-nav.css') }}">
+
 
     {# Expose CSRF token as a hidden input so JS fetches can read it reliably #}
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -1593,6 +1596,11 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             
+            <!-- Mobile Navigation Menu Button -->
+            <button class="btn btn-outline-light d-lg-none me-2" type="button" id="mobileMenuBtn" aria-label="Open navigation menu" style="padding: 0.4rem 0.75rem;">
+                <i class="fas fa-bars"></i>
+            </button>
+            
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center">
                     {% if current_user.is_authenticated %}
@@ -1641,6 +1649,85 @@
             </div>
         </div>
     </nav>
+
+    <!-- Mobile Navigation Drawer -->
+    <div class="mobile-nav-overlay" id="mobileNavOverlay"></div>
+    <div class="mobile-nav-drawer" id="mobileNavDrawer">
+        <div class="mobile-nav-header">
+            <h5 class="mb-0"><i class="fas fa-navigation"></i> Menu</h5>
+            <button class="btn-close btn-close-white" id="mobileNavClose" aria-label="Close menu"></button>
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" 
+                   href="{{ url_for('dashboard.index') }}">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'trade.list' in request.endpoint %}active{% endif %}" 
+                   href="{{ url_for('trade.list') }}">
+                    <i class="fas fa-list"></i> My Trades
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}" 
+                   href="{{ url_for('trade.add') }}">
+                    <i class="fas fa-plus-circle"></i> Add Trade
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.calendar' %}active{% endif %}" 
+                   href="{{ url_for('dashboard.calendar') }}">
+                    <i class="fas fa-calendar"></i> Calendar
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.analytics' %}active{% endif %}" 
+                   href="{{ url_for('dashboard.analytics') }}">
+                    <i class="fas fa-chart-bar"></i> Analytics
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.performance' %}active{% endif %}" 
+                   href="{{ url_for('dashboard.performance') }}">
+                    <i class="fas fa-trophy"></i> Performance
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.patterns' %}active{% endif %}" 
+                   href="{{ url_for('dashboard.patterns') }}">
+                    <i class="fas fa-brain"></i> Patterns
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.emotions' %}active{% endif %}" 
+                   href="{{ url_for('dashboard.emotions') }}">
+                    <i class="fas fa-heart"></i> Emotions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'auth.settings' %}active{% endif %}" 
+                   href="{{ url_for('auth.settings') }}">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </li>
+            <li class="nav-item mt-2">
+                <small class="text-muted px-3">PLANNING</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'planner' in request.endpoint %}active{% endif %}"
+                   href="{{ url_for('planner.index') }}">
+                    <i class="fas fa-clipboard-list"></i> Trade Planner
+                </a>
+            </li>
+            <li class="nav-item mt-3 border-top border-secondary pt-2">
+                <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </li>
+        </ul>
+    </div>
 
     <div class="container-fluid">
         <div class="row">
@@ -1781,6 +1868,9 @@
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Mobile Navigation JS -->
+    <script src="{{ url_for('static', filename='js/mobile-nav.js') }}"></script>
     
     <script>
         // Theme switcher: persists selection and updates CSS variables with instant visual feedback
