@@ -46,7 +46,7 @@ def pricing():
         },
         {
             'name': 'Pro',
-            'price': '$9',
+'price': '$3.30',
             'period': '/month',
             'description': 'For serious traders',
             'features': [
@@ -231,7 +231,8 @@ def trial_info():
     
     Shows remaining trial days and upgrade options
     """
-    trial_days = 30
+
+    trial_days = 90
     days_used = (datetime.now() - current_user.created_at).days
     days_remaining = max(0, trial_days - days_used)
     trial_percent = min(100, (days_used / trial_days) * 100)
