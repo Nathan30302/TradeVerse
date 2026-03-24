@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+ {% extends "base.html" %}
 
 {% block title %}Account Settings - {{ app_name }}{% endblock %}
 
@@ -160,8 +160,22 @@
                             <div class="col-md-6">
                                 <h6 class="mb-3">Current Plan</h6>
                                 <div class="alert alert-info">
-                                    <h5 class="mb-0">Free Trial</h5>
-                                    <small>Expires in {{ (30 - (current_user.created_at.now() - current_user.created_at).days)|abs }} days</small>
+                                    <h5 class="mb-0">
+                                        {% if current_user.trial_ends_at and current_user.trial_ends_at > now() %}
+                                            90-Day Free Trial Active
+                                        {% else %}
+                                            Free Trial Expired - Upgrade to Pro
+                                        {% endif %}
+                                    </h5>
+                                    {% if current_user.trial_ends_at %}
+                                        <small>
+                                            {% set remaining = (current_user.trial_ends_at - now()).days %}
+                                            {{ 'Expires in ' + remaining|string + ' days' if remaining > 0 else 'Expired ' + remaining|abs|string + ' days ago' }}
+                                            <br>Then <strong>$3.99/month</strong> (PRO)
+                                        </small>
+                                    {% else %}
+                                        <small>No active trial. <a href="{{ url_for('monetization.pricing') }}">Upgrade Now</a></small>
+                                    {% endif %}
                                 </div>
                                 <p class="text-muted small mt-3">Your free trial includes:</p>
                                 <ul class="list-unstyled small text-muted">
@@ -176,7 +190,7 @@
                                 <div class="card border-2" style="border-color: #6366f1;">
                                     <div class="card-body">
                                         <h5 class="mb-2">Pro Plan</h5>
-                                        <div class="display-6 mb-3">$9<small>/mo</small></div>
+                                        <div class="display-6 mb-3">$3.99<small>/mo</small></div>
                                         <ul class="list-unstyled small mb-4">
                                             <li><i class="fas fa-check text-success me-2"></i>Everything in Free</li>
                                             <li><i class="fas fa-check text-success me-2"></i>Advanced analytics</li>

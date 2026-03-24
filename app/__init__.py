@@ -78,8 +78,7 @@ def create_app(config_name='default'):
         # Seed instruments from EXNESS catalog on startup
         _seed_instruments(app)
         
-        # Auto-add missing columns for local dev (SQLite) to avoid OperationalError
-        from sqlalchemy import inspect, text
+        from sqlalchemy import inspect, text, or_
         url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
         is_sqlite = url and url.startswith('sqlite')
         
@@ -119,6 +118,27 @@ def create_app(config_name='default'):
                             except Exception as e:
                                 print(f"[AUTO-MIGRATE] Could not add users.{col_name}: {e}")
                                 db.session.rollback()
+                            
+                            # Reset all users to fresh 90-day trial (safe idempotent - only expired/null)
+                            from datetime import timedelta
+                            from app.models.user import User
+                            expired_users = User.query.filter(
+                                or_(
+                                    User.trial_ends_at.is_(None),
+                                    User.trial_ends_at < db.func.now()
+                                )
+                            ).all()
+                            reset_count = 0
+                            for user in expired_users:
+                                user.subscription_tier = 'free'
+                                user.subscription_status = 'active'
+                                user.trial_ends_at = user.created_at + timedelta(days=90)
+                                reset_count += 1
+                            if reset_count > 0:
+                                db.session.commit()
+                                print(f"[TRIAL-FIX] Reset {reset_count} users to 90-day trial from created_at")
+                            else:
+                                print("[TRIAL-FIX] All users have active trials")
             except Exception as e:
                 print(f"[AUTO-MIGRATE] Error: {e}")
                 db.session.rollback()
@@ -148,8 +168,6 @@ def create_app(config_name='default'):
     app.register_blueprint(brokers_routes.bp)
     app.register_blueprint(imports_routes.bp)
     app.register_blueprint(api_instruments.bp)
-
-
     
     # Register error handlers
     register_error_handlers(app)

@@ -187,10 +187,21 @@ def execute_plan(plan_id):
             plan.mark_as_reviewed()
             plan.calculate_execution_quality()
             
+            # Ensure linked trade is closed with P&L if actual_exit provided (sync My Trades/PnL)
+            if plan.executed_trade_id and form.actual_exit.data:
+                from app.models.trade import Trade
+                trade = Trade.query.get(plan.executed_trade_id)
+                if trade and trade.status == 'OPEN':
+                    trade.exit_price = form.actual_exit.data
+                    trade.exit_date = datetime.utcnow()
+                    trade.status = 'CLOSED'
+                    trade.calculate_pnl()
+                    print(f"[PLANNER-SYNC] Closed linked trade {trade.id} P/L: {trade.profit_loss}")
+            
             db.session.commit()
             
             pnl_display = f"${plan.actual_pnl:+.2f}" if plan.actual_pnl else "N/A"
-            flash(f'✅ Trade review completed! P&L: {pnl_display}', 'success')
+            flash(f'✅ Trade review completed! P&L: {pnl_display} (synced to My Trades)', 'success')
             return redirect(url_for('planner.view_plan', plan_id=plan.id))
             
         except Exception as e:

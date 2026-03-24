@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 from app import db
 from app.models.trade import Trade
 from app.models.trade_plan import TradePlan
-from datetime import datetime
+from datetime import datetime, timedelta
 import csv
 from io import StringIO, BytesIO
 import os
@@ -46,9 +46,9 @@ def pricing():
         },
         {
             'name': 'Pro',
-            'price': '$9',
+            'price': '$3.99',
             'period': '/month',
-            'description': 'For serious traders',
+            'description': 'For serious traders - 90-Day Free Trial then $3.99/month',
             'features': [
                 'Everything in Free',
                 'Advanced analytics',
@@ -231,7 +231,7 @@ def trial_info():
     
     Shows remaining trial days and upgrade options
     """
-    trial_days = 30
+    trial_days = 90
     days_used = (datetime.now() - current_user.created_at).days
     days_remaining = max(0, trial_days - days_used)
     trial_percent = min(100, (days_used / trial_days) * 100)
