@@ -124,24 +124,34 @@ class Trade(db.Model):
         if not self.exit_price:
             return None
         
-        # Lazy import to avoid circular import
-        from app.services.exness_pnl_calculator import calculate_pnl as exness_calculate_pnl
+        # Validate required fields
+        if not all([self.symbol, self.trade_type, self.entry_price, self.exit_price, self.lot_size]):
+            return None
         
-        # Use Exness-style P&L calculator with category-specific formulas
-        pnl, pips, method = exness_calculate_pnl(
-            symbol=self.symbol,
-            trade_type=self.trade_type,
-            entry_price=self.entry_price,
-            exit_price=self.exit_price,
-            lot_size=self.lot_size,
-            commission=self.commission or 0.0,
-            swap=self.swap or 0.0
-        )
-        
-        self.profit_loss = pnl
-        self.profit_loss_pips = pips
-        
-        return self.profit_loss
+        try:
+            # Lazy import to avoid circular import
+            from app.services.exness_pnl_calculator import calculate_pnl as exness_calculate_pnl
+            
+            # Use Exness-style P&L calculator with category-specific formulas
+            pnl, pips, method = exness_calculate_pnl(
+                symbol=self.symbol,
+                trade_type=self.trade_type,
+                entry_price=self.entry_price,
+                exit_price=self.exit_price,
+                lot_size=self.lot_size,
+                commission=self.commission or 0.0,
+                swap=self.swap or 0.0
+            )
+            
+            self.profit_loss = pnl
+            self.profit_loss_pips = pips
+            
+            return self.profit_loss
+        except Exception as e:
+            # Log error but don't crash
+            import logging
+            logging.error(f"Error calculating P&L for trade {self.id}: {str(e)}")
+            return None
     
     def get_asset_type(self):
         """Get the asset type for this trade's symbol"""

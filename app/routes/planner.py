@@ -239,7 +239,8 @@ def start_execution(plan_id):
     try:
         # Allow overriding planned values from an inline modal form
         trade_type = (request.form.get('trade_type') or plan.direction or 'BUY').upper()
-        # parse numeric fields safely
+        
+        # Parse numeric fields safely
         def to_float(val, default=None):
             try:
                 return float(val) if val is not None and val != '' else default
@@ -253,6 +254,10 @@ def start_execution(plan_id):
         strategy = request.form.get('strategy') or plan.strategy
         pre_trade_plan = request.form.get('pre_trade_plan') or plan.pre_trade_notes or ''
 
+        # Check if exit price is provided (indicating immediate execution)
+        exit_price = to_float(request.form.get('exit_price'))
+        exit_date_str = request.form.get('exit_date')
+        
         # Create trade using planned or overridden values
         trade = Trade(
             user_id=current_user.id,
@@ -267,22 +272,42 @@ def start_execution(plan_id):
             strategy=strategy
         )
 
+        # If exit price is provided, immediately close the trade
+        if exit_price is not None:
+            trade.exit_price = exit_price
+            trade.exit_date = datetime.fromisoformat(exit_date_str) if exit_date_str else datetime.utcnow()
+            trade.status = 'CLOSED'
+            
+            # Calculate P&L immediately
+            trade.calculate_pnl()
+            
+            # Mark plan as reviewed immediately since trade is complete
+            plan.actual_entry = entry_price
+            plan.actual_exit = exit_price
+            plan.actual_pnl = trade.profit_loss
+            plan.mark_as_reviewed()
+            
+            flash_message = f'Trade executed and completed! P/L: ${trade.profit_loss:+.2f}'
+        else:
+            # Trade is open, mark plan as executed
+            plan.mark_as_executed()
+            flash_message = 'Plan executed: trade created under My Trades.'
+
         db.session.add(trade)
         db.session.flush()  # get trade.id
 
-        # Link plan -> trade and mark executed
-        # Support both legacy `trade_id` and new `executed` fields
+        # Link plan -> trade
+        # Support both legacy `trade_id` and new `executed` fields for backward compatibility
         try:
             plan.trade_id = trade.id
         except Exception:
             pass
         plan.executed = True
         plan.executed_trade_id = trade.id
-        plan.mark_as_executed()
 
         db.session.commit()
 
-        flash('Plan executed: trade created under My Trades.', 'success')
+        flash(flash_message, 'success')
         return redirect(url_for('trade.view', trade_id=trade.id))
 
     except Exception as e:

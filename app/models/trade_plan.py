@@ -254,6 +254,34 @@ class TradePlan(db.Model):
         self.status = 'REVIEWED'
         self.reviewed_at = datetime.utcnow()
     
+    def sync_with_trade(self):
+        """
+        Synchronize plan status with linked trade status
+        
+        If plan is linked to a trade, ensure plan status reflects trade status:
+        - If trade is CLOSED, plan should be REVIEWED
+        - If trade is OPEN, plan should be EXECUTED
+        - If trade is CANCELLED, plan should be REVIEWED
+        """
+        if self.executed_trade_id:
+            from app.models.trade import Trade
+            trade = Trade.query.get(self.executed_trade_id)
+            if trade:
+                if trade.status == 'CLOSED':
+                    self.status = 'REVIEWED'
+                    self.reviewed_at = trade.exit_date or datetime.utcnow()
+                    # Sync P&L if not already set
+                    if self.actual_pnl is None and trade.profit_loss is not None:
+                        self.actual_pnl = trade.profit_loss
+                elif trade.status == 'OPEN':
+                    self.status = 'EXECUTED'
+                    self.executed_at = trade.entry_date
+                elif trade.status == 'CANCELLED':
+                    self.status = 'REVIEWED'
+                    self.reviewed_at = datetime.utcnow()
+                return True
+        return False
+    
     def is_planning(self):
         return self.status == 'PLANNING'
     

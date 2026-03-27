@@ -150,8 +150,14 @@
                                 <span class="badge bg-warning">📝 Planning</span>
                             {% elif plan.status == 'EXECUTED' %}
                                 <span class="badge bg-info">⏳ Executed</span>
+                                {% if plan.executed_trade_id %}
+                                    <br><small class="text-muted">Trade created</small>
+                                {% endif %}
                             {% else %}
                                 <span class="badge bg-success">✅ Reviewed</span>
+                                {% if plan.actual_pnl is not none %}
+                                    <br><small class="text-muted">P/L: ${{ "%.2f"|format(plan.actual_pnl) }}</small>
+                                {% endif %}
                             {% endif %}
                         </td>
                         <td class="text-end" onclick="event.stopPropagation();">

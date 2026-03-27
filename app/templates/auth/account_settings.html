@@ -160,13 +160,13 @@
                             <div class="col-md-6">
                                 <h6 class="mb-3">Current Plan</h6>
                                 <div class="alert alert-info">
-                                    <h5 class="mb-0">
+                                    <h6 class="mb-0">
                                         {% if current_user.trial_ends_at and current_user.trial_ends_at > now() %}
                                             90-Day Free Trial Active
                                         {% else %}
                                             Free Trial Expired - Upgrade to Pro
                                         {% endif %}
-                                    </h5>
+                                    </h6>
                                     {% if current_user.trial_ends_at %}
                                         <small>
                                             {% set remaining = (current_user.trial_ends_at - now()).days %}
