@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app_name }} - Professional Trading Journal{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="container mb-5">
+    <div class="card p-5 shadow-lg hero-card" style="border-radius: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="row align-items-center">
+            <div class="col-md-7">
+                <h1 class="fw-bold mb-3 hero-title" style="font-size: 2.8rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                    <span style="display: block;">Professional Trading</span>
+                    <span style="color: #ffd700; text-shadow: 0 2px 4px rgba(0,0,0,0.4);">Journal & Analytics</span>
+                </h1>
+                <p class="mb-3 hero-subtitle" style="font-size: 1.1rem; opacity: 0.9; max-width: 45rem;">
+                    Join 10,000+ traders who use TradeVerse to plan smarter, execute better, and improve their performance with AI-powered insights.
+                </p>
+                
+                <div class="d-flex gap-3 flex-wrap mt-4">
+                    {% if not current_user.is_authenticated %}
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-5 py-3 fw-bold shadow" style="font-weight: 700; border: none;">
+                            <i class="fas fa-rocket me-2"></i> Start Free 14-Day Trial
+                        </a>
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-5 py-3 fw-bold" style="font-weight: 700;">
+                            <i class="fas fa-sign-in-alt me-2"></i> Sign In
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('planner.new_plan') }}" class="btn btn-light btn-lg px-5 py-3 fw-bold shadow" style="font-weight: 700; border: none;">
+                            <i class="fas fa-clipboard-list me-2"></i> Create Trade Plan
+                        </a>
+                        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-light btn-lg px-5 py-3 fw-bold" style="font-weight: 700;">
+                            <i class="fas fa-chart-bar me-2"></i> View Dashboard
+                        </a>
+                    {% endif %}
+                </div>
+                
+                <div class="row mt-4 text-center text-white">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="fas fa-star text-warning me-2"></i>
+                            <strong>4.8/5</strong>
+                        </div>
+                        <small style="opacity: 0.8;">Average Rating</small>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="fas fa-users me-2"></i>
+                            <strong>10K+</strong>
+                        </div>
+                        <small style="opacity: 0.8;">Active Traders</small>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="fas fa-chart-line me-2"></i>
+                            <strong>92%</strong>
+                        </div>
+                        <small style="opacity: 0.8;">Improved Performance</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5 text-center">
+                <div class="card p-4 shadow-lg border-0" style="border-radius: 16px; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="bg-white bg-opacity-20 rounded p-3">
+                                <div class="text-white-50 small">Today's P/L</div>
+                                <div class="h3 text-white mb-0">+2.3%</div>
+                                <div class="small text-success">+$230</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-white bg-opacity-20 rounded p-3">
+                                <div class="text-white-50 small">Win Rate</div>
+                                <div class="h3 text-white mb-0">68%</div>
+                                <div class="small text-info">4W / 2L</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="bg-white bg-opacity-20 rounded p-3">
+                                <div class="text-white-50 small mb-2">Live Equity Curve</div>
+                                <canvas id="miniChart" height="80" style="width: 100%;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="container my-5">
+    <div class="text-center mb-5">
+        <h2 class="display-5 fw-bold mb-3">Why Traders Love TradeVerse</h2>
+        <p class="text-muted">Everything you need to improve your trading performance</p>
+    </div>
+    
+    <div class="row g-4">
+        <!-- Feature 1 -->
+        <div class="col-md-4">
+            <div class="card h-100 text-center border-0" style="padding: 2rem;">
+                <div class="mb-3">
+                    <i class="fas fa-chart-line fa-4x" style="color: #6366f1;"></i>
+                </div>
+                <h4 class="mb-3">Comprehensive Analytics</h4>
+                <p class="text-muted">
+                    Track win rate, profit/loss, risk-reward ratios, and visualize your equity curve with beautiful charts
+                </p>
+            </div>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="col-md-4">
+            <div class="card h-100 text-center border-0" style="padding: 2rem;">
+                <div class="mb-3">
+                    <i class="fas fa-brain fa-4x" style="color: #8b5cf6;"></i>
+                </div>
+                <h4 class="mb-3">Smart Insights</h4>
+                <p class="text-muted">
+                    AI-powered mistake detection identifies trading errors and helps you maintain discipline
+                </p>
+            </div>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="col-md-4">
+            <div class="card h-100 text-center border-0" style="padding: 2rem;">
+                <div class="mb-3">
+                    <i class="fas fa-calendar-alt fa-4x" style="color: #10b981;"></i>
+                </div>
+                <h4 class="mb-3">Calendar View</h4>
+                <p class="text-muted">
+                    Visualize your trading activity and identify your most profitable trading days
+                </p>
+            </div>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="col-md-4">
+            <div class="card h-100 text-center border-0" style="padding: 2rem;">
+                <div class="mb-3">
+                    <i class="fas fa-book-open fa-4x" style="color: #f59e0b;"></i>
+                </div>
+                <h4 class="mb-3">Trading Playbooks</h4>
+                <p class="text-muted">
+                    Create and follow custom trading strategies with step-by-step execution checklists
+                </p>
+            </div>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="col-md-4">
+            <div class="card h-100 text-center border-0" style="padding: 2rem;">
+                <div class="mb-3">
+                    <i class="fas fa-shield-alt fa-4x" style="color: #ef4444;"></i>
+                </div>
+                <h4 class="mb-3">Risk Management</h4>
+                <p class="text-muted">
+                    Track position sizing, calculate risk-reward ratios, and monitor your maximum drawdown
+                </p>
+            </div>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="col-md-4">
+            <div class="card h-100 text-center border-0" style="padding: 2rem;">
+                <div class="mb-3">
+                    <i class="fas fa-mobile-alt fa-4x" style="color: #3b82f6;"></i>
+                </div>
+                <h4 class="mb-3">Mobile Friendly</h4>
+                <p class="text-muted">
+                    Access your trading journal from any device - desktop, tablet, or smartphone
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trust & Positioning Section -->
+<div class="container my-5 py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; color: white;">
+    <div class="row text-center">
+        <div class="col-md-6 offset-md-3">
+            <h2 class="display-5 fw-bold">Built for serious traders</h2>
+            <p class="lead">Designed for disciplined traders who want clarity, repeatability, and measurable improvement. Join our early access beta and shape the product.</p>
+            <div class="mt-4">
+                <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg me-2">Join Early Access</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg">Sign In</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Testimonials -->
+<div class="container my-5">
+    <div class="text-center mb-5">
+        <h2 class="display-5 fw-bold mb-3">What Traders Say</h2>
+        <p class="text-muted">Join thousands of successful traders</p>
+    </div>
+    
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card border-0 h-100">
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="mb-4">"TradeVerse helped me identify my biggest trading mistakes. My win rate improved from 45% to 68% in 3 months!"</p>
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                             style="width: 50px; height: 50px; font-size: 1.5rem;">
+                            J
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-0">John D.</h6>
+                            <small class="text-muted">Day Trader</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 h-100">
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="mb-4">"The analytics dashboard is incredible. I can finally see which strategies work best and when to trade."</p>
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" 
+                             style="width: 50px; height: 50px; font-size: 1.5rem;">
+                            S
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-0">Sarah M.</h6>
+                            <small class="text-muted">Swing Trader</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 h-100">
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="mb-4">"Best trading journal I've used. Clean interface, powerful features, and helps me stay disciplined."</p>
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" 
+                             style="width: 50px; height: 50px; font-size: 1.5rem;">
+                            M
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-0">Mike T.</h6>
+                            <small class="text-muted">Forex Trader</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA Section -->
+<div class="container my-5 py-5 text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; color: white;">
+    <h2 class="display-4 fw-bold mb-4">Ready to Level Up Your Trading?</h2>
+    <p class="lead mb-4">Join thousands of traders using TradeVerse to improve their performance</p>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-5 py-3">
+        <i class="fas fa-rocket"></i> Start Your Journey Today - It's Free!
+    </a>
+</div>
+
+<!-- Mini Chart Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('miniChart');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        
+        // Create gradient for the chart
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.6)');
+        gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+        
+        // Sample data for the mini chart
+        const data = [100, 102, 98, 105, 103, 108, 110];
+        const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        
+        // Draw the chart
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#6366f1';
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        
+        // Calculate positions
+        const padding = 10;
+        const chartWidth = canvas.width - (padding * 2);
+        const chartHeight = canvas.height - (padding * 2);
+        const step = chartWidth / (data.length - 1);
+        
+        // Find min and max for scaling
+        const min = Math.min(...data);
+        const max = Math.max(...data);
+        const range = max - min || 1;
+        
+        // Draw line
+        data.forEach((value, index) => {
+            const x = padding + (index * step);
+            const y = padding + chartHeight - ((value - min) / range) * chartHeight;
+            
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        
+        ctx.stroke();
+        
+        // Fill area under line
+        ctx.lineTo(canvas.width - padding, canvas.height - padding);
+        ctx.lineTo(padding, canvas.height - padding);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Draw points
+        ctx.fillStyle = '#6366f1';
+        data.forEach((value, index) => {
+            const x = padding + (index * step);
+            const y = padding + chartHeight - ((value - min) / range) * chartHeight;
+            ctx.beginPath();
+            ctx.arc(x, y, 2, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+    }
+});
+</script>
+{% endblock %}

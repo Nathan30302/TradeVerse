@@ -1,0 +1,2 @@
+FROM prom/prometheus:latest
+# Use upstream image; kept for extensibility

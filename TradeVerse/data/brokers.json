@@ -1,0 +1,788 @@
+[
+  {
+    "id": "oanda",
+    "name": "OANDA",
+    "description": "Global forex and CFD broker with excellent API",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]{3})_([A-Z]{3})$", "canonical": "$1$2", "example": "EUR_USD -> EURUSD"},
+      {"pattern": "^([A-Z]+)_([A-Z]+)$", "canonical": "$1$2", "example": "XAU_USD -> XAUUSD"},
+      {"pattern": "^SPX500_USD$", "canonical": "US500", "example": "SPX500_USD -> US500"},
+      {"pattern": "^NAS100_USD$", "canonical": "US100", "example": "NAS100_USD -> US100"},
+      {"pattern": "^US30_USD$", "canonical": "US30", "example": "US30_USD -> US30"}
+    ],
+    "symbol_mappings": {
+      "EUR_USD": "EURUSD",
+      "GBP_USD": "GBPUSD",
+      "USD_JPY": "USDJPY",
+      "XAU_USD": "XAUUSD",
+      "XAG_USD": "XAGUSD",
+      "SPX500_USD": "US500",
+      "NAS100_USD": "US100",
+      "US30_USD": "US30",
+      "UK100_GBP": "UK100",
+      "DE30_EUR": "GER40",
+      "JP225_USD": "JPN225",
+      "BCO_USD": "UKOIL",
+      "WTICO_USD": "USOIL",
+      "NATGAS_USD": "NATGAS",
+      "CORN_USD": "CORN",
+      "WHEAT_USD": "WHEAT",
+      "SOYBN_USD": "SOYBEAN"
+    },
+    "lot_size_rule": {
+      "default": 1,
+      "forex": 100000,
+      "indices": 1,
+      "commodities": 1,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.01,
+      "forex_other": 0.0001,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 0.1,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP", "AUD", "CAD", "JPY", "CHF", "SGD", "HKD"],
+    "api_supported": true,
+    "api_type": "REST",
+    "api_auth_method": "bearer_token",
+    "api_base_url": "https://api-fxpractice.oanda.com/v3",
+    "api_docs_url": "https://developer.oanda.com/rest-live-v20/introduction/",
+    "import_formats": ["CSV", "MT4"],
+    "csv_format": {
+      "delimiter": ",",
+      "date_format": "%Y-%m-%dT%H:%M:%S",
+      "columns": {
+        "ticket": "id",
+        "symbol": "instrument",
+        "type": "type",
+        "lots": "units",
+        "open_price": "price",
+        "close_price": "closePrice",
+        "open_time": "openTime",
+        "close_time": "closeTime",
+        "profit": "realizedPL"
+      }
+    },
+    "notes": "Leading forex broker with comprehensive REST API. Supports practice and live accounts.",
+    "website": "https://www.oanda.com"
+  },
+  {
+    "id": "ig",
+    "name": "IG",
+    "description": "World's largest spread betting and CFD provider",
+    "symbol_patterns": [
+      {"pattern": "^CS\\.D\\.([A-Z]{6})\\..*$", "canonical": "$1", "example": "CS.D.EURUSD.CFD.IP -> EURUSD"},
+      {"pattern": "^IX\\.D\\.([A-Z0-9]+)\\..*$", "canonical": "$1", "example": "IX.D.FTSE.CFD.IP -> UK100"},
+      {"pattern": "^CC\\.D\\.([A-Z]+)\\..*$", "canonical": "$1", "example": "CC.D.CL.USS.IP -> USOIL"}
+    ],
+    "symbol_mappings": {
+      "CS.D.EURUSD.CFD.IP": "EURUSD",
+      "CS.D.GBPUSD.CFD.IP": "GBPUSD",
+      "CS.D.USDJPY.CFD.IP": "USDJPY",
+      "CS.D.AUDUSD.CFD.IP": "AUDUSD",
+      "IX.D.FTSE.DAILY.IP": "UK100",
+      "IX.D.DAX.DAILY.IP": "GER40",
+      "IX.D.SPTRD.DAILY.IP": "US500",
+      "IX.D.NASDAQ.CASH.IP": "US100",
+      "IX.D.DOW.DAILY.IP": "US30",
+      "CC.D.CL.USS.IP": "USOIL",
+      "CS.D.USCGC.TODAY.IP": "XAUUSD",
+      "CS.D.USCSI.TODAY.IP": "XAGUSD"
+    },
+    "lot_size_rule": {
+      "default": 1,
+      "forex": 10000,
+      "indices": 1,
+      "commodities": 1,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.01,
+      "forex_other": 0.0001,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 1.0,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP", "AUD", "CHF", "JPY"],
+    "api_supported": true,
+    "api_type": "REST",
+    "api_auth_method": "api_key",
+    "api_base_url": "https://api.ig.com/gateway/deal",
+    "api_docs_url": "https://labs.ig.com/rest-trading-api-reference",
+    "import_formats": ["CSV"],
+    "csv_format": {
+      "delimiter": ",",
+      "date_format": "%d-%m-%Y %H:%M:%S",
+      "columns": {
+        "ticket": "Reference",
+        "symbol": "Market",
+        "type": "Direction",
+        "lots": "Size",
+        "open_price": "Opening",
+        "close_price": "Closing",
+        "open_time": "Date/Time",
+        "close_time": "Close Date/Time",
+        "profit": "Profit/Loss"
+      }
+    },
+    "notes": "UK-based broker, FCA regulated. Comprehensive API for trading and account management.",
+    "website": "https://www.ig.com"
+  },
+  {
+    "id": "ibkr",
+    "name": "Interactive Brokers",
+    "description": "Professional-grade multi-asset broker",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]{3})\\.([A-Z]{3})$", "canonical": "$1$2", "example": "EUR.USD -> EURUSD"},
+      {"pattern": "^([A-Z]+)$", "canonical": "$1", "example": "AAPL -> AAPL"}
+    ],
+    "symbol_mappings": {
+      "EUR.USD": "EURUSD",
+      "GBP.USD": "GBPUSD",
+      "USD.JPY": "USDJPY",
+      "XAUUSD": "XAUUSD",
+      "SPY": "SPY",
+      "ES": "US500",
+      "NQ": "US100",
+      "YM": "US30",
+      "CL": "USOIL",
+      "GC": "XAUUSD",
+      "SI": "XAGUSD"
+    },
+    "lot_size_rule": {
+      "default": 1,
+      "forex": 25000,
+      "indices": 1,
+      "commodities": 1,
+      "stocks": 1,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.005,
+      "forex_other": 0.00005,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 0.25,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP", "AUD", "CAD", "CHF", "HKD", "JPY", "SGD"],
+    "api_supported": true,
+    "api_type": "TWS/Gateway",
+    "api_auth_method": "client_portal",
+    "api_base_url": "https://localhost:5000/v1",
+    "api_docs_url": "https://interactivebrokers.github.io/cpwebapi/",
+    "import_formats": ["CSV", "FLEX"],
+    "csv_format": {
+      "delimiter": ",",
+      "date_format": "%Y%m%d;%H%M%S",
+      "columns": {
+        "ticket": "TradeID",
+        "symbol": "Symbol",
+        "type": "Buy/Sell",
+        "lots": "Quantity",
+        "open_price": "T. Price",
+        "close_price": "C. Price",
+        "open_time": "Date/Time",
+        "close_time": "Close Date/Time",
+        "profit": "Realized P/L"
+      }
+    },
+    "notes": "Professional broker with access to 150+ markets. Requires TWS or Client Portal Gateway for API.",
+    "website": "https://www.interactivebrokers.com"
+  },
+  {
+    "id": "fxcm",
+    "name": "FXCM",
+    "description": "Online forex and CFD trading",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]{3})/([A-Z]{3})$", "canonical": "$1$2", "example": "EUR/USD -> EURUSD"},
+      {"pattern": "^([A-Z]{3})([A-Z]{3})$", "canonical": "$1$2", "example": "EURUSD -> EURUSD"}
+    ],
+    "symbol_mappings": {
+      "EUR/USD": "EURUSD",
+      "GBP/USD": "GBPUSD",
+      "USD/JPY": "USDJPY",
+      "AUD/USD": "AUDUSD",
+      "XAU/USD": "XAUUSD",
+      "XAG/USD": "XAGUSD",
+      "SPX500": "US500",
+      "NAS100": "US100",
+      "US30": "US30",
+      "GER30": "GER40",
+      "UK100": "UK100",
+      "USOIL": "USOIL",
+      "UKOIL": "UKOIL"
+    },
+    "lot_size_rule": {
+      "default": 1000,
+      "forex": 1000,
+      "indices": 1,
+      "commodities": 1,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.01,
+      "forex_other": 0.0001,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 0.1,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP", "AUD", "CAD", "JPY"],
+    "api_supported": false,
+    "api_type": null,
+    "api_auth_method": null,
+    "api_base_url": null,
+    "api_docs_url": null,
+    "import_formats": ["CSV", "MT4"],
+    "csv_format": {
+      "delimiter": ",",
+      "date_format": "%m/%d/%Y %H:%M:%S",
+      "columns": {
+        "ticket": "Ticket",
+        "symbol": "Symbol",
+        "type": "Type",
+        "lots": "Lots",
+        "open_price": "OpenPrice",
+        "close_price": "ClosePrice",
+        "open_time": "OpenTime",
+        "close_time": "CloseTime",
+        "profit": "Profit"
+      }
+    },
+    "notes": "Popular forex broker. Use CSV or MT4 statement export for importing trades.",
+    "website": "https://www.fxcm.com"
+  },
+  {
+    "id": "pepperstone",
+    "name": "Pepperstone",
+    "description": "Australian forex and CFD broker",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]{6})(\\.m)?$", "canonical": "$1", "example": "EURUSD.m -> EURUSD"},
+      {"pattern": "^([A-Z]+)(\\.m)?$", "canonical": "$1", "example": "XAUUSD.m -> XAUUSD"}
+    ],
+    "symbol_mappings": {
+      "EURUSD": "EURUSD",
+      "EURUSD.m": "EURUSD",
+      "GBPUSD": "GBPUSD",
+      "GBPUSD.m": "GBPUSD",
+      "USDJPY": "USDJPY",
+      "XAUUSD": "XAUUSD",
+      "XAUUSD.m": "XAUUSD",
+      "US500": "US500",
+      "US500.m": "US500",
+      "NAS100": "US100",
+      "NAS100.m": "US100",
+      "US30": "US30",
+      "GER40": "GER40",
+      "GER30": "GER40",
+      "UK100": "UK100",
+      "JPN225": "JPN225",
+      "XBRUSD": "UKOIL",
+      "XTIUSD": "USOIL",
+      "XNGUSD": "NATGAS"
+    },
+    "lot_size_rule": {
+      "default": 100000,
+      "forex": 100000,
+      "indices": 1,
+      "commodities": 100,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.01,
+      "forex_other": 0.0001,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 0.1,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP", "AUD", "CAD", "CHF", "JPY", "NZD", "SGD", "HKD"],
+    "api_supported": false,
+    "api_type": null,
+    "api_auth_method": null,
+    "api_base_url": null,
+    "api_docs_url": null,
+    "import_formats": ["CSV", "MT4", "MT5"],
+    "csv_format": {
+      "delimiter": ",",
+      "date_format": "%Y.%m.%d %H:%M:%S",
+      "columns": {
+        "ticket": "Order",
+        "symbol": "Symbol",
+        "type": "Type",
+        "lots": "Volume",
+        "open_price": "Open Price",
+        "close_price": "Close Price",
+        "open_time": "Open Time",
+        "close_time": "Close Time",
+        "profit": "Profit"
+      }
+    },
+    "notes": "ASIC regulated broker. Use MT4/MT5 statement export for importing trades.",
+    "website": "https://www.pepperstone.com"
+  },
+  {
+    "id": "xm",
+    "name": "XM",
+    "description": "Global forex and CFD broker",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]{6})$", "canonical": "$1", "example": "EURUSD -> EURUSD"},
+      {"pattern": "^([A-Z]+)m$", "canonical": "$1", "example": "EURUSDm -> EURUSD"},
+      {"pattern": "^([A-Z]+)micro$", "canonical": "$1", "example": "EURUSDmicro -> EURUSD"}
+    ],
+    "symbol_mappings": {
+      "EURUSD": "EURUSD",
+      "EURUSDm": "EURUSD",
+      "EURUSDmicro": "EURUSD",
+      "GBPUSD": "GBPUSD",
+      "GBPUSDm": "GBPUSD",
+      "USDJPY": "USDJPY",
+      "USDJPYm": "USDJPY",
+      "GOLD": "XAUUSD",
+      "GOLDm": "XAUUSD",
+      "SILVER": "XAGUSD",
+      "SILVERm": "XAGUSD",
+      "US500": "US500",
+      "US500m": "US500",
+      "US100": "US100",
+      "US30": "US30",
+      "GER30": "GER40",
+      "GER40": "GER40",
+      "UK100": "UK100",
+      "JP225": "JPN225",
+      "OIL": "USOIL",
+      "OILMn": "USOIL",
+      "BRENT": "UKOIL",
+      "NGAS": "NATGAS"
+    },
+    "lot_size_rule": {
+      "default": 100000,
+      "forex": 100000,
+      "indices": 1,
+      "commodities": 100,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.01,
+      "forex_other": 0.0001,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 0.1,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP", "AUD", "CHF", "JPY", "PLN", "HUF", "ZAR"],
+    "api_supported": false,
+    "api_type": null,
+    "api_auth_method": null,
+    "api_base_url": null,
+    "api_docs_url": null,
+    "import_formats": ["CSV", "MT4", "MT5"],
+    "csv_format": {
+      "delimiter": "\t",
+      "date_format": "%Y.%m.%d %H:%M:%S",
+      "columns": {
+        "ticket": "Order",
+        "symbol": "Symbol",
+        "type": "Type",
+        "lots": "Volume",
+        "open_price": "Price",
+        "close_price": "Price",
+        "open_time": "Time",
+        "close_time": "Time",
+        "profit": "Profit"
+      }
+    },
+    "notes": "Popular retail broker with micro, standard, and XM Ultra Low accounts.",
+    "website": "https://www.xm.com"
+  },
+  {
+    "id": "exness",
+    "name": "Exness",
+    "description": "High-leverage forex and CFD broker",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]{6})$", "canonical": "$1", "example": "EURUSD -> EURUSD"},
+      {"pattern": "^([A-Z]+)m$", "canonical": "$1", "example": "EURUSDm -> EURUSD"},
+      {"pattern": "^([A-Z]+)c$", "canonical": "$1", "example": "EURUSDc -> EURUSD"}
+    ],
+    "symbol_mappings": {
+      "EURUSD": "EURUSD",
+      "EURUSDm": "EURUSD",
+      "EURUSDc": "EURUSD",
+      "GBPUSD": "GBPUSD",
+      "USDJPY": "USDJPY",
+      "XAUUSDm": "XAUUSD",
+      "XAUUSD": "XAUUSD",
+      "XAGUSD": "XAGUSD",
+      "USTEC": "US100",
+      "US500": "US500",
+      "US30": "US30",
+      "DE40": "GER40",
+      "UK100": "UK100",
+      "JP225": "JPN225",
+      "USOIL": "USOIL",
+      "UKOIL": "UKOIL",
+      "BTCUSD": "BTCUSD",
+      "ETHUSD": "ETHUSD"
+    },
+    "lot_size_rule": {
+      "default": 100000,
+      "forex": 100000,
+      "indices": 1,
+      "commodities": 100,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.01,
+      "forex_other": 0.0001,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 0.1,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP", "AUD", "JPY", "THB", "ZAR", "NGN"],
+    "api_supported": false,
+    "api_type": null,
+    "api_auth_method": null,
+    "api_base_url": null,
+    "api_docs_url": null,
+    "import_formats": ["CSV", "MT4", "MT5"],
+    "csv_format": {
+      "delimiter": "\t",
+      "date_format": "%Y.%m.%d %H:%M:%S",
+      "columns": {
+        "ticket": "Order",
+        "symbol": "Symbol",
+        "type": "Type",
+        "lots": "Volume",
+        "open_price": "Price",
+        "close_price": "Price",
+        "open_time": "Time",
+        "close_time": "Time",
+        "profit": "Profit"
+      }
+    },
+    "notes": "Known for high leverage and instant withdrawals. Multiple account types available.",
+    "website": "https://www.exness.com"
+  },
+  {
+    "id": "binance",
+    "name": "Binance",
+    "description": "World's largest cryptocurrency exchange",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]+)(USDT|USD|BTC|ETH|BNB)$", "canonical": "$1$2", "example": "BTCUSDT -> BTCUSDT"}
+    ],
+    "symbol_mappings": {
+      "BTCUSDT": "BTCUSDT",
+      "ETHUSDT": "ETHUSDT",
+      "BNBUSDT": "BNBUSDT",
+      "XRPUSDT": "XRPUSDT",
+      "ADAUSDT": "ADAUSDT",
+      "SOLUSDT": "SOLUSDT",
+      "DOGEUSDT": "DOGEUSDT",
+      "DOTUSDT": "DOTUSDT",
+      "MATICUSDT": "MATICUSDT",
+      "LTCUSDT": "LTCUSDT",
+      "ETHBTC": "ETHBTC",
+      "BNBBTC": "BNBBTC",
+      "BTCBUSD": "BTCUSD",
+      "ETHBUSD": "ETHUSD"
+    },
+    "lot_size_rule": {
+      "default": 1,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "crypto_btc": 0.01,
+      "crypto_other": 0.0001
+    },
+    "tick_rules": {
+      "crypto": 0.01
+    },
+    "account_currency_options": ["USDT", "BUSD", "BTC", "ETH", "BNB"],
+    "api_supported": true,
+    "api_type": "REST",
+    "api_auth_method": "hmac",
+    "api_base_url": "https://api.binance.com/api/v3",
+    "api_docs_url": "https://binance-docs.github.io/apidocs/spot/en/",
+    "import_formats": ["CSV"],
+    "csv_format": {
+      "delimiter": ",",
+      "date_format": "%Y-%m-%d %H:%M:%S",
+      "columns": {
+        "ticket": "Order ID",
+        "symbol": "Pair",
+        "type": "Side",
+        "lots": "Filled",
+        "open_price": "Price",
+        "close_price": "Price",
+        "open_time": "Date(UTC)",
+        "close_time": "Date(UTC)",
+        "profit": "Realized Profit"
+      }
+    },
+    "notes": "Largest crypto exchange by volume. Full API access for spot and futures trading.",
+    "website": "https://www.binance.com"
+  },
+  {
+    "id": "bybit",
+    "name": "Bybit",
+    "description": "Cryptocurrency derivatives exchange",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]+)(USDT|USD|PERP)$", "canonical": "$1USDT", "example": "BTCUSDT -> BTCUSDT"},
+      {"pattern": "^([A-Z]+)USD$", "canonical": "$1USD", "example": "BTCUSD -> BTCUSD"}
+    ],
+    "symbol_mappings": {
+      "BTCUSDT": "BTCUSDT",
+      "BTCUSD": "BTCUSD",
+      "ETHUSDT": "ETHUSDT",
+      "ETHUSD": "ETHUSD",
+      "XRPUSDT": "XRPUSDT",
+      "SOLUSDT": "SOLUSDT",
+      "DOGEUSDT": "DOGEUSDT",
+      "ADAUSDT": "ADAUSDT",
+      "DOTUSDT": "DOTUSDT",
+      "MATICUSDT": "MATICUSDT",
+      "AVAXUSDT": "AVAXUSDT",
+      "LINKUSDT": "LINKUSDT"
+    },
+    "lot_size_rule": {
+      "default": 1,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "crypto_btc": 0.5,
+      "crypto_other": 0.001
+    },
+    "tick_rules": {
+      "crypto": 0.01
+    },
+    "account_currency_options": ["USDT", "USDC", "BTC", "ETH"],
+    "api_supported": true,
+    "api_type": "REST",
+    "api_auth_method": "hmac",
+    "api_base_url": "https://api.bybit.com/v5",
+    "api_docs_url": "https://bybit-exchange.github.io/docs/v5/intro",
+    "import_formats": ["CSV"],
+    "csv_format": {
+      "delimiter": ",",
+      "date_format": "%Y-%m-%d %H:%M:%S",
+      "columns": {
+        "ticket": "Order ID",
+        "symbol": "Symbol",
+        "type": "Side",
+        "lots": "Qty",
+        "open_price": "Entry Price",
+        "close_price": "Exit Price",
+        "open_time": "Created Time",
+        "close_time": "Updated Time",
+        "profit": "Closed PnL"
+      }
+    },
+    "notes": "Popular crypto derivatives exchange. Supports spot, futures, and options trading.",
+    "website": "https://www.bybit.com"
+  },
+  {
+    "id": "saxo",
+    "name": "Saxo Bank",
+    "description": "Premium multi-asset broker",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]{3})([A-Z]{3})$", "canonical": "$1$2", "example": "EURUSD -> EURUSD"},
+      {"pattern": "^([A-Z]+):([a-z]+)$", "canonical": "$1", "example": "AAPL:xnas -> AAPL"}
+    ],
+    "symbol_mappings": {
+      "EURUSD": "EURUSD",
+      "GBPUSD": "GBPUSD",
+      "USDJPY": "USDJPY",
+      "XAUUSD": "XAUUSD",
+      "XAGUSD": "XAGUSD",
+      "US500.I": "US500",
+      "USNAS100.I": "US100",
+      "US30.I": "US30",
+      "GER40.I": "GER40",
+      "UK100.I": "UK100",
+      "JP225.I": "JPN225",
+      "OILUSSEP23": "USOIL",
+      "OILUKSEP23": "UKOIL",
+      "AAPL:xnas": "AAPL",
+      "MSFT:xnas": "MSFT",
+      "GOOGL:xnas": "GOOGL"
+    },
+    "lot_size_rule": {
+      "default": 1,
+      "forex": 100000,
+      "indices": 1,
+      "commodities": 1,
+      "stocks": 1,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.01,
+      "forex_other": 0.0001,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 0.1,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP", "CHF", "DKK", "SEK", "NOK", "AUD", "CAD", "JPY", "SGD", "HKD", "PLN", "CZK", "HUF"],
+    "api_supported": true,
+    "api_type": "REST",
+    "api_auth_method": "oauth2",
+    "api_base_url": "https://gateway.saxobank.com/openapi",
+    "api_docs_url": "https://www.developer.saxo/openapi/learn",
+    "import_formats": ["CSV", "XLSX"],
+    "csv_format": {
+      "delimiter": ";",
+      "date_format": "%d/%m/%Y %H:%M:%S",
+      "columns": {
+        "ticket": "Trade ID",
+        "symbol": "Instrument",
+        "type": "Direction",
+        "lots": "Amount",
+        "open_price": "Open Price",
+        "close_price": "Close Price",
+        "open_time": "Open Time",
+        "close_time": "Close Time",
+        "profit": "P&L"
+      }
+    },
+    "notes": "Premium broker with access to 40,000+ instruments. Full OpenAPI available.",
+    "website": "https://www.home.saxo"
+  },
+  {
+    "id": "mt4_generic",
+    "name": "MetaTrader 4 (Generic)",
+    "description": "Generic MT4 broker profile",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]{6})(\\..*)?$", "canonical": "$1", "example": "EURUSD.ecn -> EURUSD"},
+      {"pattern": "^([A-Z]+)(\\..*)?$", "canonical": "$1", "example": "XAUUSD.pro -> XAUUSD"}
+    ],
+    "symbol_mappings": {
+      "EURUSD": "EURUSD",
+      "GBPUSD": "GBPUSD",
+      "USDJPY": "USDJPY",
+      "AUDUSD": "AUDUSD",
+      "USDCAD": "USDCAD",
+      "USDCHF": "USDCHF",
+      "NZDUSD": "NZDUSD",
+      "XAUUSD": "XAUUSD",
+      "GOLD": "XAUUSD",
+      "XAGUSD": "XAGUSD",
+      "SILVER": "XAGUSD"
+    },
+    "lot_size_rule": {
+      "default": 100000,
+      "forex": 100000,
+      "indices": 1,
+      "commodities": 100,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.01,
+      "forex_other": 0.0001,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 0.1,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP"],
+    "api_supported": false,
+    "api_type": null,
+    "api_auth_method": null,
+    "api_base_url": null,
+    "api_docs_url": null,
+    "import_formats": ["MT4", "CSV"],
+    "csv_format": {
+      "delimiter": "\t",
+      "date_format": "%Y.%m.%d %H:%M",
+      "columns": {
+        "ticket": "Order",
+        "symbol": "Symbol",
+        "type": "Type",
+        "lots": "Volume",
+        "open_price": "Price",
+        "close_price": "Price",
+        "open_time": "Time",
+        "close_time": "Time",
+        "profit": "Profit"
+      }
+    },
+    "notes": "Generic profile for MT4 brokers. Use detailed statement HTML export.",
+    "website": null
+  },
+  {
+    "id": "mt5_generic",
+    "name": "MetaTrader 5 (Generic)",
+    "description": "Generic MT5 broker profile",
+    "symbol_patterns": [
+      {"pattern": "^([A-Z]{6})(\\..*)?$", "canonical": "$1", "example": "EURUSD.r -> EURUSD"},
+      {"pattern": "^([A-Z]+)(\\..*)?$", "canonical": "$1", "example": "XAUUSD.s -> XAUUSD"}
+    ],
+    "symbol_mappings": {
+      "EURUSD": "EURUSD",
+      "GBPUSD": "GBPUSD",
+      "USDJPY": "USDJPY",
+      "AUDUSD": "AUDUSD",
+      "USDCAD": "USDCAD",
+      "USDCHF": "USDCHF",
+      "NZDUSD": "NZDUSD",
+      "XAUUSD": "XAUUSD",
+      "GOLD": "XAUUSD",
+      "XAGUSD": "XAGUSD",
+      "SILVER": "XAGUSD"
+    },
+    "lot_size_rule": {
+      "default": 100000,
+      "forex": 100000,
+      "indices": 1,
+      "commodities": 100,
+      "crypto": 1
+    },
+    "pip_rules": {
+      "forex_jpy": 0.01,
+      "forex_other": 0.0001,
+      "metals": 0.01
+    },
+    "tick_rules": {
+      "indices": 0.1,
+      "commodities": 0.01
+    },
+    "account_currency_options": ["USD", "EUR", "GBP"],
+    "api_supported": false,
+    "api_type": null,
+    "api_auth_method": null,
+    "api_base_url": null,
+    "api_docs_url": null,
+    "import_formats": ["MT5", "CSV"],
+    "csv_format": {
+      "delimiter": "\t",
+      "date_format": "%Y.%m.%d %H:%M:%S",
+      "columns": {
+        "ticket": "Position",
+        "symbol": "Symbol",
+        "type": "Type",
+        "lots": "Volume",
+        "open_price": "Price",
+        "close_price": "Price",
+        "open_time": "Time",
+        "close_time": "Time",
+        "profit": "Profit"
+      }
+    },
+    "notes": "Generic profile for MT5 brokers. Use detailed statement HTML export.",
+    "website": null
+  }
+]

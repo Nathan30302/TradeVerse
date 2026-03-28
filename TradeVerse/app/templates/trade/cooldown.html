@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Cooldown Status - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <h1 class="page-title">
+        <i class="fas fa-hourglass-half"></i> Impulse Protection
+    </h1>
+    <p class="page-subtitle">Take a break. Your emotions need time to settle.</p>
+</div>
+
+{% if active_cooldown %}
+<!-- Active Cooldown -->
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0">
+                    <i class="fas fa-pause-circle"></i> Cooldown Active
+                </h4>
+            </div>
+            <div class="card-body text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-clock fa-5x text-warning mb-3"></i>
+                    <h2 class="display-4 fw-bold" id="countdown">
+                        {{ active_cooldown.time_remaining_str() }}
+                    </h2>
+                    <p class="text-muted">remaining</p>
+                </div>
+                
+                <div class="progress mb-4" style="height: 25px;">
+                    <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" 
+                         id="progress-bar"
+                         style="width: {{ active_cooldown.progress_percent() }}%">
+                        {{ active_cooldown.progress_percent() }}%
+                    </div>
+                </div>
+                
+                <div class="alert alert-light mb-4">
+                    <h5><i class="fas fa-brain"></i> Triggered by: {{ active_cooldown.trigger_emotion }}</h5>
+                    <p class="mb-0">{{ active_cooldown.trigger_reason or 'Emotional trading detected' }}</p>
+                </div>
+                
+                <div class="card bg-light mb-4">
+                    <div class="card-body">
+                        <h5 class="text-danger">🛑 Pause. Your Emotions Are In Control.</h5>
+                        <p class="mb-0">
+                            Trading while feeling <strong>{{ active_cooldown.trigger_emotion }}</strong> leads to poor decisions.
+                            <br>Use this time to:
+                        </p>
+                        <ul class="list-unstyled mt-3 mb-0">
+                            <li>✓ Step away from the charts</li>
+                            <li>✓ Take a walk or do something relaxing</li>
+                            <li>✓ Review your trading journal</li>
+                            <li>✓ Breathe and reset your mindset</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Override Option -->
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Emergency Override</h6>
+                    <p class="small mb-2">
+                        Only use this if you're absolutely sure you're in control.
+                        <strong>Overrides are logged.</strong>
+                    </p>
+                    <form action="{{ url_for('trade.override_cooldown') }}" method="POST" 
+                          onsubmit="return confirm('Are you SURE you want to override? This will be logged.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="text" name="reason" class="form-control form-control-sm mb-2" 
+                               placeholder="Reason for override (optional)">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-unlock"></i> Override Cooldown
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- No Active Cooldown -->
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+        <div class="card border-success">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-check-circle fa-5x text-success mb-4"></i>
+                <h3 class="text-success">No Active Cooldown</h3>
+                <p class="text-muted">You're clear to trade! Just remember to check your emotions.</p>
+                <a href="{{ url_for('trade.add') }}" class="btn btn-success btn-lg">
+                    <i class="fas fa-plus"></i> Add New Trade
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Cooldown Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Cooldowns</div>
+            <div class="stat-value">{{ stats.total_cooldowns }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card warning">
+            <div class="stat-label">Overrides Used</div>
+            <div class="stat-value">{{ stats.total_overrides }}</div>
+            <div class="stat-change">{{ stats.override_rate|round(1) }}% override rate</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card danger">
+            <div class="stat-label">Most Common Trigger</div>
+            <div class="stat-value fs-5">{{ stats.most_common_trigger or 'N/A' }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card info">
+            <div class="stat-label">Discipline Score</div>
+            <div class="stat-value">
+                {% if stats.total_cooldowns > 0 %}
+                    {{ ((1 - stats.override_rate/100) * 100)|round(0) }}%
+                {% else %}
+                    100%
+                {% endif %}
+            </div>
+            <div class="stat-change">Respecting cooldowns</div>
+        </div>
+    </div>
+</div>
+
+<!-- Cooldown History -->
+{% if cooldown_history %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-history"></i> Cooldown History</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Trigger</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cooldown in cooldown_history %}
+                    <tr>
+                        <td>{{ cooldown.started_at.strftime('%b %d, %Y %H:%M') }}</td>
+                        <td>
+                            <span class="badge bg-danger">{{ cooldown.trigger_emotion }}</span>
+                        </td>
+                        <td>{{ cooldown.duration_minutes }} minutes</td>
+                        <td>
+                            {% if cooldown.was_overridden %}
+                                <span class="badge bg-warning">Overridden</span>
+                            {% elif cooldown.is_active and not cooldown.is_expired() %}
+                                <span class="badge bg-info">Active</span>
+                            {% else %}
+                                <span class="badge bg-success">Completed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Tips -->
+<div class="card mt-4 border-info">
+    <div class="card-body">
+        <h6 class="text-info"><i class="fas fa-lightbulb"></i> About Impulse Protection</h6>
+        <p class="small mb-2">
+            The cooldown system helps you avoid emotional trading by enforcing a pause after 
+            detecting dangerous emotional states. Different emotions have different cooldown durations:
+        </p>
+        <ul class="small mb-0">
+            <li><strong>Revenge Trading, Angry:</strong> 45-60 minutes (most dangerous)</li>
+            <li><strong>FOMO, Greedy, Frustrated, Tired:</strong> 30-45 minutes</li>
+            <li><strong>Anxious, Fearful, Bored:</strong> 20 minutes</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if active_cooldown %}
+<script>
+// Real-time countdown
+function updateCountdown() {
+    fetch('{{ url_for("trade.cooldown_status_api") }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.is_active) {
+                document.getElementById('countdown').textContent = data.time_remaining;
+                document.getElementById('progress-bar').style.width = data.progress_percent + '%';
+                document.getElementById('progress-bar').textContent = data.progress_percent + '%';
+            } else {
+                // Cooldown expired
+                location.reload();
+            }
+        });
+}
+
+// Update every second
+setInterval(updateCountdown, 1000);
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <h1 class="page-title">
+        <i class="fas fa-chart-bar"></i> Advanced Analytics
+    </h1>
+    <p class="page-subtitle">Deep insights into your trading performance</p>
+</div>
+
+<!-- Performance by Instrument -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-coins"></i> Performance by Instrument</h5>
+    </div>
+    <div class="card-body">
+        {% if instrument_stats %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Instrument</th>
+                            <th class="text-center">Trades</th>
+                            <th class="text-end">Total P/L</th>
+                            <th class="text-end">Avg P/L</th>
+                            <th class="text-center">Performance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in instrument_stats %}
+                        <tr>
+                            <td><strong>{{ stat.symbol }}</strong></td>
+                            <td class="text-center">
+                                <span class="badge bg-primary">{{ stat.count }}</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="{% if stat.total_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                                    {{ stat.total_pnl|currency(current_user.preferred_currency) }}
+                                </strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="{% if stat.avg_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                                    {{ stat.avg_pnl|currency(current_user.preferred_currency) }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <div class="progress" style="height: 25px;">
+                                    {% set max_pnl = instrument_stats|map(attribute='total_pnl')|max|abs %}
+                                    {% set width = (stat.total_pnl|abs / max_pnl * 100) if max_pnl > 0 else 0 %}
+                                    <div class="progress-bar {% if stat.total_pnl >= 0 %}bg-success{% else %}bg-danger{% endif %}" 
+                                         style="width: {{ width }}%">
+                                        {{ stat.total_pnl|currency(current_user.preferred_currency) }}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-center text-muted py-4">No data available. Add trades to see insights!</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Performance by Strategy -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chess"></i> Performance by Strategy</h5>
+    </div>
+    <div class="card-body">
+        {% if strategy_stats %}
+            <div class="row">
+                {% for stat in strategy_stats %}
+                <div class="col-md-6 mb-3">
+                    <div class="card border-0" style="background-color: #f8fafc;">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">{{ stat.strategy }}</h6>
+                                <span class="badge bg-primary">{{ stat.count }} trades</span>
+                            </div>
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Total P/L</small>
+                                    <strong class="{% if stat.total_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                                        {{ stat.total_pnl|currency(current_user.preferred_currency) }}
+                                    </strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Avg P/L</small>
+                                    <strong class="{% if stat.avg_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                                        {{ stat.avg_pnl|currency(current_user.preferred_currency) }}
+                                    </strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-center text-muted py-4">Add strategy tags to your trades to see this analysis!</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Performance by Emotion -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-brain"></i> Performance by Emotion</h5>
+    </div>
+    <div class="card-body">
+        {% if emotion_stats %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Emotion</th>
+                            <th class="text-center">Trades</th>
+                            <th class="text-end">Total P/L</th>
+                            <th class="text-center">Recommendation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in emotion_stats %}
+                        <tr>
+                            <td>
+                                <strong>{{ stat.emotion }}</strong>
+                                {% if stat.emotion in ['FOMO', 'Revenge Trading', 'Greedy', 'Anxious', 'Fearful'] %}
+                                    <i class="fas fa-exclamation-triangle text-warning ms-1" title="Potentially problematic"></i>
+                                {% elif stat.emotion in ['Confident', 'Calm & Focused', 'Disciplined'] %}
+                                    <i class="fas fa-check-circle text-success ms-1" title="Positive emotion"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ stat.count }}</span>
+                            </td>
+                            <td class="text-end">
+                                <strong class="{% if stat.total_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                                    {{ stat.total_pnl|currency(current_user.preferred_currency) }}
+                                </strong>
+                            </td>
+                            <td class="text-center">
+                                {% if stat.total_pnl < 0 %}
+                                    <span class="badge bg-warning">⚠️ Avoid this emotion</span>
+                                {% else %}
+                                    <span class="badge bg-success">✅ Good performance</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-center text-muted py-4">Track your emotions to see how they affect your performance!</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Performance by Session -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-clock"></i> Performance by Trading Session</h5>
+    </div>
+    <div class="card-body">
+        {% if session_stats %}
+            <div class="row">
+                {% for stat in session_stats %}
+                <div class="col-md-4 mb-3">
+                    <div class="stat-card {% if stat.total_pnl >= 0 %}success{% else %}danger{% endif %}">
+                        <div class="stat-label">{{ stat.session_type }}</div>
+                        <div class="stat-value {% if stat.total_pnl >= 0 %}profit{% else %}loss{% endif %}">
+                            {{ stat.total_pnl|currency(current_user.preferred_currency) }}
+                        </div>
+                        <div class="stat-change text-muted">
+                            {{ stat.count }} trades
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-center text-muted py-4">Track trading sessions to find your best trading times!</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Performance by Day of Week -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-calendar-week"></i> Performance by Day of Week</h5>
+    </div>
+    <div class="card-body">
+        {% if day_stats %}
+            <canvas id="dayOfWeekChart" height="80"></canvas>
+        {% else %}
+            <p class="text-center text-muted py-4">Add more trades to see daily patterns!</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Monthly Performance Comparison -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-area"></i> Monthly Performance (Last 12 Months)</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="monthlyChart" height="80"></canvas>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Day of Week Performance Chart
+{% if day_stats %}
+const dayCtx = document.getElementById('dayOfWeekChart').getContext('2d');
+new Chart(dayCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ day_stats|map(attribute='day')|list|tojson }},
+        datasets: [{
+            label: 'P/L',
+            data: {{ day_stats|map(attribute='pnl')|list|tojson }},
+            backgroundColor: function(context) {
+                const value = context.parsed.y;
+                return value >= 0 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)';
+            },
+            borderColor: function(context) {
+                const value = context.parsed.y;
+                return value >= 0 ? 'rgb(16, 185, 129)' : 'rgb(239, 68, 68)';
+            },
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'P/L: $' + context.parsed.y.toFixed(2);
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(0,0,0,0.05)' }
+            }
+        }
+    }
+});
+{% endif %}
+
+// Monthly Performance Chart
+fetch("{{ url_for('dashboard.monthly_performance_api') }}")
+    .then(response => response.json())
+    .then(data => {
+        const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+        new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.month),
+                datasets: [{
+                    label: 'Monthly P/L',
+                    data: data.map(d => d.pnl),
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        return value >= 0 ? '#10b981' : '#ef4444';
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return 'P/L: $' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

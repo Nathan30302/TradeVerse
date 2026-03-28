@@ -1,0 +1,27 @@
+/* Dark theme variables */
+:root {
+  --primary: #6366f1;
+  --secondary: #8b5cf6;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+
+  --text-primary: #e6eef8;
+  --text-secondary: #cbd5e1;
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a202c;
+  --card-bg: #1a202c;
+  --card-border: #374151;
+  --form-bg: #111827;
+  --form-border: #4b5563;
+  --form-text: #e6eef8;
+  --form-label: #cbd5e1;
+  --table-hover: #1f2937;
+  --tab-text: #9ca3af;
+  --tab-active: #60a5fa;
+  --tab-border: #374151;
+  --sidebar-bg: #111827;
+  --sidebar-hover: #1f2937;
+  --sidebar-text: #f3f4f6;
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=TradeVerse RQ Worker
+After=network.target redis.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/tradeverse
+Environment=FLASK_APP=run.py
+Environment=REDIS_URL=redis://localhost:6379/0
+ExecStart=/srv/tradeverse/venv/bin/rq worker imports
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
