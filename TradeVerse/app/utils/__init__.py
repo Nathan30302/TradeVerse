@@ -1,3 +1,0 @@
-"""
-TradeVerse Utility Functions
-"""

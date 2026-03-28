@@ -210,7 +210,16 @@ class ProductionConfig(Config):
         SECRET_KEY = 'prod-key-change-me-immediately'
     
     # Database must be provided via environment variable (Render PostgreSQL)
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///tradeverse.db')
+    # Render provides DATABASE_URL, but it might be suspended
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    if DATABASE_URL:
+        # Fix URL scheme for SQLAlchemy 2.0 compatibility
+        if DATABASE_URL.startswith('postgres://'):
+            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    else:
+        # Fallback to SQLite for local testing
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///tradeverse.db'
     
     # Use /tmp for ephemeral file uploads in cloud environments
     UPLOAD_FOLDER = '/tmp/uploads'
