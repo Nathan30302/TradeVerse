@@ -1,0 +1,4 @@
+Deployment trigger timestamp: 2026-02-24
+
+This file exists solely to trigger a fresh deployment on Render.
+The actual code is already in place in the main branch.

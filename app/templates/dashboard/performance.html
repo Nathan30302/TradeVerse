@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Performance Score - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="fas fa-trophy"></i> Performance Score
+            </h1>
+            <p class="page-subtitle">Track your weekly trading performance and improvement</p>
+        </div>
+        <form action="{{ url_for('dashboard.calculate_performance') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-calculator"></i> Calculate This Week
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Current Week Score -->
+<div class="row mb-4">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                {% if current_score %}
+                    <h6 class="text-muted mb-3">This Week's Grade</h6>
+                    <div class="display-1 fw-bold text-{{ current_score.get_grade_color(current_score.grade) }}">
+                        {{ current_score.grade }}
+                    </div>
+                    <div class="h3 mt-2">{{ current_score.overall_score|round(1) }}/100</div>
+                    <div class="text-muted small">
+                        Week {{ current_score.week_number }}, {{ current_score.year }}
+                    </div>
+                    
+                    <!-- Trend -->
+                    <div class="mt-3">
+                        {% if trend > 0 %}
+                            <span class="badge bg-success"><i class="fas fa-arrow-up"></i> +{{ trend|round(1) }} from last month</span>
+                        {% elif trend < 0 %}
+                            <span class="badge bg-danger"><i class="fas fa-arrow-down"></i> {{ trend|round(1) }} from last month</span>
+                        {% else %}
+                            <span class="badge bg-secondary"><i class="fas fa-minus"></i> No change</span>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <h6 class="text-muted mb-3">This Week's Grade</h6>
+                    <div class="display-1 fw-bold text-muted">—</div>
+                    <p class="text-muted mt-3">No score calculated yet.</p>
+                    <p class="small">Click "Calculate This Week" to generate your score.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line"></i> Score Components</h5>
+            </div>
+            <div class="card-body">
+                {% if current_score %}
+                    <!-- Rule Compliance -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="fas fa-clipboard-check"></i> Rule Compliance</span>
+                            <span class="fw-bold">{{ current_score.rule_compliance_score|round(1) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-primary" style="width: {{ current_score.rule_compliance_score }}%"></div>
+                        </div>
+                        <small class="text-muted">Stop loss, checklist, playbook adherence</small>
+                    </div>
+                    
+                    <!-- R:R Quality -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="fas fa-balance-scale"></i> R:R Quality</span>
+                            <span class="fw-bold">{{ current_score.rr_quality_score|round(1) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-success" style="width: {{ current_score.rr_quality_score }}%"></div>
+                        </div>
+                        <small class="text-muted">Average risk-reward ratio quality</small>
+                    </div>
+                    
+                    <!-- Emotional Score -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="fas fa-brain"></i> Emotional Control</span>
+                            <span class="fw-bold">{{ current_score.emotional_score|round(1) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-info" style="width: {{ current_score.emotional_score }}%"></div>
+                        </div>
+                        <small class="text-muted">Trading with positive emotions</small>
+                    </div>
+                    
+                    <!-- Consistency -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="fas fa-clock"></i> Consistency</span>
+                            <span class="fw-bold">{{ current_score.consistency_score|round(1) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-warning" style="width: {{ current_score.consistency_score }}%"></div>
+                        </div>
+                        <small class="text-muted">Session and time consistency</small>
+                    </div>
+                    
+                    <!-- Discipline -->
+                    <div class="mb-0">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="fas fa-medal"></i> Discipline</span>
+                            <span class="fw-bold">{{ current_score.discipline_score|round(1) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-danger" style="width: {{ current_score.discipline_score }}%"></div>
+                        </div>
+                        <small class="text-muted">Plan adherence, execution quality</small>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                        <p>Calculate your score to see component breakdown.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Week Stats -->
+{% if current_score %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Trades</div>
+            <div class="stat-value">{{ current_score.total_trades }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card success">
+            <div class="stat-label">Win Rate</div>
+            <div class="stat-value">{{ current_score.win_rate|round(1) }}%</div>
+            <div class="stat-change">{{ current_score.winning_trades }}W / {{ current_score.losing_trades }}L</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card {% if current_score.total_pnl >= 0 %}success{% else %}danger{% endif %}">
+            <div class="stat-label">Week P/L</div>
+            <div class="stat-value">{{ current_score.total_pnl|currency }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card info">
+            <div class="stat-label">Avg R:R</div>
+            <div class="stat-value">1:{{ current_score.avg_rr|round(2) }}</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Performance History Chart -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-area"></i> Performance History (Last 12 Weeks)</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="performanceChart" height="100"></canvas>
+    </div>
+</div>
+
+<!-- Score History Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-history"></i> Weekly Score History</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Week</th>
+                        <th>Grade</th>
+                        <th>Score</th>
+                        <th>Trades</th>
+                        <th>Win Rate</th>
+                        <th>P/L</th>
+                        <th>Rule</th>
+                        <th>R:R</th>
+                        <th>Emotion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for score in score_history %}
+                    <tr>
+                        <td>
+                            <strong>Week {{ score.week_number }}</strong>
+                            <br><small class="text-muted">{{ score.week_start.strftime('%b %d') }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ score.get_grade_color(score.grade) }} fs-6">
+                                {{ score.grade }}
+                            </span>
+                        </td>
+                        <td><strong>{{ score.overall_score|round(1) }}</strong></td>
+                        <td>{{ score.total_trades }}</td>
+                        <td>{{ score.win_rate|round(1) }}%</td>
+                        <td class="{% if score.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ score.total_pnl|currency }}
+                        </td>
+                        <td>{{ score.rule_compliance_score|round(0) }}%</td>
+                        <td>{{ score.rr_quality_score|round(0) }}%</td>
+                        <td>{{ score.emotional_score|round(0) }}%</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">
+                            No performance history yet. Start trading and calculate your scores!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch performance history
+    fetch('{{ url_for("dashboard.performance_history_api") }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.length === 0) return;
+            
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => `Week ${d.week_number}`),
+                    datasets: [
+                        {
+                            label: 'Overall Score',
+                            data: data.map(d => d.overall_score),
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 3
+                        },
+                        {
+                            label: 'Rule Compliance',
+                            data: data.map(d => d.rule_compliance_score),
+                            borderColor: '#3b82f6',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Emotional Control',
+                            data: data.map(d => d.emotional_score),
+                            borderColor: '#10b981',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Score'
+                            }
+                        }
+                    }
+                }
+            });
+        });
+});
+</script>
+{% endblock %}

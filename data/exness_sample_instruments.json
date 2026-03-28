@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "source": "exness-sample",
+    "created_at": "2026-02-23T00:00:00Z",
+    "notes": "This is a small sample. Replace with full Exness export when available."
+  },
+  "instruments": [
+    {
+      "symbol": "EURUSD",
+      "name": "Euro / US Dollar",
+      "instrument_type": "forex",
+      "category": "Forex",
+      "pip_size": 0.0001,
+      "contract_size": 100000,
+      "price_decimals": 5,
+      "base_currency": "EUR",
+      "quote_currency": "USD",
+      "lot_min": 0.01,
+      "lot_max": 100,
+      "lot_step": 0.01,
+      "tick_size": 0.00001,
+      "margin_rate": 0.02,
+      "pnl_method": "forex"
+    },
+    {
+      "symbol": "USDJPY",
+      "name": "US Dollar / Japanese Yen",
+      "instrument_type": "forex",
+      "category": "Forex",
+      "pip_size": 0.01,
+      "contract_size": 100000,
+      "price_decimals": 3,
+      "base_currency": "USD",
+      "quote_currency": "JPY",
+      "lot_min": 0.01,
+      "lot_max": 100,
+      "lot_step": 0.01,
+      "tick_size": 0.01,
+      "margin_rate": 0.02,
+      "pnl_method": "forex_jpy"
+    },
+    {
+      "symbol": "BTCUSD",
+      "name": "Bitcoin / US Dollar",
+      "instrument_type": "crypto",
+      "category": "Crypto",
+      "pip_size": 0.01,
+      "contract_size": 1,
+      "price_decimals": 2,
+      "base_currency": "BTC",
+      "quote_currency": "USD",
+      "lot_min": 0.0001,
+      "lot_max": 100,
+      "lot_step": 0.0001,
+      "tick_size": 0.01,
+      "margin_rate": 0.5,
+      "pnl_method": "crypto"
+    },
+    {
+      "symbol": "XAUUSD",
+      "name": "Gold / US Dollar",
+      "instrument_type": "commodity",
+      "category": "Energies",
+      "pip_size": 0.01,
+      "contract_size": 100,
+      "price_decimals": 2,
+      "base_currency": "XAU",
+      "quote_currency": "USD",
+      "lot_min": 0.01,
+      "lot_max": 100,
+      "lot_step": 0.01,
+      "tick_size": 0.01,
+      "margin_rate": 0.02,
+      "pnl_method": "metal_gold"
+    }
+  ]
+}

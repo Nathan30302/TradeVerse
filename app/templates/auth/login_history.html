@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Login History</h1>
+    <p class="page-subtitle">Recent login activity for your account.</p>
+</div>
+
+<div class="card p-4">
+    <h5 class="mb-3">Last login</h5>
+    {% if last_login %}
+        <p>{{ last_login.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+    {% else %}
+        <p class="text-muted">No login activity recorded yet.</p>
+    {% endif %}
+
+    <hr>
+    <p class="text-muted">Detailed login history is not yet available. If you'd like to see IP addresses or device info, we can add an audit log in a future update.</p>
+    <a href="{{ url_for('auth.profile') }}" class="btn btn-primary mt-3">View Profile</a>
+</div>
+
+{% endblock %}

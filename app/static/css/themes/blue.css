@@ -1,0 +1,27 @@
+/* Blue theme variables */
+:root {
+  --primary: #0ea5e9;
+  --secondary: #06b6d4;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+
+  --text-primary: #f0f9ff;
+  --text-secondary: #bae6fd;
+  --bg-primary: #0c2a47;
+  --bg-secondary: #164e63;
+  --card-bg: #0f3a52;
+  --card-border: #0e7490;
+  --form-bg: #082f49;
+  --form-border: #0e7490;
+  --form-text: #ecf0f1;
+  --form-label: #bae6fd;
+  --table-hover: #164e63;
+  --tab-text: #7dd3fc;
+  --tab-active: #06b6d4;
+  --tab-border: #0e7490;
+  --sidebar-bg: #082f49;
+  --sidebar-hover: #0f3a52;
+  --sidebar-text: #ecf0f1;
+}
