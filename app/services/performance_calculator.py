@@ -58,17 +58,25 @@ class PerformanceCalculator:
         self.plans = []
     
     def _get_trades_for_week(self):
-        """Fetch all trades for the week"""
+        """Fetch all trades for the week with optimized queries"""
+        # Use joins for better performance
         self.trades = Trade.query.filter(
             Trade.user_id == self.user_id,
             Trade.entry_date >= datetime.combine(self.week_start, datetime.min.time()),
             Trade.entry_date <= datetime.combine(self.week_end, datetime.max.time())
+        ).options(
+            # Eager load related data to avoid N+1 queries
+            db.joinedload(Trade.plan)
         ).all()
         
-        # Get associated plans
+        # Get associated plans efficiently
         trade_ids = [t.id for t in self.trades]
         if trade_ids:
-            self.plans = TradePlan.query.filter(TradePlan.trade_id.in_(trade_ids)).all()
+            self.plans = TradePlan.query.filter(
+                TradePlan.trade_id.in_(trade_ids)
+            ).all()
+        else:
+            self.plans = []
         
         return self.trades
     
@@ -85,64 +93,70 @@ class PerformanceCalculator:
         if not self.trades:
             return self._create_empty_score()
         
-        # Calculate component scores
-        rule_compliance = self._calculate_rule_compliance()
-        rr_quality = self._calculate_rr_quality()
-        emotional = self._calculate_emotional_score()
-        consistency = self._calculate_consistency()
-        discipline = self._calculate_discipline()
-        
-        # Calculate overall score (weighted average)
-        overall = (
-            rule_compliance * self.WEIGHTS['rule_compliance'] +
-            rr_quality * self.WEIGHTS['rr_quality'] +
-            emotional * self.WEIGHTS['emotional'] +
-            consistency * self.WEIGHTS['consistency'] +
-            discipline * self.WEIGHTS['discipline']
-        )
-        
-        # Calculate trade stats
-        closed_trades = [t for t in self.trades if t.status == 'CLOSED']
-        winning = [t for t in closed_trades if t.profit_loss and t.profit_loss > 0]
-        losing = [t for t in closed_trades if t.profit_loss and t.profit_loss < 0]
-        
-        win_rate = (len(winning) / len(closed_trades) * 100) if closed_trades else 0
-        total_pnl = sum(t.profit_loss or 0 for t in closed_trades)
-        
-        rr_values = [t.risk_reward for t in self.trades if t.risk_reward]
-        avg_rr = sum(rr_values) / len(rr_values) if rr_values else 0
-        
-        # Create or update score
-        score = PerformanceScore.query.filter_by(
-            user_id=self.user_id,
-            week_start=self.week_start
-        ).first()
-        
-        if not score:
-            score = PerformanceScore(
-                user_id=self.user_id,
-                week_start=self.week_start,
-                week_end=self.week_end,
-                week_number=self.week_start.isocalendar()[1],
-                year=self.week_start.year
+        try:
+            # Calculate component scores
+            rule_compliance = self._calculate_rule_compliance()
+            rr_quality = self._calculate_rr_quality()
+            emotional = self._calculate_emotional_score()
+            consistency = self._calculate_consistency()
+            discipline = self._calculate_discipline()
+            
+            # Calculate overall score (weighted average)
+            overall = (
+                rule_compliance * self.WEIGHTS['rule_compliance'] +
+                rr_quality * self.WEIGHTS['rr_quality'] +
+                emotional * self.WEIGHTS['emotional'] +
+                consistency * self.WEIGHTS['consistency'] +
+                discipline * self.WEIGHTS['discipline']
             )
-        
-        score.overall_score = overall
-        score.grade = PerformanceScore.get_grade(overall)
-        score.rule_compliance_score = rule_compliance
-        score.rr_quality_score = rr_quality
-        score.emotional_score = emotional
-        score.consistency_score = consistency
-        score.discipline_score = discipline
-        score.total_trades = len(self.trades)
-        score.winning_trades = len(winning)
-        score.losing_trades = len(losing)
-        score.win_rate = win_rate
-        score.total_pnl = total_pnl
-        score.avg_rr = avg_rr
-        score.calculated_at = datetime.utcnow()
-        
-        return score
+            
+            # Calculate trade stats
+            closed_trades = [t for t in self.trades if t.status == 'CLOSED']
+            winning = [t for t in closed_trades if t.profit_loss and t.profit_loss > 0]
+            losing = [t for t in closed_trades if t.profit_loss and t.profit_loss < 0]
+            
+            win_rate = (len(winning) / len(closed_trades) * 100) if closed_trades else 0
+            total_pnl = sum(t.profit_loss or 0 for t in closed_trades)
+            
+            rr_values = [t.risk_reward for t in self.trades if t.risk_reward]
+            avg_rr = sum(rr_values) / len(rr_values) if rr_values else 0
+            
+            # Create or update score
+            score = PerformanceScore.query.filter_by(
+                user_id=self.user_id,
+                week_start=self.week_start
+            ).first()
+            
+            if not score:
+                score = PerformanceScore(
+                    user_id=self.user_id,
+                    week_start=self.week_start,
+                    week_end=self.week_end,
+                    week_number=self.week_start.isocalendar()[1],
+                    year=self.week_start.year
+                )
+            
+            score.overall_score = overall
+            score.grade = PerformanceScore.get_grade(overall)
+            score.rule_compliance_score = rule_compliance
+            score.rr_quality_score = rr_quality
+            score.emotional_score = emotional
+            score.consistency_score = consistency
+            score.discipline_score = discipline
+            score.total_trades = len(self.trades)
+            score.winning_trades = len(winning)
+            score.losing_trades = len(losing)
+            score.win_rate = win_rate
+            score.total_pnl = total_pnl
+            score.avg_rr = avg_rr
+            score.calculated_at = datetime.utcnow()
+            
+            return score
+            
+        except Exception as e:
+            # Log error and return empty score
+            print(f"Error calculating performance score: {e}")
+            return self._create_empty_score()
     
     def save(self):
         """Calculate and save score to database"""

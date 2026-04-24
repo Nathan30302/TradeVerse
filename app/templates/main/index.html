@@ -5,40 +5,100 @@
 {% block content %}
 <!-- Hero Section -->
 <div class="container mb-5">
-    <div class="card p-5 shadow-lg hero-card" style="border-radius: 14px;">
-        <div class="row align-items-center">
-            <div class="col-md-7">
-                <h1 class="fw-bold mb-3 hero-title" style="font-size: 2.6rem;">Journal. Execute. Improve.</h1>
-                <p class="text-muted mb-3 hero-subtitle" style="font-size: 1.05rem; max-width: 40rem;">Capture trade plans, execute seamlessly, and review performance with AI-assisted insights — all in one streamlined trading journal.</p>
-                    <div class="d-flex gap-3 flex-wrap mt-4">
-                        {% if not current_user.is_authenticated %}
-                            <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-5 py-3" style="font-weight: 600;">
-                                <i class="fas fa-rocket"></i> Start Free Trial
-                            </a>
-                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg px-5 py-3" style="font-weight: 600;">
-                                <i class="fas fa-sign-in-alt"></i> Sign In
-                            </a>
-                        {% else %}
-                            <a href="{{ url_for('trade.list') }}" class="btn btn-primary btn-lg px-5 py-3" style="font-weight: 600;">
-                                <i class="fas fa-list"></i> View My Trades
-                            </a>
-                            <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary btn-lg px-5 py-3" style="font-weight: 600;">
-                                <i class="fas fa-chart-bar"></i> Dashboard
-                            </a>
-                        {% endif %}
+    <div class="row align-items-center">
+        <div class="col-lg-7">
+            <div class="hero-content">
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2">
+                        <i class="fas fa-rocket me-2"></i> Professional Trading Platform
+                    </span>
+                </div>
+                <h1 class="display-4 fw-bold mb-4 hero-title">
+                    Journal. Execute. <span class="text-primary">Improve.</span>
+                </h1>
+                <p class="lead text-muted mb-4 hero-subtitle">
+                    Capture trade plans, execute seamlessly, and review performance with AI-assisted insights — 
+                    all in one streamlined trading journal designed for serious traders.
+                </p>
+                
+                <div class="d-flex flex-wrap gap-3 mb-4">
+                    {% if not current_user.is_authenticated %}
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-5 py-3 shadow-lg" style="font-weight: 700; border-radius: 12px;">
+                            <i class="fas fa-rocket me-2"></i> Start Free Trial
+                        </a>
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg px-5 py-3" style="font-weight: 600; border-radius: 12px;">
+                            <i class="fas fa-sign-in-alt me-2"></i> Sign In
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('trade.list') }}" class="btn btn-primary btn-lg px-5 py-3 shadow-lg" style="font-weight: 700; border-radius: 12px;">
+                            <i class="fas fa-list me-2"></i> View My Trades
+                        </a>
+                        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary btn-lg px-5 py-3" style="font-weight: 600; border-radius: 12px;">
+                            <i class="fas fa-chart-bar me-2"></i> Dashboard
+                        </a>
+                    {% endif %}
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center text-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span class="fw-semibold">One-click plan execution</span>
+                        </div>
                     </div>
-                <ul class="list-inline mt-4 text-muted small">
-                    <li class="list-inline-item me-4"><strong class="text-dark">Plan → Execute</strong> — transfer plans into trades with one click.</li>
-                    <li class="list-inline-item"><strong class="text-dark">AI Feedback</strong> — clear, actionable suggestions to improve.</li>
-                </ul>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center text-primary">
+                            <i class="fas fa-robot me-2"></i>
+                            <span class="fw-semibold">AI-powered performance insights</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-5 text-center">
-                <div class="card p-3 shadow-sm border-0" style="border-radius: 12px;">
-                    <div class="text-muted small">Today</div>
-                    <div class="h2 mb-2">+1.8% P/L</div>
-                    <div class="text-muted">Trades: 4</div>
-                    <div class="mt-3" style="height:120px;">
-                        <canvas id="miniChart" height="120"></canvas>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow-lg border-0" style="border-radius: 16px; overflow: hidden;">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="badge bg-success-subtle text-success fw-semibold">Live</span>
+                            <span class="text-muted ms-2 small">Today's Performance</span>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-chart-line me-1"></i> View Chart
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-chart-line me-2"></i> Equity Curve</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-chart-bar me-2"></i> Daily P/L</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-chart-pie me-2"></i> Win Rate</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <div class="h4 mb-0 text-success">+2.1%</div>
+                            <small class="text-muted">P/L</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h4 mb-0">3</div>
+                            <small class="text-muted">Trades</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h4 mb-0 text-primary">1:2.5</div>
+                            <small class="text-muted">Avg R:R</small>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container" style="height: 160px; position: relative;">
+                        <canvas id="miniChart" width="400" height="160"></canvas>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: 65%"></div>
+                        </div>
+                        <small class="text-muted">Monthly target: 65% complete</small>
                     </div>
                 </div>
             </div>
@@ -47,117 +107,284 @@
 </div>
 
 <!-- Features Section -->
-<div class="container my-5">
-    <div class="text-center mb-5">
-        <h2 class="display-5 fw-bold mb-3">Why Traders Love TradeVerse</h2>
-        <p class="text-muted">Everything you need to improve your trading performance</p>
+<div class="container my-6">
+    <div class="text-center mb-6">
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Features</span>
+        <h2 class="display-5 fw-bold mb-3">Why Traders Choose TradeVerse</h2>
+        <p class="lead text-muted">Everything you need to improve your trading performance</p>
     </div>
     
     <div class="row g-4">
         <!-- Feature 1 -->
-        <div class="col-md-4">
-            <div class="card h-100 text-center border-0" style="padding: 2rem;">
-                <div class="mb-3">
-                    <i class="fas fa-chart-line fa-4x" style="color: #6366f1;"></i>
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-primary-subtle text-primary rounded-3 p-3 me-3">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1 fw-bold">Comprehensive Analytics</h5>
+                            <span class="badge bg-primary-subtle text-primary">Advanced</span>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted">
+                        Track win rate, profit/loss, risk-reward ratios, and visualize your equity curve 
+                        with beautiful, interactive charts that reveal your trading patterns.
+                    </p>
+                    <ul class="list-unstyled mt-3">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Real-time performance tracking</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Customizable analytics dashboard</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Exportable reports and charts</li>
+                    </ul>
                 </div>
-                <h4 class="mb-3">Comprehensive Analytics</h4>
-                <p class="text-muted">
-                    Track win rate, profit/loss, risk-reward ratios, and visualize your equity curve with beautiful charts
-                </p>
             </div>
         </div>
 
         <!-- Feature 2 -->
-        <div class="col-md-4">
-            <div class="card h-100 text-center border-0" style="padding: 2rem;">
-                <div class="mb-3">
-                    <i class="fas fa-brain fa-4x" style="color: #8b5cf6;"></i>
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-purple-subtle text-purple rounded-3 p-3 me-3">
+                            <i class="fas fa-brain fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1 fw-bold">AI-Powered Insights</h5>
+                            <span class="badge bg-purple-subtle text-purple">Smart</span>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted">
+                        AI-powered mistake detection identifies trading errors and provides actionable feedback 
+                        to help you maintain discipline and improve decision-making.
+                    </p>
+                    <ul class="list-unstyled mt-3">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Automated mistake detection</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Personalized improvement suggestions</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Pattern recognition and analysis</li>
+                    </ul>
                 </div>
-                <h4 class="mb-3">Smart Insights</h4>
-                <p class="text-muted">
-                    AI-powered mistake detection identifies trading errors and helps you maintain discipline
-                </p>
             </div>
         </div>
 
         <!-- Feature 3 -->
-        <div class="col-md-4">
-            <div class="card h-100 text-center border-0" style="padding: 2rem;">
-                <div class="mb-3">
-                    <i class="fas fa-calendar-alt fa-4x" style="color: #10b981;"></i>
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-teal-subtle text-teal rounded-3 p-3 me-3">
+                            <i class="fas fa-calendar-alt fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1 fw-bold">Calendar Analytics</h5>
+                            <span class="badge bg-teal-subtle text-teal">Visual</span>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted">
+                        Visualize your trading activity and identify your most profitable trading days, 
+                        sessions, and time patterns with our intuitive calendar view.
+                    </p>
+                    <ul class="list-unstyled mt-3">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Heatmap trading calendar</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Session performance analysis</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Time-of-day optimization</li>
+                    </ul>
                 </div>
-                <h4 class="mb-3">Calendar View</h4>
-                <p class="text-muted">
-                    Visualize your trading activity and identify your most profitable trading days
-                </p>
             </div>
         </div>
 
         <!-- Feature 4 -->
-        <div class="col-md-4">
-            <div class="card h-100 text-center border-0" style="padding: 2rem;">
-                <div class="mb-3">
-                    <i class="fas fa-book-open fa-4x" style="color: #f59e0b;"></i>
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-orange-subtle text-orange rounded-3 p-3 me-3">
+                            <i class="fas fa-book-open fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1 fw-bold">Trading Playbooks</h5>
+                            <span class="badge bg-orange-subtle text-orange">Structured</span>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted">
+                        Create and follow custom trading strategies with step-by-step execution checklists 
+                        that ensure consistency and discipline in every trade.
+                    </p>
+                    <ul class="list-unstyled mt-3">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Custom strategy templates</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Execution checklists</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Strategy performance tracking</li>
+                    </ul>
                 </div>
-                <h4 class="mb-3">Trading Playbooks</h4>
-                <p class="text-muted">
-                    Create and follow custom trading strategies with step-by-step execution checklists
-                </p>
             </div>
         </div>
 
         <!-- Feature 5 -->
-        <div class="col-md-4">
-            <div class="card h-100 text-center border-0" style="padding: 2rem;">
-                <div class="mb-3">
-                    <i class="fas fa-shield-alt fa-4x" style="color: #ef4444;"></i>
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-red-subtle text-red rounded-3 p-3 me-3">
+                            <i class="fas fa-shield-alt fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1 fw-bold">Risk Management</h5>
+                            <span class="badge bg-red-subtle text-red">Secure</span>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted">
+                        Track position sizing, calculate risk-reward ratios, and monitor your maximum drawdown 
+                        to maintain proper risk management across all your trades.
+                    </p>
+                    <ul class="list-unstyled mt-3">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Automated R:R calculations</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Drawdown monitoring</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Position size optimization</li>
+                    </ul>
                 </div>
-                <h4 class="mb-3">Risk Management</h4>
-                <p class="text-muted">
-                    Track position sizing, calculate risk-reward ratios, and monitor your maximum drawdown
-                </p>
             </div>
         </div>
 
         <!-- Feature 6 -->
-        <div class="col-md-4">
-            <div class="card h-100 text-center border-0" style="padding: 2rem;">
-                <div class="mb-3">
-                    <i class="fas fa-mobile-alt fa-4x" style="color: #3b82f6;"></i>
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-blue-subtle text-blue rounded-3 p-3 me-3">
+                            <i class="fas fa-mobile-alt fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1 fw-bold">Mobile Optimized</h5>
+                            <span class="badge bg-blue-subtle text-blue">Responsive</span>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted">
+                        Access your trading journal from any device - desktop, tablet, or smartphone - 
+                        with a fully responsive design that adapts to any screen size.
+                    </p>
+                    <ul class="list-unstyled mt-3">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Cross-device synchronization</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Touch-friendly interface</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Offline capability</li>
+                    </ul>
                 </div>
-                <h4 class="mb-3">Mobile Friendly</h4>
-                <p class="text-muted">
-                    Access your trading journal from any device - desktop, tablet, or smartphone
-                </p>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Trust & Positioning Section -->
-<div class="container my-5 py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; color: white;">
-    <div class="row text-center">
-        <div class="col-md-6 offset-md-3">
-            <h2 class="display-5 fw-bold">Built for serious traders</h2>
-            <p class="lead">Designed for disciplined traders who want clarity, repeatability, and measurable improvement. Join our early access beta and shape the product.</p>
-            <div class="mt-4">
-                <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg me-2">Join Early Access</a>
-                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg">Sign In</a>
+<div class="container my-6 py-6" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 24px; color: white;">
+    <div class="row align-items-center">
+        <div class="col-lg-6">
+            <h2 class="display-5 fw-bold mb-3">Built for Serious Traders</h2>
+            <p class="lead mb-4">
+                Designed for disciplined traders who want clarity, repeatability, and measurable improvement. 
+                Join our growing community of professional traders who trust TradeVerse for their trading success.
+            </p>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-chart-line fa-2x me-3 opacity-75"></i>
+                        <div>
+                            <h6 class="mb-0 fw-bold">Performance Tracking</h6>
+                            <small class="opacity-75">Detailed analytics</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-robot fa-2x me-3 opacity-75"></i>
+                        <div>
+                            <h6 class="mb-0 fw-bold">AI Assistance</h6>
+                            <small class="opacity-75">Smart insights</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="card bg-white text-dark shadow-sm" style="border-radius: 12px;">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h4 class="mb-0 fw-bold">2,500+</h4>
+                                    <small class="text-muted">Active Users</small>
+                                </div>
+                                <i class="fas fa-users fa-2x text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-white text-dark shadow-sm" style="border-radius: 12px;">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h4 class="mb-0 fw-bold">98%</h4>
+                                    <small class="text-muted">User Satisfaction</small>
+                                </div>
+                                <i class="fas fa-star fa-2x text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-white text-dark shadow-sm" style="border-radius: 12px;">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h4 class="mb-0 fw-bold">4.8/5</h4>
+                                    <small class="text-muted">Average Rating</small>
+                                </div>
+                                <i class="fas fa-thumbs-up fa-2x text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-white text-dark shadow-sm" style="border-radius: 12px;">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h4 class="mb-0 fw-bold">24/7</h4>
+                                    <small class="text-muted">Support</small>
+                                </div>
+                                <i class="fas fa-headset fa-2x text-info"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <div class="d-flex flex-wrap gap-3 justify-content-center">
+                <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-5 py-3 shadow-lg" style="font-weight: 700; border-radius: 12px;">
+                    <i class="fas fa-rocket me-2"></i> Join Early Access
+                </a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-5 py-3" style="font-weight: 600; border-radius: 12px;">
+                    <i class="fas fa-sign-in-alt me-2"></i> Sign In
+                </a>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Testimonials -->
-<div class="container my-5">
-    <div class="text-center mb-5">
+<div class="container my-6">
+    <div class="text-center mb-6">
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Success Stories</span>
         <h2 class="display-5 fw-bold mb-3">What Traders Say</h2>
-        <p class="text-muted">Join thousands of successful traders</p>
+        <p class="lead text-muted">Join thousands of successful traders</p>
     </div>
     
     <div class="row g-4">
-        <div class="col-md-4">
-            <div class="card border-0 h-100">
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
                 <div class="card-body p-4">
                     <div class="mb-3">
                         <i class="fas fa-star text-warning"></i>
@@ -166,23 +393,28 @@
                         <i class="fas fa-star text-warning"></i>
                         <i class="fas fa-star text-warning"></i>
                     </div>
-                    <p class="mb-4">"TradeVerse helped me identify my biggest trading mistakes. My win rate improved from 45% to 68% in 3 months!"</p>
+                    <blockquote class="blockquote mb-4">
+                        <p class="mb-0">
+                            "TradeVerse helped me identify my biggest trading mistakes. My win rate improved 
+                            from 45% to 68% in just 3 months! The AI insights are incredibly accurate and actionable."
+                        </p>
+                    </blockquote>
                     <div class="d-flex align-items-center">
                         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
                              style="width: 50px; height: 50px; font-size: 1.5rem;">
                             J
                         </div>
                         <div class="ms-3">
-                            <h6 class="mb-0">John D.</h6>
-                            <small class="text-muted">Day Trader</small>
+                            <h6 class="mb-0 fw-bold">John D.</h6>
+                            <small class="text-muted">Day Trader • 6 months</small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card border-0 h-100">
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
                 <div class="card-body p-4">
                     <div class="mb-3">
                         <i class="fas fa-star text-warning"></i>
@@ -191,23 +423,28 @@
                         <i class="fas fa-star text-warning"></i>
                         <i class="fas fa-star text-warning"></i>
                     </div>
-                    <p class="mb-4">"The analytics dashboard is incredible. I can finally see which strategies work best and when to trade."</p>
+                    <blockquote class="blockquote mb-4">
+                        <p class="mb-0">
+                            "The analytics dashboard is incredible. I can finally see which strategies work best 
+                            and when to trade. The calendar view helped me identify my most profitable trading days."
+                        </p>
+                    </blockquote>
                     <div class="d-flex align-items-center">
                         <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" 
                              style="width: 50px; height: 50px; font-size: 1.5rem;">
                             S
                         </div>
                         <div class="ms-3">
-                            <h6 class="mb-0">Sarah M.</h6>
-                            <small class="text-muted">Swing Trader</small>
+                            <h6 class="mb-0 fw-bold">Sarah M.</h6>
+                            <small class="text-muted">Swing Trader • 4 months</small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card border-0 h-100">
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
                 <div class="card-body p-4">
                     <div class="mb-3">
                         <i class="fas fa-star text-warning"></i>
@@ -216,15 +453,20 @@
                         <i class="fas fa-star text-warning"></i>
                         <i class="fas fa-star text-warning"></i>
                     </div>
-                    <p class="mb-4">"Best trading journal I've used. Clean interface, powerful features, and helps me stay disciplined."</p>
+                    <blockquote class="blockquote mb-4">
+                        <p class="mb-0">
+                            "Best trading journal I've used. Clean interface, powerful features, and helps me stay 
+                            disciplined. The risk management tools alone are worth the subscription."
+                        </p>
+                    </blockquote>
                     <div class="d-flex align-items-center">
                         <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" 
                              style="width: 50px; height: 50px; font-size: 1.5rem;">
                             M
                         </div>
                         <div class="ms-3">
-                            <h6 class="mb-0">Mike T.</h6>
-                            <small class="text-muted">Forex Trader</small>
+                            <h6 class="mb-0 fw-bold">Mike T.</h6>
+                            <small class="text-muted">Forex Trader • 8 months</small>
                         </div>
                     </div>
                 </div>
@@ -234,11 +476,93 @@
 </div>
 
 <!-- CTA Section -->
-<div class="container my-5 py-5 text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; color: white;">
-    <h2 class="display-4 fw-bold mb-4">Ready to Level Up Your Trading?</h2>
-    <p class="lead mb-4">Join thousands of traders using TradeVerse to improve their performance</p>
-    <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-5 py-3">
-        <i class="fas fa-rocket"></i> Start Your Journey Today - It's Free!
-    </a>
+<div class="container my-6 py-6 text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 24px; color: white;">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h2 class="display-4 fw-bold mb-4">Ready to Level Up Your Trading?</h2>
+            <p class="lead mb-5">
+                Join thousands of traders using TradeVerse to improve their performance. 
+                Start your journey today with our free trial - no credit card required.
+            </p>
+            <div class="row g-3 justify-content-center">
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center justify-content-center text-white opacity-75">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span>14-day free trial</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center justify-content-center text-white opacity-75">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span>No credit card required</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center justify-content-center text-white opacity-75">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span>Cancel anytime</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-5 py-3 shadow-lg" style="font-weight: 700; border-radius: 12px; font-size: 1.1rem;">
+                    <i class="fas fa-rocket me-3"></i> Start Your Journey Today - It's Free!
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize hero chart
+    const ctx = document.getElementById('miniChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+            datasets: [{
+                label: 'P/L',
+                data: [0.5, 1.2, -0.3, 0.8, 2.1],
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    display: false
+                },
+                y: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // Add hover effects to feature cards
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+</script>
 {% endblock %}

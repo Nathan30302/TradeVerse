@@ -208,6 +208,42 @@
     </div>
 </div>
 
+<!-- AI Snapshot -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-robot"></i> AI Pulse</h5>
+                <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-light">Open AI Review</a>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-9">
+                        <p class="mb-2">{{ ai_summary.summary }}</p>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="small text-muted">Top Strength</div>
+                                <div class="fw-semibold">{{ ai_summary.setups.best_strategy.name if ai_summary.setups.best_strategy else 'No clear leader yet' }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted">Biggest Opportunity</div>
+                                <div class="fw-semibold">{{ ai_summary.weaknesses[0] if ai_summary.weaknesses else 'Keep up the discipline' }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted">Suggested Action</div>
+                                <div class="fw-semibold">{{ ai_summary.recommendations[0] if ai_summary.recommendations else 'Trade more with a clear plan' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-md-end">
+                        <span class="badge bg-info py-2 px-3">AI Review</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Additional Stats Row -->
 <div class="row g-4 mb-4">
     <div class="col-md-3">

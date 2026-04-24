@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}TradeVerse AI - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1 class="page-title mb-2">
+                <i class="fas fa-robot"></i> TradeVerse AI
+            </h1>
+            <p class="page-subtitle mb-0">Premium AI-powered review, alerts, and behavior insights tailored to your trades.</p>
+        </div>
+        <div class="col-auto">
+            <button id="voiceBtn" class="btn btn-primary btn-lg">
+                <i class="fas fa-play-circle"></i> Play Voice Review
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="fas fa-calendar-week"></i> Weekly AI Review</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">{{ weekly_review.summary|default('No insights available yet. Log some trades to get AI feedback.') }}</p>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="insight-card bg-light p-3 rounded">
+                            <small class="text-muted">Trades</small>
+                            <div class="h3 mb-0">{{ weekly_review.stats.total_trades }}</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="insight-card bg-light p-3 rounded">
+                            <small class="text-muted">Win Rate</small>
+                            <div class="h3 mb-0">{{ weekly_review.stats.win_rate|round(1) }}%</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="insight-card bg-light p-3 rounded">
+                            <small class="text-muted">Net P/L</small>
+                            <div class="h3 mb-0">{{ weekly_review.stats.total_pnl|default(0)|currency(current_user.preferred_currency) }}</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="insight-card bg-light p-3 rounded">
+                            <small class="text-muted">Average R:R</small>
+                            <div class="h3 mb-0">{{ weekly_review.stats.avg_rr|default(0)|round(2) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-gradient-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-bell"></i> Smart Alerts</h5>
+            </div>
+            <div class="card-body">
+                {% if alerts %}
+                    <ul class="list-group list-group-flush">
+                        {% for alert in alerts %}
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-semibold">{{ alert }}</div>
+                                <small class="text-muted">AI detected behavior or pattern.</small>
+                            </div>
+                            <span class="badge bg-danger rounded-pill">Alert</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <p class="mb-0">No urgent alerts right now. Keep trading with discipline.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-comments"></i> Talk to AI</h5>
+    </div>
+    <div class="card-body">
+        <form id="aiQuestionForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="aiQuestion" class="form-label">Ask a trading question</label>
+                <input id="aiQuestion" name="question" class="form-control" placeholder="How did I perform this week?" autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="fas fa-paper-plane"></i> Ask AI
+            </button>
+        </form>
+        <div id="aiAnswer" class="mt-4 p-3 bg-light rounded" style="min-height: 120px;">
+            <em>Ask the AI about your win rate, mistakes, best setups, or how to improve.</em>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    var voiceBtn = document.getElementById('voiceBtn');
+    var aiQuestionForm = document.getElementById('aiQuestionForm');
+    var answerBox = document.getElementById('aiAnswer');
+
+    var voiceSummary = "{{ voice_summary|default('') }}";
+    var csrfInput = document.querySelector('input[name="csrf_token"]');
+    var csrfToken = csrfInput ? csrfInput.value : "";
+
+    if (voiceBtn && voiceSummary) {
+        voiceBtn.addEventListener('click', function () {
+            var msg = new SpeechSynthesisUtterance(voiceSummary);
+            msg.rate = 1.0;
+            msg.pitch = 1.0;
+            window.speechSynthesis.speak(msg);
+        });
+    }
+
+    if (aiQuestionForm && answerBox) {
+        aiQuestionForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            var questionInput = document.getElementById('aiQuestion');
+            var question = questionInput ? questionInput.value.trim() : "";
+
+            if (!question) return;
+
+            answerBox.innerHTML =
+                '<div class="text-muted">Thinking... <i class="fas fa-spinner fa-spin"></i></div>';
+
+            try {
+                const response = await fetch("{{ url_for('dashboard.ai_query') }}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken
+                    },
+                    body: JSON.stringify({ question: question })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Server error: " + response.status);
+                }
+
+                const data = await response.json();
+                answerBox.textContent =
+                    data.answer || "Sorry, I could not answer that right now.";
+
+            } catch (error) {
+                answerBox.textContent =
+                    "Unable to reach AI insights. Please try again later.";
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

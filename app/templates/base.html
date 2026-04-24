@@ -1695,6 +1695,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}" 
+                   href="{{ url_for('dashboard.ai') }}">
+                    <i class="fas fa-robot"></i> TradeVerse AI
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'dashboard.patterns' %}active{% endif %}" 
                    href="{{ url_for('dashboard.patterns') }}">
                     <i class="fas fa-brain"></i> Patterns
@@ -1776,6 +1782,13 @@
                                href="{{ url_for('dashboard.performance') }}">
                                 <i class="fas fa-trophy"></i>
                                 <span>Performance</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}" 
+                               href="{{ url_for('dashboard.ai') }}">
+                                <i class="fas fa-robot"></i>
+                                <span>TradeVerse AI</span>
                             </a>
                         </li>
                         <li class="nav-item">

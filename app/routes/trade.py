@@ -285,15 +285,29 @@ def view(trade_id):
     
     Displays full details of a single trade
     """
-    trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
-    
-    # Detect mistakes
-    mistakes = trade.detect_mistakes()
-    
-    # Get AI feedback
-    feedbacks = TradeFeedback.query.filter_by(trade_id=trade.id).order_by(TradeFeedback.feedback_type).all()
-    
-    return render_template('trade/view.html', trade=trade, mistakes=mistakes, feedbacks=feedbacks)
+    try:
+        trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
+        
+        # Detect mistakes safely
+        mistakes = []
+        try:
+            mistakes = trade.detect_mistakes()
+        except Exception as e:
+            current_app.logger.error(f"Error detecting mistakes for trade {trade_id}: {e}")
+        
+        # Get AI feedback safely
+        feedbacks = []
+        try:
+            feedbacks = TradeFeedback.query.filter_by(trade_id=trade.id).order_by(TradeFeedback.feedback_type).all()
+        except Exception as e:
+            current_app.logger.error(f"Error fetching feedback for trade {trade_id}: {e}")
+        
+        return render_template('trade/view.html', trade=trade, mistakes=mistakes, feedbacks=feedbacks)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error viewing trade {trade_id}: {e}")
+        flash('❌ Error loading trade details. Please try again.', 'danger')
+        return redirect(url_for('trade.list'))
 
 
 @bp.route('/<int:trade_id>/generate-feedback', methods=['POST'])

@@ -10,6 +10,7 @@ from app.models.performance_score import PerformanceScore
 from app.services.performance_calculator import calculate_weekly_score, get_performance_history
 from app.services.pattern_detector import detect_patterns
 from app.services.emotion_analyzer import EmotionAnalyzer, analyze_emotions
+from app.services.ai_insights import AIAnalyzer
 from sqlalchemy import func, extract
 from app import db
 from flask import request, flash, redirect, url_for
@@ -50,6 +51,9 @@ def index():
     # Get this week's performance
     week_performance = get_week_performance()
     
+    # AI review snapshot
+    ai_summary = AIAnalyzer(current_user.id).get_weekly_review()
+
     # Get best and worst trades
     best_trade = Trade.query.filter_by(
         user_id=current_user.id,
@@ -68,6 +72,7 @@ def index():
                          quote=quote,
                          max_drawdown=max_drawdown,
                          week_performance=week_performance,
+                         ai_summary=ai_summary,
                          best_trade=best_trade,
                          worst_trade=worst_trade)
 
@@ -447,6 +452,38 @@ def performance_history_api():
 
 
 # ==================== Behavior Patterns ====================
+
+@bp.route('/ai')
+@login_required
+def ai():
+    """
+    TradeVerse AI Dashboard
+
+    Premium AI insights built from your real trading history.
+    """
+    analyzer = AIAnalyzer(current_user.id)
+    weekly_review = analyzer.get_weekly_review()
+    monthly_review = analyzer.get_monthly_review()
+    behavioral_insights = analyzer.get_behavioral_insights()
+    voice_summary = analyzer.get_voice_summary()
+    alerts = weekly_review.get('alerts', [])
+    return render_template('dashboard/ai.html',
+                         weekly_review=weekly_review,
+                         monthly_review=monthly_review,
+                         behavioral_insights=behavioral_insights,
+                         voice_summary=voice_summary,
+                         alerts=alerts)
+
+
+@bp.route('/ai/query', methods=['POST'])
+@login_required
+def ai_query():
+    """Ask the AI about your trading performance."""
+    payload = request.get_json() or {}
+    question = payload.get('question', '').strip()
+    answer = AIAnalyzer(current_user.id).answer_question(question)
+    return jsonify({'answer': answer})
+
 
 @bp.route('/patterns')
 @login_required

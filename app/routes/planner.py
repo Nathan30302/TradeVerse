@@ -9,7 +9,7 @@ from app import db
 from app.models.trade_plan import TradePlan
 from app.forms.trade_forms import TradePlanBeforeForm, TradePlanAfterForm
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 bp = Blueprint('planner', __name__, url_prefix='/planner')
@@ -143,6 +143,12 @@ def view_plan(plan_id):
     """View trade plan details"""
     plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
     
+    if plan.sync_with_trade():
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
     return render_template('planner/view_plan.html', plan=plan)
 
 
@@ -190,10 +196,10 @@ def execute_plan(plan_id):
             # Ensure linked trade is closed with P&L if actual_exit provided (sync My Trades/PnL)
             if plan.executed_trade_id and form.actual_exit.data:
                 from app.models.trade import Trade
-                trade = Trade.query.get(plan.executed_trade_id)
+                trade = db.session.get(Trade, plan.executed_trade_id)
                 if trade and trade.status == 'OPEN':
                     trade.exit_price = form.actual_exit.data
-                    trade.exit_date = datetime.utcnow()
+                    trade.exit_date = datetime.now(timezone.utc)
                     trade.status = 'CLOSED'
                     trade.calculate_pnl()
                     print(f"[PLANNER-SYNC] Closed linked trade {trade.id} P/L: {trade.profit_loss}")
@@ -267,7 +273,7 @@ def start_execution(plan_id):
             entry_price=entry_price,
             stop_loss=stop_loss,
             take_profit=take_profit,
-            entry_date=plan.executed_at or datetime.utcnow(),
+            entry_date=plan.executed_at or datetime.now(timezone.utc),
             pre_trade_plan=pre_trade_plan,
             strategy=strategy
         )
@@ -275,7 +281,7 @@ def start_execution(plan_id):
         # If exit price is provided, immediately close the trade
         if exit_price is not None:
             trade.exit_price = exit_price
-            trade.exit_date = datetime.fromisoformat(exit_date_str) if exit_date_str else datetime.utcnow()
+            trade.exit_date = datetime.fromisoformat(exit_date_str) if exit_date_str else datetime.now(timezone.utc)
             trade.status = 'CLOSED'
             
             # Calculate P&L immediately
@@ -286,6 +292,8 @@ def start_execution(plan_id):
             plan.actual_exit = exit_price
             plan.actual_pnl = trade.profit_loss
             plan.mark_as_reviewed()
+            plan.executed_at = plan.executed_at or datetime.now(timezone.utc)
+            plan.calculate_execution_quality()
             
             flash_message = f'Trade executed and completed! P/L: ${trade.profit_loss:+.2f}'
         else:

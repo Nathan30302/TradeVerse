@@ -4,7 +4,7 @@ Stores pre-trade planning and post-trade review
 """
 
 from app import db
-from datetime import datetime
+from datetime import datetime, timezone
 from app.utils.pnl_calculator import calculate_pnl as calc_pnl, detect_asset_type
 
 class TradePlan(db.Model):
@@ -247,12 +247,12 @@ class TradePlan(db.Model):
     def mark_as_executed(self):
         """Mark plan as executed and transition status"""
         self.status = 'EXECUTED'
-        self.executed_at = datetime.utcnow()
+        self.executed_at = datetime.now(timezone.utc)
     
     def mark_as_reviewed(self):
         """Mark plan as reviewed and transition status"""
         self.status = 'REVIEWED'
-        self.reviewed_at = datetime.utcnow()
+        self.reviewed_at = datetime.now(timezone.utc)
     
     def sync_with_trade(self):
         """
@@ -265,11 +265,11 @@ class TradePlan(db.Model):
         """
         if self.executed_trade_id:
             from app.models.trade import Trade
-            trade = Trade.query.get(self.executed_trade_id)
+            trade = db.session.get(Trade, self.executed_trade_id)
             if trade:
                 if trade.status == 'CLOSED':
                     self.status = 'REVIEWED'
-                    self.reviewed_at = trade.exit_date or datetime.utcnow()
+                    self.reviewed_at = trade.exit_date or datetime.now(timezone.utc)
                     # Sync P&L if not already set
                     if self.actual_pnl is None and trade.profit_loss is not None:
                         self.actual_pnl = trade.profit_loss
@@ -278,7 +278,7 @@ class TradePlan(db.Model):
                     self.executed_at = trade.entry_date
                 elif trade.status == 'CANCELLED':
                     self.status = 'REVIEWED'
-                    self.reviewed_at = datetime.utcnow()
+                    self.reviewed_at = datetime.now(timezone.utc)
                 return True
         return False
     
