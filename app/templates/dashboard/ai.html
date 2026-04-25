@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}TradeVerse AI - {{ app_name }}{% endblock %}
+{% block title %}AI Buddy - {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="page-header mb-4">
     <div class="row align-items-center">
         <div class="col">
             <h1 class="page-title mb-2">
-                <i class="fas fa-robot"></i> TradeVerse AI
+                <i class="fas fa-robot"></i> AI Buddy
             </h1>
-            <p class="page-subtitle mb-0">Premium AI-powered review, alerts, and behavior insights tailored to your trades.</p>
+            <p class="page-subtitle mb-0">Premium AI-powered review, alerts, and behaviour insights tailored to your trades.</p>
         </div>
         <div class="col-auto">
             <button id="voiceBtn" class="btn btn-primary btn-lg">
@@ -19,57 +19,117 @@
     </div>
 </div>
 
+{# ------------------------------------------------------------------ #}
+{# Resolve all template variables once, safely, before rendering HTML #}
+{# ------------------------------------------------------------------ #}
+{% set weekly_stats        = (weekly_review.get('stats')           if weekly_review else {}) or {} %}
+{% set weekly_setups       = (weekly_review.get('setups')          if weekly_review else {}) or {} %}
+{% set weekly_alerts       = (weekly_review.get('alerts')          if weekly_review else []) or [] %}
+{% set weekly_strengths    = (weekly_review.get('strengths')       if weekly_review else []) or [] %}
+{% set weekly_weaknesses   = (weekly_review.get('weaknesses')      if weekly_review else []) or [] %}
+{% set weekly_recs         = (weekly_review.get('recommendations') if weekly_review else []) or [] %}
+{% set weekly_summary_text = (weekly_review.get('summary')         if weekly_review else '') or 'No insights available yet. Log some trades to get AI Buddy feedback.' %}
+
+{% set best_strategy   = weekly_setups.get('best_strategy')  if weekly_setups else none %}
+{% set worst_strategy  = weekly_setups.get('worst_strategy') if weekly_setups else none %}
+{% set best_instrument = weekly_setups.get('best_instrument') if weekly_setups else none %}
+
+{% set monthly_stats     = (monthly_review.get('stats')     if monthly_review else {}) or {} %}
+{% set monthly_summary   = (monthly_review.get('summary')   if monthly_review else '') or 'No monthly data available yet.' %}
+{% set monthly_direction = (monthly_review.get('direction') if monthly_review else '') or 'needs review' %}
+
+{% set bi      = behavioral_insights or {} %}
+{% set bi_risk = bi.get('risk_behavior') or {} %}
+
+{# ------------------------------------------------------------------ #}
+{# Weekly Review + Smart Alerts                                        #}
+{# ------------------------------------------------------------------ #}
 <div class="row g-4 mb-4">
+
     <div class="col-lg-6">
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-dark text-white">
-                <h5 class="mb-0"><i class="fas fa-calendar-week"></i> Weekly AI Review</h5>
+                <h5 class="mb-0"><i class="fas fa-calendar-week"></i> Weekly AI Buddy Review</h5>
             </div>
             <div class="card-body">
-                <p class="mb-3">{{ weekly_review.summary|default('No insights available yet. Log some trades to get AI feedback.') }}</p>
+                <p class="mb-3">{{ weekly_summary_text }}</p>
+
                 <div class="row g-3">
                     <div class="col-6">
                         <div class="insight-card bg-light p-3 rounded">
                             <small class="text-muted">Trades</small>
-                            <div class="h3 mb-0">{{ weekly_review.stats.total_trades }}</div>
+                            <div class="h3 mb-0">{{ weekly_stats.get('total_trades', 0) }}</div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="insight-card bg-light p-3 rounded">
                             <small class="text-muted">Win Rate</small>
-                            <div class="h3 mb-0">{{ weekly_review.stats.win_rate|round(1) }}%</div>
+                            <div class="h3 mb-0">{{ (weekly_stats.get('win_rate', 0) | float) | round(1) }}%</div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="insight-card bg-light p-3 rounded">
                             <small class="text-muted">Net P/L</small>
-                            <div class="h3 mb-0">{{ weekly_review.stats.total_pnl|default(0)|currency(current_user.preferred_currency) }}</div>
+                            <div class="h3 mb-0">{{ (weekly_stats.get('total_pnl', 0) | default(0)) | currency(current_user.preferred_currency) }}</div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="insight-card bg-light p-3 rounded">
                             <small class="text-muted">Average R:R</small>
-                            <div class="h3 mb-0">{{ weekly_review.stats.avg_rr|default(0)|round(2) }}</div>
+                            <div class="h3 mb-0">{{ (weekly_stats.get('avg_rr', 0) | float) | round(2) }}</div>
                         </div>
                     </div>
                 </div>
+
+                {% if weekly_strengths %}
+                <div class="mt-3">
+                    <h6 class="text-success"><i class="fas fa-thumbs-up"></i> Strengths</h6>
+                    <ul class="mb-0 ps-3">
+                        {% for s in weekly_strengths %}
+                        <li class="small">{{ s }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if weekly_weaknesses %}
+                <div class="mt-3">
+                    <h6 class="text-warning"><i class="fas fa-exclamation-triangle"></i> Areas to Improve</h6>
+                    <ul class="mb-0 ps-3">
+                        {% for w in weekly_weaknesses %}
+                        <li class="small">{{ w }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if weekly_recs %}
+                <div class="mt-3">
+                    <h6 class="text-info"><i class="fas fa-lightbulb"></i> Recommendations</h6>
+                    <ul class="mb-0 ps-3">
+                        {% for r in weekly_recs %}
+                        <li class="small">{{ r }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 
     <div class="col-lg-6">
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-gradient-primary text-white">
                 <h5 class="mb-0"><i class="fas fa-bell"></i> Smart Alerts</h5>
             </div>
             <div class="card-body">
-                {% if alerts %}
+                {% if weekly_alerts %}
                     <ul class="list-group list-group-flush">
-                        {% for alert in alerts %}
+                        {% for alert_item in weekly_alerts %}
                         <li class="list-group-item d-flex justify-content-between align-items-start">
                             <div>
-                                <div class="fw-semibold">{{ alert }}</div>
-                                <small class="text-muted">AI detected behavior or pattern.</small>
+                                <div class="fw-semibold">{{ alert_item }}</div>
+                                <small class="text-muted">AI Buddy detected behaviour or pattern.</small>
                             </div>
                             <span class="badge bg-danger rounded-pill">Alert</span>
                         </li>
@@ -86,85 +146,270 @@
     </div>
 </div>
 
+{# ------------------------------------------------------------------ #}
+{# Setup Breakdown (only rendered when data exists)                   #}
+{# ------------------------------------------------------------------ #}
+{% if best_strategy or worst_strategy or best_instrument %}
+<div class="row g-4 mb-4">
+
+    {% if best_strategy and best_strategy is mapping %}
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-trophy fa-2x text-warning mb-2"></i>
+                <h6 class="text-muted">Best Strategy</h6>
+                <div class="h5 mb-1">{{ best_strategy.get('name') or '&mdash;' }}</div>
+                <small class="text-success">
+                    {{ (best_strategy.get('win_rate', 0) | float) | round(0) }}% win rate
+                    &bull; {{ best_strategy.get('total_trades', 0) }} trades
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if worst_strategy and worst_strategy is mapping %}
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-skull-crossbones fa-2x text-danger mb-2"></i>
+                <h6 class="text-muted">Weakest Strategy</h6>
+                <div class="h5 mb-1">{{ worst_strategy.get('name') or '&mdash;' }}</div>
+                <small class="text-danger">
+                    {{ (worst_strategy.get('win_rate', 0) | float) | round(0) }}% win rate
+                    &bull; {{ worst_strategy.get('total_trades', 0) }} trades
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if best_instrument and best_instrument is mapping %}
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
+                <h6 class="text-muted">Best Instrument</h6>
+                <div class="h5 mb-1">{{ best_instrument.get('name') or '&mdash;' }}</div>
+                <small class="text-success">
+                    {{ (best_instrument.get('win_rate', 0) | float) | round(0) }}% win rate
+                    &bull; {{ best_instrument.get('total_trades', 0) }} trades
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endif %}
+
+{# ------------------------------------------------------------------ #}
+{# Monthly Review                                                      #}
+{# ------------------------------------------------------------------ #}
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="fas fa-comments"></i> Talk to AI</h5>
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Monthly AI Buddy Review</h5>
     </div>
     <div class="card-body">
-        <form id="aiQuestionForm">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="mb-3">
-                <label for="aiQuestion" class="form-label">Ask a trading question</label>
-                <input id="aiQuestion" name="question" class="form-control" placeholder="How did I perform this week?" autocomplete="off">
+        <p class="mb-3">{{ monthly_summary }}</p>
+        <div class="row g-3">
+            <div class="col-md-3 col-6">
+                <div class="insight-card bg-light p-3 rounded text-center">
+                    <small class="text-muted d-block">Trades</small>
+                    <div class="h4 mb-0">{{ monthly_stats.get('total_trades', 0) }}</div>
+                </div>
             </div>
-            <button type="submit" class="btn btn-outline-primary">
-                <i class="fas fa-paper-plane"></i> Ask AI
-            </button>
-        </form>
-        <div id="aiAnswer" class="mt-4 p-3 bg-light rounded" style="min-height: 120px;">
-            <em>Ask the AI about your win rate, mistakes, best setups, or how to improve.</em>
+            <div class="col-md-3 col-6">
+                <div class="insight-card bg-light p-3 rounded text-center">
+                    <small class="text-muted d-block">Win Rate</small>
+                    <div class="h4 mb-0">{{ (monthly_stats.get('win_rate', 0) | float) | round(1) }}%</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="insight-card bg-light p-3 rounded text-center">
+                    <small class="text-muted d-block">Net P/L</small>
+                    <div class="h4 mb-0">{{ (monthly_stats.get('total_pnl', 0) | default(0)) | currency(current_user.preferred_currency) }}</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="insight-card bg-light p-3 rounded text-center">
+                    <small class="text-muted d-block">Direction</small>
+                    <div class="h4 mb-0">
+                        <span class="badge {% if monthly_direction == 'improving' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                            {{ monthly_direction | title }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ------------------------------------------------------------------ #}
+{# Behavioural Insights                                                #}
+{# ------------------------------------------------------------------ #}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header" style="background: linear-gradient(135deg,#1e293b,#334155); color:white;">
+        <h5 class="mb-0"><i class="fas fa-brain"></i> Behavioural Insights</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3 col-6">
+                <div class="insight-card bg-light p-3 rounded text-center">
+                    <small class="text-muted d-block">Discipline Score</small>
+                    <div class="h4 mb-0">{{ bi.get('discipline_score', 0) | float | round(1) }}</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="insight-card bg-light p-3 rounded text-center">
+                    <small class="text-muted d-block">Consistency Score</small>
+                    <div class="h4 mb-0">{{ bi.get('consistency_score', 0) | float | round(1) }}</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="insight-card bg-light p-3 rounded text-center">
+                    <small class="text-muted d-block">Avg R:R</small>
+                    <div class="h4 mb-0">{{ bi_risk.get('avg_rr', 0) | float | round(2) }}</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="insight-card bg-light p-3 rounded text-center">
+                    <small class="text-muted d-block">High-Risk Trades</small>
+                    {% set hrt = bi_risk.get('high_risk_trades', 0) %}
+                    <div class="h4 mb-0 {% if hrt > 0 %}text-danger{% endif %}">{{ hrt }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% set emotional_bias = bi.get('emotional_bias') %}
+        {% if emotional_bias %}
+        <div class="mt-3">
+            <small class="text-muted">Emotional Activity:</small>
+            <span class="ms-2 fw-semibold">{{ emotional_bias }}</span>
+        </div>
+        {% endif %}
+
+        {% set conf = bi.get('confidence_trend') %}
+        {% if conf is not none and conf != '' %}
+        <div class="mt-1">
+            <small class="text-muted">Average Confidence Level:</small>
+            <span class="ms-2 fw-semibold">{{ conf | round(1) }} / 10</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{# ------------------------------------------------------------------ #}
+{# Talk to AI Buddy                                                    #}
+{# ------------------------------------------------------------------ #}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-comments"></i> Talk to AI Buddy</h5>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label for="aiQuestion" class="form-label">Ask a trading question</label>
+            <input id="aiQuestion"
+                   class="form-control"
+                   placeholder="How did I perform this week? What is my best setup?"
+                   autocomplete="off">
+        </div>
+        <button id="aiSubmitBtn" type="button" class="btn btn-outline-primary">
+            <i class="fas fa-paper-plane"></i> Ask AI Buddy
+        </button>
+        <div id="aiAnswer" class="mt-4 p-3 bg-light rounded" style="min-height: 100px;">
+            <em class="text-muted">Ask AI Buddy about your win rate, mistakes, best setups, or how to improve.</em>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+{# Render Jinja values into data attributes so JS never sees raw Jinja syntax #}
+<div id="ai-page-data"
+     data-query-url="{{ url_for('dashboard.ai_query') }}"
+     data-voice="{{ (voice_summary or '') | e }}"
+     style="display:none;"></div>
+
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+(function () {
+    "use strict";
 
-    var voiceBtn = document.getElementById('voiceBtn');
-    var aiQuestionForm = document.getElementById('aiQuestionForm');
-    var answerBox = document.getElementById('aiAnswer');
+    var dataEl = document.getElementById("ai-page-data");
+    var AI_QUERY_URL = dataEl ? dataEl.getAttribute("data-query-url") : "";
+    var VOICE_TEXT   = dataEl ? dataEl.getAttribute("data-voice")     : "";
+    var CSRF_TOKEN   = "";
 
-    var voiceSummary = "{{ voice_summary|default('') }}";
-    var csrfInput = document.querySelector('input[name="csrf_token"]');
-    var csrfToken = csrfInput ? csrfInput.value : "";
-
-    if (voiceBtn && voiceSummary) {
-        voiceBtn.addEventListener('click', function () {
-            var msg = new SpeechSynthesisUtterance(voiceSummary);
-            msg.rate = 1.0;
-            msg.pitch = 1.0;
-            window.speechSynthesis.speak(msg);
-        });
+    function getCsrf() {
+        var el = document.querySelector("input[name='csrf_token']");
+        return el ? el.value : "";
     }
 
-    if (aiQuestionForm && answerBox) {
-        aiQuestionForm.addEventListener('submit', async function (event) {
-            event.preventDefault();
+    function onVoiceClick() {
+        if (!VOICE_TEXT) { return; }
+        if (!window.speechSynthesis) { return; }
+        var msg = new SpeechSynthesisUtterance(VOICE_TEXT);
+        msg.rate  = 1.0;
+        msg.pitch = 1.0;
+        window.speechSynthesis.speak(msg);
+    }
 
-            var questionInput = document.getElementById('aiQuestion');
-            var question = questionInput ? questionInput.value.trim() : "";
+    function onAskClick() {
+        var questionEl = document.getElementById("aiQuestion");
+        var answerEl   = document.getElementById("aiAnswer");
+        if (!questionEl || !answerEl) { return; }
 
-            if (!question) return;
+        var question = questionEl.value;
+        if (!question || question.trim() === "") { return; }
 
-            answerBox.innerHTML =
-                '<div class="text-muted">Thinking... <i class="fas fa-spinner fa-spin"></i></div>';
+        answerEl.innerHTML = "<div class='text-muted'>AI Buddy is thinking&#8230; <i class='fas fa-spinner fa-spin'></i></div>";
 
-            try {
-                const response = await fetch("{{ url_for('dashboard.ai_query') }}", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": csrfToken
-                    },
-                    body: JSON.stringify({ question: question })
-                });
+        var payload = JSON.stringify({ question: question.trim() });
 
-                if (!response.ok) {
-                    throw new Error("Server error: " + response.status);
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", AI_QUERY_URL, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.setRequestHeader("X-CSRFToken", CSRF_TOKEN);
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) { return; }
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    answerEl.textContent = (data && data.answer) ? data.answer : "Sorry, AI Buddy could not answer that right now.";
+                } catch (parseErr) {
+                    answerEl.textContent = "Sorry, AI Buddy could not answer that right now.";
                 }
-
-                const data = await response.json();
-                answerBox.textContent =
-                    data.answer || "Sorry, I could not answer that right now.";
-
-            } catch (error) {
-                answerBox.textContent =
-                    "Unable to reach AI insights. Please try again later.";
+            } else {
+                answerEl.textContent = "Unable to reach AI Buddy. Please try again later.";
             }
-        });
+        };
+
+        xhr.onerror = function () {
+            answerEl.textContent = "Unable to reach AI Buddy. Please try again later.";
+        };
+
+        xhr.send(payload);
     }
-});
+
+    function onQuestionKeydown(e) {
+        if (e.keyCode === 13) {
+            onAskClick();
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        CSRF_TOKEN = getCsrf();
+
+        var voiceBtn   = document.getElementById("voiceBtn");
+        var submitBtn  = document.getElementById("aiSubmitBtn");
+        var questionEl = document.getElementById("aiQuestion");
+
+        if (voiceBtn)   { voiceBtn.addEventListener("click", onVoiceClick); }
+        if (submitBtn)  { submitBtn.addEventListener("click", onAskClick); }
+        if (questionEl) { questionEl.addEventListener("keydown", onQuestionKeydown); }
+    });
+
+}());
 </script>
 {% endblock %}
