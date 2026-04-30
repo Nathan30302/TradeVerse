@@ -3,12 +3,18 @@ Main Routes
 Homepage and general application routes
 """
 
-from flask import Blueprint, render_template, redirect, url_for, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, request, jsonify, send_from_directory, current_app
 from flask_login import current_user
 from app.models.instrument import Instrument
 
 # Create Blueprint
 bp = Blueprint('main', __name__)
+
+@bp.route('/robots.txt')
+def robots():
+    """Serve robots.txt for Google crawlers"""
+    static_folder = current_app.static_folder
+    return send_from_directory(static_folder, 'robots.txt')
 
 @bp.route('/')
 def index():
