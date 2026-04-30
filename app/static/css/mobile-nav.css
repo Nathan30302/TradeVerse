@@ -75,10 +75,37 @@
     background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, transparent 100%);
 }
 
+/* Hide Bootstrap's default navbar-toggler (we use our custom #mobileMenuBtn) */
+.navbar-toggler {
+    display: none !important;
+}
+
 /* Show mobile menu button on small screens */
 @media (max-width: 991.98px) {
     #mobileMenuBtn {
         display: inline-flex !important;
+        /* Style: larger, proper padding, positioned top-right */
+        padding: 0.6rem 0.8rem !important;
+        font-size: 1.1rem !important;
+        border-radius: 8px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+    }
+    
+    /* Mobile header adjustments */
+    .navbar {
+        padding: 0.5rem 0.5rem !important;
+    }
+    
+    .navbar-brand {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Hide duplicate menu elements */
+    .navbar-toggler {
+        display: none !important;
     }
 }
 
