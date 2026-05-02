@@ -159,7 +159,7 @@
                                     <br><small class="text-muted">P/L: ${{ "%.2f"|format(plan.actual_pnl) }}</small>
                                 {% endif %}
                             {% endif %}
-                        </td>
+</td>
                         <td class="text-end" onclick="event.stopPropagation();">
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ url_for('planner.view_plan', plan_id=plan.id) }}" 
@@ -169,7 +169,7 @@
                                 {% if plan.status == 'PLANNING' %}
                                     <!-- Execute confirmation modal trigger -->
                                     <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#confirmExecuteModal{{ plan.id }}" title="Execute Plan">
-                                        <i class="fas fa-check"></i>
+                                        <i class="fas fa-play"></i>
                                     </button>
 
                                     <!-- Execute Confirmation Modal -->
@@ -179,7 +179,7 @@
                                                 <form method="POST" action="{{ url_for('planner.start_execution', plan_id=plan.id) }}">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <div class="modal-header">
-                                                        <h5 class="modal-title">Create & Edit Trade</h5>
+                                                        <h5 class="modal-title">Execute Trade</h5>
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                     </div>
                                                     <div class="modal-body">
@@ -229,12 +229,18 @@
                                                     </div>
                                                     <div class="modal-footer">
                                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                        <button type="submit" class="btn btn-success">Create Trade & Open</button>
+                                                        <button type="submit" class="btn btn-success">Execute Trade</button>
                                                     </div>
                                                 </form>
                                             </div>
                                         </div>
                                     </div>
+                                {% elif plan.status == 'EXECUTED' %}
+                                    <!-- Review button for executed trades - THIS IS THE KEY FIX! -->
+                                    <a href="{{ url_for('planner.execute_plan', plan_id=plan.id) }}" 
+                                       class="btn btn-outline-success" title="Review Trade">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </a>
                                 {% endif %}
                                 <button type="button" 
                                         class="btn btn-outline-danger" 
