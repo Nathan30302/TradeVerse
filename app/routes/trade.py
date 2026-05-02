@@ -495,4 +495,4 @@ def quick_add():
         return jsonify({
             'success': False,
             'message': str(e)
-        }), 400
+        }), 

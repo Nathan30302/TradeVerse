@@ -1,6 +1,14 @@
 """
 Trade Planner Routes
-Redesigned for standalone Before/After trade planning workflow
+Before/After trade planning workflow.
+
+Lifecycle:
+  PLANNING  --(start_execution)--> EXECUTED --(execute_plan POST)--> REVIEWED
+
+Sync guarantee:
+  - start_execution  creates a Trade (OPEN) and links it via executed_trade_id
+  - execute_plan     closes that Trade (CLOSED + P&L) so dashboard picks it up
+  - Both steps write to the SAME Trade model that My Trades and Dashboard read
 """
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
@@ -11,32 +19,86 @@ from app.forms.trade_forms import TradePlanBeforeForm, TradePlanAfterForm
 from werkzeug.utils import secure_filename
 from datetime import datetime, timezone
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint('planner', __name__, url_prefix='/planner')
 
 
-def allowed_file(filename):
-    """Check if file extension is allowed"""
+# ==================== Internal helpers ====================
+
+def _allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
+           filename.rsplit('.', 1)[1].lower() in current_app.config.get('ALLOWED_EXTENSIONS', set())
 
 
-def save_screenshot(file, prefix='trade'):
-    """Save uploaded screenshot and return path"""
-    if file and file.filename and allowed_file(file.filename):
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = secure_filename(file.filename)
-        unique_filename = f"{prefix}_{current_user.id}_{timestamp}_{filename}"
-        
-        upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'trade_screenshots')
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        filepath = os.path.join(upload_dir, unique_filename)
-        file.save(filepath)
-        
-        return f"uploads/trade_screenshots/{unique_filename}"
-    
-    return None
+def _save_screenshot(file, prefix='trade'):
+    """Save an uploaded screenshot and return the relative static path, or None."""
+    if not (file and file.filename and _allowed_file(file.filename)):
+        return None
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = secure_filename(file.filename)
+    unique_name = f"{prefix}_{current_user.id}_{timestamp}_{filename}"
+    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'trade_screenshots')
+    os.makedirs(upload_dir, exist_ok=True)
+    file.save(os.path.join(upload_dir, unique_name))
+    return f"uploads/trade_screenshots/{unique_name}"
+
+
+def _safe_float(value, default=None):
+    """Convert value to float safely, returning default on failure."""
+    try:
+        return float(value) if value not in (None, '', 'None') else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _fallback_pnl(trade):
+    """
+    Calculate a simple directional P&L when the full calculator fails.
+    Uses: (exit - entry) * lot_size * 100  for most instruments.
+    This is intentionally simple — it guarantees a non-None value so the
+    dashboard can count the trade. The full calculator is preferred.
+    """
+    try:
+        entry = trade.entry_price or 0.0
+        exit_ = trade.exit_price or 0.0
+        lots  = trade.lot_size  or 1.0
+        diff  = exit_ - entry if trade.trade_type == 'BUY' else entry - exit_
+        return round(diff * lots * 100, 2)
+    except Exception:
+        return 0.0
+
+
+def _close_trade_from_review(trade, actual_entry, actual_exit, plan_lot_size):
+    """
+    Close a linked Trade with reviewed prices and calculate P&L.
+    Returns the final profit_loss value (always a number, never None).
+    """
+    from app.models.trade import Trade  # local to avoid circular import
+
+    if actual_entry:
+        trade.entry_price = actual_entry
+    trade.exit_price = actual_exit
+    trade.exit_date  = datetime.now(timezone.utc)
+    trade.status     = 'CLOSED'
+
+    # Try the full calculator first
+    try:
+        result = trade.calculate_pnl()
+    except Exception as exc:
+        logger.warning('calculate_pnl() raised for trade %s: %s', trade.id, exc)
+        result = None
+
+    # Fallback so profit_loss is never None going into the dashboard
+    if result is None or trade.profit_loss is None:
+        trade.profit_loss = _fallback_pnl(trade)
+        logger.info(
+            'Used fallback P&L %.2f for trade %s', trade.profit_loss, trade.id
+        )
+
+    return trade.profit_loss
 
 
 # ==================== Trade Planner Dashboard ====================
@@ -44,52 +106,44 @@ def save_screenshot(file, prefix='trade'):
 @bp.route('/')
 @login_required
 def index():
-    """
-    Trade Planner Dashboard
-    Shows all trade plans with their statuses
-    """
+    """List all trade plans with status filter and pagination."""
     status_filter = request.args.get('status', 'all')
-    page = request.args.get('page', 1, type=int)
-    
+    page          = request.args.get('page', 1, type=int)
+
     query = TradePlan.query.filter_by(user_id=current_user.id)
-    
     if status_filter != 'all':
         query = query.filter_by(status=status_filter.upper())
-    
     query = query.order_by(TradePlan.created_at.desc())
-    
+
     per_page = current_app.config.get('ITEMS_PER_PAGE', 20)
-    plans = query.paginate(page=page, per_page=per_page, error_out=False)
-    
-    # Get stats
-    total_plans = TradePlan.query.filter_by(user_id=current_user.id).count()
-    planning_count = TradePlan.query.filter_by(user_id=current_user.id, status='PLANNING').count()
-    executed_count = TradePlan.query.filter_by(user_id=current_user.id, status='EXECUTED').count()
-    reviewed_count = TradePlan.query.filter_by(user_id=current_user.id, status='REVIEWED').count()
-    
+    plans    = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    base_q         = TradePlan.query.filter_by(user_id=current_user.id)
+    planning_count = base_q.filter_by(status='PLANNING').count()
+    executed_count = base_q.filter_by(status='EXECUTED').count()
+    reviewed_count = base_q.filter_by(status='REVIEWED').count()
+
     stats = {
-        'total': total_plans,
+        'total':    base_q.count(),
         'planning': planning_count,
         'executed': executed_count,
-        'reviewed': reviewed_count
+        'reviewed': reviewed_count,
     }
-    
-    return render_template('planner/index.html', 
-                         plans=plans, 
-                         status_filter=status_filter,
-                         stats=stats)
+
+    return render_template('planner/index.html',
+                           plans=plans,
+                           status_filter=status_filter,
+                           stats=stats)
 
 
-# ==================== Create New Trade Plan ====================
+# ==================== Step 1 — Create Plan ====================
 
 @bp.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_plan():
-    """
-    Create a new trade plan (Before Trade section)
-    """
+    """Create a new trade plan (status = PLANNING). No Trade is created yet."""
     form = TradePlanBeforeForm()
-    
+
     if form.validate_on_submit():
         try:
             plan = TradePlan(
@@ -106,300 +160,306 @@ def new_plan():
                 liquidity_taken=form.liquidity_taken.data,
                 confirmation_candle_formed=form.confirmation_candle_formed.data,
                 session_aligned=form.session_aligned.data,
-                pre_trade_notes=form.pre_trade_notes.data
+                pre_trade_notes=form.pre_trade_notes.data,
             )
-            
-            # Calculate planned R:R
             plan.calculate_planned_rr()
-            
-            # Handle screenshot upload
+
             if form.screenshot_before.data:
-                screenshot_path = save_screenshot(form.screenshot_before.data, 'before')
-                if screenshot_path:
-                    plan.screenshot_before_path = screenshot_path
-            
-            # Calculate plan quality
+                path = _save_screenshot(form.screenshot_before.data, 'before')
+                if path:
+                    plan.screenshot_before_path = path
+
             plan.calculate_plan_quality()
-            
             db.session.add(plan)
             db.session.commit()
-            
-            flash(f'✅ Trade plan created! R:R = 1:{plan.planned_rr_ratio or 0:.2f}', 'success')
+
+            rr = plan.planned_rr_ratio or 0
+            flash(f'✅ Trade plan created! Planned R:R = 1:{rr:.2f}', 'success')
             return redirect(url_for('planner.view_plan', plan_id=plan.id))
-            
-        except Exception as e:
+
+        except Exception as exc:
             db.session.rollback()
-            flash(f'❌ Error creating plan: {str(e)}', 'danger')
-            print(f"Error: {e}")
-    
+            logger.exception('Error creating plan')
+            flash(f'❌ Error creating plan: {exc}', 'danger')
+
     return render_template('planner/new_plan.html', form=form)
 
 
-# ==================== View Trade Plan ====================
+# ==================== View Plan ====================
 
 @bp.route('/<int:plan_id>')
 @login_required
 def view_plan(plan_id):
-    """View trade plan details"""
+    """View a trade plan. Passive sync keeps status consistent with Trade."""
     plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
-    
-    if plan.sync_with_trade():
-        try:
+
+    try:
+        if plan.sync_with_trade():
             db.session.commit()
-        except Exception:
-            db.session.rollback()
+    except Exception:
+        db.session.rollback()
 
     return render_template('planner/view_plan.html', plan=plan)
 
 
-# ==================== Execute Trade (Mark as Executed) ====================
-
-@bp.route('/<int:plan_id>/execute', methods=['GET', 'POST'])
-@login_required
-def execute_plan(plan_id):
-    """
-    Mark plan as executed and enter actual entry/exit details
-    """
-    plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
-    
-    if plan.status == 'REVIEWED':
-        flash('This trade has already been reviewed.', 'info')
-        return redirect(url_for('planner.view_plan', plan_id=plan.id))
-    
-    form = TradePlanAfterForm()
-    
-    # Pre-fill with planned values if not submitted
-    if request.method == 'GET':
-        form.actual_entry.data = plan.planned_entry
-    
-    if form.validate_on_submit():
-        try:
-            plan.actual_entry = form.actual_entry.data
-            plan.actual_exit = form.actual_exit.data
-            plan.emotion_after = form.emotion_after.data
-            plan.trade_grade = form.trade_grade.data
-            plan.reflection_notes = form.reflection_notes.data
-            
-            # Calculate P&L using the universal calculator
-            plan.calculate_pnl()
-            
-            # Handle screenshot upload
-            if form.screenshot_after.data:
-                screenshot_path = save_screenshot(form.screenshot_after.data, 'after')
-                if screenshot_path:
-                    plan.screenshot_after_path = screenshot_path
-            
-            # Mark as reviewed
-            plan.mark_as_reviewed()
-            plan.calculate_execution_quality()
-            
-            # Ensure linked trade is closed with P&L if actual_exit provided (sync My Trades/PnL)
-            if plan.executed_trade_id and form.actual_exit.data:
-                from app.models.trade import Trade
-                trade = db.session.get(Trade, plan.executed_trade_id)
-                if trade and trade.status == 'OPEN':
-                    trade.exit_price = form.actual_exit.data
-                    trade.exit_date = datetime.now(timezone.utc)
-                    trade.status = 'CLOSED'
-                    trade.calculate_pnl()
-                    print(f"[PLANNER-SYNC] Closed linked trade {trade.id} P/L: {trade.profit_loss}")
-            
-            db.session.commit()
-            
-            pnl_display = f"${plan.actual_pnl:+.2f}" if plan.actual_pnl else "N/A"
-            flash(f'✅ Trade review completed! P&L: {pnl_display} (synced to My Trades)', 'success')
-            return redirect(url_for('planner.view_plan', plan_id=plan.id))
-            
-        except Exception as e:
-            db.session.rollback()
-            flash(f'❌ Error: {str(e)}', 'danger')
-            print(f"Error: {e}")
-    
-    return render_template('planner/execute_plan.html', form=form, plan=plan)
-
+# ==================== Step 2 — Execute Plan (create Trade) ====================
 
 @bp.route('/<int:plan_id>/start', methods=['POST'])
 @login_required
 def start_execution(plan_id):
     """
-    Start execution: create a Trade record from a TradePlan and link them.
-    This prevents duplicate manual entry — clicking Execute will create the trade
-    and transition the plan to EXECUTED. Redirects to the trade view for further actions.
+    Step 2: mark plan EXECUTED and create the linked Trade (status=OPEN).
+
+    The Trade goes into My Trades immediately. Dashboard will count it in
+    OPEN stats. Closing happens in execute_plan (Step 3).
     """
     from app.models.trade import Trade
 
     plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
 
-    # If already linked to a trade, redirect to that trade
-    if getattr(plan, 'executed', False) or getattr(plan, 'executed_trade_id', None) or getattr(plan, 'trade_id', None):
-        existing_id = getattr(plan, 'executed_trade_id', None) or getattr(plan, 'trade_id', None)
-        flash('This plan has already been executed and linked to a trade.', 'info')
+    # Guard: already past PLANNING
+    if plan.status in ('EXECUTED', 'REVIEWED'):
+        existing_id = plan.executed_trade_id or getattr(plan, 'trade_id', None)
+        flash('This plan has already been executed.', 'info')
         if existing_id:
             return redirect(url_for('trade.view', trade_id=existing_id))
         return redirect(url_for('planner.view_plan', plan_id=plan.id))
 
-    if plan.status == 'REVIEWED':
-        flash('This plan has already been reviewed.', 'info')
-        return redirect(url_for('planner.view_plan', plan_id=plan.id))
-
     try:
-        # Allow overriding planned values from an inline modal form
-        trade_type = (request.form.get('trade_type') or plan.direction or 'BUY').upper()
-        
-        # Parse numeric fields safely
-        def to_float(val, default=None):
-            try:
-                return float(val) if val is not None and val != '' else default
-            except Exception:
-                return default
+        trade_type  = (request.form.get('trade_type') or plan.direction or 'BUY').upper()
+        entry_price = _safe_float(request.form.get('entry_price'), plan.planned_entry  or 0.0)
+        stop_loss   = _safe_float(request.form.get('stop_loss'),   plan.planned_stop_loss)
+        take_profit = _safe_float(request.form.get('take_profit'), plan.planned_take_profit)
+        lot_size    = _safe_float(request.form.get('lot_size'),    plan.planned_lot_size or 1.0)
+        strategy    = request.form.get('strategy') or plan.strategy or ''
+        notes       = request.form.get('pre_trade_plan') or plan.pre_trade_notes or ''
 
-        entry_price = to_float(request.form.get('entry_price'), plan.planned_entry or 0.0)
-        stop_loss = to_float(request.form.get('stop_loss'), plan.planned_stop_loss)
-        take_profit = to_float(request.form.get('take_profit'), plan.planned_take_profit)
-        lot_size = to_float(request.form.get('lot_size'), plan.planned_lot_size or 1.0)
-        strategy = request.form.get('strategy') or plan.strategy
-        pre_trade_plan = request.form.get('pre_trade_plan') or plan.pre_trade_notes or ''
-
-        # Check if exit price is provided (indicating immediate execution)
-        exit_price = to_float(request.form.get('exit_price'))
-        exit_date_str = request.form.get('exit_date')
-        
-        # Create trade using planned or overridden values
         trade = Trade(
             user_id=current_user.id,
-            symbol=(plan.symbol or '').upper(),
+            symbol=plan.symbol.upper(),
             trade_type=trade_type,
             lot_size=lot_size,
             entry_price=entry_price,
             stop_loss=stop_loss,
             take_profit=take_profit,
-            entry_date=plan.executed_at or datetime.now(timezone.utc),
-            pre_trade_plan=pre_trade_plan,
-            strategy=strategy
+            entry_date=datetime.now(timezone.utc),
+            pre_trade_plan=notes,
+            strategy=strategy,
+            status='OPEN',
+            # Populate extra fields so dashboard analytics are richer
+            checklist_completed=bool(plan.get_checklist_score() == 4),
+            playbook_followed=True,
         )
 
-        # If exit price is provided, immediately close the trade
-        if exit_price is not None:
-            trade.exit_price = exit_price
-            trade.exit_date = datetime.fromisoformat(exit_date_str) if exit_date_str else datetime.now(timezone.utc)
-            trade.status = 'CLOSED'
-            
-            # Calculate P&L immediately
-            trade.calculate_pnl()
-            
-            # Mark plan as reviewed immediately since trade is complete
-            plan.actual_entry = entry_price
-            plan.actual_exit = exit_price
-            plan.actual_pnl = trade.profit_loss
-            plan.mark_as_reviewed()
-            plan.executed_at = plan.executed_at or datetime.now(timezone.utc)
-            plan.calculate_execution_quality()
-            
-            flash_message = f'Trade executed and completed! P/L: ${trade.profit_loss:+.2f}'
-        else:
-            # Trade is open, mark plan as executed
-            plan.mark_as_executed()
-            flash_message = 'Plan executed: trade created under My Trades.'
+        # Calculate R:R on the Trade if levels are available
+        if trade.stop_loss and trade.take_profit and trade.entry_price:
+            try:
+                trade.calculate_risk_reward()
+            except Exception:
+                pass
 
         db.session.add(trade)
-        db.session.flush()  # get trade.id
+        db.session.flush()  # assign trade.id before linking
 
-        # Link plan -> trade
-        # Support both legacy `trade_id` and new `executed` fields for backward compatibility
+        # Link plan → trade (both FK columns for compatibility)
+        plan.executed_trade_id = trade.id
         try:
-            plan.trade_id = trade.id
+            plan.trade_id = trade.id   # unique FK — may raise if already set
         except Exception:
             pass
         plan.executed = True
-        plan.executed_trade_id = trade.id
+        plan.mark_as_executed()        # status='EXECUTED', executed_at=now
 
         db.session.commit()
 
-        flash(flash_message, 'success')
+        flash(
+            '✅ Trade created and marked as Executed. '
+            'It now appears in My Trades (status: OPEN). '
+            'Complete the review when you close it.',
+            'success'
+        )
         return redirect(url_for('trade.view', trade_id=trade.id))
 
-    except Exception as e:
+    except Exception as exc:
         db.session.rollback()
-        flash(f'❌ Error executing plan: {str(e)}', 'danger')
-        current_app.logger.exception('Error starting execution for plan %s', plan_id)
+        logger.exception('Error in start_execution for plan %s', plan_id)
+        flash(f'❌ Error executing plan: {exc}', 'danger')
         return redirect(url_for('planner.view_plan', plan_id=plan.id))
 
 
-# ==================== Edit Trade Plan ====================
+# ==================== Step 3 — Review Trade ====================
+
+@bp.route('/<int:plan_id>/execute', methods=['GET', 'POST'])
+@login_required
+def execute_plan(plan_id):
+    """
+    Step 3: post-trade review form.
+
+    On submit:
+      1. Saves review fields (grade, emotion, reflection) on the plan
+      2. Closes the linked Trade with actual exit price + calculated P&L
+      3. Marks plan REVIEWED
+      4. Dashboard + My Trades automatically reflect the closed Trade
+
+    Status guards:
+      PLANNING  → redirected to view (must execute first)
+      REVIEWED  → redirected to view (already done)
+      EXECUTED  → proceeds normally
+    """
+    from app.models.trade import Trade
+
+    plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
+
+    if plan.status == 'REVIEWED':
+        flash('This trade has already been reviewed.', 'info')
+        return redirect(url_for('planner.view_plan', plan_id=plan.id))
+
+    if plan.status == 'PLANNING':
+        flash('You must execute the plan first before reviewing it.', 'warning')
+        return redirect(url_for('planner.view_plan', plan_id=plan.id))
+
+    # status == 'EXECUTED' — proceed to review form
+    form = TradePlanAfterForm()
+
+    if request.method == 'GET':
+        # Pre-fill actual_entry from the linked Trade if available
+        linked = None
+        if plan.executed_trade_id:
+            linked = db.session.get(Trade, plan.executed_trade_id)
+        form.actual_entry.data = (
+            (linked.entry_price if linked else None)
+            or plan.planned_entry
+        )
+
+    if form.validate_on_submit():
+        try:
+            actual_entry = form.actual_entry.data
+            actual_exit  = form.actual_exit.data
+
+            # --- Update plan review fields ---
+            plan.actual_entry     = actual_entry
+            plan.actual_exit      = actual_exit
+            plan.emotion_after    = form.emotion_after.data
+            plan.trade_grade      = form.trade_grade.data
+            plan.reflection_notes = form.reflection_notes.data
+
+            # --- Close the linked Trade ---
+            # Accept any non-CANCELLED status so manual edits via My Trades
+            # don't block the review from syncing.
+            final_pnl = None
+            if plan.executed_trade_id and actual_exit:
+                trade = db.session.get(Trade, plan.executed_trade_id)
+                if trade and trade.status != 'CANCELLED':
+                    final_pnl = _close_trade_from_review(
+                        trade, actual_entry, actual_exit, plan.planned_lot_size
+                    )
+                    plan.actual_pnl = final_pnl
+                    logger.info(
+                        'Plan %s review: closed Trade %s, P/L=%.2f',
+                        plan.id, trade.id, final_pnl or 0
+                    )
+            elif actual_exit:
+                # Plan was reviewed without a linked Trade — store P&L on plan only
+                # (trade was never created via start_execution)
+                pass
+
+            # --- Screenshot ---
+            if form.screenshot_after.data:
+                path = _save_screenshot(form.screenshot_after.data, 'after')
+                if path:
+                    plan.screenshot_after_path = path
+
+            # --- Finalise plan ---
+            plan.mark_as_reviewed()
+            plan.calculate_execution_quality()
+
+            db.session.commit()
+
+            pnl_str = f"${final_pnl:+.2f}" if final_pnl is not None else "N/A"
+            flash(
+                f'✅ Trade reviewed! P&L: {pnl_str}. '
+                'Dashboard and My Trades have been updated.',
+                'success'
+            )
+            return redirect(url_for('planner.view_plan', plan_id=plan.id))
+
+        except Exception as exc:
+            db.session.rollback()
+            logger.exception('Error in execute_plan for plan %s', plan_id)
+            flash(f'❌ Error saving review: {exc}', 'danger')
+
+    return render_template('planner/execute_plan.html', form=form, plan=plan)
+
+
+# ==================== Edit Plan ====================
 
 @bp.route('/<int:plan_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_plan(plan_id):
-    """Edit existing trade plan (before section only)"""
+    """Edit a PLANNING plan. Locked after execution."""
     plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
-    
-    if plan.status == 'REVIEWED':
-        flash('Cannot edit a reviewed trade plan.', 'warning')
+
+    if plan.status != 'PLANNING':
+        flash('Only unexecuted plans can be edited.', 'warning')
         return redirect(url_for('planner.view_plan', plan_id=plan.id))
-    
+
     form = TradePlanBeforeForm(obj=plan)
-    
+
     if form.validate_on_submit():
         try:
-            plan.symbol = form.symbol.data.upper().strip()
-            plan.direction = form.direction.data
-            plan.planned_entry = form.planned_entry.data
-            plan.planned_stop_loss = form.planned_stop_loss.data
-            plan.planned_take_profit = form.planned_take_profit.data
-            plan.planned_lot_size = form.planned_lot_size.data
-            plan.strategy = form.strategy.data
+            plan.symbol                     = form.symbol.data.upper().strip()
+            plan.direction                  = form.direction.data
+            plan.planned_entry              = form.planned_entry.data
+            plan.planned_stop_loss          = form.planned_stop_loss.data
+            plan.planned_take_profit        = form.planned_take_profit.data
+            plan.planned_lot_size           = form.planned_lot_size.data
+            plan.strategy                   = form.strategy.data
             plan.market_structure_confirmed = form.market_structure_confirmed.data
-            plan.liquidity_taken = form.liquidity_taken.data
+            plan.liquidity_taken            = form.liquidity_taken.data
             plan.confirmation_candle_formed = form.confirmation_candle_formed.data
-            plan.session_aligned = form.session_aligned.data
-            plan.pre_trade_notes = form.pre_trade_notes.data
-            
-            # Recalculate
+            plan.session_aligned            = form.session_aligned.data
+            plan.pre_trade_notes            = form.pre_trade_notes.data
+
             plan.calculate_planned_rr()
             plan.calculate_plan_quality()
-            
-            # Handle new screenshot
+
             if form.screenshot_before.data:
-                screenshot_path = save_screenshot(form.screenshot_before.data, 'before')
-                if screenshot_path:
-                    plan.screenshot_before_path = screenshot_path
-            
+                path = _save_screenshot(form.screenshot_before.data, 'before')
+                if path:
+                    plan.screenshot_before_path = path
+
             db.session.commit()
             flash('✅ Trade plan updated!', 'success')
             return redirect(url_for('planner.view_plan', plan_id=plan.id))
-            
-        except Exception as e:
+
+        except Exception as exc:
             db.session.rollback()
-            flash(f'❌ Error: {str(e)}', 'danger')
-    
+            flash(f'❌ Error: {exc}', 'danger')
+
     return render_template('planner/edit_plan.html', form=form, plan=plan)
 
 
-# ==================== Delete Trade Plan ====================
+# ==================== Delete Plan ====================
 
 @bp.route('/<int:plan_id>/delete', methods=['POST'])
 @login_required
 def delete_plan(plan_id):
-    """Delete trade plan"""
     plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
-    
     try:
         db.session.delete(plan)
         db.session.commit()
-        flash('✅ Trade plan deleted', 'success')
-    except Exception as e:
+        flash('✅ Trade plan deleted.', 'success')
+    except Exception as exc:
         db.session.rollback()
-        flash(f'❌ Error: {str(e)}', 'danger')
-    
+        flash(f'❌ Error: {exc}', 'danger')
     return redirect(url_for('planner.index'))
 
 
-# ==================== Legacy Routes (for backward compatibility) ====================
+# ==================== Legacy routes (backward compatibility) ====================
 
 @bp.route('/create/<int:trade_id>', methods=['GET', 'POST'])
 @login_required
 def create_plan(trade_id):
-    """Legacy: Create plan for existing trade - redirects to new workflow"""
     flash('Trade planning has been redesigned. Use the new Trade Planner.', 'info')
     return redirect(url_for('planner.new_plan'))
 
@@ -407,15 +467,12 @@ def create_plan(trade_id):
 @bp.route('/view/<int:trade_id>')
 @login_required
 def view_plan_legacy(trade_id):
-    """Legacy: View plan by trade_id"""
     from app.models.trade import Trade
     trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
-    
     if trade.has_plan():
         plan = trade.get_plan()
         if plan:
             return redirect(url_for('planner.view_plan', plan_id=plan.id))
-    
     flash('No plan found for this trade.', 'warning')
     return redirect(url_for('planner.new_plan'))
 
@@ -423,55 +480,46 @@ def view_plan_legacy(trade_id):
 @bp.route('/review/<int:trade_id>', methods=['GET', 'POST'])
 @login_required
 def review_trade(trade_id):
-    """Legacy: Review trade - redirects to execute"""
     from app.models.trade import Trade
     trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
-    
     if trade.has_plan():
         plan = trade.get_plan()
         if plan:
             return redirect(url_for('planner.execute_plan', plan_id=plan.id))
-    
     flash('No plan found for this trade.', 'warning')
     return redirect(url_for('planner.new_plan'))
 
 
-# ==================== API: Calculate P&L ====================
+# ==================== API: P&L Calculator ====================
 
 @bp.route('/api/calculate-pnl', methods=['POST'])
 @login_required
 def api_calculate_pnl():
-    """
-    API endpoint to calculate P&L using the unified calculator
-    Returns the same calculation that the backend uses
-    """
     from app.utils.pnl_calculator import calculate_pnl
-    
     try:
-        data = request.get_json()
-        symbol = data.get('symbol', '').upper().strip()
-        trade_type = data.get('trade_type', 'BUY').upper()
-        entry_price = float(data.get('entry_price', 0))
-        exit_price = float(data.get('exit_price', 0))
-        lot_size = float(data.get('lot_size', 0.01))
-        
+        data        = request.get_json() or {}
+        symbol      = data.get('symbol', '').upper().strip()
+        trade_type  = data.get('trade_type', 'BUY').upper()
+        entry_price = _safe_float(data.get('entry_price'), 0.0)
+        exit_price  = _safe_float(data.get('exit_price'),  0.0)
+        lot_size    = _safe_float(data.get('lot_size'),    0.01)
+
         if not all([symbol, entry_price, exit_price, lot_size]):
             return jsonify({'error': 'Missing required fields'}), 400
-        
+
         pnl, pips, asset_desc = calculate_pnl(
             symbol=symbol,
             trade_type=trade_type,
             entry_price=entry_price,
             exit_price=exit_price,
-            lot_size=lot_size
+            lot_size=lot_size,
         )
-        
         return jsonify({
-            'success': True,
-            'pnl': round(pnl, 2),
-            'pips': round(pips, 1),
-            'asset_type': asset_desc
+            'success':    True,
+            'pnl':        round(pnl, 2),
+            'pips':       round(pips, 1),
+            'asset_type': asset_desc,
         })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 400

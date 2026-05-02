@@ -9,7 +9,7 @@
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ url_for('planner.index') }}">Trade Planner</a></li>
             <li class="breadcrumb-item"><a href="{{ url_for('planner.view_plan', plan_id=plan.id) }}">{{ plan.symbol }}</a></li>
-            <li class="breadcrumb-item active">Complete Trade</li>
+            <li class="breadcrumb-item active">Review Trade</li>
         </ol>
     </nav>
     <h1 class="page-title">
@@ -29,19 +29,29 @@
             <span class="badge bg-secondary ms-2">{{ plan.strategy or 'No strategy' }}</span>
         </div>
         <div class="col-md-6 text-md-end">
-            <span class="me-3"><strong>Planned Entry:</strong> {{ "%.5f"|format(plan.planned_entry) }}</span>
-            <span class="me-3 text-danger"><strong>SL:</strong> {{ "%.5f"|format(plan.planned_stop_loss) }}</span>
-            <span class="text-success"><strong>TP:</strong> {{ "%.5f"|format(plan.planned_take_profit) }}</span>
+            <span class="me-3">
+                <strong>Planned Entry:</strong>
+                {% if plan.planned_entry %}{{ "%.5f" | format(plan.planned_entry) }}{% else %}N/A{% endif %}
+            </span>
+            <span class="me-3 text-danger">
+                <strong>SL:</strong>
+                {% if plan.planned_stop_loss %}{{ "%.5f" | format(plan.planned_stop_loss) }}{% else %}N/A{% endif %}
+            </span>
+            <span class="text-success">
+                <strong>TP:</strong>
+                {% if plan.planned_take_profit %}{{ "%.5f" | format(plan.planned_take_profit) }}{% else %}N/A{% endif %}
+            </span>
         </div>
     </div>
 </div>
 
 <form method="POST" enctype="multipart/form-data">
     {{ form.hidden_tag() }}
-    
+
     <div class="row">
         <!-- Left Column: Actual Execution -->
         <div class="col-lg-8">
+
             <!-- Actual Prices -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -51,36 +61,40 @@
                     <div class="row g-4">
                         <div class="col-md-6">
                             {{ form.actual_entry.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
-                               title="The actual price at which you entered the trade (may differ from planned entry)"></i>
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="The actual price at which you entered the trade"></i>
                             {{ form.actual_entry(class="form-control form-control-lg", placeholder="Actual entry price", id="actual_entry") }}
                             {% for error in form.actual_entry.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
-                            <small class="text-muted">Planned: {{ "%.5f"|format(plan.planned_entry) }}</small>
+                            {% if plan.planned_entry %}
+                            <small class="text-muted">Planned: {{ "%.5f" | format(plan.planned_entry) }}</small>
+                            {% endif %}
                         </div>
-                        
+
                         <div class="col-md-6">
                             {{ form.actual_exit.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
-                               title="The actual price at which you exited the trade (stop loss, take profit, or manual exit)"></i>
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="The actual price at which you exited the trade"></i>
                             {{ form.actual_exit(class="form-control form-control-lg", placeholder="Actual exit price", id="actual_exit") }}
                             {% for error in form.actual_exit.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
                     </div>
-                    
-                    <!-- Auto-calculated P&L Preview -->
+
+                    <!-- P&L Preview -->
                     <div class="mt-4 p-4 bg-light rounded text-center">
-                        <small class="text-muted d-block mb-2">Estimated P&L</small>
-                        <strong id="pnl_preview" class="h2">$0.00</strong>
+                        <small class="text-muted d-block mb-2">Estimated P&amp;L</small>
+                        <strong id="pnl_preview" class="h2 text-secondary">$0.00</strong>
                         <div class="mt-2">
-                            <small class="text-muted">Lot Size: {{ plan.planned_lot_size }} | Symbol: {{ plan.symbol }}</small>
+                            <small class="text-muted">
+                                Lot Size: {{ plan.planned_lot_size }} &nbsp;|&nbsp; Symbol: {{ plan.symbol }}
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -89,35 +103,35 @@
             <!-- Emotion & Grade -->
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-brain"></i> Psychology & Grading</h5>
+                    <h5 class="mb-0"><i class="fas fa-brain"></i> Psychology &amp; Grading</h5>
                 </div>
                 <div class="card-body">
                     <div class="row g-4">
                         <div class="col-md-6">
                             {{ form.emotion_after.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
-                               title="How did you feel after completing this trade? This helps track emotional patterns"></i>
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="How did you feel after completing this trade?"></i>
                             {{ form.emotion_after(class="form-select form-select-lg") }}
                             {% for error in form.emotion_after.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
-                        
+
                         <div class="col-md-6">
                             {{ form.trade_grade.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
-                               title="Grade your execution: A = Perfect, B = Good, C = Needs improvement, D = Poor"></i>
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="A = Perfect, B = Good, C = Needs improvement, D = Poor"></i>
                             {{ form.trade_grade(class="form-select form-select-lg") }}
                             {% for error in form.trade_grade.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
                     </div>
-                    
+
                     <!-- Grade Guide -->
                     <div class="mt-3 p-3 bg-light rounded">
                         <small class="text-muted">
@@ -138,13 +152,15 @@
                 </div>
                 <div class="card-body">
                     {{ form.reflection_notes.label(class="form-label fw-bold") }}
-                    {{ form.reflection_notes(class="form-control", rows="4", placeholder="What did you learn? What would you do differently? What went well or wrong?") }}
+                    {{ form.reflection_notes(class="form-control", rows="4",
+                        placeholder="What did you learn? What would you do differently? What went well or wrong?") }}
                 </div>
             </div>
         </div>
-        
-        <!-- Right Column: Screenshot & Summary -->
+
+        <!-- Right Column -->
         <div class="col-lg-4">
+
             <!-- After Screenshot -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -153,7 +169,6 @@
                 <div class="card-body">
                     {{ form.screenshot_after(class="form-control", id="screenshot_after") }}
                     <small class="text-muted">Upload chart showing the trade result</small>
-                    
                     <div id="preview_container" class="mt-3 d-none">
                         <img id="screenshot_preview" class="img-fluid rounded shadow-sm" alt="Preview">
                     </div>
@@ -167,7 +182,7 @@
                     <h5 class="mb-0 text-white"><i class="fas fa-image"></i> Before (Reference)</h5>
                 </div>
                 <div class="card-body p-2">
-                    <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}" 
+                    <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}"
                          class="img-fluid rounded" alt="Before Screenshot">
                 </div>
             </div>
@@ -198,7 +213,15 @@
                         </tr>
                         <tr>
                             <td class="text-muted">Planned R:R</td>
-                            <td class="text-end"><strong>1:{{ "%.2f"|format(plan.planned_rr_ratio) if plan.planned_rr_ratio else '?' }}</strong></td>
+                            <td class="text-end">
+                                <strong>
+                                    {% if plan.planned_rr_ratio %}
+                                        1:{{ "%.2f" | format(plan.planned_rr_ratio) }}
+                                    {% else %}
+                                        ?
+                                    {% endif %}
+                                </strong>
+                            </td>
                         </tr>
                         <tr>
                             <td class="text-muted">Strategy</td>
@@ -209,7 +232,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Submit Buttons -->
     <div class="d-flex gap-3 justify-content-end mb-5">
         <a href="{{ url_for('planner.view_plan', plan_id=plan.id) }}" class="btn btn-secondary btn-lg px-4">
@@ -218,94 +241,131 @@
         {{ form.submit(class="btn btn-success btn-lg px-5") }}
     </div>
 </form>
+
+{# Pass Jinja values to JS via data attributes — no raw Jinja inside JS #}
+<div id="review-data"
+     data-pnl-url="{{ url_for('planner.api_calculate_pnl') }}"
+     data-symbol="{{ plan.symbol | e }}"
+     data-direction="{{ plan.direction | e }}"
+     data-lot-size="{{ plan.planned_lot_size | default(1.0) }}"
+     style="display:none;"></div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Initialize Bootstrap tooltips
-document.addEventListener('DOMContentLoaded', function() {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-    
-    // P&L Preview Calculator - Uses backend API for accurate calculation
-function calculatePnL() {
-    const actualEntry = parseFloat(document.getElementById('actual_entry').value) || 0;
-    const actualExit = parseFloat(document.getElementById('actual_exit').value) || 0;
-    const lotSize = {{ plan.planned_lot_size }};
-    const direction = '{{ plan.direction }}';
-    const symbol = '{{ plan.symbol }}';
-    
-    if (actualEntry && actualExit && lotSize) {
-        // Call backend API to get accurate P&L calculation
-        fetch('{{ url_for("planner.api_calculate_pnl") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                symbol: symbol,
-                trade_type: direction,
-                entry_price: actualEntry,
-                exit_price: actualExit,
-                lot_size: lotSize
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            const pnlEl = document.getElementById('pnl_preview');
-            if (data.success) {
-                const pnl = data.pnl;
-                pnlEl.textContent = '$' + pnl.toFixed(2);
-                
-                if (pnl > 0) {
-                    pnlEl.className = 'h2 text-success';
-                } else if (pnl < 0) {
-                    pnlEl.className = 'h2 text-danger';
-                } else {
-                    pnlEl.className = 'h2 text-secondary';
-                }
-            } else {
-                pnlEl.textContent = '$0.00';
-                pnlEl.className = 'h2 text-secondary';
-            }
-        })
-        .catch(error => {
-            console.error('Error calculating P&L:', error);
-            const pnlEl = document.getElementById('pnl_preview');
-            pnlEl.textContent = '$0.00';
-            pnlEl.className = 'h2 text-secondary';
-        });
-    } else {
-        const pnlEl = document.getElementById('pnl_preview');
-        pnlEl.textContent = '$0.00';
-        pnlEl.className = 'h2 text-secondary';
+(function () {
+    "use strict";
+
+    /* ---- Read config from data attributes ---- */
+    var dataEl    = document.getElementById("review-data");
+    var PNL_URL   = dataEl ? dataEl.getAttribute("data-pnl-url")   : "";
+    var SYMBOL    = dataEl ? dataEl.getAttribute("data-symbol")     : "";
+    var DIRECTION = dataEl ? dataEl.getAttribute("data-direction")  : "BUY";
+    var LOT_SIZE  = dataEl ? parseFloat(dataEl.getAttribute("data-lot-size")) || 1.0 : 1.0;
+    var CSRF_TOKEN = "";
+
+    /* ---- Helpers ---- */
+    function getCsrf() {
+        var el = document.querySelector("input[name='csrf_token']");
+        return el ? el.value : "";
     }
-}
 
-['actual_entry', 'actual_exit'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', calculatePnL);
-});
+    function setPnlDisplay(pnl) {
+        var el = document.getElementById("pnl_preview");
+        if (!el) { return; }
+        el.textContent = "$" + pnl.toFixed(2);
+        if (pnl > 0) {
+            el.className = "h2 text-success";
+        } else if (pnl < 0) {
+            el.className = "h2 text-danger";
+        } else {
+            el.className = "h2 text-secondary";
+        }
+    }
 
-// Initial calculation if values exist
-calculatePnL();
+    /* ---- P&L preview via backend API ---- */
+    function calculatePnL() {
+        var entryEl = document.getElementById("actual_entry");
+        var exitEl  = document.getElementById("actual_exit");
+        if (!entryEl || !exitEl) { return; }
 
-// Screenshot preview
-const screenshotInput = document.getElementById('screenshot_after');
-if (screenshotInput) {
-    screenshotInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('screenshot_preview').src = e.target.result;
-                document.getElementById('preview_container').classList.remove('d-none');
+        var entry = parseFloat(entryEl.value) || 0;
+        var exit  = parseFloat(exitEl.value)  || 0;
+
+        if (!entry || !exit || !PNL_URL) {
+            setPnlDisplay(0);
+            return;
+        }
+
+        var payload = JSON.stringify({
+            symbol:      SYMBOL,
+            trade_type:  DIRECTION,
+            entry_price: entry,
+            exit_price:  exit,
+            lot_size:    LOT_SIZE
+        });
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", PNL_URL, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.setRequestHeader("X-CSRFToken", CSRF_TOKEN);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) { return; }
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data && data.success) {
+                        setPnlDisplay(data.pnl);
+                        return;
+                    }
+                } catch (e) { /* fall through */ }
+            }
+            setPnlDisplay(0);
+        };
+        xhr.onerror = function () { setPnlDisplay(0); };
+        xhr.send(payload);
+    }
+
+    /* ---- Screenshot preview ---- */
+    function initScreenshotPreview() {
+        var input = document.getElementById("screenshot_after");
+        if (!input) { return; }
+        input.addEventListener("change", function (e) {
+            var file = e.target.files[0];
+            if (!file) { return; }
+            var reader = new FileReader();
+            reader.onload = function (ev) {
+                document.getElementById("screenshot_preview").src = ev.target.result;
+                document.getElementById("preview_container").classList.remove("d-none");
             };
             reader.readAsDataURL(file);
+        });
+    }
+
+    /* ---- Bootstrap tooltips ---- */
+    function initTooltips() {
+        var els = document.querySelectorAll("[data-bs-toggle='tooltip']");
+        for (var i = 0; i < els.length; i++) {
+            new bootstrap.Tooltip(els[i]);
         }
+    }
+
+    /* ---- Boot ---- */
+    document.addEventListener("DOMContentLoaded", function () {
+        CSRF_TOKEN = getCsrf();
+        initTooltips();
+        initScreenshotPreview();
+
+        var entryEl = document.getElementById("actual_entry");
+        var exitEl  = document.getElementById("actual_exit");
+        if (entryEl) { entryEl.addEventListener("input", calculatePnL); }
+        if (exitEl)  { exitEl.addEventListener("input",  calculatePnL); }
+
+        /* Run once in case form is pre-filled */
+        calculatePnL();
     });
-}
+
+}());
 </script>
 {% endblock %}
