@@ -355,7 +355,7 @@
                 <h5 class="mb-0"><i class="fas fa-clipboard-list"></i> Trade Plan</h5>
             </div>
             <div class="card-body">
-                {% set trade_plan = trade.plan[0] if trade.plan and trade.plan|length > 0 else trade.plan if trade.plan and not trade.plan is iterable else none %}
+                {% set trade_plan = trade.plan %}
                 {% if trade_plan %}
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-2">

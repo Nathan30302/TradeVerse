@@ -344,19 +344,10 @@ class Trade(db.Model):
     # ==================== Plan Methods ====================
     def has_plan(self):
         """Check if trade has an associated plan"""
-        if self.plan is None:
-            return False
-        # Handle both list and single object relationships
-        if hasattr(self.plan, '__iter__') and not isinstance(self.plan, str):
-            return len(self.plan) > 0
-        return True
+        return self.plan is not None
     
     def get_plan(self):
-        """Get the trade plan, handling both list and single object"""
-        if not self.has_plan():
-            return None
-        if hasattr(self.plan, '__iter__') and not isinstance(self.plan, str):
-            return self.plan[0] if len(self.plan) > 0 else None
+        """Get the trade plan"""
         return self.plan
     
     # ==================== Utility Methods ====================
