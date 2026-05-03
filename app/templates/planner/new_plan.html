@@ -19,7 +19,7 @@
 
 <form method="POST" enctype="multipart/form-data">
     {{ form.hidden_tag() }}
-    
+
     <div class="row">
         <!-- Left Column: Main Form -->
         <div class="col-lg-8">
@@ -32,21 +32,21 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             {{ form.symbol.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
-                               title="Trading symbol (e.g., XAUUSD for gold, EURUSD for Euro/USD, NAS100 for Nasdaq)"></i>
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="Trading symbol (e.g., XAUUSD for gold, EURUSD, NAS100)"></i>
                             {{ form.symbol(class="form-control form-control-lg", placeholder="XAUUSD, EURUSD, NAS100...") }}
                             {% for error in form.symbol.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
-                        
+
                         <div class="col-md-6">
                             {{ form.direction.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
                                title="BUY if you expect price to go up, SELL if you expect price to go down"></i>
                             {{ form.direction(class="form-select form-select-lg", id="direction") }}
                             {% for error in form.direction.errors %}
@@ -66,67 +66,67 @@
                     <div class="row g-3">
                         <div class="col-md-3">
                             {{ form.planned_entry.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
                                title="Price at which you plan to enter the trade"></i>
                             {{ form.planned_entry(class="form-control", placeholder="Entry price", id="planned_entry") }}
                             {% for error in form.planned_entry.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
-                        
+
                         <div class="col-md-3">
                             {{ form.planned_stop_loss.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
-                               title="Price at which you will exit to limit losses if trade goes against you"></i>
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="Price at which you will exit if trade goes against you"></i>
                             {{ form.planned_stop_loss(class="form-control", placeholder="Stop loss", id="planned_sl") }}
                             {% for error in form.planned_stop_loss.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
-                        
+
                         <div class="col-md-3">
                             {{ form.planned_take_profit.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
-                               title="Price at which you will exit to lock in profits when trade moves in your favor"></i>
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="Price at which you will take profit"></i>
                             {{ form.planned_take_profit(class="form-control", placeholder="Take profit", id="planned_tp") }}
                             {% for error in form.planned_take_profit.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
-                        
+
                         <div class="col-md-3">
                             {{ form.planned_lot_size.label(class="form-label fw-bold") }}
-                            <i class="fas fa-question-circle text-muted ms-1" 
-                               data-bs-toggle="tooltip" 
-                               data-bs-placement="top" 
-                               title="Position size in lots (e.g., 0.01 = micro lot, 0.10 = mini lot, 1.0 = standard lot)"></i>
+                            <i class="fas fa-question-circle text-muted ms-1"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="Position size in lots (0.01 = micro, 0.10 = mini, 1.0 = standard)"></i>
                             {{ form.planned_lot_size(class="form-control", placeholder="0.01") }}
                             {% for error in form.planned_lot_size.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
                     </div>
-                    
+
                     <!-- Auto-calculated R:R -->
                     <div class="mt-4 p-3 bg-light rounded">
                         <div class="row text-center">
                             <div class="col-md-4">
                                 <small class="text-muted d-block">Planned Risk:Reward</small>
-                                <strong id="planned_rr" class="h3 text-primary">—</strong>
+                                <strong id="planned_rr" class="h3 text-primary">&#8212;</strong>
                             </div>
                             <div class="col-md-4">
                                 <small class="text-muted d-block">Risk (pips/points)</small>
-                                <strong id="risk_dist" class="h5">—</strong>
+                                <strong id="risk_dist" class="h5">&#8212;</strong>
                             </div>
                             <div class="col-md-4">
                                 <small class="text-muted d-block">Reward (pips/points)</small>
-                                <strong id="reward_dist" class="h5">—</strong>
+                                <strong id="reward_dist" class="h5">&#8212;</strong>
                             </div>
                         </div>
                     </div>
@@ -158,7 +158,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Right Column: Checklist & Screenshot -->
         <div class="col-lg-4">
             <!-- Pre-Trade Checklist -->
@@ -173,28 +173,28 @@
                             <i class="fas fa-chart-bar text-primary"></i> Market structure confirmed
                         </label>
                     </div>
-                    
+
                     <div class="form-check mb-3">
                         {{ form.liquidity_taken(class="form-check-input", id="check2") }}
                         <label class="form-check-label" for="check2">
                             <i class="fas fa-tint text-info"></i> Liquidity taken
                         </label>
                     </div>
-                    
+
                     <div class="form-check mb-3">
                         {{ form.confirmation_candle_formed(class="form-check-input", id="check3") }}
                         <label class="form-check-label" for="check3">
                             <i class="fas fa-check-circle text-success"></i> Confirmation candle formed
                         </label>
                     </div>
-                    
+
                     <div class="form-check mb-3">
                         {{ form.session_aligned(class="form-check-input", id="check4") }}
                         <label class="form-check-label" for="check4">
                             <i class="fas fa-clock text-secondary"></i> Session aligned
                         </label>
                     </div>
-                    
+
                     <hr>
                     <div class="text-center">
                         <span id="checklist_score" class="badge bg-secondary fs-6">0/4 Complete</span>
@@ -210,7 +210,7 @@
                 <div class="card-body">
                     {{ form.screenshot_before(class="form-control", id="screenshot_before") }}
                     <small class="text-muted">Upload your chart analysis screenshot</small>
-                    
+
                     <div id="preview_container" class="mt-3 d-none">
                         <img id="screenshot_preview" class="img-fluid rounded shadow-sm" alt="Preview">
                     </div>
@@ -231,7 +231,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Submit Buttons -->
     <div class="d-flex gap-3 justify-content-end mb-5">
         <a href="{{ url_for('planner.index') }}" class="btn btn-secondary btn-lg px-4">
@@ -244,73 +244,90 @@
 
 {% block extra_js %}
 <script>
-// Initialize Bootstrap tooltips
-document.addEventListener('DOMContentLoaded', function() {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-});
-</script>
+(function () {
+    "use strict";
 
-<script>
-<script>
-// Calculate R:R
-function calculateRR() {
-    const entry = parseFloat(document.getElementById('planned_entry').value) || 0;
-    const sl = parseFloat(document.getElementById('planned_sl').value) || 0;
-    const tp = parseFloat(document.getElementById('planned_tp').value) || 0;
-    
-    if (entry && sl && tp) {
-        const risk = Math.abs(entry - sl);
-        const reward = Math.abs(tp - entry);
-        
-        if (risk > 0) {
-            const rr = (reward / risk).toFixed(2);
-            document.getElementById('planned_rr').textContent = `1:${rr}`;
-            document.getElementById('risk_dist').textContent = risk.toFixed(5);
-            document.getElementById('reward_dist').textContent = reward.toFixed(5);
-            
-            const rrEl = document.getElementById('planned_rr');
-            if (rr >= 2) rrEl.className = 'h3 text-success';
-            else if (rr >= 1) rrEl.className = 'h3 text-warning';
-            else rrEl.className = 'h3 text-danger';
+    // ---- Bootstrap tooltips ----
+    document.addEventListener("DOMContentLoaded", function () {
+        var tooltipEls = document.querySelectorAll("[data-bs-toggle='tooltip']");
+        for (var i = 0; i < tooltipEls.length; i++) {
+            new bootstrap.Tooltip(tooltipEls[i]);
         }
+    });
+
+    // ---- R:R calculator ----
+    function calculateRR() {
+        var entry  = parseFloat(document.getElementById("planned_entry").value) || 0;
+        var sl     = parseFloat(document.getElementById("planned_sl").value)    || 0;
+        var tp     = parseFloat(document.getElementById("planned_tp").value)    || 0;
+        var rrEl   = document.getElementById("planned_rr");
+        var riskEl = document.getElementById("risk_dist");
+        var rewEl  = document.getElementById("reward_dist");
+
+        if (entry && sl && tp) {
+            var risk   = Math.abs(entry - sl);
+            var reward = Math.abs(tp - entry);
+            if (risk > 0) {
+                var rr = (reward / risk).toFixed(2);
+                rrEl.textContent   = "1:" + rr;
+                riskEl.textContent = risk.toFixed(5);
+                rewEl.textContent  = reward.toFixed(5);
+
+                if (rr >= 2) {
+                    rrEl.className = "h3 text-success";
+                } else if (rr >= 1) {
+                    rrEl.className = "h3 text-warning";
+                } else {
+                    rrEl.className = "h3 text-danger";
+                }
+                return;
+            }
+        }
+        rrEl.textContent   = "\u2014";
+        riskEl.textContent = "\u2014";
+        rewEl.textContent  = "\u2014";
+        rrEl.className     = "h3 text-primary";
     }
-}
 
-['planned_entry', 'planned_sl', 'planned_tp'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', calculateRR);
-});
+    var rrInputs = ["planned_entry", "planned_sl", "planned_tp"];
+    for (var j = 0; j < rrInputs.length; j++) {
+        var el = document.getElementById(rrInputs[j]);
+        if (el) { el.addEventListener("input", calculateRR); }
+    }
 
-// Screenshot preview
-const screenshotInput = document.getElementById('screenshot_before');
-if (screenshotInput) {
-    screenshotInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('screenshot_preview').src = e.target.result;
-                document.getElementById('preview_container').classList.remove('d-none');
+    // ---- Screenshot preview ----
+    var screenshotInput = document.getElementById("screenshot_before");
+    if (screenshotInput) {
+        screenshotInput.addEventListener("change", function (e) {
+            var file = e.target.files[0];
+            if (!file) { return; }
+            var reader = new FileReader();
+            reader.onload = function (ev) {
+                document.getElementById("screenshot_preview").src = ev.target.result;
+                document.getElementById("preview_container").classList.remove("d-none");
             };
             reader.readAsDataURL(file);
-        }
-    });
-}
+        });
+    }
 
-// Checklist counter
-document.querySelectorAll('[id^="check"]').forEach(cb => {
-    cb.addEventListener('change', function() {
-        const checked = document.querySelectorAll('[id^="check"]:checked').length;
-        const badge = document.getElementById('checklist_score');
-        badge.textContent = `${checked}/4 Complete`;
-        
-        if (checked === 4) badge.className = 'badge bg-success fs-6';
-        else if (checked >= 2) badge.className = 'badge bg-warning fs-6';
-        else badge.className = 'badge bg-secondary fs-6';
-    });
-});
+    // ---- Checklist counter ----
+    var checkboxes = document.querySelectorAll("[id^='check']");
+    function updateChecklist() {
+        var checked = document.querySelectorAll("[id^='check']:checked").length;
+        var badge   = document.getElementById("checklist_score");
+        badge.textContent = checked + "/4 Complete";
+        if (checked === 4) {
+            badge.className = "badge bg-success fs-6";
+        } else if (checked >= 2) {
+            badge.className = "badge bg-warning fs-6";
+        } else {
+            badge.className = "badge bg-secondary fs-6";
+        }
+    }
+    for (var k = 0; k < checkboxes.length; k++) {
+        checkboxes[k].addEventListener("change", updateChecklist);
+    }
+
+}());
 </script>
 {% endblock %}
