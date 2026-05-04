@@ -172,14 +172,14 @@
 
                         <td>
                             {% if plan.status == 'PLANNING' %}
-                                <span class="badge bg-warning text-dark">&#128221; Planning</span>
+                                <span class="badge bg-warning text-dark" title="PLANNING: Trade planned but not yet executed. Click Execute to create live Trade record."> &#128221; Planning</span>
                             {% elif plan.status == 'EXECUTED' %}
-                                <span class="badge bg-info">&#9203; Executed</span>
+                                <span class="badge bg-info" title="EXECUTED: Plan executed, Trade created (OPEN). Click Review to close Trade and add P&L."> &#9203; Executed</span>
                                 {% if plan.executed_trade_id %}
                                     <br><small class="text-muted">Trade #{{ plan.executed_trade_id }}</small>
                                 {% endif %}
                             {% else %}
-                                <span class="badge bg-success">&#9989; Reviewed</span>
+                                <span class="badge bg-success" title="REVIEWED: Trade closed with P&L. Full lifecycle complete."> &#9989; Reviewed</span>
                                 {% if plan.actual_pnl is not none %}
                                     <br><small class="text-muted">P/L: ${{ "%.2f" | format(plan.actual_pnl) }}</small>
                                 {% endif %}
@@ -241,6 +241,7 @@
                                                         data-bs-dismiss="modal"></button>
                                             </div>
                                             <div class="modal-body">
+                                                <p><strong>This will create a live trade entry in My Trades.</strong></p>
                                                 <p class="small text-muted mb-3">
                                                     Confirm or adjust values before creating the trade.
                                                     Blank fields use your planned values.
