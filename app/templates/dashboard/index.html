@@ -91,6 +91,17 @@
     </div>
 </div>
 
+{% from "app.models" import trade_plan %}
+
+{% set executed_count = trade_plan.TradePlan.query.filter_by(user_id=current_user.id, status='EXECUTED').count() %}
+{% if executed_count %}
+<div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+  You have <strong>{{ executed_count }}</strong> executed trade(s) waiting for review. 
+  <a href="{{ url_for('planner.index', status='executed') }}" class="alert-link">Review now →</a>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
 {# ------------------------------------------------------------------ #}
 {# New-user quick-start OR rotating quote                             #}
 {# ------------------------------------------------------------------ #}
