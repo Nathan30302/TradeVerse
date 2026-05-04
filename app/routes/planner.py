@@ -217,10 +217,10 @@ def start_execution(plan_id):
 
     plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
 
-    # Guard: cannot re-execute past PLANNING
-    if plan.status in ('EXECUTED','REVIEWED'):
-        flash('This plan has already been executed.', 'info')
+    # Guard: already past PLANNING
+    if plan.status in ('EXECUTED', 'REVIEWED'):
         existing_id = plan.executed_trade_id or getattr(plan, 'trade_id', None)
+        flash('This plan has already been executed.', 'info')
         if existing_id:
             return redirect(url_for('trade.view', trade_id=existing_id))
         return redirect(url_for('planner.view_plan', plan_id=plan.id))
@@ -310,9 +310,12 @@ def execute_plan(plan_id):
 
     plan = TradePlan.query.filter_by(id=plan_id, user_id=current_user.id).first_or_404()
 
-    # Guard: only EXECUTED plans can be reviewed
-    if plan.status != 'EXECUTED':
-        flash('Only executed plans can be reviewed. Execute the plan first.', 'warning')
+    if plan.status == 'REVIEWED':
+        flash('This trade has already been reviewed.', 'info')
+        return redirect(url_for('planner.view_plan', plan_id=plan.id))
+
+    if plan.status == 'PLANNING':
+        flash('You must execute the plan first before reviewing it.', 'warning')
         return redirect(url_for('planner.view_plan', plan_id=plan.id))
 
     # status == 'EXECUTED' — proceed to review form
@@ -370,7 +373,6 @@ def execute_plan(plan_id):
             plan.mark_as_reviewed()
             plan.calculate_execution_quality()
 
-            # Single commit after all changes staged (per spec)
             db.session.commit()
 
             pnl_str = f"${final_pnl:+.2f}" if final_pnl is not None else "N/A"

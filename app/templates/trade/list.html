@@ -88,9 +88,6 @@
                             <small class="text-muted">{{ trade.entry_date|datetime('%H:%M') }}</small>
                         </td>
                         <td>
-                            {% if trade.executed_plan %}
-                                <span class="badge bg-info" title="Planned">📋</span>
-                            {% endif %}
                             <strong>{{ trade.symbol }}</strong>
                             {% if trade.emotion %}
                                 <br><small class="text-muted">{{ trade.emotion }}</small>
