@@ -13,6 +13,7 @@ from flask_mail import Message
 from app import mail
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, ProgrammingError, InternalError
+from sqlalchemy.orm import load_only
 
 # Create Blueprint
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -164,19 +165,46 @@ def login():
                 db.session.rollback()
             except Exception:
                 pass
-            row = db.session.execute(
-                text(
-                    "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
-                    "timezone, preferred_currency, theme "
-                    "FROM users WHERE username = :u LIMIT 1"
-                ),
-                {"u": username},
-            ).mappings().first()
-            if row:
-                u = User()
-                for k, v in row.items():
-                    setattr(u, k, v)
-                user = u
+
+            # Prefer returning a session-bound ORM instance when possible so downstream
+            # relationship access doesn't break after login.
+            try:
+                user = (
+                    db.session.query(User)
+                    .options(
+                        load_only(
+                            User.id,
+                            User.username,
+                            User.email,
+                            User.password_hash,
+                            User.is_active,
+                            User.is_verified,
+                            User.is_premium,
+                            User.timezone,
+                            User.preferred_currency,
+                            User.theme,
+                        )
+                    )
+                    .filter(User.username == username)
+                    .first()
+                )
+            except Exception:
+                user = None
+
+            if not user:
+                row = db.session.execute(
+                    text(
+                        "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
+                        "timezone, preferred_currency, theme "
+                        "FROM users WHERE username = :u LIMIT 1"
+                    ),
+                    {"u": username},
+                ).mappings().first()
+                if row:
+                    u = User()
+                    for k, v in row.items():
+                        setattr(u, k, v)
+                    user = u
         except InternalError:
             # Handle "current transaction is aborted" edge case.
             current_app.logger.exception("Login query failed due to aborted transaction; rolling back")

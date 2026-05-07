@@ -97,6 +97,33 @@ def create_app(config_name='default'):
                 except Exception:
                     pass
                 try:
+                    # Prefer returning a session-bound ORM instance when possible so
+                    # dashboards/settings that rely on relationships don't break.
+                    try:
+                        from sqlalchemy.orm import load_only
+
+                        return (
+                            db.session.query(user.User)
+                            .options(
+                                load_only(
+                                    user.User.id,
+                                    user.User.username,
+                                    user.User.email,
+                                    user.User.password_hash,
+                                    user.User.is_active,
+                                    user.User.is_verified,
+                                    user.User.is_premium,
+                                    user.User.timezone,
+                                    user.User.preferred_currency,
+                                    user.User.theme,
+                                )
+                            )
+                            .filter(user.User.id == int(user_id))
+                            .first()
+                        )
+                    except Exception:
+                        pass
+
                     row = db.session.execute(
                         db.text(
                             "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
