@@ -195,6 +195,9 @@ class Config:
     # Performance toggles
     ENABLE_FTS_BUILD = True
 
+    # Email summaries
+    WEEKLY_SUMMARY_SENDER = os.environ.get('WEEKLY_SUMMARY_SENDER') or os.environ.get('MAIL_USERNAME')
+
 class DevelopmentConfig(Config):
     """Development environment configuration"""
     DEBUG = True

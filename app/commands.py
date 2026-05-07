@@ -5,6 +5,7 @@ Run: flask build-fts-index
 from flask import current_app
 from app.models.instrument_fts import build_fts_index
 import click
+from datetime import datetime, timedelta, timezone
 
 
 def register_commands(app):
@@ -27,5 +28,63 @@ def register_commands(app):
         click.echo('Starting import worker (press CTRL+C to stop)')
         from app.worker import run_worker
         run_worker(loop=not once)
+
+    @app.cli.command('send-weekly-summaries')
+    @click.option('--days', default=7, help='Lookback window in days')
+    def send_weekly_summaries(days: int):
+        """
+        Send a simple weekly performance email summary to all users.
+
+        This is safe to run manually or via a scheduler. If mail is not configured,
+        it prints a warning and exits successfully.
+        """
+        from flask_mail import Message
+        from app import mail, db
+        from app.models.user import User
+        from app.models.trade import Trade
+
+        mail_username = current_app.config.get('MAIL_USERNAME')
+        mail_password = current_app.config.get('MAIL_PASSWORD')
+        sender = current_app.config.get('WEEKLY_SUMMARY_SENDER')
+        if not (mail_username and mail_password and sender):
+            click.echo('Mail not configured; skipping weekly summaries.')
+            return
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        users = User.query.filter_by(is_active=True).all()
+        sent = 0
+        for u in users:
+            trades = Trade.query.filter(
+                Trade.user_id == u.id,
+                Trade.status == 'CLOSED',
+                Trade.exit_date.isnot(None),
+                Trade.exit_date >= cutoff,
+                Trade.profit_loss.isnot(None),
+            ).all()
+            total_pnl = sum((t.profit_loss or 0.0) for t in trades)
+            wins = len([t for t in trades if (t.profit_loss or 0) > 0])
+            losses = len([t for t in trades if (t.profit_loss or 0) < 0])
+            total = wins + losses
+            win_rate = (wins / total * 100) if total else 0.0
+
+            msg = Message(
+                subject=f'TradeVerse Weekly Summary ({days}d)',
+                sender=sender,
+                recipients=[u.email],
+            )
+            msg.body = (
+                f'Hi {u.username},\n\n'
+                f'Here is your last {days} days performance:\n'
+                f'- Trades: {total}\n'
+                f'- Win rate: {win_rate:.1f}%\n'
+                f'- Net P/L: {total_pnl:.2f} {u.preferred_currency}\n\n'
+                'Log in to TradeVerse to see deeper analytics.\n'
+            )
+            try:
+                mail.send(msg)
+                sent += 1
+            except Exception:
+                continue
+        click.echo(f'Sent {sent} weekly summaries.')
 
     return None

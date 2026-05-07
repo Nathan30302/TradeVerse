@@ -273,6 +273,27 @@ def webhook():
         print(f"Webhook error: {e}")
         return jsonify({'ok': False}), 400
 
+    # Idempotency: ignore duplicate event deliveries.
+    try:
+        from app.models.stripe_webhook_event import StripeWebhookEvent
+
+        event_id = event.get("id")
+        if event_id:
+            existing = StripeWebhookEvent.query.filter_by(stripe_event_id=event_id).first()
+            if existing:
+                return jsonify({"received": True})
+            db.session.add(
+                StripeWebhookEvent(
+                    stripe_event_id=event_id,
+                    event_type=event.get("type"),
+                )
+            )
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        # Returning 500 tells Stripe to retry later.
+        return jsonify({"ok": False, "error": "idempotency_store_failed"}), 500
+
     # Handle the checkout.session.completed event
     try:
         if event.get('type') == 'checkout.session.completed':
@@ -311,5 +332,7 @@ def webhook():
 
     except Exception as e:
         print(f"Webhook handling error: {e}")
+        # 500 so Stripe retries (webhook must be reliable)
+        return jsonify({'ok': False}), 500
 
     return jsonify({'received': True})

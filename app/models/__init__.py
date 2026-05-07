@@ -10,6 +10,7 @@ from app.models.performance_score import PerformanceScore
 from app.models.trade_feedback import TradeFeedback
 from app.models.cooldown import Cooldown
 from app.models.broker import BrokerProfile, UserBrokerCredential, ImportedTradeSource
+from app.models.stripe_webhook_event import StripeWebhookEvent
 
 __all__ = [
     'User',
@@ -22,5 +23,6 @@ __all__ = [
     'Cooldown',
     'BrokerProfile',
     'UserBrokerCredential',
-    'ImportedTradeSource'
+    'ImportedTradeSource',
+    'StripeWebhookEvent',
 ]
