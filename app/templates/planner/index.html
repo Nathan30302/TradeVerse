@@ -10,13 +10,27 @@
             <h1 class="page-title mb-2">
                 <i class="fas fa-clipboard-list"></i> Trade Planner
             </h1>
-            <p class="page-subtitle mb-0">Plan before you trade, reflect after you execute</p>
+            <p class="page-subtitle mb-0">Plan with discipline. Execute with clarity. Review like a pro.</p>
         </div>
         <div class="col-auto">
             <a href="{{ url_for('planner.new_plan') }}" class="btn btn-primary btn-lg shadow-sm"
                aria-label="Create a new trade plan">
                 <i class="fas fa-plus-circle"></i> New Trade Plan
             </a>
+        </div>
+    </div>
+</div>
+
+<div class="tv-surface soft p-3 p-md-4 mb-4">
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+        <div>
+            <div class="tv-section-title mb-1">Your pipeline</div>
+            <div class="small tv-muted">Keep plans flowing: Planning → Executed → Reviewed. The best traders review faster than they plan.</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <span class="tv-chip"><i class="fas fa-pen-to-square"></i> Plan</span>
+            <span class="tv-chip warning"><i class="fas fa-play"></i> Execute</span>
+            <span class="tv-chip success"><i class="fas fa-check-circle"></i> Review</span>
         </div>
     </div>
 </div>

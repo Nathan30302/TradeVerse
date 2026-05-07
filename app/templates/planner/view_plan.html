@@ -52,10 +52,10 @@
     <!-- Left Column: Before Trade -->
     <div class="col-lg-6">
         <div class="card mb-4 shadow-sm">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-clipboard-list"></i> Plan (Before)
-                    <small class="d-block mt-1 opacity-75" style="font-size: 0.85rem;">Pre-trade planning and setup</small>
+                    <i class="fas fa-clipboard-list"></i> Before (Plan)
+                    <small class="d-block mt-1 opacity-75" style="font-size: 0.85rem;">What you intended — levels, checklist, and setup.</small>
                 </h5>
             </div>
             <div class="card-body">
@@ -96,6 +96,12 @@
                 <!-- R:R -->
                 <div class="alert {% if plan.planned_rr_ratio and plan.planned_rr_ratio >= 2 %}alert-success{% elif plan.planned_rr_ratio and plan.planned_rr_ratio >= 1 %}alert-warning{% else %}alert-danger{% endif %} text-center mb-4">
                     <strong>Planned R:R = 1:{{ "%.2f"|format(plan.planned_rr_ratio) if plan.planned_rr_ratio else '?' }}</strong>
+                </div>
+
+                <div class="tv-surface soft p-3 mb-4">
+                    <div class="small tv-muted mb-1"><i class="fas fa-bullseye me-1"></i> Coach cue</div>
+                    <div class="fw-semibold">If checklist is under 3/4, your edge is usually missing confirmation.</div>
+                    <div class="small tv-muted mt-2">Treat this as “no-trade” unless your rules explicitly allow it.</div>
                 </div>
                 
                 <!-- Checklist -->
@@ -158,10 +164,10 @@
     <!-- Right Column: After Trade -->
     <div class="col-lg-6">
         <div class="card mb-4 shadow-sm">
-            <div class="card-header {% if plan.status == 'REVIEWED' %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
+            <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-clipboard-check"></i> Execution (After)
-                    <small class="d-block mt-1 opacity-75" style="font-size: 0.85rem;">Post-trade review and results</small>
+                    <i class="fas fa-clipboard-check"></i> After (Execution + Review)
+                    <small class="d-block mt-1 opacity-75" style="font-size: 0.85rem;">What actually happened — execution, P&amp;L, and psychology.</small>
                     {% if plan.status != 'REVIEWED' %}
                     <span class="badge bg-warning text-dark float-end mt-1">Pending</span>
                     {% endif %}

@@ -958,6 +958,39 @@
         }
 
         /* Single-slot instrument rotator (no scrolling) */
+        .instrument-rotator {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .instrument-rotator .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            color: rgba(255,255,255,0.82);
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            user-select: none;
+        }
+
+        .instrument-rotator .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(34, 197, 94, 0.95);
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+            animation: tvPulse 1.4s ease-out infinite;
+        }
+
+        @keyframes tvPulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+            70% { box-shadow: 0 0 0 9px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
         .instrument-rotator .instrument-slot {
             display: flex;
             align-items: center;
@@ -972,6 +1005,19 @@
             max-width: 340px;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .instrument-rotator .instrument-slot:hover {
+            border-color: rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .instrument-rotator .quote-updated {
+            color: rgba(255,255,255,0.65);
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
         }
 
         .instrument-rotator .instrument-icon i {
@@ -1032,6 +1078,79 @@
 
         .instrument-change.negative::before {
             content: '↓';
+        }
+
+        /* Premium surfaces used by AI + Planner */
+        .tv-surface {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .tv-surface.soft {
+            box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+        }
+
+        .tv-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.6rem;
+            border-radius: 999px;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            background: rgba(99, 102, 241, 0.10);
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
+        .tv-chip.success {
+            border-color: rgba(16, 185, 129, 0.28);
+            background: rgba(16, 185, 129, 0.10);
+        }
+
+        .tv-chip.warning {
+            border-color: rgba(245, 158, 11, 0.30);
+            background: rgba(245, 158, 11, 0.10);
+        }
+
+        .tv-chip.danger {
+            border-color: rgba(239, 68, 68, 0.30);
+            background: rgba(239, 68, 68, 0.10);
+        }
+
+        .tv-kpi {
+            background: var(--bg-secondary);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+        }
+
+        .tv-kpi .label {
+            color: var(--text-secondary);
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .tv-kpi .value {
+            font-size: 1.65rem;
+            font-weight: 800;
+            margin-top: 0.35rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .tv-section-title {
+            font-weight: 800;
+            letter-spacing: 0.2px;
+        }
+
+        .tv-muted {
+            color: var(--text-secondary) !important;
         }
 
         /* Smooth fade for instrument changes */
@@ -1590,13 +1709,18 @@
             
             <!-- Instrument display (single-slot rotator) + Dynamic Island -->
             <div class="d-flex align-items-center ms-4" style="gap:1rem;">
-                <div id="instrument-rotator" class="instrument-rotator d-none d-md-flex align-items-center">
+                <div id="instrument-rotator" class="instrument-rotator d-none d-md-flex align-items-center" aria-label="Live market ticker">
+                    <span class="live-indicator" title="Live (simulated feed)">
+                        <span class="live-dot" aria-hidden="true"></span>
+                        LIVE
+                    </span>
                     <div class="instrument-slot">
                         <span class="instrument-icon me-2"><i class="fas fa-chart-line"></i></span>
                         <span class="instrument-symbol">—</span>
                         <span class="instrument-name text-muted ms-2">—</span>
                         <span class="instrument-price ms-3">—</span>
                         <span class="instrument-change ms-2">—</span>
+                        <span class="quote-updated ms-2" id="quote-updated">—</span>
                     </div>
                 </div>
 
@@ -2075,10 +2199,13 @@
             const rotator = document.getElementById('instrument-rotator');
             const island = document.getElementById('dynamic-island');
             const slot = rotator ? rotator.querySelector('.instrument-slot') : null;
+            const quoteUpdatedEl = document.getElementById('quote-updated');
 
             let instruments = fallbackData.slice();
             let idx = 0;
             const rotateInterval = 4000; // ms
+            let rotateTimer = null;
+            let lastQuotesAt = null;
 
             function formatPrice(p){
                 if (Math.abs(p) >= 1000) return Intl.NumberFormat().format(Math.round(p));
@@ -2118,6 +2245,16 @@
                 slot.appendChild(sym);
                 slot.appendChild(name);
                 slot.appendChild(chg);
+
+                // Updated label (e.g. "5s" / "2m")
+                if (quoteUpdatedEl) {
+                    if (!lastQuotesAt) {
+                        quoteUpdatedEl.textContent = '—';
+                    } else {
+                        const seconds = Math.max(0, Math.floor((Date.now() - lastQuotesAt) / 1000));
+                        quoteUpdatedEl.textContent = seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m`;
+                    }
+                }
                 slot.classList.add('fade-in');
             }
 
@@ -2143,10 +2280,23 @@
                             change: typeof q.change_pct !== 'undefined' ? parseFloat(q.change_pct) : (q.change || 0),
                             icon: (q.symbol||'').toLowerCase().includes('btc') ? 'fab fa-bitcoin' : 'fas fa-chart-line'
                         }));
+                        lastQuotesAt = Date.now();
                         return true;
                     }
                 }catch(e){ /* silent fallback */ }
                 return false;
+            }
+
+            function startRotation(){
+                if (rotateTimer) return;
+                rotateOnce();
+                rotateTimer = setInterval(rotateOnce, rotateInterval);
+            }
+
+            function stopRotation(){
+                if (!rotateTimer) return;
+                clearInterval(rotateTimer);
+                rotateTimer = null;
             }
 
             // Animated counter for island metrics
@@ -2316,12 +2466,11 @@
 
             async function init(){
                 // try fetching live instruments, otherwise use fallback
-                const ok = await fetchInstruments();
+                await fetchInstruments();
                 // ensure rotator and island visible on md+ only
                 if(rotator) rotator.classList.remove('d-none');
                 if(island) island.classList.remove('d-none');
-                rotateOnce();
-                setInterval(rotateOnce, rotateInterval);
+                startRotation();
                 // update island periodically with server stats
                 updateIslandFromServer();
                 // Avoid redundant polling on /dashboard where the page already refreshes.
@@ -2337,6 +2486,12 @@
             }
 
             document.addEventListener('DOMContentLoaded', init);
+
+            // Pause rotator on hover (prevents jitter while reading)
+            if (rotator) {
+                rotator.addEventListener('mouseenter', stopRotation);
+                rotator.addEventListener('mouseleave', startRotation);
+            }
         })();
     </script>
 

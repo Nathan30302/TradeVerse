@@ -9,7 +9,7 @@
             <h1 class="page-title mb-2">
                 <i class="fas fa-robot"></i> AI Buddy
             </h1>
-            <p class="page-subtitle mb-0">Premium AI-powered review, alerts, and behaviour insights tailored to your trades.</p>
+            <p class="page-subtitle mb-0">Your personal trading coach. Clear patterns, direct fixes, and a weekly focus.</p>
         </div>
         <div class="col-auto">
             <button id="voiceBtn" class="btn btn-primary btn-lg">
@@ -19,19 +19,31 @@
     </div>
 </div>
 
-<div class="alert alert-secondary d-flex align-items-start gap-3" role="note">
-    <div style="width:40px;height:40px;border-radius:12px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
-        <i class="fas fa-wand-magic-sparkles text-primary"></i>
-    </div>
-    <div class="flex-grow-1">
-        <div class="fw-semibold">Make this actionable.</div>
-        <div class="small text-muted">
-            AI Buddy highlights patterns in your recent trades. For best results, log your stop loss (or risk amount), tag strategies consistently, and add brief post-trade notes.
+<div class="tv-surface soft p-3 p-md-4 mb-4">
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+        <div class="d-flex align-items-start gap-3">
+            <div style="width:44px;height:44px;border-radius:14px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+                <i class="fas fa-wand-magic-sparkles text-primary"></i>
+            </div>
+            <div class="flex-grow-1">
+                <div class="tv-section-title mb-1">Coach mode (actionable by default)</div>
+                <div class="small tv-muted">
+                    Best results come from consistent risk input (SL or risk $), strategy tags, and short post-trade notes.
+                    AI Buddy will always try to turn patterns into one next-week rule you can actually follow.
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <span class="tv-chip"><i class="fas fa-bullseye"></i> Weekly focus</span>
+                    <span class="tv-chip success"><i class="fas fa-check-circle"></i> What you did well</span>
+                    <span class="tv-chip warning"><i class="fas fa-triangle-exclamation"></i> What’s costing you</span>
+                    <span class="tv-chip danger"><i class="fas fa-ban"></i> One rule for next week</span>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="d-none d-md-flex gap-2">
-        <a class="btn btn-outline-primary btn-sm" href="{{ url_for('dashboard.analytics') }}"><i class="fas fa-chart-bar me-1"></i> Analytics</a>
-        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('trade.add') }}"><i class="fas fa-plus-circle me-1"></i> Add Trade</a>
+        <div class="d-flex flex-column flex-sm-row gap-2">
+            <a class="btn btn-outline-primary" href="{{ url_for('dashboard.analytics') }}"><i class="fas fa-chart-bar me-1"></i> Open Analytics</a>
+            <a class="btn btn-outline-secondary" href="{{ url_for('planner.index') }}"><i class="fas fa-clipboard-list me-1"></i> Open Planner</a>
+            <a class="btn btn-primary" href="{{ url_for('trade.add') }}"><i class="fas fa-plus-circle me-1"></i> Add Trade</a>
+        </div>
     </div>
 </div>
 
@@ -81,37 +93,42 @@
 
     <div class="col-lg-6">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-dark text-white">
-                <h5 class="mb-0"><i class="fas fa-calendar-week"></i> Weekly AI Buddy Review</h5>
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar-week"></i> Weekly Coach Brief</h5>
+                <div class="small opacity-75 mt-1">A fast read + a single fix to carry into next week.</div>
             </div>
             <div class="card-body">
                 <p class="mb-3">{{ weekly_summary_text }}</p>
 
                 <div class="row g-3">
                     <div class="col-6">
-                        <div class="insight-card bg-light p-3 rounded">
-                            <small class="text-muted">Trades</small>
-                            <div class="h3 mb-0">{{ weekly_stats.get('total_trades', 0) }}</div>
+                        <div class="tv-kpi">
+                            <div class="label">Trades</div>
+                            <div class="value">{{ weekly_stats.get('total_trades', 0) }}</div>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="insight-card bg-light p-3 rounded">
-                            <small class="text-muted">Win Rate</small>
-                            <div class="h3 mb-0">{{ (weekly_stats.get('win_rate', 0) | float) | round(1) }}%</div>
+                        <div class="tv-kpi">
+                            <div class="label">Win rate</div>
+                            <div class="value">{{ (weekly_stats.get('win_rate', 0) | float) | round(1) }}%</div>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="insight-card bg-light p-3 rounded">
-                            <small class="text-muted">Net P/L</small>
-                            <div class="h3 mb-0">{{ (weekly_stats.get('total_pnl', 0) | default(0)) | currency(current_user.preferred_currency) }}</div>
+                        <div class="tv-kpi">
+                            <div class="label">Net P/L</div>
+                            <div class="value">{{ (weekly_stats.get('total_pnl', 0) | default(0)) | currency(current_user.preferred_currency) }}</div>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="insight-card bg-light p-3 rounded">
-                            <small class="text-muted">Average R:R</small>
-                            <div class="h3 mb-0">{{ (weekly_stats.get('avg_rr', 0) | float) | round(2) }}</div>
+                        <div class="tv-kpi">
+                            <div class="label">Avg R:R</div>
+                            <div class="value">{{ (weekly_stats.get('avg_rr', 0) | float) | round(2) }}</div>
                         </div>
                     </div>
+                </div>
+
+                <div class="small tv-muted mt-3">
+                    Data basis: last 7 days, {{ weekly_stats.get('total_trades', 0) }} trades logged.
                 </div>
 
                 {% if weekly_strengths %}
