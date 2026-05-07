@@ -56,6 +56,8 @@ class SubscriptionState:
     tier: str
     status: str  # active, trialing, past_due, canceled, expired
     is_active: bool
+    trial_ends_at: Optional[datetime] = None
+    subscription_expires_at: Optional[datetime] = None
 
 
 def _utcnow() -> datetime:
@@ -81,27 +83,27 @@ def get_effective_subscription_state(user) -> SubscriptionState:
 
     # Owner/admin bypass: full access without billing enforcement.
     if role in {"owner"}:
-        return SubscriptionState(tier="owner", status="active", is_active=True)
+        return SubscriptionState(tier="owner", status="active", is_active=True, trial_ends_at=None, subscription_expires_at=None)
 
     if tier == "free":
-        return SubscriptionState(tier="free", status="active", is_active=True)
+        return SubscriptionState(tier="free", status="active", is_active=True, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
 
     if trial_ends_at and trial_ends_at >= now:
-        return SubscriptionState(tier=tier, status="trialing", is_active=True)
+        return SubscriptionState(tier=tier, status="trialing", is_active=True, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
 
     if subscription_expires_at and subscription_expires_at < now:
-        return SubscriptionState(tier=tier, status="expired", is_active=False)
+        return SubscriptionState(tier=tier, status="expired", is_active=False, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
 
     if status in {"active", "trialing"}:
-        return SubscriptionState(tier=tier, status=status, is_active=True)
+        return SubscriptionState(tier=tier, status=status, is_active=True, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
 
     if status in {"past_due"}:
-        return SubscriptionState(tier=tier, status="past_due", is_active=False)
+        return SubscriptionState(tier=tier, status="past_due", is_active=False, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
 
     if status in {"canceled", "cancelled"}:
-        return SubscriptionState(tier=tier, status="canceled", is_active=False)
+        return SubscriptionState(tier=tier, status="canceled", is_active=False, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
 
-    return SubscriptionState(tier=tier, status=status, is_active=False)
+    return SubscriptionState(tier=tier, status=status, is_active=False, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
 
 
 def user_has_feature(user, feature: str) -> bool:

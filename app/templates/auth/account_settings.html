@@ -161,15 +161,16 @@
                                 <h6 class="mb-3">Current Plan</h6>
                                 <div class="alert alert-info">
                                     <h6 class="mb-0">
-                                        {% if current_user.trial_ends_at and current_user.trial_ends_at > now() %}
+                                        {% set sub = current_user.effective_subscription() %}
+                                        {% if sub.status == 'trialing' %}
                                             2-Month Free Trial Active
                                         {% else %}
                                             Free Trial Expired - Upgrade to Pro
                                         {% endif %}
                                     </h6>
-                                    {% if current_user.trial_ends_at %}
+                                    {% if sub.status == 'trialing' %}
                                         <small>
-                                            {% set remaining = (current_user.trial_ends_at - now()).days %}
+                                            {% set remaining = (sub.trial_ends_at - now()).days if sub.trial_ends_at else 0 %}
                                             {{ 'Expires in ' + remaining|string + ' days' if remaining > 0 else 'Expired ' + remaining|abs|string + ' days ago' }}
                                             <br>Then <strong>$5/month</strong> (PRO)
                                         </small>
