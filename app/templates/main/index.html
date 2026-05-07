@@ -10,13 +10,14 @@
     border-radius: 28px;
     overflow: hidden;
     padding: 4.5rem 0;
+    /* Image first, then subtle color bloom (don’t hide the image) */
     background:
-      radial-gradient(1200px 600px at 15% 20%, rgba(99,102,241,0.20), transparent 60%),
-      radial-gradient(900px 500px at 85% 20%, rgba(16,185,129,0.14), transparent 55%),
-      linear-gradient(135deg, rgba(2,6,23,0.92), rgba(15,23,42,0.88)),
-      url("{{ url_for('static', filename='img/landing-space-hero.jpg') }}");
+      url("{{ url_for('static', filename='img/landing-space-hero.jpg') }}"),
+      radial-gradient(1200px 600px at 20% 20%, rgba(99,102,241,0.14), transparent 62%),
+      radial-gradient(900px 500px at 85% 25%, rgba(16,185,129,0.10), transparent 58%);
     background-size: cover;
     background-position: center right;
+    background-repeat: no-repeat;
     box-shadow: 0 22px 70px rgba(0,0,0,0.45);
     border: 1px solid rgba(255,255,255,0.10);
   }
@@ -25,10 +26,15 @@
     content: "";
     position: absolute;
     inset: 0;
+    /* Darken the LEFT side for text readability, keep RIGHT side image-visible */
     background:
-      radial-gradient(circle at 25% 25%, rgba(255,255,255,0.12), transparent 35%),
-      radial-gradient(circle at 70% 40%, rgba(255,255,255,0.08), transparent 40%),
-      linear-gradient(90deg, rgba(2,6,23,0.78) 0%, rgba(2,6,23,0.55) 45%, rgba(2,6,23,0.18) 100%);
+      radial-gradient(circle at 25% 25%, rgba(255,255,255,0.10), transparent 38%),
+      radial-gradient(circle at 72% 42%, rgba(255,255,255,0.06), transparent 42%),
+      linear-gradient(90deg,
+        rgba(2,6,23,0.72) 0%,
+        rgba(2,6,23,0.52) 38%,
+        rgba(2,6,23,0.20) 68%,
+        rgba(2,6,23,0.06) 100%);
     pointer-events: none;
   }
 
@@ -58,6 +64,14 @@
     color: rgba(255,255,255,0.96) !important;
   }
 
+  .landing-hero .hero-title {
+    text-shadow: 0 18px 48px rgba(0,0,0,0.55), 0 2px 0 rgba(0,0,0,0.25);
+  }
+
+  .landing-hero .hero-subtitle {
+    text-shadow: 0 12px 36px rgba(0,0,0,0.55);
+  }
+
   .landing-hero .hero-subtitle {
     color: rgba(226,232,240,0.80) !important;
     max-width: 42rem;
@@ -69,7 +83,7 @@
   }
 
   .landing-hero .hero-glass {
-    background: rgba(15, 23, 42, 0.55);
+    background: rgba(15, 23, 42, 0.40);
     border: 1px solid rgba(255,255,255,0.10);
     border-radius: 18px;
     backdrop-filter: blur(12px);
