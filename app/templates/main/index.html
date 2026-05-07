@@ -21,7 +21,7 @@
   .landing-hero .hero-bg {
     position: absolute;
     inset: 0;
-    background-image: url("{{ url_for('static', filename='img/landing-space-hero.jpg') }}");
+    background-image: url("{{ hero_image_url or url_for('static', filename='img/landing-space-hero.jpg') }}");
     background-size: cover;
     background-position: 68% 48%;
     background-repeat: no-repeat;

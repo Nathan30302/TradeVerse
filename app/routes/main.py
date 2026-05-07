@@ -6,7 +6,7 @@ Homepage and general application routes
 from flask import Blueprint, render_template, redirect, url_for, request, jsonify, send_from_directory, current_app
 from flask_login import current_user
 from app.models.instrument import Instrument
-from datetime import datetime
+from datetime import datetime, date
 
 # Create Blueprint
 bp = Blueprint('main', __name__)
@@ -61,8 +61,24 @@ def index():
     """
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
-    
-    return render_template('main/index.html')
+
+    # Weekly-rotating hero background for landing page.
+    # Slot 0 is the current Apollo 11 visor image; additional slots
+    # can be appended as more inspirational assets are added.
+    hero_images = [
+        'img/landing-space-hero.jpg',   # week 0 (current default)
+        'img/landing-space-hero-1.jpg', # JWST deep field
+        'img/landing-space-hero-2.jpg', # Earth (Apollo 17)
+    ]
+    try:
+        weeks_since_epoch = (date.today() - date(2026, 1, 1)).days // 7
+        idx = weeks_since_epoch % len(hero_images)
+    except Exception:
+        idx = 0
+
+    hero_image_url = url_for('static', filename=hero_images[idx])
+
+    return render_template('main/index.html', hero_image_url=hero_image_url)
 
 @bp.route('/about')
 def about():
