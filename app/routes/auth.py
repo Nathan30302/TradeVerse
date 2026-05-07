@@ -140,10 +140,15 @@ def login():
         return redirect(url_for('dashboard.index'))
     
     if request.method == 'POST':
-        # Get form data
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
-        remember = request.form.get('remember', False)
+        try:
+            # Get form data
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '')
+            remember = request.form.get('remember', False)
+        except Exception:
+            current_app.logger.exception("Login request parsing failed")
+            flash('❌ Login failed. Please try again.', 'danger')
+            return render_template('auth/login.html')
         
         # Find user
         user = None
@@ -175,7 +180,12 @@ def login():
                 return render_template('auth/login.html')
             
             # Log the user in
-            login_user(user, remember=remember)
+            try:
+                login_user(user, remember=remember)
+            except Exception:
+                current_app.logger.exception("login_user failed")
+                flash('❌ Login failed. Please try again.', 'danger')
+                return render_template('auth/login.html')
             try:
                 user.update_last_login()
             except Exception:
