@@ -5,7 +5,7 @@ Stores pre-trade planning and post-trade review
 
 from app import db
 from datetime import datetime, timezone
-from app.utils.pnl_calculator import calculate_pnl as calc_pnl, detect_asset_type
+from app.utils.pnl_calculator import detect_asset_type
 
 class TradePlan(db.Model):
     """
@@ -152,13 +152,14 @@ class TradePlan(db.Model):
         if not all([entry, exit_p, lot]):
             return None
         
-        # Use universal P&L calculator
-        pnl, pips, asset_desc = calc_pnl(
+        from app.services.pnl import calculate_trade_pnl
+
+        pnl, _pips, _method = calculate_trade_pnl(
             symbol=self.symbol or 'XAUUSD',
             trade_type=self.direction or 'BUY',
             entry_price=entry,
             exit_price=exit_p,
-            lot_size=lot
+            lot_size=lot,
         )
         
         self.actual_pnl = pnl

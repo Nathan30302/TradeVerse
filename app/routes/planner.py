@@ -493,7 +493,7 @@ def review_trade(trade_id):
 @bp.route('/api/calculate-pnl', methods=['POST'])
 @login_required
 def api_calculate_pnl():
-    from app.utils.pnl_calculator import calculate_pnl
+    from app.services.pnl import calculate_trade_pnl
     try:
         data        = request.get_json() or {}
         symbol      = data.get('symbol', '').upper().strip()
@@ -505,7 +505,7 @@ def api_calculate_pnl():
         if not all([symbol, entry_price, exit_price, lot_size]):
             return jsonify({'error': 'Missing required fields'}), 400
 
-        pnl, pips, asset_desc = calculate_pnl(
+        pnl, pips, method = calculate_trade_pnl(
             symbol=symbol,
             trade_type=trade_type,
             entry_price=entry_price,
@@ -516,7 +516,7 @@ def api_calculate_pnl():
             'success':    True,
             'pnl':        round(pnl, 2),
             'pips':       round(pips, 1),
-            'asset_type': asset_desc,
+            'asset_type': method,
         })
 
     except Exception as exc:

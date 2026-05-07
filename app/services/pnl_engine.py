@@ -155,9 +155,7 @@ class PnLEngine:
         
         pip_value_per_unit = pip_size * tick_value / pip_size
         pnl = pip_move * (pip_value_per_unit * units / contract_size)
-        
-        pnl = price_diff * units
-        
+
         return PnLResult(
             pnl=round(pnl, 2),
             pnl_currency=account_currency,
