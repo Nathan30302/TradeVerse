@@ -29,6 +29,13 @@ def pricing():
     
     Displays available subscription tiers
     """
+    current_tier = "free"
+    if current_user.is_authenticated:
+        try:
+            current_tier = (current_user.effective_subscription().tier or "free").lower()
+        except Exception:
+            current_tier = "free"
+
     plans = [
         {
             'name': 'Free',
@@ -42,7 +49,7 @@ def pricing():
                 'AI feedback',
                 'Community access'
             ],
-            'cta': 'Current Plan' if not current_user.is_authenticated or current_user.subscription_tier == 'free' else 'Downgrade',
+            'cta': 'Current Plan' if (not current_user.is_authenticated or current_tier == 'free') else 'Downgrade',
             'cta_disabled': True,
             'recommended': False
         },
@@ -60,7 +67,7 @@ def pricing():
                 'Priority support'
             ],
             'cta': 'Upgrade Now',
-            'cta_disabled': current_user.is_authenticated and current_user.subscription_tier == 'pro',
+            'cta_disabled': current_user.is_authenticated and current_tier == 'pro',
             'recommended': True
         },
         {
@@ -77,7 +84,7 @@ def pricing():
                 'Dedicated support'
             ],
             'cta': 'Upgrade Now',
-            'cta_disabled': current_user.is_authenticated and current_user.subscription_tier == 'pro_plus',
+            'cta_disabled': current_user.is_authenticated and current_tier == 'pro_plus',
             'recommended': False
         }
     ]
