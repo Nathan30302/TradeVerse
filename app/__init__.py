@@ -3,7 +3,7 @@ TradeVerse Application Factory
 Professional Flask application initialization using the Factory Pattern
 """
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
@@ -169,15 +169,36 @@ def create_app(config_name='default'):
                 app.logger.debug(f"FTS index build skipped: {e}")
                 app._fts_built = True
 
-    # Expose Prometheus metrics if available
-    try:
-        from prometheus_client import make_wsgi_app  # type: ignore
-        from werkzeug.middleware.dispatcher import DispatcherMiddleware
-        app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
-            '/metrics': make_wsgi_app()
-        })
-    except (ImportError, Exception):
-        app.logger.debug('prometheus_client not available; /metrics disabled')
+    # Prometheus /metrics — off by default (enable explicitly; protect scrapers at the edge).
+    if app.config.get('PROMETHEUS_METRICS_ENABLED'):
+        try:
+            from prometheus_client import make_wsgi_app  # type: ignore
+            from werkzeug.middleware.dispatcher import DispatcherMiddleware
+            app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
+                '/metrics': make_wsgi_app()
+            })
+        except (ImportError, Exception):
+            app.logger.debug('prometheus_client not available; /metrics disabled')
+
+    @app.after_request
+    def _security_headers(response):
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        return response
+
+    @app.after_request
+    def _request_id_header(response):
+        from uuid import uuid4
+        rid = getattr(request, '_tv_request_id', None) or uuid4().hex[:16]
+        response.headers.setdefault('X-Request-ID', rid)
+        return response
+
+    @app.before_request
+    def _assign_request_id():
+        from uuid import uuid4
+        request._tv_request_id = uuid4().hex[:16]
     
     # Register template filters
     register_template_filters(app)
@@ -342,6 +363,8 @@ def register_context_processors(app):
     """Register context processors"""
     
     import random
+    from flask_login import current_user
+    from app.services.entitlements import user_has_feature
     
     @app.context_processor
     def inject_globals():
@@ -351,3 +374,12 @@ def register_context_processors(app):
             'app_version': app.config.get('APP_VERSION'),
             'random_quote': random.choice(app.config.get('QUOTES', []))
         }
+
+    @app.context_processor
+    def inject_entitlements():
+        def has_feature(feature: str) -> bool:
+            if not getattr(current_user, 'is_authenticated', False):
+                return False
+            return user_has_feature(current_user, feature)
+
+        return {'has_feature': has_feature}

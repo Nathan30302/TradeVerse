@@ -343,6 +343,65 @@ def settings():
     return render_template('auth/account_settings.html')
 
 
+def _purge_user_data(user_id: int) -> None:
+    """Delete all application data for a user (foreign-key-safe order)."""
+    from app.models.trade import Trade
+    from app.models.trade_plan import TradePlan
+    from app.models.trade_feedback import TradeFeedback
+    from app.models.cooldown import Cooldown
+    from app.models.performance_score import PerformanceScore
+    from app.models.broker import UserBrokerCredential, ImportedTradeSource
+    from sqlalchemy import or_
+
+    trade_ids = [row[0] for row in db.session.query(Trade.id).filter_by(user_id=user_id).all()]
+    if trade_ids:
+        TradeFeedback.query.filter(
+            or_(TradeFeedback.user_id == user_id, TradeFeedback.trade_id.in_(trade_ids))
+        ).delete(synchronize_session=False)
+    else:
+        TradeFeedback.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
+    TradePlan.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    Cooldown.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    PerformanceScore.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    ImportedTradeSource.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    UserBrokerCredential.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    Trade.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
+    user = db.session.get(User, user_id)
+    if user:
+        db.session.delete(user)
+    db.session.commit()
+
+
+@bp.route('/delete-account', methods=['POST'])
+@login_required
+def delete_account():
+    """Permanently delete the signed-in account and all journal data."""
+    confirm = (request.form.get('confirm_delete') or '').strip().upper()
+    password = (request.form.get('password') or '').strip()
+    if confirm != 'DELETE':
+        flash('Type DELETE in the confirmation field to remove your account.', 'danger')
+        return redirect(url_for('auth.settings'))
+    if not password:
+        flash('Enter your current password to confirm.', 'danger')
+        return redirect(url_for('auth.settings'))
+    if not current_user.check_password(password):
+        flash('Password is incorrect.', 'danger')
+        return redirect(url_for('auth.settings'))
+
+    uid = current_user.id
+    try:
+        _purge_user_data(uid)
+        logout_user()
+        flash('Your account and data have been permanently deleted.', 'info')
+        return redirect(url_for('main.index'))
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('delete_account failed')
+        flash('Could not delete your account. Please try again or contact support.', 'danger')
+        return redirect(url_for('auth.settings'))
+
 
 @bp.route('/login-history')
 @login_required

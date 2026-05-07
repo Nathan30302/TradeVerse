@@ -12,7 +12,8 @@ from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
 from flask_login import login_required, current_user
 
-# Simple per-IP rolling window for public quote endpoint (process-local).
+# Simple per-IP rolling window for public quote endpoint (process-local only;
+# use Redis or edge rate limiting when running multiple workers).
 _QUOTE_ENDPOINT_HITS = {}
 
 from app.services.instrument_catalog import (

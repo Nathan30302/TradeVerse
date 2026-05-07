@@ -12,6 +12,7 @@ from app.models.trade_feedback import TradeFeedback
 from app.models.cooldown import Cooldown, should_trigger_cooldown, get_cooldown_duration
 from app.services.feedback_analyzer import generate_trade_feedback
 from app.services.cooldown_manager import CooldownManager, get_active_cooldown, trigger_emotional_cooldown
+from app.services.entitlements import require_feature
 from datetime import datetime
 import csv
 from io import StringIO
@@ -311,6 +312,7 @@ def list():
 
 @bp.route('/export.csv')
 @login_required
+@require_feature('exports')
 def list_export_csv():
     """Export trades matching current list filters as CSV."""
     query = _filtered_trades_query(current_user.id)

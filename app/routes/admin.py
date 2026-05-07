@@ -1,6 +1,7 @@
 """
 Admin Routes
-Owner-only stats and administration page
+Placeholder blueprint: all routes return 404 until a real RBAC-backed admin is implemented.
+Use /owner/dashboard for the secured owner console instead.
 """
 
 from flask import Blueprint, render_template, abort, current_app

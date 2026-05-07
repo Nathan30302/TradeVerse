@@ -5,16 +5,17 @@ Pricing, subscriptions, data export, and trial management
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, send_file
 from flask_login import login_required, current_user
-from app import db
+from app import db, csrf
 from app.models.trade import Trade
 from app.models.trade_plan import TradePlan
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import csv
 from io import StringIO, BytesIO
 import os
 from importlib import import_module
 from flask_mail import Message
 from app import mail
+from app.services.entitlements import require_feature
 
 # Create Blueprint
 bp = Blueprint('monetization', __name__, url_prefix='/monetization')
@@ -162,6 +163,7 @@ def subscribe(plan):
 
 @bp.route('/export-data')
 @login_required
+@require_feature('exports')
 def export_data():
     """
     Export User Data
@@ -240,21 +242,50 @@ def trial_info():
     
     Shows remaining trial days and upgrade options
     """
-    trial_days = 60
-    days_used = (datetime.now() - current_user.created_at).days
-    days_remaining = max(0, trial_days - days_used)
-    trial_percent = min(100, (days_used / trial_days) * 100)
-    
+    from app.services.entitlements import get_effective_subscription_state
+
+    state = get_effective_subscription_state(current_user)
+    now = datetime.now(timezone.utc)
+    created_at = current_user.created_at
+    created = (
+        created_at.replace(tzinfo=timezone.utc)
+        if created_at.tzinfo is None
+        else created_at
+    )
+
+    trial_end = getattr(current_user, 'trial_ends_at', None)
+    if trial_end is not None:
+        if trial_end.tzinfo is None:
+            trial_end = trial_end.replace(tzinfo=timezone.utc)
+        days_remaining = max(0, (trial_end - now).days)
+        trial_days = max(1, (trial_end - created).days)
+        days_used = max(0, min((now - created).days, trial_days))
+    else:
+        # Marketing window when no Stripe trial date is stored yet (informational only).
+        trial_days = 60
+        days_used = max(0, (now - created).days)
+        days_remaining = max(0, trial_days - days_used)
+
+    trial_percent = min(100.0, (days_used / trial_days) * 100) if trial_days else 0.0
+
+    if trial_end is not None:
+        trial_calendar_end = trial_end
+    else:
+        trial_calendar_end = created + timedelta(days=60)
+
     return render_template('monetization/trial_info.html',
                          trial_days=trial_days,
                          days_used=days_used,
                          days_remaining=days_remaining,
                          trial_percent=trial_percent,
-                         trial_expired=days_remaining == 0)
+                         trial_expired=days_remaining == 0,
+                         subscription_state=state,
+                         trial_calendar_end=trial_calendar_end)
 
 
 
 @bp.route('/webhook', methods=['POST'])
+@csrf.exempt
 def webhook():
     """
     Stripe Webhook endpoint
@@ -279,7 +310,7 @@ def webhook():
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
-        print(f"Webhook error: {e}")
+        current_app.logger.warning("Stripe webhook signature verification failed: %s", e)
         return jsonify({'ok': False}), 400
 
     # Idempotency: ignore duplicate event deliveries.
@@ -325,12 +356,17 @@ def webhook():
                             if sub and sub['items'] and sub['items']['data']:
                                 price_id = sub['items']['data'][0]['price']['id']
                             # Map price_id to tier
-                            if price_id == (current_app.config.get('STRIPE_PRICE_PRO') or os.environ.get('STRIPE_PRICE_PRO')):
+                            pro_price = current_app.config.get('STRIPE_PRICE_PRO') or os.environ.get('STRIPE_PRICE_PRO')
+                            pro_plus_price = current_app.config.get('STRIPE_PRICE_PRO_PLUS') or os.environ.get('STRIPE_PRICE_PRO_PLUS')
+                            elite_price = current_app.config.get('STRIPE_PRICE_ELITE') or os.environ.get('STRIPE_PRICE_ELITE')
+                            if price_id and price_id == pro_price:
                                 plan_tier = 'pro'
-                            elif price_id == (current_app.config.get('STRIPE_PRICE_ELITE') or os.environ.get('STRIPE_PRICE_ELITE')):
+                            elif price_id and price_id == pro_plus_price:
+                                plan_tier = 'pro_plus'
+                            elif price_id and price_id == elite_price:
                                 plan_tier = 'elite'
                     except Exception as e:
-                        print(f"Error fetching subscription: {e}")
+                        current_app.logger.warning("Webhook subscription fetch failed: %s", e)
 
                     # Default to pro if unknown
                     user.subscription_tier = plan_tier or 'pro'
@@ -378,7 +414,7 @@ def webhook():
                     db.session.commit()
 
     except Exception as e:
-        print(f"Webhook handling error: {e}")
+        current_app.logger.exception("Stripe webhook handling error: %s", e)
         # 500 so Stripe retries (webhook must be reliable)
         return jsonify({'ok': False}), 500
 

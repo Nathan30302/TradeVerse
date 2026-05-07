@@ -14,9 +14,15 @@
                 <p class="page-subtitle">View and manage all your trades</p>
             </div>
         <div class="col-auto d-flex flex-wrap gap-2 justify-content-end">
+            {% if has_feature('exports') %}
             <a href="{{ url_for('trade.list_export_csv', status=status_filter, symbol=symbol_filter, strategy=strategy_filter) }}" class="btn btn-outline-secondary btn-lg">
                 <i class="fas fa-file-csv"></i> Export CSV
             </a>
+            {% else %}
+            <a href="{{ url_for('monetization.pricing') }}" class="btn btn-outline-secondary btn-lg" title="CSV export is included with Pro">
+                <i class="fas fa-file-csv"></i> Export CSV (Pro)
+            </a>
+            {% endif %}
             <a href="{{ url_for('trade.add', duplicate=1) }}" class="btn btn-outline-primary btn-lg">
                 <i class="fas fa-copy"></i> Duplicate last
             </a>

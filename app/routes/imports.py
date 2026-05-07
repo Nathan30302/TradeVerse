@@ -18,6 +18,7 @@ from app.importers.oanda import OANDAImporter
 from app.importers.binance import BinanceImporter
 from app.utils.credential_manager import decrypt_credentials
 from app.services.instrument_catalog import get_instrument
+from app.services.entitlements import require_feature
 
 bp = Blueprint('imports', __name__, url_prefix='/imports')
 
@@ -261,6 +262,7 @@ def upload_file():
 
 @bp.route('/api-import/<int:credential_id>', methods=['POST'])
 @login_required
+@require_feature('broker_api_import')
 def api_import(credential_id):
     """Import trades via broker API."""
     cred = UserBrokerCredential.query.filter_by(

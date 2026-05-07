@@ -24,7 +24,7 @@
 
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Your trial expires on <strong>{{ (current_user.created_at + timedelta(days=trial_days)).strftime('%B %d, %Y') }}</strong>
+                        Your trial expires on <strong>{{ trial_calendar_end.strftime('%B %d, %Y') }}</strong>
                     </div>
                     {% else %}
                     <div class="alert alert-warning">

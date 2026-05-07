@@ -202,6 +202,11 @@ class Config:
     # Performance toggles
     ENABLE_FTS_BUILD = True
 
+    # Prometheus /metrics WSGI mount (see README_DEPLOY). Disabled unless explicitly enabled.
+    PROMETHEUS_METRICS_ENABLED = os.environ.get('PROMETHEUS_METRICS_ENABLED', '').lower() in (
+        '1', 'true', 'yes'
+    )
+
     # Email summaries
     WEEKLY_SUMMARY_SENDER = os.environ.get('WEEKLY_SUMMARY_SENDER') or os.environ.get('MAIL_USERNAME')
 
@@ -212,6 +217,7 @@ class DevelopmentConfig(Config):
     """Development environment configuration"""
     DEBUG = True
     SQLALCHEMY_ECHO = True  # Show SQL queries in development
+    PROMETHEUS_METRICS_ENABLED = True
 
 class ProductionConfig(Config):
     """Production environment configuration"""
@@ -232,7 +238,11 @@ class ProductionConfig(Config):
 
     # Avoid expensive runtime index builds in production.
     ENABLE_FTS_BUILD = False
-    
+
+    PROMETHEUS_METRICS_ENABLED = os.environ.get('PROMETHEUS_METRICS_ENABLED', '').lower() in (
+        '1', 'true', 'yes'
+    )
+
     # Use /tmp for ephemeral file uploads in cloud environments
     UPLOAD_FOLDER = '/tmp/uploads'
     TRADE_SCREENSHOTS_FOLDER = '/tmp/uploads/trade_screenshots'
@@ -249,6 +259,7 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # Use in-memory database for tests
     WTF_CSRF_ENABLED = False  # Disable CSRF for testing
+    PROMETHEUS_METRICS_ENABLED = False
 
 # Configuration dictionary
 config = {
@@ -257,10 +268,3 @@ config = {
     'testing': TestingConfig,
     'default': DevelopmentConfig
 }
-# Add this to your existing Config class in config.py
-
-# File Upload Configuration (if not already there)
-UPLOAD_FOLDER = os.path.join('static', 'uploads')
-TRADE_SCREENSHOTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'trade_screenshots')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size

@@ -1,7 +1,9 @@
 /**
  * Simple Horizontal Instrument Picker
  * Category-based selection with horizontal scrolling
- * 
+ *
+ * Canonical client for Add Trade (see trade/add.html).
+ *
  * FIXED: Now properly handles category loading without overriding template tabs
  * when database has fewer categories than template.
  */

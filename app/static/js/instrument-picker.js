@@ -2,6 +2,8 @@
  * Instrument Picker & Trade Calculator
  * Category-first instrument selector with automatic P&L calculations
  *
+ * Note: add-trade and similar screens use instrument-picker-simple.js; keep behavior aligned when changing APIs.
+ *
  * FIXES APPLIED:
  *   1. renderInstruments: data-json now uses encodeURIComponent() to safely embed
  *      JSON in HTML attributes. The old replace(/</g, '<') did NOT escape single

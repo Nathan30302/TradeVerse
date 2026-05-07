@@ -18,6 +18,7 @@
     <meta property="og:description" content="{% block og_description %}TradeVerse - Professional Trading Journal for Serious Traders{% endblock %}">
     <meta property="og:url" content="{{ canonical_url }}">
     <meta property="og:image" content="{{ url_for('static', filename='img/favicon.png', _external=True) }}">
+    <meta property="og:image:alt" content="{{ app_name }} logo">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{% block twitter_title %}{{ app_name }}{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}TradeVerse - Professional Trading Journal for Serious Traders{% endblock %}">
@@ -1901,7 +1902,7 @@
             <!-- Instrument display (single-slot rotator) + Dynamic Island -->
             <div class="d-flex align-items-center ms-4" style="gap:1rem;">
                 <div id="instrument-rotator" class="instrument-rotator d-none d-md-flex align-items-center" aria-label="Market movers ticker">
-                    <span class="live-indicator" id="rot-feed-badge" title="Price-style snapshot — not your broker’s feed">
+                    <span class="live-indicator" id="rot-feed-badge" title="Market movers snapshot">
                         <span class="live-dot" aria-hidden="true"></span>
                         <span id="rot-feed-label">—</span>
                     </span>
@@ -1915,33 +1916,25 @@
                     </div>
                 </div>
 
-                <div id="dynamic-island" class="dynamic-island d-none d-md-flex flex-wrap align-items-center" title="Your journal stats — not live broker data">
+                <div id="dynamic-island" class="dynamic-island d-none d-md-flex align-items-center" title="Trading stats">
                     <div class="di-item">
-                        <div class="di-label">Journal P/L</div>
+                        <div class="di-label">P/L Today</div>
                         <div class="di-value" id="di-pl">—</div>
                     </div>
                     <div class="di-divider"></div>
                     <div class="di-item">
-                        <div class="di-label">Open</div>
+                        <div class="di-label">Active</div>
                         <div class="di-value" id="di-active">—</div>
                     </div>
                     <div class="di-divider"></div>
                     <div class="di-item">
-                        <div class="di-label">Avg R:R</div>
+                        <div class="di-label">Vol</div>
                         <div class="di-value" id="di-vol">—</div>
                     </div>
                     <div class="di-divider"></div>
                     <div class="di-item">
-                        <div class="di-label">Win rate</div>
+                        <div class="di-label">Top Move</div>
                         <div class="di-value" id="di-top">—</div>
-                    </div>
-                    <div class="di-divider"></div>
-                    <div class="di-item">
-                        <div class="di-label">Updated</div>
-                        <div class="di-value" id="di-updated">—</div>
-                    </div>
-                    <div class="w-100 di-disclaimer text-center pt-1" style="font-size:0.65rem;opacity:0.65;line-height:1.2;">
-                        Your stats · not broker execution data
                     </div>
                 </div>
             </div>
@@ -2489,7 +2482,7 @@
                                 liveLbl.textContent = data.is_live ? 'LIVE' : 'SIM';
                             }
                             if(liveIndicator && data.source){
-                                liveIndicator.title = (data.is_live ? 'Live provider' : 'Simulated / dev feed') + ' — ' + String(data.source) + ' (not your broker’s prices)';
+                                liveIndicator.title = (data.is_live ? 'Live' : 'Simulated') + ' · ' + String(data.source);
                             }
                         }catch(e){}
                         return true;
@@ -2550,7 +2543,6 @@
                     const activeEl = document.getElementById('di-active');
                     const volEl = document.getElementById('di-vol');
                     const topEl = document.getElementById('di-top');
-                    const upEl = document.getElementById('di-updated');
 
                     // Extract values from server response
                     const newPL = parseFloat(data.total_pnl || 0);
@@ -2615,15 +2607,6 @@
                         topEl.classList.add('di-update');
                         setTimeout(()=>topEl.classList.remove('di-update'), 900);
                     }
-
-                    if(upEl){
-                        const d = new Date();
-                        upEl.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        upEl.classList.remove('di-update');
-                        void upEl.offsetWidth;
-                        upEl.classList.add('di-update');
-                        setTimeout(()=>upEl.classList.remove('di-update'), 900);
-                    }
                 }catch(e){ updateIslandFallback(); }
             }
 
@@ -2666,13 +2649,6 @@
                     setTimeout(()=>topEl.classList.remove('di-update'),900);
                 }
 
-                const upEl = document.getElementById('di-updated');
-                if(upEl){
-                    const d = new Date();
-                    upEl.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    upEl.classList.add('di-update');
-                    setTimeout(()=>upEl.classList.remove('di-update'),900);
-                }
             }
 
             async function init(){
