@@ -10,16 +10,24 @@
     border-radius: 28px;
     overflow: hidden;
     padding: 4.5rem 0;
-    /* Image first, then subtle color bloom (don’t hide the image) */
     background:
-      url("{{ url_for('static', filename='img/landing-space-hero.jpg') }}"),
       radial-gradient(1200px 600px at 20% 20%, rgba(99,102,241,0.14), transparent 62%),
       radial-gradient(900px 500px at 85% 25%, rgba(16,185,129,0.10), transparent 58%);
-    background-size: cover;
-    background-position: center right;
-    background-repeat: no-repeat;
     box-shadow: 0 22px 70px rgba(0,0,0,0.45);
     border: 1px solid rgba(255,255,255,0.10);
+  }
+
+  /* HD image layer (keeps image visible, boosts clarity) */
+  .landing-hero .hero-bg {
+    position: absolute;
+    inset: 0;
+    background-image: url("{{ url_for('static', filename='img/landing-space-hero.jpg') }}");
+    background-size: cover;
+    background-position: 68% 48%;
+    background-repeat: no-repeat;
+    transform: scale(1.03);
+    filter: saturate(1.14) contrast(1.10) brightness(1.03);
+    opacity: 0.98;
   }
 
   .landing-hero::before {
@@ -28,35 +36,46 @@
     inset: 0;
     /* Darken the LEFT side for text readability, keep RIGHT side image-visible */
     background:
-      radial-gradient(circle at 25% 25%, rgba(255,255,255,0.10), transparent 38%),
-      radial-gradient(circle at 72% 42%, rgba(255,255,255,0.06), transparent 42%),
+      radial-gradient(circle at 22% 22%, rgba(255,255,255,0.09), transparent 40%),
+      radial-gradient(circle at 74% 42%, rgba(255,255,255,0.05), transparent 46%),
       linear-gradient(90deg,
-        rgba(2,6,23,0.72) 0%,
-        rgba(2,6,23,0.52) 38%,
-        rgba(2,6,23,0.20) 68%,
-        rgba(2,6,23,0.06) 100%);
+        rgba(2,6,23,0.78) 0%,
+        rgba(2,6,23,0.52) 36%,
+        rgba(2,6,23,0.16) 68%,
+        rgba(2,6,23,0.04) 100%);
     pointer-events: none;
   }
 
-  /* Tiny twinkling stars layer (subtle) */
-  .landing-hero::after {
+  /* Hero-only animated stars/streaks (premium, subtle, not distracting) */
+  .landing-hero .hero-vfx {
     content: "";
     position: absolute;
-    inset: -20%;
+    inset: -25%;
+    pointer-events: none;
     background-image:
-      radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.35) 40%, transparent 60%),
-      radial-gradient(1.5px 1.5px at 70% 20%, rgba(255,255,255,0.28) 40%, transparent 60%),
+      radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.32) 40%, transparent 60%),
+      radial-gradient(1.5px 1.5px at 70% 20%, rgba(255,255,255,0.26) 40%, transparent 60%),
       radial-gradient(1.5px 1.5px at 55% 65%, rgba(255,255,255,0.20) 40%, transparent 60%),
       radial-gradient(1px 1px at 35% 80%, rgba(255,255,255,0.18) 40%, transparent 60%),
-      radial-gradient(1px 1px at 85% 70%, rgba(255,255,255,0.16) 40%, transparent 60%);
-    opacity: 0.55;
-    animation: tvTwinkle 6s ease-in-out infinite;
-    pointer-events: none;
+      radial-gradient(1px 1px at 85% 70%, rgba(255,255,255,0.16) 40%, transparent 60%),
+      repeating-linear-gradient(115deg,
+        rgba(255,255,255,0.00) 0px,
+        rgba(255,255,255,0.00) 240px,
+        rgba(255,255,255,0.07) 242px,
+        rgba(255,255,255,0.00) 246px,
+        rgba(255,255,255,0.00) 520px);
+    opacity: 0.58;
+    animation: tvTwinkle 6s ease-in-out infinite, tvStarDrift 16s linear infinite;
   }
 
   @keyframes tvTwinkle {
     0%, 100% { opacity: 0.42; transform: translateY(0); }
     50% { opacity: 0.70; transform: translateY(-6px); }
+  }
+
+  @keyframes tvStarDrift {
+    0% { transform: translate3d(0, 0, 0); }
+    100% { transform: translate3d(-6%, 6%, 0); }
   }
 
   .landing-hero .hero-title,
@@ -98,6 +117,71 @@
   .landing-hero .trust-row .muted {
     color: rgba(226,232,240,0.70);
   }
+
+  /* Landing page premium polish */
+  .feature-card {
+    border-radius: 16px;
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    border: 1px solid rgba(15,23,42,0.08);
+    box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+    background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.86) 100%);
+  }
+
+  body[data-theme="dark"] .feature-card {
+    border-color: rgba(255,255,255,0.08);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.28);
+    background: linear-gradient(180deg, rgba(15,23,42,0.62) 0%, rgba(15,23,42,0.48) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .feature-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 18px 46px rgba(2,6,23,0.12);
+    border-color: rgba(99,102,241,0.28);
+  }
+
+  body[data-theme="dark"] .feature-card:hover {
+    box-shadow: 0 22px 62px rgba(0,0,0,0.40);
+    border-color: rgba(99,102,241,0.30);
+  }
+
+  .icon-box {
+    box-shadow: 0 10px 25px rgba(2,6,23,0.12);
+    border: 1px solid rgba(255,255,255,0.65);
+  }
+
+  body[data-theme="dark"] .icon-box {
+    border-color: rgba(255,255,255,0.12);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+  }
+
+  .landing-gradient-panel {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 24px;
+    color: white;
+    box-shadow: 0 18px 55px rgba(2,6,23,0.20);
+    border: 1px solid rgba(255,255,255,0.14);
+  }
+
+  .landing-quote-card {
+    border-radius: 16px;
+    border: 1px solid rgba(15,23,42,0.08);
+    box-shadow: 0 12px 32px rgba(2,6,23,0.08);
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .landing-quote-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 46px rgba(2,6,23,0.12);
+    border-color: rgba(99,102,241,0.22);
+  }
+
+  body[data-theme="dark"] .landing-quote-card {
+    border-color: rgba(255,255,255,0.08);
+    background: rgba(15,23,42,0.55);
+    box-shadow: 0 18px 52px rgba(0,0,0,0.32);
+  }
 </style>
 {% endblock %}
 
@@ -105,6 +189,8 @@
 <!-- Hero Section -->
 <div class="container mb-5">
     <div class="landing-hero px-3 px-md-4">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="hero-vfx" aria-hidden="true"></div>
       <div class="row align-items-center position-relative" style="z-index: 1;">
         <div class="col-lg-7">
             <div class="hero-content">
@@ -216,7 +302,7 @@
     <div class="row g-4">
         <!-- Feature 1 -->
         <div class="col-lg-4 col-md-6">
-            <div class="card feature-card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+            <div class="card feature-card h-100 border-0">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
                         <div class="icon-box bg-primary-subtle text-primary rounded-3 p-3 me-3">
@@ -242,7 +328,7 @@
 
         <!-- Feature 2 -->
         <div class="col-lg-4 col-md-6">
-            <div class="card feature-card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+            <div class="card feature-card h-100 border-0">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
                         <div class="icon-box bg-purple-subtle text-purple rounded-3 p-3 me-3">
@@ -268,7 +354,7 @@
 
         <!-- Feature 3 -->
         <div class="col-lg-4 col-md-6">
-            <div class="card feature-card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+            <div class="card feature-card h-100 border-0">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
                         <div class="icon-box bg-teal-subtle text-teal rounded-3 p-3 me-3">
@@ -294,7 +380,7 @@
 
         <!-- Feature 4 -->
         <div class="col-lg-4 col-md-6">
-            <div class="card feature-card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+            <div class="card feature-card h-100 border-0">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
                         <div class="icon-box bg-orange-subtle text-orange rounded-3 p-3 me-3">
@@ -320,7 +406,7 @@
 
         <!-- Feature 5 -->
         <div class="col-lg-4 col-md-6">
-            <div class="card feature-card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+            <div class="card feature-card h-100 border-0">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
                         <div class="icon-box bg-red-subtle text-red rounded-3 p-3 me-3">
@@ -346,7 +432,7 @@
 
         <!-- Feature 6 -->
         <div class="col-lg-4 col-md-6">
-            <div class="card feature-card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: transform 0.2s;">
+            <div class="card feature-card h-100 border-0">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
                         <div class="icon-box bg-blue-subtle text-blue rounded-3 p-3 me-3">
@@ -373,7 +459,7 @@
 </div>
 
 <!-- Trust & Positioning Section -->
-<div class="container my-6 py-6" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 24px; color: white;">
+<div class="container my-6 py-6 landing-gradient-panel">
     <div class="row align-items-center">
         <div class="col-lg-6">
             <h2 class="display-5 fw-bold mb-3">Built for Serious Traders</h2>
@@ -405,7 +491,7 @@
         <div class="col-lg-6">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <div class="card bg-white text-dark shadow-sm" style="border-radius: 12px;">
+                    <div class="card bg-white text-dark shadow-sm landing-quote-card">
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
@@ -418,7 +504,7 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card bg-white text-dark shadow-sm" style="border-radius: 12px;">
+                    <div class="card bg-white text-dark shadow-sm landing-quote-card">
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
@@ -431,7 +517,7 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card bg-white text-dark shadow-sm" style="border-radius: 12px;">
+                    <div class="card bg-white text-dark shadow-sm landing-quote-card">
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
@@ -444,7 +530,7 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card bg-white text-dark shadow-sm" style="border-radius: 12px;">
+                    <div class="card bg-white text-dark shadow-sm landing-quote-card">
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
@@ -483,7 +569,7 @@
     
     <div class="row g-4">
         <div class="col-lg-4 col-md-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
+            <div class="card border-0 h-100 landing-quote-card">
                 <div class="card-body p-4">
                     <div class="mb-3">
                         <i class="fas fa-star text-warning"></i>
@@ -513,7 +599,7 @@
         </div>
 
         <div class="col-lg-4 col-md-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
+            <div class="card border-0 h-100 landing-quote-card">
                 <div class="card-body p-4">
                     <div class="mb-3">
                         <i class="fas fa-star text-warning"></i>
@@ -543,7 +629,7 @@
         </div>
 
         <div class="col-lg-4 col-md-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
+            <div class="card border-0 h-100 landing-quote-card">
                 <div class="card-body p-4">
                     <div class="mb-3">
                         <i class="fas fa-star text-warning"></i>
@@ -575,7 +661,7 @@
 </div>
 
 <!-- CTA Section -->
-<div class="container my-6 py-6 text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 24px; color: white;">
+<div class="container my-6 py-6 text-center landing-gradient-panel">
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <h2 class="display-4 fw-bold mb-4">Ready to Level Up Your Trading?</h2>
@@ -651,17 +737,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Add hover effects to feature cards
-    const cards = document.querySelectorAll('.feature-card');
-    cards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-5px)';
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-    });
 });
 </script>
 {% endblock %}
