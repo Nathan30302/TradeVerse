@@ -16,15 +16,28 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if not insp.has_table('instruments'):
+        return
+    existing = {c['name'] for c in insp.get_columns('instruments')}
     with op.batch_alter_table('instruments', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('base_currency', sa.String(length=10), nullable=True))
-        batch_op.add_column(sa.Column('quote_currency', sa.String(length=10), nullable=True))
-        batch_op.add_column(sa.Column('lot_min', sa.Float(), nullable=True))
-        batch_op.add_column(sa.Column('lot_max', sa.Float(), nullable=True))
-        batch_op.add_column(sa.Column('lot_step', sa.Float(), nullable=True))
-        batch_op.add_column(sa.Column('tick_size', sa.Float(), nullable=True))
-        batch_op.add_column(sa.Column('margin_rate', sa.Float(), nullable=True))
-        batch_op.add_column(sa.Column('pnl_method', sa.String(length=50), nullable=True))
+        if 'base_currency' not in existing:
+            batch_op.add_column(sa.Column('base_currency', sa.String(length=10), nullable=True))
+        if 'quote_currency' not in existing:
+            batch_op.add_column(sa.Column('quote_currency', sa.String(length=10), nullable=True))
+        if 'lot_min' not in existing:
+            batch_op.add_column(sa.Column('lot_min', sa.Float(), nullable=True))
+        if 'lot_max' not in existing:
+            batch_op.add_column(sa.Column('lot_max', sa.Float(), nullable=True))
+        if 'lot_step' not in existing:
+            batch_op.add_column(sa.Column('lot_step', sa.Float(), nullable=True))
+        if 'tick_size' not in existing:
+            batch_op.add_column(sa.Column('tick_size', sa.Float(), nullable=True))
+        if 'margin_rate' not in existing:
+            batch_op.add_column(sa.Column('margin_rate', sa.Float(), nullable=True))
+        if 'pnl_method' not in existing:
+            batch_op.add_column(sa.Column('pnl_method', sa.String(length=50), nullable=True))
 
 
 def downgrade():

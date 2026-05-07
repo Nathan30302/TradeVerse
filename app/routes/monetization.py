@@ -13,6 +13,8 @@ import csv
 from io import StringIO, BytesIO
 import os
 from importlib import import_module
+from flask_mail import Message
+from app import mail
 
 # Create Blueprint
 bp = Blueprint('monetization', __name__, url_prefix='/monetization')
@@ -46,9 +48,9 @@ def pricing():
         },
         {
             'name': 'Pro',
-            'price': '$3.99',
+            'price': '$5',
             'period': '/month',
-            'description': 'For serious traders - 90-Day Free Trial then $3.99/month',
+            'description': 'Core analytics + enhanced tools (2-month trial for new users)',
             'features': [
                 'Everything in Free',
                 'Advanced analytics',
@@ -62,20 +64,20 @@ def pricing():
             'recommended': True
         },
         {
-            'name': 'Elite',
-            'price': '$29',
+            'name': 'Pro Plus',
+            'price': '$15',
             'period': '/month',
-            'description': 'For professionals',
+            'description': 'Full analytics suite + priority features',
             'features': [
                 'Everything in Pro',
                 'Advanced AI insights',
-                'Custom dashboards',
+                'Custom dashboards & alerts',
                 'Unlimited API calls',
-                'Team collaboration',
+                'Coach mode (coming soon)',
                 'Dedicated support'
             ],
             'cta': 'Upgrade Now',
-            'cta_disabled': current_user.is_authenticated and current_user.subscription_tier == 'elite',
+            'cta_disabled': current_user.is_authenticated and current_user.subscription_tier == 'pro_plus',
             'recommended': False
         }
     ]
@@ -94,7 +96,7 @@ def subscribe(plan):
     Initiates subscription to a plan
     TODO: Integrate with Stripe/PayPal
     """
-    valid_plans = ('pro', 'elite')
+    valid_plans = ('pro', 'pro_plus')
     if plan.lower() not in valid_plans:
         flash('❌ Invalid plan selected.', 'danger')
         return redirect(url_for('monetization.pricing'))
@@ -116,7 +118,7 @@ def subscribe(plan):
     # Map plan to Stripe price IDs configured in app config or environment
     price_map = {
         'pro': current_app.config.get('STRIPE_PRICE_PRO') or os.environ.get('STRIPE_PRICE_PRO'),
-        'elite': current_app.config.get('STRIPE_PRICE_ELITE') or os.environ.get('STRIPE_PRICE_ELITE')
+        'pro_plus': current_app.config.get('STRIPE_PRICE_PRO_PLUS') or os.environ.get('STRIPE_PRICE_PRO_PLUS')
     }
 
     price_id = price_map.get(plan.lower())
@@ -327,6 +329,44 @@ def webhook():
                     user.subscription_tier = plan_tier or 'pro'
                     user.subscription_status = 'active'
                     user.subscription_expires_at = None
+                    db.session.add(user)
+                    db.session.commit()
+
+                    # Payment confirmation email (best-effort)
+                    try:
+                        sender = current_app.config.get("MAIL_DEFAULT_SENDER")
+                        if sender and user.email:
+                            msg = Message(
+                                subject="TradeVerse subscription activated",
+                                sender=sender,
+                                recipients=[user.email],
+                            )
+                            msg.body = (
+                                f"Hi {user.username},\n\n"
+                                f"Your TradeVerse subscription is now active: {user.subscription_tier}.\n\n"
+                                "Thank you for supporting TradeVerse.\n"
+                            )
+                            mail.send(msg)
+                    except Exception:
+                        pass
+        elif event.get('type') in ('invoice.payment_failed', 'customer.subscription.updated', 'customer.subscription.deleted'):
+            obj = event.get('data', {}).get('object', {}) or {}
+            customer_id = obj.get('customer') or obj.get('customer_id')
+            if customer_id:
+                from app.models.user import User
+                user = User.query.filter_by(stripe_customer_id=customer_id).first()
+                if user:
+                    if event.get('type') == 'invoice.payment_failed':
+                        user.subscription_status = 'past_due'
+                    elif event.get('type') == 'customer.subscription.deleted':
+                        user.subscription_status = 'canceled'
+                        user.subscription_tier = 'free'
+                    else:
+                        status = (obj.get('status') or '').lower()
+                        if status in ('active', 'trialing'):
+                            user.subscription_status = status
+                        elif status in ('past_due', 'canceled', 'cancelled', 'unpaid'):
+                            user.subscription_status = 'past_due' if status == 'past_due' else 'canceled'
                     db.session.add(user)
                     db.session.commit()
 

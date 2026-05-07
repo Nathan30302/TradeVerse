@@ -28,6 +28,13 @@ FEATURES_BY_TIER: Dict[str, Set[str]] = {
         "exports",
         "broker_api_import",
     },
+    "pro_plus": {
+        "basic_analytics",
+        "advanced_analytics",
+        "exports",
+        "broker_api_import",
+        "coach_mode",
+    },
     "elite": {
         "basic_analytics",
         "advanced_analytics",
@@ -60,10 +67,15 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     """
     tier = (getattr(user, "subscription_tier", None) or "free").lower()
     status = (getattr(user, "subscription_status", None) or "active").lower()
+    role = (getattr(user, "role", None) or "user").lower()
 
     now = _utcnow()
     trial_ends_at: Optional[datetime] = getattr(user, "trial_ends_at", None)
     subscription_expires_at: Optional[datetime] = getattr(user, "subscription_expires_at", None)
+
+    # Owner/admin bypass: full access without billing enforcement.
+    if role in {"owner"}:
+        return SubscriptionState(tier="owner", status="active", is_active=True)
 
     if tier == "free":
         return SubscriptionState(tier="free", status="active", is_active=True)
@@ -88,6 +100,8 @@ def get_effective_subscription_state(user) -> SubscriptionState:
 
 def user_has_feature(user, feature: str) -> bool:
     state = get_effective_subscription_state(user)
+    if state.tier == "owner":
+        return True
     allowed = FEATURES_BY_TIER.get(state.tier, FEATURES_BY_TIER["free"])
     return state.is_active and feature in allowed
 

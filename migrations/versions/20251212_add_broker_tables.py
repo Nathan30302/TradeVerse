@@ -15,40 +15,44 @@ depends_on = None
 
 
 def upgrade():
-    op.create_table(
-        'broker_profiles',
-        sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('broker_id', sa.String(length=50), nullable=False),
-        sa.Column('name', sa.String(length=100), nullable=False),
-        sa.Column('config', sa.JSON(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.UniqueConstraint('broker_id')
-    )
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
 
-    op.create_index(op.f('ix_broker_profiles_broker_id'), 'broker_profiles', ['broker_id'], unique=False)
+    if not insp.has_table('broker_profiles'):
+        op.create_table(
+            'broker_profiles',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('broker_id', sa.String(length=50), nullable=False),
+            sa.Column('name', sa.String(length=100), nullable=False),
+            sa.Column('config', sa.JSON(), nullable=True),
+            sa.Column('created_at', sa.DateTime(), nullable=True),
+            sa.UniqueConstraint('broker_id')
+        )
+        op.create_index(op.f('ix_broker_profiles_broker_id'), 'broker_profiles', ['broker_id'], unique=False)
 
-    op.create_table(
-        'user_broker_credentials',
-        sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('broker_id', sa.String(length=50), nullable=False),
-        sa.Column('encrypted_data', sa.Text(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    )
+    if not insp.has_table('user_broker_credentials'):
+        op.create_table(
+            'user_broker_credentials',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('user_id', sa.Integer(), nullable=False),
+            sa.Column('broker_id', sa.String(length=50), nullable=False),
+            sa.Column('encrypted_data', sa.Text(), nullable=True),
+            sa.Column('created_at', sa.DateTime(), nullable=True),
+            sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+        )
+        op.create_index(op.f('ix_user_broker_credentials_user_id'), 'user_broker_credentials', ['user_id'], unique=False)
 
-    op.create_index(op.f('ix_user_broker_credentials_user_id'), 'user_broker_credentials', ['user_id'], unique=False)
-
-    op.create_table(
-        'imported_trade_sources',
-        sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('broker_id', sa.String(length=50), nullable=True),
-        sa.Column('source_type', sa.String(length=50), nullable=True),
-        sa.Column('filename', sa.String(length=255), nullable=True),
-        sa.Column('imported_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    )
+    if not insp.has_table('imported_trade_sources'):
+        op.create_table(
+            'imported_trade_sources',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('user_id', sa.Integer(), nullable=False),
+            sa.Column('broker_id', sa.String(length=50), nullable=True),
+            sa.Column('source_type', sa.String(length=50), nullable=True),
+            sa.Column('filename', sa.String(length=255), nullable=True),
+            sa.Column('imported_at', sa.DateTime(), nullable=True),
+            sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+        )
 
 
 def downgrade():

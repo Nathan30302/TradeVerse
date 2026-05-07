@@ -42,9 +42,10 @@ class User(UserMixin, db.Model):
     is_active = db.Column(db.Boolean, default=True)
     is_verified = db.Column(db.Boolean, default=False)
     is_premium = db.Column(db.Boolean, default=False)
+    role = db.Column(db.String(20), default='user')  # user, owner
     # ==================== Subscription & Billing ====================
-    subscription_tier = db.Column(db.String(20), default='free')  # free, pro, elite
-    subscription_status = db.Column(db.String(20), default='active')  # active, canceled, expired
+    subscription_tier = db.Column(db.String(20), default='free')  # free, pro, pro_plus, elite
+    subscription_status = db.Column(db.String(20), default='active')  # active, trialing, past_due, canceled, expired
     trial_ends_at = db.Column(db.DateTime)  # Trial expiration date
     subscription_expires_at = db.Column(db.DateTime)  # Paid subscription expiration
     stripe_customer_id = db.Column(db.String(255))  # Stripe customer ID for payments

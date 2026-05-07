@@ -6,6 +6,7 @@ from flask import current_app
 from app.models.instrument_fts import build_fts_index
 import click
 from datetime import datetime, timedelta, timezone
+from app import db
 
 
 def register_commands(app):
@@ -86,5 +87,25 @@ def register_commands(app):
             except Exception:
                 continue
         click.echo(f'Sent {sent} weekly summaries.')
+
+    @app.cli.command('enforce-trial-expiry')
+    def enforce_trial_expiry():
+        """Downgrade expired trials to Free."""
+        from app.models.user import User
+
+        now = datetime.now(timezone.utc)
+        users = User.query.filter(
+            User.subscription_status == 'trialing',
+            User.trial_ends_at.isnot(None),
+            User.trial_ends_at < now,
+        ).all()
+        changed = 0
+        for u in users:
+            u.subscription_tier = 'free'
+            u.subscription_status = 'expired'
+            changed += 1
+        if changed:
+            db.session.commit()
+        click.echo(f'Downgraded {changed} expired trials.')
 
     return None

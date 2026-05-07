@@ -113,6 +113,10 @@ def create_app(config_name='default'):
     app.register_blueprint(brokers_routes.bp)
     app.register_blueprint(imports_routes.bp)
     app.register_blueprint(api_instruments.bp)
+
+    # Owner admin dashboard (RBAC)
+    from app.routes import owner_admin
+    app.register_blueprint(owner_admin.bp)
     
     # Register error handlers
     register_error_handlers(app)
