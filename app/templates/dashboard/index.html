@@ -50,13 +50,44 @@
         background: rgba(255,255,255,0.1);
         border-radius: 3px;
         overflow: hidden;
+        position: relative;
     }
     .quote-progress-bar {
         height: 100%;
         background: linear-gradient(90deg, #667eea, #764ba2);
+        background-size: 200% 100%;
+        animation: quoteFlow 1.2s linear infinite;
         border-radius: 3px;
         width: 0%;
         transition: width 0.1s linear;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* “Water / flow” feel inside the progress fill */
+    .quote-progress-bar::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.30), transparent 55%),
+                    radial-gradient(circle at 70% 50%, rgba(255,255,255,0.18), transparent 60%),
+                    linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.0), rgba(255,255,255,0.12));
+        mix-blend-mode: overlay;
+        opacity: 0.65;
+        transform: translateX(0);
+        animation: quoteWave 1.4s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    @keyframes quoteFlow {
+        0%   { background-position: 0% 50%; }
+        100% { background-position: 200% 50%; }
+    }
+
+    @keyframes quoteWave {
+        0%   { transform: translateX(-12%); }
+        50%  { transform: translateX(12%); }
+        100% { transform: translateX(-12%); }
     }
 </style>
 {% endblock %}
@@ -686,11 +717,12 @@
     function initQuoteRotator() {
         var textEl       = document.getElementById("quoteText");
         var progressEl   = document.getElementById("quoteProgressBar");
+        var containerEl  = document.getElementById("quoteContainer");
         if (!textEl || !progressEl || !QUOTES || QUOTES.length === 0) { return; }
 
         var currentIdx  = Math.floor(Math.random() * QUOTES.length);
-        var progress    = 0;
-        var stepSize    = 100 / (ROTATION_MS / 100);
+        var startTs     = null;
+        var rafId       = null;
 
         function changeQuote() {
             textEl.classList.add("fade-out");
@@ -698,19 +730,32 @@
                 currentIdx = (currentIdx + 1) % QUOTES.length;
                 textEl.textContent = QUOTES[currentIdx];
                 textEl.classList.remove("fade-out");
-                progress = 0;
                 progressEl.style.width = "0%";
+                startTs = null;
             }, 500);
         }
 
-        setInterval(function () {
-            progress += stepSize;
-            if (progress >= 100) {
+        function tick(ts) {
+            if (!startTs) startTs = ts;
+            var p = Math.min((ts - startTs) / ROTATION_MS, 1);
+            progressEl.style.width = Math.round(p * 1000) / 10 + "%";
+            if (p >= 1) {
                 changeQuote();
-            } else {
-                progressEl.style.width = progress + "%";
             }
-        }, 100);
+            rafId = window.requestAnimationFrame(tick);
+        }
+
+        // Premium interaction: tap/click to skip to next quote instantly
+        if (containerEl) {
+            containerEl.style.cursor = "pointer";
+            containerEl.title = "Click to show next quote";
+            containerEl.addEventListener("click", function () {
+                changeQuote();
+            });
+        }
+
+        if (rafId) window.cancelAnimationFrame(rafId);
+        rafId = window.requestAnimationFrame(tick);
     }
 
     /* ----------------------------------------------------------------

@@ -2566,6 +2566,13 @@
                 if(rotator) rotator.classList.remove('d-none');
                 if(island) island.classList.remove('d-none');
                 startRotation();
+                // Refresh “daily movement” snapshot hourly (premium, predictable cadence)
+                setInterval(fetchInstruments, 60 * 60 * 1000);
+                if (rotator) {
+                    rotator.style.cursor = 'pointer';
+                    rotator.title = 'Click to refresh market movers';
+                    rotator.addEventListener('click', () => fetchInstruments());
+                }
                 // update island periodically with server stats
                 updateIslandFromServer();
                 // Avoid redundant polling on /dashboard where the page already refreshes.
