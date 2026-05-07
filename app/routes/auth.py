@@ -7,8 +7,10 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models.user import User
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import re
+from flask_mail import Message
+from app import mail
 
 # Create Blueprint
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -75,15 +77,40 @@ def register():
         
         # Create new user
         try:
+            now = datetime.now(timezone.utc)
             new_user = User(
                 username=username,
                 email=email,
-                full_name=full_name if full_name else None
+                full_name=full_name if full_name else None,
+                created_at=now,
+                # 2-month trial for all new users (Pro features during trial)
+                subscription_tier='pro',
+                subscription_status='trialing',
+                trial_ends_at=now + timedelta(days=60),
             )
             new_user.set_password(password)
             
             db.session.add(new_user)
             db.session.commit()
+
+            # Welcome email (best-effort)
+            try:
+                from flask import current_app
+                sender = current_app.config.get("MAIL_DEFAULT_SENDER")
+                if sender and new_user.email:
+                    msg = Message(
+                        subject="Welcome to TradeVerse",
+                        sender=sender,
+                        recipients=[new_user.email],
+                    )
+                    msg.body = (
+                        f"Hi {new_user.username},\n\n"
+                        "Welcome to TradeVerse! Your 2-month Pro trial is active.\n\n"
+                        "Log your first trade and start improving your consistency.\n"
+                    )
+                    mail.send(msg)
+            except Exception:
+                pass
             
             flash(f'🎉 Welcome to TradeVerse, {username}! Your account has been created successfully.', 'success')
             flash('📊 You can now log in and start tracking your trades!', 'info')

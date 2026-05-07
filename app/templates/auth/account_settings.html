@@ -162,7 +162,7 @@
                                 <div class="alert alert-info">
                                     <h6 class="mb-0">
                                         {% if current_user.trial_ends_at and current_user.trial_ends_at > now() %}
-                                            90-Day Free Trial Active
+                                            2-Month Free Trial Active
                                         {% else %}
                                             Free Trial Expired - Upgrade to Pro
                                         {% endif %}
@@ -171,7 +171,7 @@
                                         <small>
                                             {% set remaining = (current_user.trial_ends_at - now()).days %}
                                             {{ 'Expires in ' + remaining|string + ' days' if remaining > 0 else 'Expired ' + remaining|abs|string + ' days ago' }}
-                                            <br>Then <strong>$3.99/month</strong> (PRO)
+                                            <br>Then <strong>$5/month</strong> (PRO)
                                         </small>
                                     {% else %}
                                         <small>No active trial. <a href="{{ url_for('monetization.pricing') }}">Upgrade Now</a></small>

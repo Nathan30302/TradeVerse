@@ -195,6 +195,12 @@ class Config:
     # Performance toggles
     ENABLE_FTS_BUILD = True
 
+    # Email summaries
+    WEEKLY_SUMMARY_SENDER = os.environ.get('WEEKLY_SUMMARY_SENDER') or os.environ.get('MAIL_USERNAME')
+
+    # Market data
+    MARKET_DATA_PROVIDER = os.environ.get('MARKET_DATA_PROVIDER') or 'twelvedata'
+
 class DevelopmentConfig(Config):
     """Development environment configuration"""
     DEBUG = True

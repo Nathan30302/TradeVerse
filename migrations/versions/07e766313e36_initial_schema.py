@@ -26,6 +26,13 @@ def upgrade():
     bind = op.get_bind()
     insp = sa.inspect(bind)
 
+    # SQLite safety: clean up any leftover temp table from a previously failed batch op.
+    # Some SQLite introspection paths won't show temp tables consistently, so drop unconditionally.
+    try:
+        op.execute("DROP TABLE IF EXISTS _alembic_tmp_trade_plans")
+    except Exception:
+        pass
+
     # trade_plans: add FK if not already present
     if insp.has_table('trade_plans'):
         existing_fks = {fk.get('name') for fk in insp.get_foreign_keys('trade_plans')}

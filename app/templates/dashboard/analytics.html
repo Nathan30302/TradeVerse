@@ -11,6 +11,42 @@
     <p class="page-subtitle">Deep insights into your trading performance</p>
 </div>
 
+<!-- Trader-grade Metrics (Pro/Elite) -->
+<div class="card mb-4" id="advanced-metrics-card" style="display:none;">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-area"></i> Trader-Grade Metrics</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="stat-card info">
+                    <div class="stat-label">Expectancy (R)</div>
+                    <div class="stat-value" id="metric-expectancy">—</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card warning">
+                    <div class="stat-label">Max Drawdown</div>
+                    <div class="stat-value" id="metric-dd-abs">—</div>
+                    <div class="stat-change text-muted" id="metric-dd-rel">—</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card success">
+                    <div class="stat-label">Win Rate (R)</div>
+                    <div class="stat-value" id="metric-winrate">—</div>
+                </div>
+            </div>
+        </div>
+        <small class="text-muted d-block mt-3">R-multiples require a stop loss or explicit risk amount.</small>
+    </div>
+</div>
+
+<div class="alert alert-info mb-4" id="advanced-metrics-locked" style="display:none;">
+    <i class="fas fa-lock me-2"></i>
+    Trader-grade metrics (R, expectancy, drawdown) are available on Pro/Elite.
+</div>
+
 <!-- Performance by Instrument -->
 <div class="card mb-4">
     <div class="card-header">
@@ -214,6 +250,53 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  "use strict";
+  function $(id){ return document.getElementById(id); }
+
+  function showLocked(){
+    var locked = $("advanced-metrics-locked");
+    if (locked) locked.style.display = "block";
+  }
+
+  function showCard(){
+    var card = $("advanced-metrics-card");
+    if (card) card.style.display = "block";
+  }
+
+  function setText(id, text){
+    var el = $(id);
+    if (el) el.textContent = text;
+  }
+
+  function fmtNum(n, digits){
+    if (typeof n !== "number" || isNaN(n)) return "—";
+    return n.toFixed(digits);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    fetch("/dashboard/api/advanced-metrics", { headers: { "Accept": "application/json" } })
+      .then(function (r) {
+        if (!r.ok) { throw new Error("locked"); }
+        return r.json();
+      })
+      .then(function (data) {
+        showCard();
+        setText("metric-expectancy", fmtNum(data.expectancy_r || 0, 2));
+        setText("metric-dd-abs", fmtNum(data.max_drawdown_abs || 0, 2));
+        setText("metric-dd-rel", "(" + fmtNum(data.max_drawdown_rel || 0, 2) + "%)");
+        setText("metric-winrate", fmtNum(data.win_rate_r || 0, 1) + "%");
+      })
+      .catch(function () {
+        showLocked();
+      });
+  });
+}());
+</script>
 {% endblock %}
 
 {% block extra_js %}

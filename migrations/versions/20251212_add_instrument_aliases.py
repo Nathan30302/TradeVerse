@@ -15,6 +15,10 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if insp.has_table('instrument_aliases'):
+        return
     op.create_table(
         'instrument_aliases',
         sa.Column('id', sa.Integer(), primary_key=True),

@@ -16,6 +16,7 @@ from app import db
 from flask import request, flash, redirect, url_for
 from datetime import datetime, timedelta
 import random
+from app.services.entitlements import require_feature
 
 # Create Blueprint
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
@@ -239,6 +240,50 @@ def analytics():
                            day_stats=day_stats)
 
 
+@bp.route('/api/advanced-metrics')
+@login_required
+@require_feature('advanced_analytics')
+def advanced_metrics_api():
+    """
+    Trader-grade metrics: R distribution, expectancy (R), max drawdown abs/rel,
+    grouped performance by emotion/session/strategy.
+    """
+    from app.services.analytics_engine import equity_curve_points, expectancy_r, max_drawdown, group_pnl
+
+    trades = Trade.query.filter(
+        Trade.user_id == current_user.id,
+        Trade.status == 'CLOSED',
+        Trade.profit_loss.isnot(None),
+        Trade.exit_date.isnot(None),
+    ).order_by(Trade.exit_date).all()
+
+    points = equity_curve_points(trades)
+    dd = max_drawdown(points)
+    exp = expectancy_r(points)
+
+    by_emotion = group_pnl(trades, lambda t: getattr(t, "emotion", None))
+    by_session = group_pnl(trades, lambda t: getattr(t, "session_type", None))
+    by_strategy = group_pnl(trades, lambda t: getattr(t, "strategy", None))
+
+    r_values = [p.r for p in points if p.r is not None]
+    r_values.sort()
+
+    return jsonify(
+        {
+            "count_closed": len(trades),
+            "expectancy_r": round(exp["expectancy_r"], 4),
+            "avg_r": round(exp["avg_r"], 4),
+            "win_rate_r": round(exp["win_rate"] * 100, 2),
+            "max_drawdown_abs": round(dd["max_drawdown_abs"], 2),
+            "max_drawdown_rel": round(dd["max_drawdown_rel"] * 100, 2),
+            "r_values": [round(float(r), 4) for r in r_values[-500:]],  # cap payload
+            "by_emotion": by_emotion[:25],
+            "by_session": by_session[:25],
+            "by_strategy": by_strategy[:25],
+        }
+    )
+
+
 @bp.route('/api/stats')
 @login_required
 def stats_api():
@@ -330,6 +375,7 @@ def equity_curve_api():
 
     Returns data for equity curve chart
     """
+    max_points = request.args.get('max_points', 500, type=int)
     trades = Trade.query.filter_by(
         user_id=current_user.id,
         status='CLOSED'
@@ -346,6 +392,12 @@ def equity_curve_api():
                 'equity': round(cumulative_pnl, 2),
                 'trade_pnl': round(trade.profit_loss, 2)
             })
+
+    # Downsample for chart responsiveness
+    if max_points and len(equity_data) > max_points:
+        from app.utils.downsample import downsample_minmax
+
+        equity_data = downsample_minmax(equity_data, x_key="date", y_key="equity", max_points=max_points)
 
     return jsonify(equity_data)
 

@@ -362,9 +362,9 @@ def db_instrument_counts():
 @bp.route('/db/instruments/quotes', methods=['GET'])
 @login_required
 def db_instrument_quotes():
-    """Return trader-focused instruments for the Dynamic Island rotator."""
+    """Return trader-focused instruments for the Dynamic Island rotator (live quotes)."""
     from app.models.instrument import Instrument
-    from app.services.simulated_market import market
+    from app.services.market_data import get_quotes
 
     trader_focused = ['BTCUSD', 'XAUUSD', 'NAS100', 'US30', 'US500', 'EURUSD']
     limit = min(int(request.args.get('limit', 6)), 10)
@@ -375,7 +375,7 @@ def db_instrument_quotes():
         inst_objs[i.symbol] = i
 
     symbols = trader_focused[:limit]
-    quotes = market.get_quotes(symbols, instrument_objs=inst_objs)
+    quotes = get_quotes(symbols, ttl_s=10)
 
     fallback_names = {
         'BTCUSD': 'Bitcoin', 'XAUUSD': 'Gold', 'NAS100': 'Nasdaq 100',
@@ -384,12 +384,15 @@ def db_instrument_quotes():
     
     out = []
     for q in quotes:
-        name = q.get('name') or fallback_names.get(q['symbol'], q['symbol'])
+        name = q.name or fallback_names.get(q.symbol, q.symbol)
         out.append({
-            'symbol': q['symbol'],
+            'symbol': q.symbol,
             'name': name,
-            'price': q['price'],
-            'change_pct': q['change_pct']
+            'price': q.price,
+            'open': q.open_price,
+            'prev_close': q.prev_close,
+            'change_pct': q.change_pct,
+            'ts': q.ts,
         })
 
     return jsonify({'success': True, 'quotes': out})
