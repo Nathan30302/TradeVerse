@@ -77,70 +77,7 @@ def create_app(config_name='default'):
         # User loader callback for Flask-Login
         @login_manager.user_loader
         def load_user(user_id):
-            try:
-                return db.session.get(user.User, int(user_id))
-            except Exception as e:
-                # Protect active sessions if DB is in a partial-migration state where
-                # ORM selects columns that don't exist yet.
-                # Avoid noisy stack traces for expected schema-drift errors.
-                try:
-                    from sqlalchemy.exc import ProgrammingError
-                    if isinstance(e, ProgrammingError):
-                        app.logger.warning("load_user ORM failed (likely schema drift); using compat fallback")
-                    else:
-                        app.logger.exception("load_user ORM failed; attempting compat SQL fallback")
-                except Exception:
-                    app.logger.exception("load_user ORM failed; attempting compat SQL fallback")
-                # The ORM error may have left the transaction aborted on Postgres.
-                try:
-                    db.session.rollback()
-                except Exception:
-                    pass
-                try:
-                    # Prefer returning a session-bound ORM instance when possible so
-                    # dashboards/settings that rely on relationships don't break.
-                    try:
-                        from sqlalchemy.orm import load_only
-
-                        return (
-                            db.session.query(user.User)
-                            .options(
-                                load_only(
-                                    user.User.id,
-                                    user.User.username,
-                                    user.User.email,
-                                    user.User.password_hash,
-                                    user.User.is_active,
-                                    user.User.is_verified,
-                                    user.User.is_premium,
-                                    user.User.timezone,
-                                    user.User.preferred_currency,
-                                    user.User.theme,
-                                )
-                            )
-                            .filter(user.User.id == int(user_id))
-                            .first()
-                        )
-                    except Exception:
-                        pass
-
-                    row = db.session.execute(
-                        db.text(
-                            "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
-                            "timezone, preferred_currency, theme "
-                            "FROM users WHERE id = :id LIMIT 1"
-                        ),
-                        {"id": int(user_id)},
-                    ).mappings().first()
-                    if not row:
-                        return None
-                    u = user.User()
-                    for k, v in row.items():
-                        setattr(u, k, v)
-                    return u
-                except Exception:
-                    app.logger.exception("load_user compat SQL fallback failed")
-                    return None
+            return db.session.get(user.User, int(user_id))
 
         # Seed instruments from EXNESS catalog on startup (dev/test only).
         # Schema is managed by Alembic migrations; if the DB hasn't been upgraded yet,

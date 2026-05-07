@@ -35,6 +35,23 @@
     </div>
 </div>
 
+{% set sub = current_user.effective_subscription() %}
+{% if sub.tier not in ['pro_plus', 'elite', 'owner'] %}
+<div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #6366f1;">
+    <div class="card-body d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+        <div>
+            <div class="fw-semibold mb-1"><i class="fas fa-lock me-2 text-primary"></i>Pro Plus unlocks deeper AI insights</div>
+            <div class="small text-muted">
+                Upgrade to unlock richer weekly alerts, advanced behavioural patterns, and stronger “what to fix next” recommendations.
+            </div>
+        </div>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('monetization.pricing') }}">
+            Upgrade to Pro Plus
+        </a>
+    </div>
+</div>
+{% endif %}
+
 {# ------------------------------------------------------------------ #}
 {# Resolve all template variables once, safely, before rendering HTML #}
 {# ------------------------------------------------------------------ #}

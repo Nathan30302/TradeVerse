@@ -39,6 +39,22 @@
 
         <!-- Tab Content -->
         <div class="tab-content">
+            {% set sub = current_user.effective_subscription() %}
+            <div class="alert alert-light border d-flex align-items-center justify-content-between mb-4" role="status">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-crown text-warning"></i>
+                    <div>
+                        <div class="fw-semibold">Current tier</div>
+                        <div class="small text-muted">
+                            {% if sub.status == 'trialing' %}Trial{% elif sub.tier == 'pro_plus' %}Pro Plus{% elif sub.tier == 'pro' %}Pro{% else %}Free{% endif %}
+                            {% if sub.status and sub.status not in ['active'] %} • {{ sub.status }}{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <a class="btn btn-outline-primary btn-sm" href="{{ url_for('monetization.pricing') }}">
+                    View Plans
+                </a>
+            </div>
             <!-- Profile Tab -->
             <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
                 <div class="card">
