@@ -83,6 +83,11 @@ def create_app(config_name='default'):
                 # Protect active sessions if DB is in a partial-migration state where
                 # ORM selects columns that don't exist yet.
                 app.logger.exception("load_user ORM failed; attempting compat SQL fallback")
+                # The ORM error may have left the transaction aborted on Postgres.
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
                 try:
                     row = db.session.execute(
                         db.text(

@@ -12,7 +12,7 @@ import re
 from flask_mail import Message
 from app import mail
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.exc import OperationalError, ProgrammingError, InternalError
 
 # Create Blueprint
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -158,6 +158,12 @@ def login():
             # Backward-compatible auth path for partially-migrated DBs where ORM
             # selects columns that don't exist yet (would otherwise 500).
             current_app.logger.exception("Login ORM query failed; attempting compat SQL fallback")
+            # The ORM error may have left the transaction in an aborted state on Postgres.
+            # Roll back before attempting any further SQL in this request.
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
             row = db.session.execute(
                 text(
                     "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
@@ -171,6 +177,13 @@ def login():
                 for k, v in row.items():
                     setattr(u, k, v)
                 user = u
+        except InternalError:
+            # Handle "current transaction is aborted" edge case.
+            current_app.logger.exception("Login query failed due to aborted transaction; rolling back")
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
         
         # Validate credentials
         if user and user.check_password(password):
