@@ -6,7 +6,7 @@ Provides endpoints for:
 - Instrument metadata lookup
 - Broker listing
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
 from flask_login import login_required, current_user
 
@@ -354,7 +354,7 @@ def db_instrument_counts():
         mapped_cat = DB_TO_FRONTEND_CATEGORY.get(cat, cat.lower() if cat else 'other')
         counts[mapped_cat] = cnt
     
-    print(f"[db_instrument_counts] Total: {total}, By category: {counts}")
+    current_app.logger.debug("[db_instrument_counts] total=%s by_category=%s", total, counts)
     
     return jsonify({'success': True, 'total': total, 'by_category': counts})
 

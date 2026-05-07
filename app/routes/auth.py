@@ -3,7 +3,7 @@ Authentication Routes
 User registration, login, logout, and profile management
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models.user import User
@@ -120,7 +120,7 @@ def register():
         except Exception as e:
             db.session.rollback()
             flash('❌ An error occurred during registration. Please try again.', 'danger')
-            print(f"Registration error: {e}")
+            current_app.logger.exception("Registration error")
     
     return render_template('auth/register.html')
 
@@ -217,7 +217,7 @@ def profile():
         except Exception as e:
             db.session.rollback()
             flash('❌ Error updating profile. Please try again.', 'danger')
-            print(f"Profile update error: {e}")
+            current_app.logger.exception("Profile update error")
         
         return redirect(url_for('auth.profile'))
     
@@ -254,7 +254,7 @@ def change_password():
             except Exception as e:
                 db.session.rollback()
                 flash('❌ Error changing password. Please try again.', 'danger')
-                print(f"Password change error: {e}")
+                current_app.logger.exception("Password change error")
     
     return render_template('auth/change_password.html')
 
@@ -303,5 +303,5 @@ def set_theme():
         return {'ok': True, 'theme': theme}
     except Exception as e:
         db.session.rollback()
-        print(f"set_theme error: {e}")
+        current_app.logger.exception("set_theme error")
         return {'ok': False, 'error': 'server_error'}, 500

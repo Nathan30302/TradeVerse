@@ -6,6 +6,7 @@ Homepage and general application routes
 from flask import Blueprint, render_template, redirect, url_for, request, jsonify, send_from_directory, current_app
 from flask_login import current_user
 from app.models.instrument import Instrument
+from datetime import datetime
 
 # Create Blueprint
 bp = Blueprint('main', __name__)
@@ -15,6 +16,40 @@ def robots():
     """Serve robots.txt for Google crawlers"""
     static_folder = current_app.static_folder
     return send_from_directory(static_folder, 'robots.txt')
+
+@bp.route('/favicon.ico')
+def favicon():
+    """Serve a root favicon for crawlers/browsers expecting /favicon.ico."""
+    return send_from_directory(
+        current_app.static_folder,
+        'img/favicon.png',
+        mimetype='image/png',
+    )
+
+
+@bp.route('/sitemap.xml')
+def sitemap():
+    """Simple sitemap for public marketing pages."""
+    from flask import Response
+
+    pages = [
+        url_for('main.index', _external=True),
+        url_for('main.about', _external=True),
+        url_for('main.features', _external=True),
+        url_for('main.contact', _external=True),
+        url_for('monetization.pricing', _external=True),
+    ]
+    now = datetime.utcnow().strftime('%Y-%m-%d')
+    body = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for p in pages:
+        body.append('<url>')
+        body.append(f'<loc>{p}</loc>')
+        body.append(f'<lastmod>{now}</lastmod>')
+        body.append('<changefreq>weekly</changefreq>')
+        body.append('<priority>0.8</priority>')
+        body.append('</url>')
+    body.append('</urlset>')
+    return Response('\n'.join(body), mimetype='application/xml')
 
 @bp.route('/')
 def index():
@@ -42,7 +77,7 @@ def features():
 @bp.route('/pricing')
 def pricing():
     """Pricing page - Subscription plans"""
-    return render_template('main/pricing.html')
+    return redirect(url_for('monetization.pricing'), code=301)
 
 @bp.route('/contact')
 def contact():
@@ -101,6 +136,6 @@ def calculate_pnl():
     
     except ValueError as e:
         return jsonify({'error': f'Invalid input: {str(e)}'}), 400
-    except Exception as e:
-        print(f"P&L calculation error: {str(e)}")
+    except Exception:
+        current_app.logger.exception("P&L calculation error")
         return jsonify({'error': 'Calculation error'}), 500
