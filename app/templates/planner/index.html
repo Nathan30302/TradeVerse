@@ -105,7 +105,7 @@
                 </thead>
                 <tbody>
                     {% for plan in plans.items %}
-                    <tr style="cursor:pointer;"
+                    <tr class="tv-clickrow"
                         onclick="window.location='{{ url_for('planner.view_plan', plan_id=plan.id) }}'">
 
                         <td>

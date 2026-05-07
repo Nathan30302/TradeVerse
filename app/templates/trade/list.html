@@ -82,7 +82,7 @@
                 </thead>
                 <tbody>
                     {% for trade in trades.items %}
-                    <tr style="cursor: pointer;" onclick="window.location='{{ url_for('trade.view', trade_id=trade.id) }}'">
+                    <tr class="tv-clickrow" onclick="window.location='{{ url_for('trade.view', trade_id=trade.id) }}'">
                         <td>
                             <div>{{ trade.entry_date|datetime('%m/%d/%y') }}</div>
                             <small class="text-muted">{{ trade.entry_date|datetime('%H:%M') }}</small>
