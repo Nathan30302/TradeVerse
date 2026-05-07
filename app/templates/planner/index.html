@@ -4,19 +4,21 @@
 
 {% block content %}
 <!-- Page Header -->
-<div class="page-header mb-5">
-    <div class="row align-items-center">
-        <div class="col">
-            <h1 class="page-title mb-2">
-                <i class="fas fa-clipboard-list"></i> Trade Planner
-            </h1>
-            <p class="page-subtitle mb-0">Plan with discipline. Execute with clarity. Review like a pro.</p>
-        </div>
-        <div class="col-auto">
-            <a href="{{ url_for('planner.new_plan') }}" class="btn btn-primary btn-lg shadow-sm"
-               aria-label="Create a new trade plan">
-                <i class="fas fa-plus-circle"></i> New Trade Plan
-            </a>
+<div class="tv-page-hero">
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col">
+                <h1 class="page-title mb-2">
+                    <i class="fas fa-clipboard-list"></i> Trade Planner
+                </h1>
+                <p class="page-subtitle mb-0">Plan with discipline. Execute with clarity. Review like a pro.</p>
+            </div>
+            <div class="col-auto">
+                <a href="{{ url_for('planner.new_plan') }}" class="btn btn-primary btn-lg shadow-sm"
+                   aria-label="Create a new trade plan">
+                    <i class="fas fa-plus-circle"></i> New Trade Plan
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -67,7 +69,7 @@
 </div>
 
 <!-- Status Filter -->
-<div class="card mb-4">
+<div class="card tv-surface soft mb-4">
     <div class="card-body">
         <form method="GET" class="row g-3 align-items-end">
             <div class="col-md-4">
@@ -84,7 +86,7 @@
 </div>
 
 <!-- Trade Plans Table -->
-<div class="table-container">
+<div class="table-container tv-table-premium">
     {% if plans.items %}
         <div class="table-responsive">
             <table class="table table-hover">
@@ -415,12 +417,14 @@
         {% endif %}
 
     {% else %}
-        <div class="text-center py-5">
-            <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
-            <h4 class="text-muted">No Trade Plans Yet</h4>
-            <p class="text-muted">Start planning your trades to build discipline!</p>
+        <div class="tv-empty-well py-5 px-3">
+            <div class="tv-empty-icon"><i class="fas fa-clipboard-list"></i></div>
+            <h4 class="mb-2">No trade plans yet</h4>
+            <p class="tv-muted mb-4 mx-auto" style="max-width: 28rem;">
+                Create a plan before you enter—clear entry, stop, and target keep you honest when price moves.
+            </p>
             <a href="{{ url_for('planner.new_plan') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus-circle"></i> Create First Plan
+                <i class="fas fa-plus-circle"></i> Create first plan
             </a>
         </div>
     {% endif %}

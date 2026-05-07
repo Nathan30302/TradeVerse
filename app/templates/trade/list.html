@@ -4,24 +4,26 @@
 
 {% block content %}
 <!-- Page Header -->
-<div class="page-header mb-4">
-    <div class="row align-items-center">
-        <div class="col">
-            <h1 class="page-title">
-                <i class="fas fa-list"></i> My Trades
-            </h1>
-            <p class="page-subtitle">View and manage all your trades</p>
-        </div>
-        <div class="col-auto">
-            <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus-circle"></i> Add New Trade
-            </a>
+<div class="tv-page-hero">
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col">
+                <h1 class="page-title">
+                    <i class="fas fa-list"></i> My Trades
+                </h1>
+                <p class="page-subtitle">View and manage all your trades</p>
+            </div>
+            <div class="col-auto">
+                <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus-circle"></i> Add New Trade
+                </a>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Filters -->
-<div class="card mb-4">
+<div class="card tv-surface soft mb-4">
     <div class="card-body">
         <form method="GET" action="{{ url_for('trade.list') }}" class="row g-3">
             <div class="col-md-3">
@@ -61,7 +63,7 @@
 </div>
 
 <!-- Trades Table -->
-<div class="table-container">
+<div class="table-container tv-table-premium">
     {% if trades.items %}
         <div class="table-responsive">
             <table class="table table-hover">
@@ -276,18 +278,18 @@
         {% endif %}
 
     {% else %}
-        <div class="text-center py-5">
-            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
-            <h4 class="text-muted">No Trades Found</h4>
-            <p class="text-muted">
+        <div class="tv-empty-well py-5 px-3">
+            <div class="tv-empty-icon"><i class="fas fa-inbox"></i></div>
+            <h4 class="mb-2">No trades found</h4>
+            <p class="tv-muted mb-4 mx-auto" style="max-width: 28rem;">
                 {% if status_filter != 'all' or symbol_filter or strategy_filter %}
                     Try adjusting your filters or add a new trade.
                 {% else %}
-                    Start your trading journey by adding your first trade!
+                    Start your trading journal by logging your first trade.
                 {% endif %}
             </p>
             <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus-circle"></i> Add Trade
+                <i class="fas fa-plus-circle"></i> Add trade
             </a>
         </div>
     {% endif %}

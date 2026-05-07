@@ -2,26 +2,79 @@
 
 {% block title %}AI Buddy - {{ app_name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+  /* Cockpit / control-room framing for AI Buddy */
+  .tv-cockpit {
+    position: relative;
+  }
+  @media (min-width: 768px) {
+    .tv-cockpit {
+      border-left: 3px solid rgba(34, 211, 238, 0.35);
+      padding-left: 1.1rem;
+      margin-left: -0.35rem;
+    }
+  }
+  .tv-hud-panel {
+    border: 1px solid rgba(99, 102, 241, 0.28) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255,255,255,0.04);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .tv-hud-panel > .card-header:not(.bg-primary):not(.bg-secondary):not(.bg-gradient-primary):not(.bg-dark) {
+    background: linear-gradient(90deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.92)) !important;
+    color: #f8fafc !important;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.22) !important;
+  }
+  body[data-theme="light"] .tv-hud-panel > .card-header:not(.bg-primary):not(.bg-secondary):not(.bg-dark) {
+    background: linear-gradient(90deg, #e0e7ff, #f8fafc) !important;
+    color: #0f172a !important;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.15) !important;
+  }
+  .tv-hud-panel > .card-header.bg-primary {
+    background: linear-gradient(90deg, #4f46e5, #6366f1) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.12) !important;
+  }
+  .tv-hud-panel > .card-header.bg-secondary {
+    background: linear-gradient(90deg, #334155, #475569) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+  }
+  .tv-hud-panel > .card-header.bg-gradient-primary {
+    background: linear-gradient(90deg, #4f46e5, #7c3aed) !important;
+    color: #fff !important;
+    border-bottom: none !important;
+  }
+  .tv-cockpit .list-group-item {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-primary);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header mb-4">
-    <div class="row align-items-center">
-        <div class="col">
-            <h1 class="page-title mb-2">
-                <i class="fas fa-robot"></i> AI Buddy
-            </h1>
-            <p class="page-subtitle mb-0">Your personal trading coach. Clear patterns, direct fixes, and a weekly focus.</p>
-        </div>
-        <div class="col-auto">
-            <div class="d-flex flex-wrap gap-2 justify-content-end">
-                <button id="voiceBtn" class="btn btn-primary btn-lg">
-                    <i class="fas fa-play-circle"></i> Play Voice Review
-                </button>
-                <button id="voicePauseBtn" class="btn btn-outline-secondary btn-lg" type="button" title="Pause / resume">
-                    <i class="fas fa-pause"></i>
-                </button>
-                <button id="voiceStopBtn" class="btn btn-outline-danger btn-lg" type="button" title="Stop">
-                    <i class="fas fa-stop"></i>
-                </button>
+<div class="tv-cockpit">
+<div class="tv-page-hero">
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col">
+                <h1 class="page-title mb-2">
+                    <i class="fas fa-robot"></i> AI Buddy
+                </h1>
+                <p class="page-subtitle mb-0">Your personal trading coach. Clear patterns, direct fixes, and a weekly focus.</p>
+            </div>
+            <div class="col-auto">
+                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                    <button id="voiceBtn" class="btn btn-primary btn-lg">
+                        <i class="fas fa-play-circle"></i> Play Voice Review
+                    </button>
+                    <button id="voicePauseBtn" class="btn btn-outline-secondary btn-lg" type="button" title="Pause / resume">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button id="voiceStopBtn" class="btn btn-outline-danger btn-lg" type="button" title="Stop">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -57,7 +110,7 @@
 
 {% set sub = current_user.effective_subscription() %}
 {% if sub.tier not in ['pro_plus', 'elite', 'owner'] %}
-<div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #6366f1;">
+<div class="card tv-surface soft mb-4" style="border-left: 4px solid #6366f1;">
     <div class="card-body d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
         <div>
             <div class="fw-semibold mb-1"><i class="fas fa-lock me-2 text-primary"></i>Pro Plus unlocks deeper AI insights</div>
@@ -100,7 +153,7 @@
 <div class="row g-4 mb-4">
 
     <div class="col-lg-6">
-        <div class="card border-0 shadow-sm h-100">
+        <div class="card border-0 h-100 tv-surface tv-hud-panel">
             <div class="card-header">
                 <h5 class="mb-0"><i class="fas fa-calendar-week"></i> Weekly Coach Brief</h5>
                 <div class="small opacity-75 mt-1">A fast read + a single fix to carry into next week.</div>
@@ -176,7 +229,7 @@
     </div>
 
     <div class="col-lg-6">
-        <div class="card border-0 shadow-sm h-100">
+        <div class="card border-0 h-100 tv-surface tv-hud-panel">
             <div class="card-header bg-gradient-primary text-white">
                 <h5 class="mb-0"><i class="fas fa-bell"></i> Smart Alerts</h5>
             </div>
@@ -194,9 +247,10 @@
                         {% endfor %}
                     </ul>
                 {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                        <p class="mb-0">No urgent alerts right now. Keep trading with discipline.</p>
+                    <div class="tv-empty-well py-5">
+                        <div class="tv-empty-icon mx-auto"><i class="fas fa-check-circle text-success"></i></div>
+                        <p class="mb-0 fw-semibold">No urgent alerts</p>
+                        <p class="small tv-muted mb-0 mt-2">Keep logging plans and trades so AI Buddy can spot patterns early.</p>
                     </div>
                 {% endif %}
             </div>
@@ -212,7 +266,7 @@
 
     {% if best_strategy and best_strategy is mapping %}
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
+        <div class="card border-0 h-100 tv-surface soft">
             <div class="card-body text-center">
                 <i class="fas fa-trophy fa-2x text-warning mb-2"></i>
                 <h6 class="text-muted">Best Strategy</h6>
@@ -228,7 +282,7 @@
 
     {% if worst_strategy and worst_strategy is mapping %}
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
+        <div class="card border-0 h-100 tv-surface soft">
             <div class="card-body text-center">
                 <i class="fas fa-skull-crossbones fa-2x text-danger mb-2"></i>
                 <h6 class="text-muted">Weakest Strategy</h6>
@@ -244,7 +298,7 @@
 
     {% if best_instrument and best_instrument is mapping %}
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
+        <div class="card border-0 h-100 tv-surface soft">
             <div class="card-body text-center">
                 <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
                 <h6 class="text-muted">Best Instrument</h6>
@@ -264,7 +318,7 @@
 {# ------------------------------------------------------------------ #}
 {# Monthly Review                                                      #}
 {# ------------------------------------------------------------------ #}
-<div class="card border-0 shadow-sm mb-4">
+<div class="card border-0 mb-4 tv-surface tv-hud-panel">
     <div class="card-header bg-secondary text-white">
         <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Monthly AI Buddy Review</h5>
     </div>
@@ -272,27 +326,27 @@
         <p class="mb-3">{{ monthly_summary }}</p>
         <div class="row g-3">
             <div class="col-md-3 col-6">
-                <div class="insight-card bg-light p-3 rounded text-center">
-                    <small class="text-muted d-block">Trades</small>
-                    <div class="h4 mb-0">{{ monthly_stats.get('total_trades', 0) }}</div>
+                <div class="tv-kpi text-center">
+                    <div class="label">Trades</div>
+                    <div class="value" style="font-size:1.35rem">{{ monthly_stats.get('total_trades', 0) }}</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
-                <div class="insight-card bg-light p-3 rounded text-center">
-                    <small class="text-muted d-block">Win Rate</small>
-                    <div class="h4 mb-0">{{ (monthly_stats.get('win_rate', 0) | float) | round(1) }}%</div>
+                <div class="tv-kpi text-center">
+                    <div class="label">Win rate</div>
+                    <div class="value" style="font-size:1.35rem">{{ (monthly_stats.get('win_rate', 0) | float) | round(1) }}%</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
-                <div class="insight-card bg-light p-3 rounded text-center">
-                    <small class="text-muted d-block">Net P/L</small>
-                    <div class="h4 mb-0">{{ (monthly_stats.get('total_pnl', 0) | default(0)) | currency(current_user.preferred_currency) }}</div>
+                <div class="tv-kpi text-center">
+                    <div class="label">Net P/L</div>
+                    <div class="value" style="font-size:1.15rem">{{ (monthly_stats.get('total_pnl', 0) | default(0)) | currency(current_user.preferred_currency) }}</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
-                <div class="insight-card bg-light p-3 rounded text-center">
-                    <small class="text-muted d-block">Direction</small>
-                    <div class="h4 mb-0">
+                <div class="tv-kpi text-center">
+                    <div class="label">Direction</div>
+                    <div class="value" style="font-size:1rem">
                         <span class="badge {% if monthly_direction == 'improving' %}bg-success{% else %}bg-warning text-dark{% endif %}">
                             {{ monthly_direction | title }}
                         </span>
@@ -306,35 +360,35 @@
 {# ------------------------------------------------------------------ #}
 {# Behavioural Insights                                                #}
 {# ------------------------------------------------------------------ #}
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header" style="background: linear-gradient(135deg,#1e293b,#334155); color:white;">
+<div class="card border-0 mb-4 tv-surface tv-hud-panel">
+    <div class="card-header bg-dark text-white border-0">
         <h5 class="mb-0"><i class="fas fa-brain"></i> Behavioural Insights</h5>
     </div>
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-3 col-6">
-                <div class="insight-card bg-light p-3 rounded text-center">
-                    <small class="text-muted d-block">Discipline Score</small>
-                    <div class="h4 mb-0">{{ bi.get('discipline_score', 0) | float | round(1) }}</div>
+                <div class="tv-kpi text-center">
+                    <div class="label">Discipline</div>
+                    <div class="value" style="font-size:1.35rem">{{ bi.get('discipline_score', 0) | float | round(1) }}</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
-                <div class="insight-card bg-light p-3 rounded text-center">
-                    <small class="text-muted d-block">Consistency Score</small>
-                    <div class="h4 mb-0">{{ bi.get('consistency_score', 0) | float | round(1) }}</div>
+                <div class="tv-kpi text-center">
+                    <div class="label">Consistency</div>
+                    <div class="value" style="font-size:1.35rem">{{ bi.get('consistency_score', 0) | float | round(1) }}</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
-                <div class="insight-card bg-light p-3 rounded text-center">
-                    <small class="text-muted d-block">Avg R:R</small>
-                    <div class="h4 mb-0">{{ bi_risk.get('avg_rr', 0) | float | round(2) }}</div>
+                <div class="tv-kpi text-center">
+                    <div class="label">Avg R:R</div>
+                    <div class="value" style="font-size:1.35rem">{{ bi_risk.get('avg_rr', 0) | float | round(2) }}</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
-                <div class="insight-card bg-light p-3 rounded text-center">
-                    <small class="text-muted d-block">High-Risk Trades</small>
+                <div class="tv-kpi text-center">
+                    <div class="label">High-risk</div>
                     {% set hrt = bi_risk.get('high_risk_trades', 0) %}
-                    <div class="h4 mb-0 {% if hrt > 0 %}text-danger{% endif %}">{{ hrt }}</div>
+                    <div class="value {% if hrt > 0 %}text-danger{% endif %}" style="font-size:1.35rem">{{ hrt }}</div>
                 </div>
             </div>
         </div>
@@ -360,7 +414,7 @@
 {# ------------------------------------------------------------------ #}
 {# Talk to AI Buddy                                                    #}
 {# ------------------------------------------------------------------ #}
-<div class="card border-0 shadow-sm mb-4">
+<div class="card border-0 mb-4 tv-surface tv-hud-panel">
     <div class="card-header bg-primary text-white">
         <h5 class="mb-0"><i class="fas fa-comments"></i> Talk to AI Buddy</h5>
     </div>
@@ -398,6 +452,7 @@
             <div class="mt-3 d-flex flex-wrap gap-2" id="aiFollowUps"></div>
         </div>
     </div>
+</div>
 </div>
 {% endblock %}
 
