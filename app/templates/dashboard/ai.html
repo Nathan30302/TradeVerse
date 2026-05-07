@@ -12,9 +12,17 @@
             <p class="page-subtitle mb-0">Your personal trading coach. Clear patterns, direct fixes, and a weekly focus.</p>
         </div>
         <div class="col-auto">
-            <button id="voiceBtn" class="btn btn-primary btn-lg">
-                <i class="fas fa-play-circle"></i> Play Voice Review
-            </button>
+            <div class="d-flex flex-wrap gap-2 justify-content-end">
+                <button id="voiceBtn" class="btn btn-primary btn-lg">
+                    <i class="fas fa-play-circle"></i> Play Voice Review
+                </button>
+                <button id="voicePauseBtn" class="btn btn-outline-secondary btn-lg" type="button" title="Pause / resume">
+                    <i class="fas fa-pause"></i>
+                </button>
+                <button id="voiceStopBtn" class="btn btn-outline-danger btn-lg" type="button" title="Stop">
+                    <i class="fas fa-stop"></i>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -413,31 +421,85 @@
     var HISTORY      = [];
     var coachActive  = false;
     var recognition  = null;
+    var isSpeaking   = false;
+    var voiceQueue   = [];
+    var voiceIdx     = 0;
 
     function getCsrf() {
         var el = document.querySelector("input[name='csrf_token']");
         return el ? el.value : "";
     }
 
-    function onVoiceClick() {
-        if (!VOICE_TEXT) { return; }
-        if (!window.speechSynthesis) { return; }
-        window.speechSynthesis.cancel();
-        var msg = new SpeechSynthesisUtterance(VOICE_TEXT);
-        // Less robotic defaults
-        msg.rate  = 1.02;
-        msg.pitch = 1.03;
-        msg.volume = 1.0;
-        // Prefer an English voice if available
+    function stopListening() {
+        try { if (recognition) recognition.stop(); } catch (e) {}
+    }
+
+    function pickEnglishVoice() {
         try {
-            var voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
-            var v = null;
+            var voices = window.speechSynthesis && window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
             for (var i = 0; i < voices.length; i++) {
-                if ((voices[i].lang || '').toLowerCase().startsWith('en')) { v = voices[i]; break; }
+                if ((voices[i].lang || '').toLowerCase().startsWith('en')) return voices[i];
             }
-            if (v) { msg.voice = v; }
-        } catch(e) {}
-        window.speechSynthesis.speak(msg);
+        } catch (e) {}
+        return null;
+    }
+
+    function speakText(text) {
+        return new Promise(function(resolve) {
+            if (!window.speechSynthesis) { resolve(); return; }
+            stopListening(); // avoid mic capturing the TTS voice
+            window.speechSynthesis.cancel();
+
+            var u = new SpeechSynthesisUtterance(text);
+            u.rate = 1.02;
+            u.pitch = 1.03;
+            u.volume = 1.0;
+            var v = pickEnglishVoice();
+            if (v) u.voice = v;
+
+            isSpeaking = true;
+            u.onend = function(){ isSpeaking = false; resolve(); };
+            u.onerror = function(){ isSpeaking = false; resolve(); };
+            window.speechSynthesis.speak(u);
+        });
+    }
+
+    function splitSentences(text) {
+        if (!text) return [];
+        // Basic sentence splitter with trim; keeps it robust and cheap.
+        return String(text)
+            .replace(/\s+/g, " ")
+            .split(/(?<=[.!?])\s+/)
+            .map(function(s){ return s.trim(); })
+            .filter(Boolean);
+    }
+
+    async function playVoiceReview() {
+        if (!VOICE_TEXT || !window.speechSynthesis) { return; }
+        voiceQueue = splitSentences(VOICE_TEXT);
+        voiceIdx = 0;
+        for (; voiceIdx < voiceQueue.length; voiceIdx++) {
+            // Allow pause/stop mid-stream
+            if (!voiceQueue || voiceQueue.length === 0) break;
+            await speakText(voiceQueue[voiceIdx]);
+        }
+    }
+
+    function onVoiceClick() {
+        playVoiceReview();
+    }
+
+    function onVoicePauseToggle() {
+        if (!window.speechSynthesis) return;
+        // If currently speaking, pause; if paused, resume.
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+        else window.speechSynthesis.pause();
+    }
+
+    function onVoiceStop() {
+        try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e) {}
+        voiceQueue = [];
+        voiceIdx = 0;
     }
 
     function renderFollowUps(items) {
@@ -472,6 +534,7 @@
         // keep small-ish history
         HISTORY.push({ role: role, content: content });
         if (HISTORY.length > 14) { HISTORY = HISTORY.slice(-14); }
+        try { sessionStorage.setItem("tv_ai_history", JSON.stringify(HISTORY)); } catch(e) {}
     }
 
     function setLoading(isLoading) {
@@ -508,9 +571,10 @@
                     appendChat("assistant", ans);
                     renderFollowUps((data && data.follow_ups) ? data.follow_ups : []);
                     if (coachActive) {
-                        speakText(ans);
-                        // Auto-listen again for a back-and-forth feel
-                        startListening();
+                        speakText(ans).then(function(){
+                            // Auto-listen again for a back-and-forth feel
+                            startListening();
+                        });
                     }
                 } catch (parseErr) {
                     appendChat("assistant", "Sorry, AI Buddy could not answer that right now.");
@@ -539,6 +603,8 @@
         CSRF_TOKEN = getCsrf();
 
         var voiceBtn   = document.getElementById("voiceBtn");
+        var voicePauseBtn = document.getElementById("voicePauseBtn");
+        var voiceStopBtn  = document.getElementById("voiceStopBtn");
         var submitBtn  = document.getElementById("aiSubmitBtn");
         var questionEl = document.getElementById("aiQuestion");
         var coachBtn   = document.getElementById("coachTalkBtn");
@@ -547,17 +613,10 @@
         var followWrap = document.getElementById("aiFollowUps");
 
         if (voiceBtn)   { voiceBtn.addEventListener("click", onVoiceClick); }
+        if (voicePauseBtn) { voicePauseBtn.addEventListener("click", onVoicePauseToggle); }
+        if (voiceStopBtn)  { voiceStopBtn.addEventListener("click", onVoiceStop); }
         if (submitBtn)  { submitBtn.addEventListener("click", onAskClick); }
         if (questionEl) { questionEl.addEventListener("keydown", onQuestionKeydown); }
-
-        function speakText(t) {
-            if (!window.speechSynthesis) { return; }
-            window.speechSynthesis.cancel();
-            var u = new SpeechSynthesisUtterance(t);
-            u.rate = 1.02;
-            u.pitch = 1.03;
-            window.speechSynthesis.speak(u);
-        }
 
         function startListening() {
             if (!coachActive) { return; }
@@ -585,7 +644,8 @@
                         }
                     };
                 }
-                recognition.start();
+                // Don’t start listening while TTS is speaking (prevents self-feedback)
+                if (!isSpeaking) recognition.start();
             } catch(e) {}
         }
 
@@ -593,7 +653,7 @@
             coachActive = false;
             if (stopBtn) { stopBtn.classList.add("d-none"); }
             if (coachBtn) { coachBtn.disabled = false; }
-            try { if (recognition) recognition.stop(); } catch(e) {}
+            stopListening();
             try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e) {}
         }
 
@@ -603,8 +663,7 @@
             if (coachBtn) { coachBtn.disabled = true; }
             var intro = USERNAME ? ("Hey " + USERNAME + ". Ask me anything about your trading. I’ll answer, then you can ask back.") : "Ask me anything about your trading. I’ll answer, then you can ask back.";
             appendChat("assistant", intro);
-            speakText(intro);
-            startListening();
+            speakText(intro).then(function(){ startListening(); });
         }
 
         if (coachBtn) {
@@ -627,6 +686,21 @@
         }
         if (quickWrap) quickWrap.addEventListener("click", handleChipClick);
         if (followWrap) followWrap.addEventListener("click", handleChipClick);
+
+        // Restore chat history (premium “memory” feel)
+        try {
+            var saved = sessionStorage.getItem("tv_ai_history");
+            if (saved) {
+                var parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    HISTORY = parsed.slice(-14);
+                    for (var i = 0; i < HISTORY.length; i++) {
+                        var m = HISTORY[i];
+                        if (m && m.role && m.content) appendChat(m.role, m.content);
+                    }
+                }
+            }
+        } catch(e) {}
     });
 
 }());

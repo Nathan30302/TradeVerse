@@ -605,6 +605,7 @@ class AIAnalyzer:
 
         stats = (weekly.get('stats') or _copy_empty_stats())
         setups = (weekly.get('setups') or _copy_empty_setups())
+        day_insights = (weekly.get('day_insights') or {})
         alerts = (weekly.get('alerts') or [])[:3]
         strengths = (weekly.get('strengths') or [])[:3]
         weaknesses = (weekly.get('weaknesses') or [])[:3]
@@ -654,6 +655,31 @@ class AIAnalyzer:
                 'meta': {'trades': total, 'win_rate': win_rate, 'total_pnl': total_pnl, 'avg_rr': avg_rr}
             }
 
+        best_day_name = ''
+        best_day_wr = None
+        try:
+            bd = day_insights.get('best_day')
+            if isinstance(bd, dict):
+                best_day_name = str(bd.get('name') or '')
+                best_day_wr = float(bd.get('win_rate') or 0.0)
+        except Exception:
+            best_day_name = ''
+
+        best_trade = stats.get('best_trade')
+        worst_trade = stats.get('worst_trade')
+        best_trade_line = ''
+        worst_trade_line = ''
+        try:
+            if best_trade and getattr(best_trade, 'symbol', None) and getattr(best_trade, 'profit_loss', None) is not None:
+                best_trade_line = f"Best trade: {best_trade.symbol} {best_trade.profit_loss:.0f}."
+        except Exception:
+            best_trade_line = ''
+        try:
+            if worst_trade and getattr(worst_trade, 'symbol', None) and getattr(worst_trade, 'profit_loss', None) is not None:
+                worst_trade_line = f"Worst trade: {worst_trade.symbol} {worst_trade.profit_loss:.0f}."
+        except Exception:
+            worst_trade_line = ''
+
         pnl_phrase = pick([
             f"Net P and L: {total_pnl:.0f}.",
             f"You’re at {total_pnl:.0f} net for the week.",
@@ -684,6 +710,13 @@ class AIAnalyzer:
             ])
         )
 
+        best_day_phrase = (
+            pick([
+                f"Your strongest day was {best_day_name} at {best_day_wr:.0f} percent.",
+                f"Best day: {best_day_name}, {best_day_wr:.0f} percent win rate.",
+            ]) if best_day_name and best_day_wr is not None and total >= 3 else ""
+        )
+
         strength_line = strengths[0] if strengths else pick([
             "Strength: you showed discipline in at least part of the sample.",
             "Strength: you’re tracking enough data to improve.",
@@ -706,6 +739,12 @@ class AIAnalyzer:
         ])
 
         segments = [greet, wr_phrase, pnl_phrase, rr_phrase, best_phrase]
+        if best_day_phrase:
+            segments.append(best_day_phrase)
+        if best_trade_line:
+            segments.append(best_trade_line)
+        if worst_trade_line:
+            segments.append(worst_trade_line)
         if alerts:
             segments.append("Top alerts: " + "; ".join(alerts) + ".")
         segments.extend([strength_line, weakness_line, f"Your one rule for next week: {one_rule}", follow_up])
@@ -753,6 +792,7 @@ class AIAnalyzer:
             weekly = {}
         stats = (weekly.get('stats') or _copy_empty_stats())
         setups = (weekly.get('setups') or _copy_empty_setups())
+        day_insights = (weekly.get('day_insights') or {})
         alerts = (weekly.get('alerts') or [])
         recs = (weekly.get('recommendations') or [])
 
@@ -789,7 +829,30 @@ class AIAnalyzer:
                 answer += "\n\nTop alerts:\n- " + "\n- ".join(alerts[:3])
             if recs:
                 answer += "\n\nNext actions:\n- " + "\n- ".join(recs[:3])
+            # Evidence lines
+            try:
+                best_trade = stats.get('best_trade')
+                worst_trade = stats.get('worst_trade')
+                if best_trade and getattr(best_trade, 'symbol', None) and getattr(best_trade, 'profit_loss', None) is not None:
+                    answer += f"\n\nEvidence:\n- Best trade: {best_trade.symbol} ({best_trade.profit_loss:.0f})"
+                if worst_trade and getattr(worst_trade, 'symbol', None) and getattr(worst_trade, 'profit_loss', None) is not None:
+                    answer += f"\n- Worst trade: {worst_trade.symbol} ({worst_trade.profit_loss:.0f})"
+            except Exception:
+                pass
             return {'answer': answer, 'follow_ups': ["What’s my biggest leak?", "What should I stop doing next week?", "Which strategy should I focus on?"]}
+
+        if has('best day', 'worst day', 'weekday', 'day of week'):
+            bd = day_insights.get('best_day') if isinstance(day_insights, dict) else None
+            wd = day_insights.get('worst_day') if isinstance(day_insights, dict) else None
+            if isinstance(bd, dict) or isinstance(wd, dict):
+                lines = []
+                if isinstance(bd, dict):
+                    lines.append(f"Best day: **{bd.get('name','—')}** — {float(bd.get('win_rate') or 0.0):.0f}% win rate ({int(bd.get('total_trades') or 0)} trades).")
+                if isinstance(wd, dict):
+                    lines.append(f"Worst day: **{wd.get('name','—')}** — {float(wd.get('win_rate') or 0.0):.0f}% win rate ({int(wd.get('total_trades') or 0)} trades).")
+                lines.append("Coach move: trade your A+ setup more on your best day/session, and reduce size or skip on the worst day until reviewed.")
+                return {'answer': "\n".join(lines), 'follow_ups': ["What’s my best session?", "What strategy wins most on my best day?", "How do I avoid forcing trades?"]}
+            return {'answer': "I don’t have enough weekly trades to confidently rank days yet. Keep logging for another week and ask again.", 'follow_ups': ["What’s my weekly snapshot?", "What’s my biggest leak?"]}
 
         if has('best setup', 'best strategy', 'best', 'edge'):
             best = (setups or {}).get('best_strategy')
@@ -851,7 +914,8 @@ def get_ai_insights(user_id: int) -> Dict[str, Any]:
     except Exception:
         behavioral_insights = {}
     try:
-        voice_summary = analyzer.get_voice_summary()
+        voice_review = analyzer.get_voice_review()
+        voice_summary = (voice_review.get('text') if isinstance(voice_review, dict) else '') or ''
     except Exception:
         voice_summary = ''
     return {
