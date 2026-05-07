@@ -51,7 +51,8 @@ class User(UserMixin, db.Model):
     trial_ends_at = deferred(db.Column(db.DateTime))  # Trial expiration date
     subscription_expires_at = deferred(db.Column(db.DateTime))  # Paid subscription expiration
     stripe_customer_id = deferred(db.Column(db.String(255)))  # Stripe customer ID for payments
-    weekly_focus_rule = db.Column(db.Text)  # AI Buddy weekly focus (user-set); not deferred so saves/commit stay reliable
+    # Deferred like other billing/extra columns so login SELECT works if migrations lag behind prod DB.
+    weekly_focus_rule = deferred(db.Column(db.Text))  # AI Buddy weekly focus (persist via dashboard.save_weekly_focus Core UPDATE)
 
     # ==================== Timestamps ====================
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
