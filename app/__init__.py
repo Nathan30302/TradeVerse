@@ -79,10 +79,18 @@ def create_app(config_name='default'):
         def load_user(user_id):
             try:
                 return db.session.get(user.User, int(user_id))
-            except Exception:
+            except Exception as e:
                 # Protect active sessions if DB is in a partial-migration state where
                 # ORM selects columns that don't exist yet.
-                app.logger.exception("load_user ORM failed; attempting compat SQL fallback")
+                # Avoid noisy stack traces for expected schema-drift errors.
+                try:
+                    from sqlalchemy.exc import ProgrammingError
+                    if isinstance(e, ProgrammingError):
+                        app.logger.warning("load_user ORM failed (likely schema drift); using compat fallback")
+                    else:
+                        app.logger.exception("load_user ORM failed; attempting compat SQL fallback")
+                except Exception:
+                    app.logger.exception("load_user ORM failed; attempting compat SQL fallback")
                 # The ORM error may have left the transaction aborted on Postgres.
                 try:
                     db.session.rollback()

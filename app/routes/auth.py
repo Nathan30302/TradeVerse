@@ -157,7 +157,7 @@ def login():
         except (OperationalError, ProgrammingError):
             # Backward-compatible auth path for partially-migrated DBs where ORM
             # selects columns that don't exist yet (would otherwise 500).
-            current_app.logger.exception("Login ORM query failed; attempting compat SQL fallback")
+            current_app.logger.warning("Login ORM query failed (likely schema drift); attempting compat SQL fallback")
             # The ORM error may have left the transaction in an aborted state on Postgres.
             # Roll back before attempting any further SQL in this request.
             try:
