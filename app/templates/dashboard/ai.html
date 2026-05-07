@@ -364,11 +364,30 @@
                    placeholder="How did I perform this week? What is my best setup?"
                    autocomplete="off">
         </div>
-        <button id="aiSubmitBtn" type="button" class="btn btn-outline-primary">
-            <i class="fas fa-paper-plane"></i> Ask AI Buddy
-        </button>
-        <div id="aiAnswer" class="mt-4 p-3 bg-light rounded" style="min-height: 100px;">
-            <em class="text-muted">Ask AI Buddy about your win rate, mistakes, best setups, or how to improve.</em>
+        <div class="d-flex flex-wrap gap-2">
+            <button id="aiSubmitBtn" type="button" class="btn btn-outline-primary">
+                <i class="fas fa-paper-plane"></i> Ask AI Buddy
+            </button>
+            <button id="coachTalkBtn" type="button" class="btn btn-outline-secondary" title="Voice conversation (if supported)">
+                <i class="fas fa-microphone"></i> Coach Talk
+            </button>
+            <button id="coachStopBtn" type="button" class="btn btn-outline-danger d-none">
+                <i class="fas fa-stop"></i> Stop
+            </button>
+        </div>
+
+        <div id="aiChat" class="mt-4">
+            <div class="tv-panel" style="min-height: 120px;">
+                <div class="small tv-muted mb-2">Try:</div>
+                <div class="d-flex flex-wrap gap-2" id="aiQuickChips">
+                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my biggest performance leak this week?">Biggest leak</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What should my one rule be next week?">One rule</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my best strategy and why?">Best strategy</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="Explain risk:reward and how to improve it.">Risk:Reward</button>
+                </div>
+                <div class="mt-3 small tv-muted"><em>Ask AI Buddy about your win rate, mistakes, best setups, or general trading questions.</em></div>
+            </div>
+            <div class="mt-3 d-flex flex-wrap gap-2" id="aiFollowUps"></div>
         </div>
     </div>
 </div>
@@ -379,6 +398,7 @@
 <div id="ai-page-data"
      data-query-url="{{ url_for('dashboard.ai_query') }}"
      data-voice="{{ (voice_summary or '') | e }}"
+     data-username="{{ (current_user.username or '') | e }}"
      style="display:none;"></div>
 
 <script>
@@ -388,7 +408,11 @@
     var dataEl = document.getElementById("ai-page-data");
     var AI_QUERY_URL = dataEl ? dataEl.getAttribute("data-query-url") : "";
     var VOICE_TEXT   = dataEl ? dataEl.getAttribute("data-voice")     : "";
+    var USERNAME     = dataEl ? dataEl.getAttribute("data-username")  : "";
     var CSRF_TOKEN   = "";
+    var HISTORY      = [];
+    var coachActive  = false;
+    var recognition  = null;
 
     function getCsrf() {
         var el = document.querySelector("input[name='csrf_token']");
@@ -398,30 +422,77 @@
     function onVoiceClick() {
         if (!VOICE_TEXT) { return; }
         if (!window.speechSynthesis) { return; }
+        window.speechSynthesis.cancel();
         var msg = new SpeechSynthesisUtterance(VOICE_TEXT);
-        msg.rate  = 1.0;
-        msg.pitch = 1.0;
+        // Less robotic defaults
+        msg.rate  = 1.02;
+        msg.pitch = 1.03;
+        msg.volume = 1.0;
+        // Prefer an English voice if available
+        try {
+            var voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+            var v = null;
+            for (var i = 0; i < voices.length; i++) {
+                if ((voices[i].lang || '').toLowerCase().startsWith('en')) { v = voices[i]; break; }
+            }
+            if (v) { msg.voice = v; }
+        } catch(e) {}
         window.speechSynthesis.speak(msg);
     }
 
-    function onAskClick() {
+    function renderFollowUps(items) {
+        var wrap = document.getElementById("aiFollowUps");
+        if (!wrap) { return; }
+        wrap.textContent = "";
+        if (!items || !items.length) { return; }
+        for (var i = 0; i < items.length; i++) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "btn btn-sm btn-outline-secondary tv-follow";
+            b.textContent = items[i];
+            b.setAttribute("data-q", items[i]);
+            wrap.appendChild(b);
+        }
+    }
+
+    function appendChat(role, content) {
+        var chat = document.getElementById("aiChat");
+        if (!chat) { return; }
+        var bubble = document.createElement("div");
+        bubble.className = "tv-surface soft p-3 mb-2";
+        var head = document.createElement("div");
+        head.className = "small tv-muted mb-1";
+        head.textContent = role === "user" ? (USERNAME ? (USERNAME + " (you)") : "You") : "AI Buddy";
+        var body = document.createElement("div");
+        body.style.whiteSpace = "pre-wrap";
+        body.textContent = content;
+        bubble.appendChild(head);
+        bubble.appendChild(body);
+        chat.appendChild(bubble);
+        // keep small-ish history
+        HISTORY.push({ role: role, content: content });
+        if (HISTORY.length > 14) { HISTORY = HISTORY.slice(-14); }
+    }
+
+    function setLoading(isLoading) {
+        var btn = document.getElementById("aiSubmitBtn");
+        if (!btn) { return; }
+        btn.disabled = !!isLoading;
+        btn.classList.toggle("loading", !!isLoading);
+    }
+
+    function onAskClick(forcedQuestion) {
         var questionEl = document.getElementById("aiQuestion");
-        var answerEl   = document.getElementById("aiAnswer");
-        if (!questionEl || !answerEl) { return; }
+        if (!questionEl) { return; }
 
-        var question = questionEl.value;
+        var question = forcedQuestion || questionEl.value;
         if (!question || question.trim() === "") { return; }
+        var q = question.trim();
+        questionEl.value = "";
+        appendChat("user", q);
+        setLoading(true);
 
-        answerEl.textContent = "";
-        var thinking = document.createElement("div");
-        thinking.className = "text-muted";
-        thinking.appendChild(document.createTextNode("AI Buddy is thinking… "));
-        var spin = document.createElement("i");
-        spin.className = "fas fa-spinner fa-spin";
-        thinking.appendChild(spin);
-        answerEl.appendChild(thinking);
-
-        var payload = JSON.stringify({ question: question.trim() });
+        var payload = JSON.stringify({ question: q, history: HISTORY });
 
         var xhr = new XMLHttpRequest();
         xhr.open("POST", AI_QUERY_URL, true);
@@ -433,17 +504,26 @@
             if (xhr.status === 200) {
                 try {
                     var data = JSON.parse(xhr.responseText);
-                    answerEl.textContent = (data && data.answer) ? data.answer : "Sorry, AI Buddy could not answer that right now.";
+                    var ans = (data && data.answer) ? data.answer : "Sorry, AI Buddy could not answer that right now.";
+                    appendChat("assistant", ans);
+                    renderFollowUps((data && data.follow_ups) ? data.follow_ups : []);
+                    if (coachActive) {
+                        speakText(ans);
+                        // Auto-listen again for a back-and-forth feel
+                        startListening();
+                    }
                 } catch (parseErr) {
-                    answerEl.textContent = "Sorry, AI Buddy could not answer that right now.";
+                    appendChat("assistant", "Sorry, AI Buddy could not answer that right now.");
                 }
             } else {
-                answerEl.textContent = "Unable to reach AI Buddy. Please try again later.";
+                appendChat("assistant", "Unable to reach AI Buddy. Please try again later.");
             }
+            setLoading(false);
         };
 
         xhr.onerror = function () {
-            answerEl.textContent = "Unable to reach AI Buddy. Please try again later.";
+            appendChat("assistant", "Unable to reach AI Buddy. Please try again later.");
+            setLoading(false);
         };
 
         xhr.send(payload);
@@ -461,10 +541,92 @@
         var voiceBtn   = document.getElementById("voiceBtn");
         var submitBtn  = document.getElementById("aiSubmitBtn");
         var questionEl = document.getElementById("aiQuestion");
+        var coachBtn   = document.getElementById("coachTalkBtn");
+        var stopBtn    = document.getElementById("coachStopBtn");
+        var quickWrap  = document.getElementById("aiQuickChips");
+        var followWrap = document.getElementById("aiFollowUps");
 
         if (voiceBtn)   { voiceBtn.addEventListener("click", onVoiceClick); }
         if (submitBtn)  { submitBtn.addEventListener("click", onAskClick); }
         if (questionEl) { questionEl.addEventListener("keydown", onQuestionKeydown); }
+
+        function speakText(t) {
+            if (!window.speechSynthesis) { return; }
+            window.speechSynthesis.cancel();
+            var u = new SpeechSynthesisUtterance(t);
+            u.rate = 1.02;
+            u.pitch = 1.03;
+            window.speechSynthesis.speak(u);
+        }
+
+        function startListening() {
+            if (!coachActive) { return; }
+            var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { return; }
+            try {
+                if (!recognition) {
+                    recognition = new SR();
+                    recognition.lang = "en-US";
+                    recognition.interimResults = false;
+                    recognition.maxAlternatives = 1;
+                    recognition.onresult = function (evt) {
+                        try {
+                            var transcript = evt.results && evt.results[0] && evt.results[0][0] ? evt.results[0][0].transcript : "";
+                            if (transcript && transcript.trim()) {
+                                onAskClick(transcript.trim());
+                            }
+                        } catch(e) {}
+                    };
+                    recognition.onerror = function () { /* silent */ };
+                    recognition.onend = function () {
+                        // If still active, keep the loop alive
+                        if (coachActive) {
+                            setTimeout(function(){ try { recognition.start(); } catch(e) {} }, 400);
+                        }
+                    };
+                }
+                recognition.start();
+            } catch(e) {}
+        }
+
+        function stopCoach() {
+            coachActive = false;
+            if (stopBtn) { stopBtn.classList.add("d-none"); }
+            if (coachBtn) { coachBtn.disabled = false; }
+            try { if (recognition) recognition.stop(); } catch(e) {}
+            try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e) {}
+        }
+
+        function startCoach() {
+            coachActive = true;
+            if (stopBtn) { stopBtn.classList.remove("d-none"); }
+            if (coachBtn) { coachBtn.disabled = true; }
+            var intro = USERNAME ? ("Hey " + USERNAME + ". Ask me anything about your trading. I’ll answer, then you can ask back.") : "Ask me anything about your trading. I’ll answer, then you can ask back.";
+            appendChat("assistant", intro);
+            speakText(intro);
+            startListening();
+        }
+
+        if (coachBtn) {
+            coachBtn.addEventListener("click", function(){
+                var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SR) {
+                    appendChat("assistant", "Coach Talk isn’t supported in this browser. You can still use voice review and typed chat.");
+                    return;
+                }
+                startCoach();
+            });
+        }
+        if (stopBtn) { stopBtn.addEventListener("click", stopCoach); }
+
+        function handleChipClick(e) {
+            var t = e.target;
+            if (!t) return;
+            var q = t.getAttribute && t.getAttribute("data-q");
+            if (q) onAskClick(q);
+        }
+        if (quickWrap) quickWrap.addEventListener("click", handleChipClick);
+        if (followWrap) followWrap.addEventListener("click", handleChipClick);
     });
 
 }());

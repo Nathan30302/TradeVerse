@@ -648,7 +648,8 @@ def ai():
         behavioral_insights = _safe_behavioral_insights()
 
     try:
-        voice_summary = analyzer.get_voice_summary()
+        voice_review = analyzer.get_voice_review(user_name=(current_user.username or ''))
+        voice_summary = (voice_review.get('text') if isinstance(voice_review, dict) else '') or ''
         if not isinstance(voice_summary, str):
             voice_summary = ''
         # Strip characters that would break the inline JS string
@@ -674,11 +675,21 @@ def ai_query():
     payload = request.get_json() or {}
     question = payload.get('question', '').strip()
     try:
-        answer = AIAnalyzer(current_user.id).answer_question(question)
+        history = payload.get('history') or []
+        if not isinstance(history, list):
+            history = []
+        result = AIAnalyzer(current_user.id).answer_question(
+            question,
+            history=history[-12:],
+            user_name=(current_user.username or '')
+        )
+        answer = (result.get('answer') if isinstance(result, dict) else '') or ''
+        follow_ups = (result.get('follow_ups') if isinstance(result, dict) else []) or []
     except Exception as exc:
         current_app.logger.warning('AI Buddy answer_question failed: %s', exc)
         answer = 'AI Buddy could not process your question right now. Please try again later.'
-    return jsonify({'answer': answer})
+        follow_ups = []
+    return jsonify({'answer': answer, 'follow_ups': follow_ups})
 
 
 # ==================== Behavior Patterns ====================

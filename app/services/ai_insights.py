@@ -6,6 +6,8 @@ All methods are defensively coded to return safe defaults when no trade data exi
  
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+import random
+import re
 from typing import List, Dict, Any
  
 from sqlalchemy import or_, func
@@ -589,78 +591,249 @@ class AIAnalyzer:
                 'Log some trades to get started.'
             )
  
-    def answer_question(self, question: str) -> str:
-        if not question:
-            return 'Ask me anything about your recent trading performance.'
- 
-        text = question.strip().lower()
- 
+    def get_voice_review(self, user_name: str = '') -> Dict[str, Any]:
+        """Return a richer, less-robotic voice review payload.
+
+        This stays deterministic-ish (varies by week + stats) so it feels fresh
+        without becoming random noise.
+        """
+        weekly = {}
         try:
-            weekly = self.get_weekly_review()
+            weekly = self.get_weekly_review() or {}
         except Exception:
-            weekly = {
-                'summary': 'No data available.',
-                'alerts': [],
-                'recommendations': [],
-                'stats': _copy_empty_stats(),
-                'setups': _copy_empty_setups(),
-            }
- 
+            weekly = {}
+
+        stats = (weekly.get('stats') or _copy_empty_stats())
+        setups = (weekly.get('setups') or _copy_empty_setups())
+        alerts = (weekly.get('alerts') or [])[:3]
+        strengths = (weekly.get('strengths') or [])[:3]
+        weaknesses = (weekly.get('weaknesses') or [])[:3]
+        recs = (weekly.get('recommendations') or [])[:3]
+
+        total = int(stats.get('total_trades') or 0)
+        win_rate = float(stats.get('win_rate') or 0.0)
+        total_pnl = float(stats.get('total_pnl') or 0.0)
+        avg_rr = float(stats.get('avg_rr') or 0.0)
+
+        best_strategy = setups.get('best_strategy') if isinstance(setups, dict) else None
+        best_name = ''
+        if isinstance(best_strategy, dict):
+            best_name = str(best_strategy.get('name') or '')
+
+        # Stable seed: ISO week + closed trade count (avoids repeating tone forever)
         try:
-            behavioral = self.get_behavioral_insights()
+            seed = int(self.now.strftime('%G%V')) * 1000 + total
         except Exception:
-            behavioral = {
-                'discipline_score': 0.0,
-                'consistency_score': 0.0,
+            seed = total or 1
+        rng = random.Random(seed)
+
+        def pick(options: List[str]) -> str:
+            return rng.choice(options) if options else ''
+
+        greet_name = (user_name or '').strip()
+        greet = pick([
+            f"Hey {greet_name}—quick coach brief.",
+            f"Alright {greet_name}, here’s your weekly review.",
+            f"{greet_name}, let’s review your week like a pro.",
+            "Quick coach brief—here’s the week.",
+            "Let’s break down your week."
+        ])
+        greet = greet.replace("—", ",") if not greet_name else greet
+
+        if total <= 0:
+            segments = [
+                greet,
+                "You don’t have any closed trades logged this week.",
+                "If you want me to coach you properly, log at least your entry, exit, and stop loss—or your risk amount.",
+                "Question: what’s the one setup you’re focusing on next week?"
+            ]
+            return {
+                'text': ' '.join(segments),
+                'segments': segments,
+                'questions': ["What’s the one setup you’re focusing on next week?"],
+                'meta': {'trades': total, 'win_rate': win_rate, 'total_pnl': total_pnl, 'avg_rr': avg_rr}
             }
- 
-        if 'perform' in text and 'week' in text:
-            return weekly.get('summary', 'No weekly data available yet.')
- 
-        if 'mistake' in text or 'mistakes' in text:
-            issues = weekly.get('alerts', [])[:3]
-            return (
-                ' '.join(issues)
-                if issues
-                else (
-                    'Your biggest mistakes are low R:R and emotional trade entries. '
-                    'Review your recent losing trades.'
-                )
-            )
- 
-        if 'best setup' in text:
-            best = (weekly.get('setups') or {}).get('best_strategy')
+
+        pnl_phrase = pick([
+            f"Net P and L: {total_pnl:.0f}.",
+            f"You’re at {total_pnl:.0f} net for the week.",
+            f"Your week finished at {total_pnl:.0f} total."
+        ])
+
+        wr_phrase = pick([
+            f"Win rate: {win_rate:.0f} percent across {total} trades.",
+            f"You took {total} trades with a {win_rate:.0f} percent win rate.",
+            f"{total} trades logged, {win_rate:.0f} percent winners."
+        ])
+
+        rr_phrase = pick([
+            f"Average R to R: {avg_rr:.2f}.",
+            f"Your average risk reward was {avg_rr:.2f}.",
+            f"Risk reward averaged {avg_rr:.2f}."
+        ])
+
+        best_phrase = (
+            pick([
+                f"Your strongest edge showed up in {best_name}.",
+                f"Best setup this week was {best_name}.",
+                f"Your best-performing strategy: {best_name}."
+            ]) if best_name else pick([
+                "No single strategy dominated this week.",
+                "Your results were spread—no clear best setup yet.",
+                "You don’t have a clear best strategy in this sample."
+            ])
+        )
+
+        strength_line = strengths[0] if strengths else pick([
+            "Strength: you showed discipline in at least part of the sample.",
+            "Strength: you’re tracking enough data to improve.",
+        ])
+        weakness_line = weaknesses[0] if weaknesses else pick([
+            "Leak: risk reward is your biggest lever this week.",
+            "Leak: consistency and selectivity look like the next upgrade."
+        ])
+
+        one_rule = pick(recs) if recs else pick([
+            "One rule: only take trades that meet your checklist—no exceptions.",
+            "One rule: predefine risk before entry, every single time.",
+            "One rule: if you feel rushed, you don’t trade."
+        ])
+
+        follow_up = pick([
+            "Quick question: what was the one emotion you felt most before entering trades this week?",
+            "Quick question: what time of day did you take most of your losing trades?",
+            "Quick question: did you move your stop loss on any trade this week?"
+        ])
+
+        segments = [greet, wr_phrase, pnl_phrase, rr_phrase, best_phrase]
+        if alerts:
+            segments.append("Top alerts: " + "; ".join(alerts) + ".")
+        segments.extend([strength_line, weakness_line, f"Your one rule for next week: {one_rule}", follow_up])
+        text = ' '.join(s for s in segments if s)
+        return {
+            'text': text,
+            'segments': segments,
+            'questions': [follow_up],
+            'meta': {'trades': total, 'win_rate': win_rate, 'total_pnl': total_pnl, 'avg_rr': avg_rr, 'best_strategy': best_name}
+        }
+
+    def answer_question(
+        self,
+        question: str,
+        *,
+        history: List[Dict[str, str]] | None = None,
+        user_name: str = ''
+    ) -> Dict[str, Any]:
+        """Answer with both trade-grounded context and general trading knowledge.
+
+        Returns a structured payload so the UI can render follow-ups and avoid repetition.
+        """
+        q = (question or '').strip()
+        if not q:
+            return {
+                'answer': 'Ask me anything about your recent performance or about trading in general.',
+                'follow_ups': [
+                    "What’s my biggest performance leak this week?",
+                    "What should my one rule be next week?",
+                    "Explain risk:reward like I’m new to trading."
+                ]
+            }
+
+        text = q.lower()
+        hist = history or []
+        last_assistant = ''
+        for msg in reversed(hist):
+            if msg.get('role') == 'assistant' and msg.get('content'):
+                last_assistant = str(msg.get('content'))
+                break
+
+        try:
+            weekly = self.get_weekly_review() or {}
+        except Exception:
+            weekly = {}
+        stats = (weekly.get('stats') or _copy_empty_stats())
+        setups = (weekly.get('setups') or _copy_empty_setups())
+        alerts = (weekly.get('alerts') or [])
+        recs = (weekly.get('recommendations') or [])
+
+        total = int(stats.get('total_trades') or 0)
+        win_rate = float(stats.get('win_rate') or 0.0)
+        total_pnl = float(stats.get('total_pnl') or 0.0)
+        avg_rr = float(stats.get('avg_rr') or 0.0)
+
+        # Simple intent detection (expanded beyond a few keywords)
+        def has(*words: str) -> bool:
+            return any(w in text for w in words)
+
+        # General trading knowledge topics (non-static; still tailored with your stats when possible)
+        if has('risk', 'rr', 'r:r', 'risk reward', 'stop loss', 'sl', 'tp', 'take profit'):
+            parts = [
+                f"{user_name + ', ' if user_name else ''}here’s the clean way to think about risk and R-multiples:",
+                "- Risk is what you lose if SL is hit (either in pips or $).",
+                "- Reward is what you gain if TP is hit.",
+                "- R:R is reward ÷ risk. Example: risking 1R to make 2R is 1:2.",
+            ]
+            if total > 0:
+                parts.append(f"From your last week: average R:R ≈ {avg_rr:.2f}, win rate ≈ {win_rate:.0f}%, trades = {total}.")
+                parts.append("If you raise R:R, you can stay profitable even with a lower win rate—but only if entries stay selective.")
+            parts.append("If you want, tell me one recent trade (entry, SL, TP) and I’ll compute the exact R:R and what win rate you’d need.")
+            answer = "\n".join(parts)
+            return {'answer': answer, 'follow_ups': ["What’s my current weak point: win rate or R:R?", "Give me a stop-loss rule I can follow.", "How do I size positions safely?"]}
+
+        if has('win rate', 'wins', 'losses', 'perform', 'performance', 'this week', 'weekly'):
+            summary = weekly.get('summary') or ''
+            if not summary:
+                summary = f"Weekly snapshot: {total} closed trades, {win_rate:.0f}% win rate, net {total_pnl:.0f}, average R:R {avg_rr:.2f}."
+            answer = summary
+            if alerts:
+                answer += "\n\nTop alerts:\n- " + "\n- ".join(alerts[:3])
+            if recs:
+                answer += "\n\nNext actions:\n- " + "\n- ".join(recs[:3])
+            return {'answer': answer, 'follow_ups': ["What’s my biggest leak?", "What should I stop doing next week?", "Which strategy should I focus on?"]}
+
+        if has('best setup', 'best strategy', 'best', 'edge'):
+            best = (setups or {}).get('best_strategy')
             if best and isinstance(best, dict):
-                name = best.get('name', '')
-                wr = best.get('win_rate', 0.0)
-                return f"Your best setup is {name} with a {wr:.0f}% win rate."
-            return 'You do not have a clear best setup yet.'
- 
-        if 'improve' in text:
-            recs = weekly.get('recommendations') or []
-            return (
-                ' '.join(recs)
-                if recs
-                else (
-                    'Focus on rule-based entries, stronger risk management, '
-                    'and better emotional control.'
+                name = str(best.get('name') or '')
+                wr = float(best.get('win_rate') or 0.0)
+                count = int(best.get('total_trades') or 0)
+                answer = f"Best strategy in your recent sample: **{name}** — {wr:.0f}% win rate over {count} trades."
+                answer += "\n\nCoach note: double down only if you can describe the entry trigger in one sentence and repeat it."
+                return {'answer': answer, 'follow_ups': [f"What are the conditions when {name} works best?", "What’s my worst strategy and why?", "Give me a checklist for this setup."]}
+            return {'answer': "You don’t have a clear best setup yet (needs more tagged trades). Start tagging strategy consistently for the next 10 trades.", 'follow_ups': ["How should I tag strategies?", "What’s the fastest way to improve with low sample size?"]}
+
+        if has('mistake', 'mistakes', 'leak', 'why am i losing', 'losing', 'overtrade', 'revenge', 'fomo'):
+            issues = (alerts or [])[:4]
+            if issues:
+                answer = "Here are the top issues I can actually see in your recent sample:\n- " + "\n- ".join(issues)
+            else:
+                answer = (
+                    "I don’t have strong alert signals yet, so here are the most common profit leaks to audit:\n"
+                    "- Low R:R (taking 0.5R winners but 1R losers)\n"
+                    "- Trading outside your best session\n"
+                    "- Moving SL / closing winners early\n"
+                    "- Revenge/FOMO entries\n"
+                    "\nIf you tell me your last 3 losses, I’ll classify the leak."
                 )
-            )
- 
-        if 'why' in text and 'losing' in text:
-            total_pnl = (weekly.get('stats') or {}).get('total_pnl', 0.0)
-            if total_pnl < 0:
-                return (
-                    'You are losing because your average R:R is low and you are '
-                    'trading during weak sessions or emotional states. Improve '
-                    'risk control and avoid revenge trades.'
-                )
-            return (
-                'Your losses are likely due to occasional weak setups or poor '
-                'plan adherence. Review your trade notes and stop-loss discipline.'
-            )
- 
-        return weekly.get('summary', 'No data available yet. Log some trades to get started.')
+            if total > 0:
+                answer += f"\n\nYour context: {total} trades, win rate {win_rate:.0f}%, avg R:R {avg_rr:.2f}."
+            return {'answer': answer, 'follow_ups': ["What’s my one rule next week?", "How do I stop revenge trading?", "Build me a pre-trade checklist."]}
+
+        # Fallback: respond with a richer, non-repeating “coach brief” instead of the same summary
+        base = weekly.get('summary') or f"Recent snapshot: {total} closed trades, {win_rate:.0f}% win rate, net {total_pnl:.0f}, avg R:R {avg_rr:.2f}."
+        variations = [
+            base,
+            base + " If you want a sharper answer, ask about (1) best strategy, (2) biggest leak, or (3) next-week rule.",
+            base + " Ask me a specific: ‘what should I stop doing?’ and I’ll give you one rule.",
+        ]
+        # Avoid exact repetition
+        answer = next((v for v in variations if v != last_assistant), variations[0])
+
+        # Light general knowledge supplement if user asked a broad trading question
+        if re.search(r'\bhow do i\b|\bwhat is\b|\bexplain\b', text):
+            answer += "\n\nIf your question is general trading knowledge, ask directly (e.g. “Explain liquidity”, “How to journal properly”, “How to manage drawdown”)."
+
+        return {'answer': answer, 'follow_ups': ["Explain position sizing.", "What’s a good journaling process?", "What’s my best session?"]}
  
  
 def get_ai_insights(user_id: int) -> Dict[str, Any]:
