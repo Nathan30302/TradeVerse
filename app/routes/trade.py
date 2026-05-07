@@ -305,7 +305,12 @@ def view(trade_id):
         return render_template('trade/view.html', trade=trade, mistakes=mistakes, feedbacks=feedbacks)
         
     except Exception as e:
-        current_app.logger.error(f"Error viewing trade {trade_id}: {e}")
+        # Clear any aborted transaction state before redirecting.
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        current_app.logger.exception("Error viewing trade %s", trade_id)
         flash('❌ Error loading trade details. Please try again.', 'danger')
         return redirect(url_for('trade.list'))
 

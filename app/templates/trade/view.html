@@ -161,12 +161,18 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label class="text-muted small">Entry Price</label>
-                            <div class="h4">{{ "%.5f"|format(trade.entry_price) }}</div>
+                            <div class="h4">
+                                {% if trade.entry_price is not none %}
+                                    {{ "%.5f"|format(trade.entry_price) }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="text-muted small">Stop Loss</label>
                             <div class="h4">
-                                {% if trade.stop_loss %}
+                                {% if trade.stop_loss is not none %}
                                     {{ "%.5f"|format(trade.stop_loss) }}
                                 {% else %}
                                     <span class="text-muted">Not set ⚠️</span>
@@ -178,7 +184,7 @@
                         <div class="mb-3">
                             <label class="text-muted small">Exit Price</label>
                             <div class="h4">
-                                {% if trade.exit_price %}
+                                {% if trade.exit_price is not none %}
                                     {{ "%.5f"|format(trade.exit_price) }}
                                 {% else %}
                                     <span class="text-muted">Open</span>
@@ -188,7 +194,7 @@
                         <div class="mb-3">
                             <label class="text-muted small">Take Profit</label>
                             <div class="h4">
-                                {% if trade.take_profit %}
+                                {% if trade.take_profit is not none %}
                                     {{ "%.5f"|format(trade.take_profit) }}
                                 {% else %}
                                     <span class="text-muted">Not set</span>
