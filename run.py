@@ -11,6 +11,7 @@ import os
 from app import create_app, db
 from app.models.user import User
 from app.models.trade import Trade
+from flask_migrate import upgrade
 
 # Create the Flask application
 app = create_app(os.getenv('FLASK_ENV') or 'development')
@@ -29,17 +30,21 @@ def make_shell_context():
 @app.cli.command()
 def init_db():
     """Initialize the database"""
-    db.create_all()
-    print('Database initialized successfully!')
+    upgrade()
+    print('Database upgraded successfully (Alembic).')
 
 @app.cli.command()
 def reset_db():
     """Reset the database (WARNING: Deletes all data!)"""
     response = input('WARNING: This will delete ALL data. Are you sure? (yes/no): ')
     if response.lower() == 'yes':
+        uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if not (uri and uri.startswith('sqlite')):
+            print('Refusing to reset non-SQLite database. Use migrations and/or managed DB tooling.')
+            return
         db.drop_all()
-        db.create_all()
-        print('Database reset successfully!')
+        upgrade()
+        print('Database reset successfully (dropped tables, then Alembic upgrade).')
     else:
         print('Database reset cancelled.')
 
