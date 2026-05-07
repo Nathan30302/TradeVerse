@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Features - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-9">
+      <h1 class="display-6 fw-bold mb-3">Features</h1>
+      <p class="lead text-muted mb-4">
+        TradeVerse helps you plan, execute, and review trades with clarity — and turn your journal into measurable improvement.
+      </p>
+
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title mb-2"><i class="fas fa-clipboard-check me-2"></i>Trade Planner</h5>
+              <p class="card-text text-muted mb-0">Create structured plans, track execution, and keep your process consistent.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title mb-2"><i class="fas fa-chart-line me-2"></i>Analytics</h5>
+              <p class="card-text text-muted mb-0">Track P/L, win rate, equity curve, and trader-grade metrics as you scale.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title mb-2"><i class="fas fa-file-import me-2"></i>Imports</h5>
+              <p class="card-text text-muted mb-0">Bring in broker history and keep your journal accurate with less manual work.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title mb-2"><i class="fas fa-shield-alt me-2"></i>Risk Discipline</h5>
+              <p class="card-text text-muted mb-0">Stay aligned with your rules using structured reviews and behavioral insights.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <a class="btn btn-primary" href="{{ url_for('monetization.pricing') }}">
+          View Pricing
+        </a>
+        <a class="btn btn-outline-secondary ms-2" href="{{ url_for('main.index') }}">
+          Back to Home
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

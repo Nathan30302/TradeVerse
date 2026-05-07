@@ -12,7 +12,7 @@ import re
 from flask_mail import Message
 from app import mail
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 # Create Blueprint
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -154,7 +154,7 @@ def login():
         user = None
         try:
             user = User.query.filter_by(username=username).first()
-        except OperationalError:
+        except (OperationalError, ProgrammingError):
             # Backward-compatible auth path for partially-migrated DBs where ORM
             # selects columns that don't exist yet (would otherwise 500).
             current_app.logger.exception("Login ORM query failed; attempting compat SQL fallback")
