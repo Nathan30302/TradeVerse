@@ -17,6 +17,12 @@ from flask_login import current_user
 
 T = TypeVar("T")
 
+def _safe_getattr(user, name: str, default=None):
+    try:
+        return getattr(user, name, default)
+    except Exception:
+        return default
+
 
 FEATURES_BY_TIER: Dict[str, Set[str]] = {
     "free": {
@@ -65,13 +71,13 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     - If subscription_status is not active -> not active
     - If subscription_expires_at is set and in the past -> expired
     """
-    tier = (getattr(user, "subscription_tier", None) or "free").lower()
-    status = (getattr(user, "subscription_status", None) or "active").lower()
-    role = (getattr(user, "role", None) or "user").lower()
+    tier = (_safe_getattr(user, "subscription_tier", None) or "free").lower()
+    status = (_safe_getattr(user, "subscription_status", None) or "active").lower()
+    role = (_safe_getattr(user, "role", None) or "user").lower()
 
     now = _utcnow()
-    trial_ends_at: Optional[datetime] = getattr(user, "trial_ends_at", None)
-    subscription_expires_at: Optional[datetime] = getattr(user, "subscription_expires_at", None)
+    trial_ends_at: Optional[datetime] = _safe_getattr(user, "trial_ends_at", None)
+    subscription_expires_at: Optional[datetime] = _safe_getattr(user, "subscription_expires_at", None)
 
     # Owner/admin bypass: full access without billing enforcement.
     if role in {"owner"}:
