@@ -210,6 +210,7 @@ def upload_file():
                     if db_instrument:
                         instrument_id = db_instrument.id
             
+            status = 'CLOSED' if trade_record.exit_price else 'OPEN'
             trade = Trade(
                 user_id=current_user.id,
                 symbol=trade_record.canonical_symbol or trade_record.broker_symbol,
@@ -225,7 +226,7 @@ def upload_file():
                 profit_loss=trade_record.profit_loss,
                 commission=trade_record.commission,
                 swap=trade_record.swap,
-                status='closed' if trade_record.exit_price else 'open',
+                status=status,
                 trade_id=trade_record.broker_ticket,
                 broker=broker_id,
                 imported_source_id=import_source.id
@@ -361,6 +362,7 @@ def api_import(credential_id):
                 skipped_count += 1
                 continue
             
+            status = 'CLOSED' if trade_record.exit_price else 'OPEN'
             trade = Trade(
                 user_id=current_user.id,
                 symbol=trade_record.canonical_symbol or trade_record.broker_symbol,
@@ -375,7 +377,7 @@ def api_import(credential_id):
                 profit_loss=trade_record.profit_loss,
                 commission=trade_record.commission,
                 swap=trade_record.swap,
-                status='closed' if trade_record.exit_price else 'open',
+                status=status,
                 trade_id=trade_record.broker_ticket,
                 broker=broker_id,
                 imported_source_id=import_source.id

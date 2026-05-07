@@ -99,12 +99,12 @@ class SimpleInstrumentPicker {
             this.currentCategory = keys[0];
         }
 
-        const tabs = entries.map(([key, val]) => {
+        // Safe DOM rendering (no innerHTML)
+        container.textContent = '';
+        entries.forEach(([key, val]) => {
             const rawName = (val && val.name) ? String(val.name) : String(key);
-            const name = rawName;
-            const n = name.toLowerCase();
+            const n = rawName.toLowerCase();
 
-            // Determine icon by matching known keywords
             let icon = 'fas fa-square-question';
             if (n.includes('forex') || n.includes('fx')) icon = 'fas fa-exchange-alt';
             else if (n.includes('crypto') && n.includes('cross')) icon = 'fas fa-share-alt';
@@ -115,15 +115,17 @@ class SimpleInstrumentPicker {
             else if (n.includes('metal') || n.includes('commodity')) icon = 'fas fa-gem';
             else if (n.includes('forex indicator') || n.includes('indicator')) icon = 'fas fa-wave-square';
 
-            const isActive = (key === this.currentCategory) ? 'active' : '';
-            return `
-                <button type="button" class="category-tab ${isActive}" data-category="${key}">
-                    <i class="${icon}"></i> ${name}
-                </button>
-            `;
-        });
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `category-tab ${key === this.currentCategory ? 'active' : ''}`.trim();
+            btn.dataset.category = key;
 
-        container.innerHTML = tabs.join('');
+            const i = document.createElement('i');
+            i.className = icon;
+            btn.appendChild(i);
+            btn.appendChild(document.createTextNode(' ' + rawName));
+            container.appendChild(btn);
+        });
     }
 
     setupEventListeners() {
@@ -162,7 +164,8 @@ class SimpleInstrumentPicker {
 
     async loadInstrumentsForCategory(category) {
         try {
-            const response = await fetch(`/api/db/instruments?category=${encodeURIComponent(category)}&limit=10000`);
+            // Paginated fetch (prevents 10k payloads)
+            const response = await fetch(`/api/db/instruments?category=${encodeURIComponent(category)}&limit=200&offset=0`);
             if (!response.ok) {
                 console.warn('Failed to fetch instruments for', category, response.status);
                 this.renderInstruments([]);
@@ -172,32 +175,97 @@ class SimpleInstrumentPicker {
             const data = await response.json();
             // API returns { success: True, results: [...] }
             const instruments = (data && data.results) ? data.results : [];
-            this.renderInstruments(instruments);
+            this.renderInstruments(instruments, data);
         } catch (error) {
             console.error('Failed to load instruments:', error);
         }
     }
 
-    renderInstruments(instruments) {
+    renderInstruments(instruments, meta = null) {
         const container = document.getElementById('instrument-list');
         if (!container) return;
-        // Clear then render
-        container.innerHTML = '';
+        container.textContent = '';
 
         if (!Array.isArray(instruments) || instruments.length === 0) {
-            // Use consistent empty state styling
-            container.innerHTML = `<div class="empty-state"><i class="fas fa-search"></i><div class="mt-2">No instruments found</div></div>`;
+            const empty = document.createElement('div');
+            empty.className = 'empty-state';
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-search';
+            const text = document.createElement('div');
+            text.className = 'mt-2';
+            text.textContent = 'No instruments found';
+            empty.appendChild(icon);
+            empty.appendChild(text);
+            container.appendChild(empty);
             return;
         }
 
-        const frag = instruments.map(instrument => `
-            <div class="instrument-item" data-id="${instrument.id}" data-symbol="${instrument.symbol}" data-name="${instrument.name}">
-                <div class="instrument-symbol">${instrument.symbol}</div>
-                <div class="instrument-name">${instrument.name}</div>
-            </div>
-        `).join('');
+        instruments.forEach((instrument) => {
+            const item = document.createElement('div');
+            item.className = 'instrument-item';
+            item.dataset.id = String(instrument.id);
+            item.dataset.symbol = String(instrument.symbol || '');
+            item.dataset.name = String(instrument.name || '');
 
-        container.innerHTML = frag;
+            const sym = document.createElement('div');
+            sym.className = 'instrument-symbol';
+            sym.textContent = String(instrument.symbol || '');
+            const name = document.createElement('div');
+            name.className = 'instrument-name';
+            name.textContent = String(instrument.name || '');
+            item.appendChild(sym);
+            item.appendChild(name);
+            container.appendChild(item);
+        });
+
+        // Load-more button if server indicates more
+        if (meta && meta.has_more) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-outline-secondary btn-sm mt-3 w-100';
+            btn.textContent = 'Load more';
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                btn.textContent = 'Loading...';
+                try {
+                    const nextOffset = Number(meta.offset || 0) + Number(meta.limit || 200);
+                    const resp = await fetch(`/api/db/instruments?category=${encodeURIComponent(this.currentCategory)}&limit=200&offset=${nextOffset}`);
+                    if (!resp.ok) return;
+                    const next = await resp.json();
+                    const nextResults = (next && next.results) ? next.results : [];
+                    // append
+                    nextResults.forEach((instrument) => {
+                        const item = document.createElement('div');
+                        item.className = 'instrument-item';
+                        item.dataset.id = String(instrument.id);
+                        item.dataset.symbol = String(instrument.symbol || '');
+                        item.dataset.name = String(instrument.name || '');
+
+                        const sym = document.createElement('div');
+                        sym.className = 'instrument-symbol';
+                        sym.textContent = String(instrument.symbol || '');
+                        const name = document.createElement('div');
+                        name.className = 'instrument-name';
+                        name.textContent = String(instrument.name || '');
+                        item.appendChild(sym);
+                        item.appendChild(name);
+                        container.insertBefore(item, btn);
+                    });
+
+                    meta = next;
+                    if (!next.has_more) {
+                        btn.remove();
+                    } else {
+                        btn.disabled = false;
+                        btn.textContent = 'Load more';
+                    }
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.textContent = 'Load more';
+                }
+            });
+            container.appendChild(btn);
+        }
     }
 
     selectInstrument(id, symbol, name) {
@@ -212,7 +280,11 @@ class SimpleInstrumentPicker {
         // Update display
         const display = document.getElementById('selected-instrument');
         if (display) {
-            display.innerHTML = `<strong>${symbol}</strong> - ${name}`;
+            display.textContent = '';
+            const strong = document.createElement('strong');
+            strong.textContent = String(symbol || '');
+            display.appendChild(strong);
+            display.appendChild(document.createTextNode(' - ' + String(name || '')));
         }
 
         // Update header instrument code if present
@@ -248,7 +320,11 @@ class SimpleInstrumentPicker {
         // Clear display
         const display = document.getElementById('selected-instrument');
         if (display) {
-            display.innerHTML = '<small class="text-muted">No instrument selected</small>';
+            display.textContent = '';
+            const small = document.createElement('small');
+            small.className = 'text-muted';
+            small.textContent = 'No instrument selected';
+            display.appendChild(small);
         }
 
         // Remove selection styling

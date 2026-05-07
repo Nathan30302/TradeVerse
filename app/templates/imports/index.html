@@ -167,6 +167,14 @@
 </div>
 
 <script>
+function clearEl(el){ if(el) el.textContent=''; }
+function el(tag, className, text){
+    const n = document.createElement(tag);
+    if(className) n.className = className;
+    if(typeof text !== 'undefined') n.textContent = String(text);
+    return n;
+}
+
 async function importFromAPI(credentialId) {
     const modal = new bootstrap.Modal(document.getElementById('importModal'));
     const modalBody = document.getElementById('importModalBody');
@@ -183,28 +191,33 @@ async function importFromAPI(credentialId) {
         const data = await response.json();
         
         if (data.success) {
-            modalBody.innerHTML = `
-                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                <h5>Import Complete</h5>
-                <p>${data.trades_imported} trades imported</p>
-                <p class="text-muted">${data.trades_skipped} duplicates skipped</p>
-                <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
-            `;
+            clearEl(modalBody);
+            modalBody.appendChild(el('i','fas fa-check-circle fa-3x text-success mb-3'));
+            modalBody.appendChild(el('h5',null,'Import Complete'));
+            modalBody.appendChild(el('p',null,`${data.trades_imported} trades imported`));
+            modalBody.appendChild(el('p','text-muted',`${data.trades_skipped} duplicates skipped`));
+            const a = el('a','btn btn-primary','Go to Dashboard');
+            a.href = '/dashboard';
+            modalBody.appendChild(a);
         } else {
-            modalBody.innerHTML = `
-                <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
-                <h5>Import Failed</h5>
-                <p class="text-danger">${data.error || 'Unknown error'}</p>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            `;
+            clearEl(modalBody);
+            modalBody.appendChild(el('i','fas fa-exclamation-circle fa-3x text-danger mb-3'));
+            modalBody.appendChild(el('h5',null,'Import Failed'));
+            modalBody.appendChild(el('p','text-danger',data.error || 'Unknown error'));
+            const btn = el('button','btn btn-secondary','Close');
+            btn.type = 'button';
+            btn.setAttribute('data-bs-dismiss','modal');
+            modalBody.appendChild(btn);
         }
     } catch (err) {
-        modalBody.innerHTML = `
-            <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
-            <h5>Error</h5>
-            <p class="text-danger">${err.message}</p>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        `;
+        clearEl(modalBody);
+        modalBody.appendChild(el('i','fas fa-exclamation-circle fa-3x text-danger mb-3'));
+        modalBody.appendChild(el('h5',null,'Error'));
+        modalBody.appendChild(el('p','text-danger',err.message));
+        const btn = el('button','btn btn-secondary','Close');
+        btn.type = 'button';
+        btn.setAttribute('data-bs-dismiss','modal');
+        modalBody.appendChild(btn);
     }
 }
 </script>

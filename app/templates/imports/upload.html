@@ -154,6 +154,7 @@ const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('file');
 const fileInfo = document.getElementById('fileInfo');
 const fileName = document.getElementById('fileName');
+const submitBtn = document.getElementById('submitBtn');
 
 dropZone.addEventListener('click', () => fileInput.click());
 
@@ -194,6 +195,21 @@ function clearFile() {
     document.getElementById('previewSection').style.display = 'none';
 }
 
+function clearEl(el){ if(el) el.textContent = ''; }
+function el(tag, className, text){
+    const n = document.createElement(tag);
+    if(className) n.className = className;
+    if(typeof text !== 'undefined') n.textContent = String(text);
+    return n;
+}
+
+function renderSpinner(message){
+    const wrap = el('div', 'text-center py-4');
+    wrap.appendChild(el('div', 'spinner-border'));
+    wrap.appendChild(el('p', null, message));
+    return wrap;
+}
+
 async function previewUpload() {
     const formData = new FormData(document.getElementById('uploadForm'));
     formData.append('dry_run', 'true');
@@ -206,7 +222,8 @@ async function previewUpload() {
     const previewSection = document.getElementById('previewSection');
     const previewContent = document.getElementById('previewContent');
     
-    previewContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p>Parsing file...</p></div>';
+    clearEl(previewContent);
+    previewContent.appendChild(renderSpinner('Parsing file...'));
     previewSection.style.display = 'block';
     
     try {
@@ -217,83 +234,70 @@ async function previewUpload() {
         
         const data = await response.json();
         
+        clearEl(previewContent);
         if (data.success) {
-            const result = data.result;
-            let html = `
-                <div class="alert alert-success">
-                    <strong>Preview Complete!</strong> Found ${result.total_parsed} trades
-                </div>
-                <div class="row mb-3">
-                    <div class="col-4">
-                        <div class="card text-center">
-                            <div class="card-body">
-                                <h3 class="text-primary">${result.total_parsed}</h3>
-                                <small>Total Trades</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="card text-center">
-                            <div class="card-body">
-                                <h3 class="text-success">${result.total_mapped}</h3>
-                                <small>Mapped</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="card text-center">
-                            <div class="card-body">
-                                <h3 class="text-warning">${result.total_parsed - result.total_mapped}</h3>
-                                <small>Unmapped</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
+            const result = data.result || {};
+            const alert = el('div', 'alert alert-success');
+            const strong = el('strong', null, 'Preview Complete!');
+            alert.appendChild(strong);
+            alert.appendChild(document.createTextNode(` Found ${result.total_parsed || 0} trades`));
+            previewContent.appendChild(alert);
+
+            const row = el('div', 'row mb-3');
+            const mkCard = (numClass, value, label) => {
+                const col = el('div', 'col-4');
+                const card = el('div', 'card text-center');
+                const body = el('div', 'card-body');
+                body.appendChild(el('h3', numClass, String(value)));
+                body.appendChild(el('small', null, label));
+                card.appendChild(body);
+                col.appendChild(card);
+                return col;
+            };
+            row.appendChild(mkCard('text-primary', result.total_parsed || 0, 'Total Trades'));
+            row.appendChild(mkCard('text-success', result.total_mapped || 0, 'Mapped'));
+            row.appendChild(mkCard('text-warning', (result.total_parsed || 0) - (result.total_mapped || 0), 'Unmapped'));
+            previewContent.appendChild(row);
+
             if (result.trades && result.trades.length > 0) {
-                html += `
-                    <h6>Sample Trades (first 5):</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Symbol</th>
-                                    <th>Mapped To</th>
-                                    <th>Direction</th>
-                                    <th>Lots</th>
-                                    <th>Entry</th>
-                                    <th>Exit</th>
-                                    <th>P/L</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
-                
+                previewContent.appendChild(el('h6', null, 'Sample Trades (first 5):'));
+                const tableWrap = el('div', 'table-responsive');
+                const table = el('table', 'table table-sm');
+                const thead = document.createElement('thead');
+                const trh = document.createElement('tr');
+                ['Symbol','Mapped To','Direction','Lots','Entry','Exit','P/L'].forEach(h => {
+                    const th = document.createElement('th'); th.textContent = h; trh.appendChild(th);
+                });
+                thead.appendChild(trh);
+                const tbody = document.createElement('tbody');
+
                 for (let i = 0; i < Math.min(5, result.trades.length); i++) {
                     const t = result.trades[i];
-                    html += `
-                        <tr>
-                            <td>${t.broker_symbol}</td>
-                            <td>${t.canonical_symbol || '-'}</td>
-                            <td><span class="badge ${t.direction === 'buy' ? 'bg-success' : 'bg-danger'}">${t.direction}</span></td>
-                            <td>${t.lot_size}</td>
-                            <td>${t.entry_price}</td>
-                            <td>${t.exit_price || '-'}</td>
-                            <td>${t.profit_loss ? t.profit_loss.toFixed(2) : '-'}</td>
-                        </tr>
-                    `;
+                    const tr = document.createElement('tr');
+                    const td = (v) => { const c = document.createElement('td'); c.textContent = String(v); return c; };
+                    tr.appendChild(td(t.broker_symbol || ''));
+                    tr.appendChild(td(t.canonical_symbol || '-'));
+                    const dirTd = document.createElement('td');
+                    const badge = el('span', `badge ${t.direction === 'buy' ? 'bg-success' : 'bg-danger'}`, t.direction || '');
+                    dirTd.appendChild(badge);
+                    tr.appendChild(dirTd);
+                    tr.appendChild(td(t.lot_size || ''));
+                    tr.appendChild(td(t.entry_price || ''));
+                    tr.appendChild(td(t.exit_price || '-'));
+                    tr.appendChild(td((typeof t.profit_loss === 'number') ? t.profit_loss.toFixed(2) : '-'));
+                    tbody.appendChild(tr);
                 }
-                
-                html += '</tbody></table></div>';
+                table.appendChild(thead);
+                table.appendChild(tbody);
+                tableWrap.appendChild(table);
+                previewContent.appendChild(tableWrap);
             }
-            
-            previewContent.innerHTML = html;
         } else {
-            previewContent.innerHTML = `<div class="alert alert-danger">${data.error || 'Preview failed'}</div>`;
+            previewContent.appendChild(el('div', 'alert alert-danger', data.error || 'Preview failed'));
         }
     } catch (err) {
-        previewContent.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+        clearEl(previewContent);
+        previewContent.appendChild(el('div', 'alert alert-danger', `Error: ${err.message}`));
     }
 }
 
@@ -301,14 +305,14 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
     e.preventDefault();
     
     const formData = new FormData(this);
-    const submitBtn = document.getElementById('submitBtn');
     const resultSection = document.getElementById('resultSection');
     const resultContent = document.getElementById('resultContent');
     
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importing...';
+    submitBtn.textContent = 'Importing...';
     
-    resultContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p>Importing trades...</p></div>';
+    clearEl(resultContent);
+    resultContent.appendChild(renderSpinner('Importing trades...'));
     resultSection.style.display = 'block';
     
     try {
@@ -319,40 +323,50 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
         
         const data = await response.json();
         
+        clearEl(resultContent);
         if (data.success) {
-            resultContent.innerHTML = `
-                <div class="alert alert-success">
-                    <h5><i class="fas fa-check-circle me-2"></i>Import Successful!</h5>
-                    <p class="mb-0">${data.message}</p>
-                </div>
-                <div class="row">
-                    <div class="col-4 text-center">
-                        <h4 class="text-success">${data.trades_imported}</h4>
-                        <small>Imported</small>
-                    </div>
-                    <div class="col-4 text-center">
-                        <h4 class="text-warning">${data.trades_skipped}</h4>
-                        <small>Skipped (duplicates)</small>
-                    </div>
-                    <div class="col-4 text-center">
-                        <h4 class="text-danger">${data.trades_failed}</h4>
-                        <small>Failed</small>
-                    </div>
-                </div>
-                <div class="mt-3 text-center">
-                    <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
-                    <button type="button" class="btn btn-outline-secondary ms-2" onclick="location.reload()">Import More</button>
-                </div>
-            `;
+            const alert = el('div', 'alert alert-success');
+            const h5 = el('h5');
+            h5.appendChild(el('i', 'fas fa-check-circle me-2'));
+            h5.appendChild(document.createTextNode('Import Successful!'));
+            alert.appendChild(h5);
+            alert.appendChild(el('p', 'mb-0', data.message || 'Import completed.'));
+            resultContent.appendChild(alert);
+
+            const row = el('div', 'row');
+            const mk = (cls, val, label) => {
+                const c = el('div', 'col-4 text-center');
+                c.appendChild(el('h4', cls, String(val)));
+                c.appendChild(el('small', null, label));
+                return c;
+            };
+            row.appendChild(mk('text-success', data.trades_imported || 0, 'Imported'));
+            row.appendChild(mk('text-warning', data.trades_skipped || 0, 'Skipped (duplicates)'));
+            row.appendChild(mk('text-danger', data.trades_failed || 0, 'Failed'));
+            resultContent.appendChild(row);
+
+            const actions = el('div', 'mt-3 text-center');
+            const a = el('a', 'btn btn-primary', 'Go to Dashboard');
+            a.href = '/dashboard';
+            const more = el('button', 'btn btn-outline-secondary ms-2', 'Import More');
+            more.type = 'button';
+            more.addEventListener('click', () => location.reload());
+            actions.appendChild(a);
+            actions.appendChild(more);
+            resultContent.appendChild(actions);
         } else {
-            resultContent.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.error || 'Import failed'}</div>`;
+            const alert = el('div', 'alert alert-danger');
+            alert.appendChild(el('i', 'fas fa-exclamation-circle me-2'));
+            alert.appendChild(document.createTextNode(data.error || 'Import failed'));
+            resultContent.appendChild(alert);
         }
     } catch (err) {
-        resultContent.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+        clearEl(resultContent);
+        resultContent.appendChild(el('div', 'alert alert-danger', `Error: ${err.message}`));
     }
     
     submitBtn.disabled = false;
-    submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Import Trades';
+    submitBtn.textContent = 'Import Trades';
 });
 </script>
 {% endblock %}

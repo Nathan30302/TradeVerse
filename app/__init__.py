@@ -32,6 +32,13 @@ def create_app(config_name='default'):
     # Load configuration
     app.config.from_object(config[config_name])
 
+    # Production hardening: require env-managed secrets (no fallbacks).
+    if config_name == 'production':
+        if not app.config.get('SECRET_KEY'):
+            raise RuntimeError("SECRET_KEY must be set in production.")
+        if not os.environ.get('DATABASE_URL'):
+            raise RuntimeError("DATABASE_URL must be set in production.")
+
     # Ensure instance folder exists (skip on read-only filesystems)
     try:
         os.makedirs(app.instance_path)
@@ -72,13 +79,14 @@ def create_app(config_name='default'):
         def load_user(user_id):
             return db.session.get(user.User, int(user_id))
 
-        # Seed instruments from EXNESS catalog on startup.
+        # Seed instruments from EXNESS catalog on startup (dev/test only).
         # Schema is managed by Alembic migrations; if the DB hasn't been upgraded yet,
         # skip seeding rather than mutating schema at runtime.
-        try:
-            _seed_instruments(app)
-        except Exception as e:
-            app.logger.debug(f"Instrument seeding skipped (DB not ready?): {e}")
+        if config_name != 'production' and os.environ.get('SEED_INSTRUMENTS', '1') == '1':
+            try:
+                _seed_instruments(app)
+            except Exception as e:
+                app.logger.debug(f"Instrument seeding skipped (DB not ready?): {e}")
     
     # Register blueprints (routes)
     from app.routes import auth, main, trade as trade_routes, dashboard
@@ -119,6 +127,8 @@ def create_app(config_name='default'):
     # Build FTS index on first request (delayed startup)
     @app.before_request
     def _build_fts_once():
+        if not app.config.get('ENABLE_FTS_BUILD', True):
+            return
         if not hasattr(app, '_fts_built'):
             try:
                 from app.models.instrument_fts import build_fts_index

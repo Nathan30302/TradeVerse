@@ -251,28 +251,24 @@ def webhook():
     Stripe Webhook endpoint
     Receives events from Stripe and updates user subscription status.
     """
-    # Dynamically import stripe if available
+    # Stripe webhook handling must be verified (no insecure fallbacks).
     try:
         stripe = import_module('stripe')
     except Exception:
-        stripe = None
+        return jsonify({'ok': False, 'error': 'stripe package not installed'}), 500
 
     stripe_key = current_app.config.get('STRIPE_SECRET_KEY') or os.environ.get('STRIPE_SECRET_KEY')
-    if stripe_key and stripe:
-        stripe.api_key = stripe_key
+    webhook_secret = current_app.config.get('STRIPE_WEBHOOK_SECRET') or os.environ.get('STRIPE_WEBHOOK_SECRET')
+    if not stripe_key or not webhook_secret:
+        return jsonify({'ok': False, 'error': 'Stripe webhook not configured'}), 500
+
+    stripe.api_key = stripe_key
 
     payload = request.get_data()
     sig_header = request.headers.get('Stripe-Signature', '')
-    webhook_secret = current_app.config.get('STRIPE_WEBHOOK_SECRET') or os.environ.get('STRIPE_WEBHOOK_SECRET')
 
     try:
-        if webhook_secret:
-            if not stripe:
-                print("Webhook verification requested but stripe package not available")
-                return jsonify({'ok': False}), 400
-            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-        else:
-            event = request.get_json()
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
         print(f"Webhook error: {e}")
         return jsonify({'ok': False}), 400

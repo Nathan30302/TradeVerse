@@ -18,8 +18,7 @@
  *      click listener, which was calling closeDropdown() and wiping the freshly
  *      rendered list (the "2-second flash" symptom).
  *
- *   4. The API call already uses limit=10000 correctly — no change needed there.
- *      The real fix on the server side (limit default 50→10000) is in instruments.py.
+ *   4. The API call uses a capped limit to avoid huge payloads.
  */
 
 class InstrumentPicker {
@@ -109,35 +108,38 @@ class InstrumentPicker {
         const dropdown = document.getElementById('instrument-dropdown');
         if (!dropdown) return;
 
-        let html = '<div class="category-header">Select Category</div>';
-        html += '<div class="category-grid">';
+        // Safe DOM rendering (no innerHTML)
+        dropdown.textContent = '';
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.textContent = 'Select Category';
+        const grid = document.createElement('div');
+        grid.className = 'category-grid';
 
-        this.categories.forEach(category => {
+        this.categories.forEach((category) => {
             const label = this.getCategoryLabel(category);
             const icon = this.getCategoryIcon(category);
-            html += `<button type="button" class="category-btn" data-category="${category}">
-                <i class="${icon}"></i>
-                <span>${label}</span>
-            </button>`;
-        });
-
-        html += '</div>';
-        dropdown.innerHTML = html;
-        dropdown.classList.add('show');
-
-        // Add category button handlers
-        // FIX #3: stopPropagation() prevents the click from reaching the document-level
-        // outside-click listener. Without this, clicking a category button would:
-        //   1. Trigger this handler → start loading instruments
-        //   2. Bubble to document → call closeDropdown() → wipe the dropdown
-        // This caused the "flash for 2 seconds then blank" symptom.
-        dropdown.querySelectorAll('.category-btn').forEach(btn => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'category-btn';
+            btn.dataset.category = category;
+            const i = document.createElement('i');
+            i.className = icon;
+            const span = document.createElement('span');
+            span.textContent = label;
+            btn.appendChild(i);
+            btn.appendChild(document.createTextNode(' '));
+            btn.appendChild(span);
             btn.addEventListener('click', (e) => {
-                e.stopPropagation(); // CRITICAL: prevent document click handler from closing dropdown
-                const category = e.currentTarget.dataset.category;
+                e.stopPropagation();
                 this.showInstrumentsForCategory(category);
             });
+            grid.appendChild(btn);
         });
+
+        dropdown.appendChild(header);
+        dropdown.appendChild(grid);
+        dropdown.classList.add('show');
     }
 
     async showInstrumentsForCategory(category) {
@@ -146,7 +148,11 @@ class InstrumentPicker {
         if (!dropdown) return;
 
         // Show loading
-        dropdown.innerHTML = '<div class="dropdown-hint">Loading instruments...</div>';
+        dropdown.textContent = '';
+        const loading = document.createElement('div');
+        loading.className = 'dropdown-hint';
+        loading.textContent = 'Loading instruments...';
+        dropdown.appendChild(loading);
         dropdown.classList.add('show'); // ensure it stays open during fetch
 
         // Abort previous request
@@ -154,16 +160,18 @@ class InstrumentPicker {
         this._abortController = new AbortController();
 
         try {
-            // limit=10000 ensures all instruments for the category are returned.
-            // The server-side fix (default limit 50→10000) also covers cases where
-            // limit is not explicitly passed, but we keep it explicit here for safety.
+            // Cap payload size to keep UI responsive.
             const response = await fetch(
-                `${this.apiUrl}?category=${encodeURIComponent(category)}&limit=10000`,
+                `${this.apiUrl}?category=${encodeURIComponent(category)}&limit=500`,
                 { signal: this._abortController.signal }
             );
 
             if (!response.ok) {
-                dropdown.innerHTML = '<div class="dropdown-hint">Error loading instruments</div>';
+                dropdown.textContent = '';
+                const err = document.createElement('div');
+                err.className = 'dropdown-hint';
+                err.textContent = 'Error loading instruments';
+                dropdown.appendChild(err);
                 return;
             }
 
@@ -173,7 +181,11 @@ class InstrumentPicker {
         } catch (error) {
             if (error.name === 'AbortError') return;
             console.error('Failed to load instruments:', error);
-            dropdown.innerHTML = '<div class="dropdown-hint">Error loading instruments</div>';
+            dropdown.textContent = '';
+            const err = document.createElement('div');
+            err.className = 'dropdown-hint';
+            err.textContent = 'Error loading instruments';
+            dropdown.appendChild(err);
         }
     }
 
@@ -182,61 +194,62 @@ class InstrumentPicker {
         if (!dropdown) return;
 
         if (instruments.length === 0) {
-            dropdown.innerHTML = '<div class="dropdown-hint">No instruments found</div>';
+            dropdown.textContent = '';
+            const hint = document.createElement('div');
+            hint.className = 'dropdown-hint';
+            hint.textContent = 'No instruments found';
+            dropdown.appendChild(hint);
             return;
         }
 
         const categoryLabel = this.getCategoryLabel(category);
-        let html = `<div class="category-header">
-            <button type="button" class="back-btn" data-action="back">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            ${categoryLabel} Instruments
-        </div>`;
+        dropdown.textContent = '';
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'back-btn';
+        backBtn.dataset.action = 'back';
+        const backIcon = document.createElement('i');
+        backIcon.className = 'fas fa-arrow-left';
+        backBtn.appendChild(backIcon);
+        header.appendChild(backBtn);
+        header.appendChild(document.createTextNode(' ' + categoryLabel + ' Instruments'));
 
-        html += '<div class="instruments-list">';
+        const list = document.createElement('div');
+        list.className = 'instruments-list';
 
-        instruments.forEach(inst => {
-            // FIX #1: Use encodeURIComponent(JSON.stringify()) instead of a manual
-            // replace(/</g, '<').
-            //
-            // The old approach only escaped < characters. Any instrument name or
-            // symbol containing a single quote (') would break the data-json='...'
-            // attribute boundary, truncating the JSON mid-string. JSON.parse() would
-            // then throw on selectInstrument(), the catch block would return null,
-            // and the instrument silently failed to render.
-            //
-            // encodeURIComponent produces a pure ASCII string with no quotes, angle
-            // brackets, or special characters — fully safe inside any HTML attribute.
-            // The attribute is now double-quoted for additional robustness.
-            const safe = encodeURIComponent(JSON.stringify(inst));
-            html += `<div class="instrument-item" data-id="${inst.id}" data-json="${safe}">
-                <div class="instrument-symbol">${inst.symbol}</div>
-                <div class="instrument-name">${inst.name || inst.symbol}</div>
-            </div>`;
+        instruments.forEach((inst) => {
+            const item = document.createElement('div');
+            item.className = 'instrument-item';
+            item.dataset.id = String(inst.id);
+            item.dataset.json = encodeURIComponent(JSON.stringify(inst));
+            const sym = document.createElement('div');
+            sym.className = 'instrument-symbol';
+            sym.textContent = String(inst.symbol || '');
+            const name = document.createElement('div');
+            name.className = 'instrument-name';
+            name.textContent = String(inst.name || inst.symbol || '');
+            item.appendChild(sym);
+            item.appendChild(name);
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.selectInstrument(item);
+            });
+            list.appendChild(item);
         });
 
-        html += '</div>';
-
-        dropdown.innerHTML = html;
+        dropdown.appendChild(header);
+        dropdown.appendChild(list);
         dropdown.classList.add('show'); // keep open after render
 
         // Add back button handler
-        const backBtn = dropdown.querySelector('.back-btn');
         if (backBtn) {
             backBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.showCategories();
             });
         }
-
-        // Add instrument selection handlers
-        dropdown.querySelectorAll('.instrument-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.selectInstrument(item);
-            });
-        });
     }
 
     selectInstrument(element) {
@@ -263,7 +276,11 @@ class InstrumentPicker {
         if (hiddenInput) hiddenInput.value = inst.id;
         if (symbolInput) symbolInput.value = inst.symbol;
         if (selectorBtn) {
-            selectorBtn.innerHTML = `<i class="fas fa-check"></i> ${inst.symbol} - ${inst.name || inst.symbol}`;
+            selectorBtn.textContent = '';
+            const i = document.createElement('i');
+            i.className = 'fas fa-check';
+            selectorBtn.appendChild(i);
+            selectorBtn.appendChild(document.createTextNode(` ${inst.symbol} - ${inst.name || inst.symbol}`));
             selectorBtn.classList.remove('btn-outline-primary');
             selectorBtn.classList.add('btn-success');
         }
@@ -280,12 +297,34 @@ class InstrumentPicker {
     updateMetadataDisplay(inst) {
         const meta = document.getElementById('instrument-meta');
         if (meta && inst) {
-            meta.innerHTML = `
-                <div class="instrument-meta-row"><strong>${inst.name || inst.symbol}</strong> <span class="text-muted">(${inst.symbol})</span></div>
-                <div class="instrument-meta-row small text-muted">Type: ${inst.type || 'unknown'} | Category: ${this.getCategoryLabel(inst.category || 'unknown')}</div>
-                <div class="instrument-meta-row small text-muted">Pip/Tick: ${inst.pip_size || inst.tick_value || '-'} | Contract Size: ${inst.contract_size || '-'}</div>
-                <div class="instrument-meta-row small text-muted">Price Decimals: ${typeof inst.price_decimals !== 'undefined' ? inst.price_decimals : '-'}</div>
-            `;
+            meta.textContent = '';
+            const row1 = document.createElement('div');
+            row1.className = 'instrument-meta-row';
+            const strong = document.createElement('strong');
+            strong.textContent = String(inst.name || inst.symbol || '');
+            const span = document.createElement('span');
+            span.className = 'text-muted';
+            span.textContent = ` (${inst.symbol || ''})`;
+            row1.appendChild(strong);
+            row1.appendChild(document.createTextNode(' '));
+            row1.appendChild(span);
+
+            const row2 = document.createElement('div');
+            row2.className = 'instrument-meta-row small text-muted';
+            row2.textContent = `Type: ${inst.type || 'unknown'} | Category: ${this.getCategoryLabel(inst.category || 'unknown')}`;
+
+            const row3 = document.createElement('div');
+            row3.className = 'instrument-meta-row small text-muted';
+            row3.textContent = `Pip/Tick: ${inst.pip_size || inst.tick_value || '-'} | Contract Size: ${inst.contract_size || '-'}`;
+
+            const row4 = document.createElement('div');
+            row4.className = 'instrument-meta-row small text-muted';
+            row4.textContent = `Price Decimals: ${typeof inst.price_decimals !== 'undefined' ? inst.price_decimals : '-'}`;
+
+            meta.appendChild(row1);
+            meta.appendChild(row2);
+            meta.appendChild(row3);
+            meta.appendChild(row4);
         }
     }
 
@@ -299,11 +338,15 @@ class InstrumentPicker {
         if (hiddenInput) hiddenInput.value = '';
         if (symbolInput) symbolInput.value = '';
         if (selectorBtn) {
-            selectorBtn.innerHTML = '<i class="fas fa-search"></i> Select Instrument';
+            selectorBtn.textContent = '';
+            const i = document.createElement('i');
+            i.className = 'fas fa-search';
+            selectorBtn.appendChild(i);
+            selectorBtn.appendChild(document.createTextNode(' Select Instrument'));
             selectorBtn.classList.remove('btn-success');
             selectorBtn.classList.add('btn-outline-primary');
         }
-        if (meta) meta.innerHTML = '';
+        if (meta) meta.textContent = '';
 
         this.closeDropdown();
         this.triggerPnLRecalculation();
@@ -323,7 +366,11 @@ class InstrumentPicker {
                     this.selectedInstrument = inst;
                     if (symbolInput && !symbolInput.value) symbolInput.value = inst.symbol;
                     if (selectorBtn) {
-                        selectorBtn.innerHTML = `<i class="fas fa-check"></i> ${inst.symbol} - ${inst.name || inst.symbol}`;
+                        selectorBtn.textContent = '';
+                        const i = document.createElement('i');
+                        i.className = 'fas fa-check';
+                        selectorBtn.appendChild(i);
+                        selectorBtn.appendChild(document.createTextNode(` ${inst.symbol} - ${inst.name || inst.symbol}`));
                         selectorBtn.classList.remove('btn-outline-primary');
                         selectorBtn.classList.add('btn-success');
                     }
@@ -440,23 +487,40 @@ class TradeCalculator {
         if (!display) return;
 
         if (!data.profit_loss) {
-            display.innerHTML = '<div class="text-muted">Enter prices to calculate P&L</div>';
+            display.textContent = '';
+            const div = document.createElement('div');
+            div.className = 'text-muted';
+            div.textContent = 'Enter prices to calculate P&L';
+            display.appendChild(div);
             return;
         }
 
         const isProfit = data.profit_loss > 0;
         const color = isProfit ? '#28a745' : '#dc3545';
 
-        display.innerHTML = `
-            <div style="border-left: 4px solid ${color}; padding: 1rem; background: rgba(0,0,0,0.02); border-radius: 4px;">
-                <div class="pnl-value" style="color: ${color}; font-size: 1.5rem; font-weight: bold;">
-                    ${isProfit ? '+' : ''}${data.profit_loss.toFixed(2)}
-                </div>
-                <div class="pnl-pips text-muted" style="font-size: 0.9rem;">
-                    ${data.pips_or_points?.toFixed(1) || '0'} ${this.getUnitLabel(data.instrument_type)}
-                </div>
-            </div>
-        `;
+        display.textContent = '';
+        const wrap = document.createElement('div');
+        wrap.style.borderLeft = `4px solid ${color}`;
+        wrap.style.padding = '1rem';
+        wrap.style.background = 'rgba(0,0,0,0.02)';
+        wrap.style.borderRadius = '4px';
+
+        const value = document.createElement('div');
+        value.className = 'pnl-value';
+        value.style.color = color;
+        value.style.fontSize = '1.5rem';
+        value.style.fontWeight = 'bold';
+        value.textContent = `${isProfit ? '+' : ''}${Number(data.profit_loss).toFixed(2)}`;
+
+        const pips = document.createElement('div');
+        pips.className = 'pnl-pips text-muted';
+        pips.style.fontSize = '0.9rem';
+        const pop = (typeof data.pips_or_points === 'number') ? data.pips_or_points : 0;
+        pips.textContent = `${Number(pop).toFixed(1)} ${this.getUnitLabel(data.instrument_type)}`;
+
+        wrap.appendChild(value);
+        wrap.appendChild(pips);
+        display.appendChild(wrap);
     }
 
     getUnitLabel(type) {

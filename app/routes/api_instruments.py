@@ -277,7 +277,6 @@ def db_instrument_categories():
         if cat['key'] not in result:
             result[cat['key']] = {'name': cat['name']}
     
-    print(f"[db_instrument_categories] Returning {len(result)} unique categories: {list(result.keys())}")
     return jsonify({'success': True, 'categories': result})
 
 
@@ -289,7 +288,12 @@ def db_instruments():
     from sqlalchemy import or_
     
     category = request.args.get('category', '').strip()
-    limit = min(int(request.args.get('limit', 1000)), 5000)
+    try:
+        limit = min(int(request.args.get('limit', 200)), 500)
+        offset = max(int(request.args.get('offset', 0)), 0)
+    except ValueError:
+        limit = 200
+        offset = 0
     q = Instrument.query.filter(Instrument.is_active == True)
     
     if category:
@@ -305,10 +309,8 @@ def db_instruments():
         if filters:
             q = q.filter(or_(*filters))
     
-    instruments = q.order_by(Instrument.symbol).limit(limit).all()
-    
-    # Debug: log what we're returning
-    print(f"[db_instruments] category={category}, found={len(instruments)}")
+    total = q.count()
+    instruments = q.order_by(Instrument.symbol).offset(offset).limit(limit).all()
     
     out = []
     for inst in instruments:
@@ -324,10 +326,14 @@ def db_instruments():
             'price_decimals': inst.price_decimals
         })
     
-    # Console log for debugging
-    print(f"TOTAL INSTRUMENTS for {category}: {len(out)}")
-    
-    return jsonify({'success': True, 'results': out, 'total': len(out)})
+    return jsonify({
+        'success': True,
+        'results': out,
+        'total': total,
+        'limit': limit,
+        'offset': offset,
+        'has_more': (offset + limit) < total,
+    })
 
 
 @bp.route('/db/instruments/counts', methods=['GET'])

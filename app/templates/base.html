@@ -1362,7 +1362,7 @@
             border: none !important;
             border-radius: 12px !important;
             box-shadow: 0 10px 40px rgba(0,0,0,0.15) !important;
-            background-color: #ffffff !important;
+            background-color: var(--card-bg) !important;
             padding: 8px 0 !important;
             margin-top: 0.5rem !important;
             min-width: 240px !important;
@@ -1371,7 +1371,7 @@
 
         .dropdown-menu .dropdown-item {
             padding: 10px 16px !important;
-            color: #1e293b !important;
+            color: var(--text-primary) !important;
             font-weight: 500 !important;
             font-size: 14px !important;
             transition: all 0.2s ease !important;
@@ -1379,8 +1379,8 @@
         }
 
         .dropdown-menu .dropdown-item:hover {
-            background-color: #f1f5f9 !important;
-            color: #6366f1 !important;
+            background-color: var(--bg-secondary) !important;
+            color: var(--tab-active) !important;
             border-left-color: #6366f1 !important;
             padding-left: 14px !important;
         }
@@ -1396,24 +1396,24 @@
 
         .dropdown-divider {
             margin: 8px 0 !important;
-            border-top: 1px solid #e2e8f0 !important;
+            border-top: 1px solid var(--card-border) !important;
         }
 
         /* Theme segmented control in dropdown */
         .dropdown-menu .theme-segmented {
-            background-color: #f1f5f9 !important;
+            background-color: var(--bg-secondary) !important;
             margin: 4px 0;
         }
 
         .dropdown-menu .theme-option {
-            color: #64748b !important;
+            color: var(--text-secondary) !important;
             font-size: 11px !important;
             padding: 5px 8px !important;
             flex: 1;
         }
 
         .dropdown-menu .theme-option:hover {
-            color: #1e293b !important;
+            color: var(--text-primary) !important;
         }
 
         .dropdown-menu .theme-option.active {
@@ -2040,13 +2040,35 @@
 
             function applyInstrument(it){
                 if(!slot) return;
-                const iconHtml = it.icon ? `<i class="${it.icon}"></i>` : '<i class="fas fa-chart-line"></i>';
                 const changeClass = (it.change || 0) >= 0 ? 'positive' : 'negative';
-                const sign = (it.change || 0) >= 0 ? '+' : '';
                 // Smooth fade transition - show only name, % change with arrow and color (no prices)
                 slot.classList.remove('fade-in');
                 void slot.offsetWidth;
-                slot.innerHTML = `<span class=\"instrument-icon\">${iconHtml}</span><span class=\"instrument-symbol\">${it.symbol}</span><span class=\"instrument-name\">${it.name}</span><span class=\"instrument-change ${changeClass}\">${sign}${(it.change||0).toFixed(2)}%</span>`;
+                // Safe DOM updates (no innerHTML)
+                slot.textContent = '';
+                const iconWrap = document.createElement('span');
+                iconWrap.className = 'instrument-icon';
+                const iconI = document.createElement('i');
+                iconI.className = (it.icon && String(it.icon)) ? String(it.icon) : 'fas fa-chart-line';
+                iconWrap.appendChild(iconI);
+
+                const sym = document.createElement('span');
+                sym.className = 'instrument-symbol';
+                sym.textContent = String(it.symbol || '—');
+
+                const name = document.createElement('span');
+                name.className = 'instrument-name';
+                name.textContent = String(it.name || '—');
+
+                const chg = document.createElement('span');
+                chg.className = `instrument-change ${changeClass}`;
+                const v = Number(it.change || 0);
+                chg.textContent = `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+
+                slot.appendChild(iconWrap);
+                slot.appendChild(sym);
+                slot.appendChild(name);
+                slot.appendChild(chg);
                 slot.classList.add('fade-in');
             }
 
@@ -2235,7 +2257,16 @@
                 setInterval(rotateOnce, rotateInterval);
                 // update island periodically with server stats
                 updateIslandFromServer();
-                setInterval(updateIslandFromServer, 10000);
+                // Avoid redundant polling on /dashboard where the page already refreshes.
+                if(!String(window.location.pathname || '').startsWith('/dashboard')){
+                    setInterval(updateIslandFromServer, 30000);
+                    // manual refresh on click for real-time updates
+                    if(island){
+                        island.style.cursor = 'pointer';
+                        island.title = 'Click to refresh';
+                        island.addEventListener('click', () => updateIslandFromServer());
+                    }
+                }
             }
 
             document.addEventListener('DOMContentLoaded', init);

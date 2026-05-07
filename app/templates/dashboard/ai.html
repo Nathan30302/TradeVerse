@@ -362,7 +362,14 @@
         var question = questionEl.value;
         if (!question || question.trim() === "") { return; }
 
-        answerEl.innerHTML = "<div class='text-muted'>AI Buddy is thinking&#8230; <i class='fas fa-spinner fa-spin'></i></div>";
+        answerEl.textContent = "";
+        var thinking = document.createElement("div");
+        thinking.className = "text-muted";
+        thinking.appendChild(document.createTextNode("AI Buddy is thinking… "));
+        var spin = document.createElement("i");
+        spin.className = "fas fa-spinner fa-spin";
+        thinking.appendChild(spin);
+        answerEl.appendChild(thinking);
 
         var payload = JSON.stringify({ question: question.trim() });
 

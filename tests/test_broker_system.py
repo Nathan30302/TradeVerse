@@ -176,8 +176,8 @@ class TestPnLEngine:
             trade_direction='buy'
         )
         
-        assert result.pnl > 0
-        assert result.pip_move == 50
+        assert result['pnl'] > 0
+        assert result['pip_move'] == 50
     
     def test_forex_pnl_sell(self):
         """Test forex P&L calculation for sell trade."""
@@ -192,8 +192,8 @@ class TestPnLEngine:
             trade_direction='sell'
         )
         
-        assert result.pnl > 0
-        assert result.pip_move == 50
+        assert result['pnl'] > 0
+        assert result['pip_move'] == 50
     
     def test_forex_pnl_loss(self):
         """Test forex P&L for losing trade."""
@@ -208,7 +208,7 @@ class TestPnLEngine:
             trade_direction='buy'
         )
         
-        assert result.pnl < 0
+        assert result['pnl'] < 0
     
     def test_index_pnl(self):
         """Test index P&L calculation."""
@@ -223,8 +223,8 @@ class TestPnLEngine:
             trade_direction='buy'
         )
         
-        assert result.pnl > 0
-        assert result.points == 50.0
+        assert result['pnl'] > 0
+        assert result['points'] == 50.0
     
     def test_commodity_pnl(self):
         """Test commodity (gold) P&L calculation."""
@@ -239,7 +239,7 @@ class TestPnLEngine:
             trade_direction='buy'
         )
         
-        assert result.pnl > 0
+        assert result['pnl'] > 0
     
     def test_crypto_pnl(self):
         """Test crypto P&L calculation."""
@@ -254,7 +254,7 @@ class TestPnLEngine:
             trade_direction='buy'
         )
         
-        assert result.pnl == 500.0
+        assert result['pnl'] == 500.0
     
     def test_stock_pnl(self):
         """Test stock P&L calculation."""
@@ -269,8 +269,8 @@ class TestPnLEngine:
             trade_direction='buy'
         )
         
-        assert result.pnl == 500.0
-        assert result.details['pct_return'] == pytest.approx(3.33, rel=0.1)
+        assert result['pnl'] == 500.0
+        assert result['details']['pct_return'] == pytest.approx(3.33, rel=0.1)
     
     def test_pip_value_calculation(self):
         """Test pip value calculation."""

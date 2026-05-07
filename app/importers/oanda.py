@@ -244,7 +244,7 @@ class OANDAImporter(BaseImporter):
         tp = float(tp_order.get('price', 0)) if tp_order else None
         
         state = trade_data.get('state', 'CLOSED')
-        status = 'open' if state == 'OPEN' else 'closed'
+        status = 'OPEN' if state == 'OPEN' else 'CLOSED'
         
         return TradeRecord(
             broker_ticket=trade_id,

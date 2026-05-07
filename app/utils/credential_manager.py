@@ -17,7 +17,7 @@ except Exception:
 
 def _get_cipher():
     """Get or create the encryption cipher key from environment."""
-    # Priority: explicit env var -> HashiCorp Vault -> AWS Secrets Manager -> generate dev key
+    # Priority: explicit env var -> HashiCorp Vault -> AWS Secrets Manager
     key = os.environ.get('CREDENTIAL_ENCRYPTION_KEY')
     if key:
         return Fernet(key if isinstance(key, bytes) else key.encode())
@@ -64,10 +64,10 @@ def _get_cipher():
         except Exception:
             pass
 
-    # Fallback: generate a development key (do not use in production)
-    key = Fernet.generate_key().decode()
-    os.environ['CREDENTIAL_ENCRYPTION_KEY'] = key
-    return Fernet(key if isinstance(key, bytes) else key.encode())
+    raise RuntimeError(
+        "Credential encryption is not configured. Set CREDENTIAL_ENCRYPTION_KEY "
+        "or configure Vault/AWS Secrets Manager."
+    )
 
 
 def bootstrap_secrets():

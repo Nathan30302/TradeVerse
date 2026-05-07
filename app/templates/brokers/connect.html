@@ -123,6 +123,14 @@
 </div>
 
 <script>
+function clearEl(el){ if(el) el.textContent=''; }
+function el(tag, className, text){
+    const n = document.createElement(tag);
+    if(className) n.className = className;
+    if(typeof text !== 'undefined') n.textContent = String(text);
+    return n;
+}
+
 document.getElementById('connectForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -130,7 +138,7 @@ document.getElementById('connectForm').addEventListener('submit', async function
     const resultDiv = document.getElementById('resultMessage');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Connecting...';
+    btn.textContent = 'Connecting...';
     resultDiv.style.display = 'none';
     
     const formData = new FormData(this);
@@ -158,22 +166,31 @@ document.getElementById('connectForm').addEventListener('submit', async function
         
         if (data.success) {
             resultDiv.className = 'mt-4 alert alert-success';
-            resultDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>' + data.message + 
-                '<br><a href="{{ url_for('brokers.broker_settings_page') }}" class="alert-link">Return to broker settings</a>';
+            clearEl(resultDiv);
+            resultDiv.appendChild(el('i', 'fas fa-check-circle me-2'));
+            resultDiv.appendChild(document.createTextNode(data.message || 'Connected.'));
+            resultDiv.appendChild(document.createElement('br'));
+            const a = el('a', 'alert-link', 'Return to broker settings');
+            a.href = "{{ url_for('brokers.broker_settings_page') }}";
+            resultDiv.appendChild(a);
         } else {
             resultDiv.className = 'mt-4 alert alert-danger';
-            resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + (data.error || 'Connection failed');
+            clearEl(resultDiv);
+            resultDiv.appendChild(el('i', 'fas fa-exclamation-circle me-2'));
+            resultDiv.appendChild(document.createTextNode(data.error || 'Connection failed'));
         }
         resultDiv.style.display = 'block';
         
     } catch (err) {
         resultDiv.className = 'mt-4 alert alert-danger';
-        resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Error: ' + err.message;
+        clearEl(resultDiv);
+        resultDiv.appendChild(el('i', 'fas fa-exclamation-circle me-2'));
+        resultDiv.appendChild(document.createTextNode('Error: ' + err.message));
         resultDiv.style.display = 'block';
     }
     
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-plug me-2"></i>Connect {{ broker.name }}';
+    btn.textContent = 'Connect {{ broker.name }}';
 });
 </script>
 {% endblock %}

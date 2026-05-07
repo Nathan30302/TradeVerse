@@ -362,7 +362,13 @@
                             </thead>
                             <tbody>
                                 {% for trade in recent_trades %}
-                                <tr onclick="window.location.href=`{{ url_for('trade.view', trade_id=trade.id) }}`;" style="cursor: pointer;"></tr>
+                                <tr
+                                    role="link"
+                                    tabindex="0"
+                                    onclick="window.location.href='{{ url_for('trade.view', trade_id=trade.id) }}';"
+                                    onkeydown="if(event.key==='Enter' || event.key===' '){ event.preventDefault(); window.location.href='{{ url_for('trade.view', trade_id=trade.id) }}'; }"
+                                    style="cursor: pointer;"
+                                >
                                     <td>{{ trade.entry_date | datetime('%m/%d %H:%M') }}</td>
                                     <td><strong>{{ trade.symbol }}</strong></td>
                                     <td>
@@ -740,8 +746,8 @@
             animateNumber(tradesEl, Math.max(0, Math.round(initTrades * 0.6)), initTrades, 700);
         }
 
-        setTimeout(refreshMiniBoard, 1000);
-        setInterval(refreshMiniBoard, 5000);
+        setTimeout(refreshMiniBoard, 1200);
+        setInterval(refreshMiniBoard, 15000);
     });
 
 }());
