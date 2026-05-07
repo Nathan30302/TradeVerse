@@ -32,6 +32,13 @@ def create_app(config_name='default'):
     # Load configuration
     app.config.from_object(config[config_name])
 
+    # Production hardening: require env-managed secrets (no fallbacks).
+    if config_name == 'production':
+        if not app.config.get('SECRET_KEY'):
+            raise RuntimeError("SECRET_KEY must be set in production.")
+        if not os.environ.get('DATABASE_URL'):
+            raise RuntimeError("DATABASE_URL must be set in production.")
+
     # Ensure instance folder exists (skip on read-only filesystems)
     try:
         os.makedirs(app.instance_path)
@@ -71,77 +78,15 @@ def create_app(config_name='default'):
         @login_manager.user_loader
         def load_user(user_id):
             return db.session.get(user.User, int(user_id))
-        
-        # Create database tables
-        db.create_all()
-        
-        # Seed instruments from EXNESS catalog on startup
-        _seed_instruments(app)
-        
-        from sqlalchemy import inspect, text, or_
-        url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        is_sqlite = url and url.startswith('sqlite')
-        
-        if is_sqlite:
+
+        # Seed instruments from EXNESS catalog on startup (dev/test only).
+        # Schema is managed by Alembic migrations; if the DB hasn't been upgraded yet,
+        # skip seeding rather than mutating schema at runtime.
+        if config_name != 'production' and os.environ.get('SEED_INSTRUMENTS', '1') == '1':
             try:
-                inspector = inspect(db.engine)
-                
-                # Add missing trade_plans columns
-                if 'trade_plans' in inspector.get_table_names():
-                    tp_cols = [c['name'] for c in inspector.get_columns('trade_plans')]
-                    if 'executed' not in tp_cols:
-                        try:
-                            db.session.execute(text('ALTER TABLE trade_plans ADD COLUMN executed BOOLEAN NOT NULL DEFAULT 0'))
-                            db.session.execute(text('ALTER TABLE trade_plans ADD COLUMN executed_trade_id INTEGER'))
-                            db.session.commit()
-                        except Exception as e:
-                            print(f"[AUTO-MIGRATE] Could not add trade_plans.executed: {e}")
-                            db.session.rollback()
-                
-                # Add missing users subscription/billing columns
-                if 'users' in inspector.get_table_names():
-                    user_cols = {c['name'] for c in inspector.get_columns('users')}
-                    required_cols = {
-                        'subscription_tier': "VARCHAR(20) DEFAULT 'free'",
-                        'subscription_status': "VARCHAR(20) DEFAULT 'active'",
-                        'trial_ends_at': 'DATETIME',
-                        'subscription_expires_at': 'DATETIME',
-                        'stripe_customer_id': 'VARCHAR(255)'
-                    }
-                    
-                    for col_name, col_def in required_cols.items():
-                        if col_name not in user_cols:
-                            try:
-                                db.session.execute(text(f'ALTER TABLE users ADD COLUMN {col_name} {col_def}'))
-                                db.session.commit()
-                                print(f"[AUTO-MIGRATE] Added users.{col_name}")
-                            except Exception as e:
-                                print(f"[AUTO-MIGRATE] Could not add users.{col_name}: {e}")
-                                db.session.rollback()
-                            
-                            # Reset all users to fresh 90-day trial (safe idempotent - only expired/null)
-                            from datetime import timedelta
-                            from app.models.user import User
-                            expired_users = User.query.filter(
-                                or_(
-                                    User.trial_ends_at.is_(None),
-                                    User.trial_ends_at < db.func.now()
-                                )
-                            ).all()
-                            reset_count = 0
-                            for user in expired_users:
-                                user.subscription_tier = 'free'
-                                user.subscription_status = 'active'
-                                user.trial_ends_at = user.created_at + timedelta(days=90)
-                                reset_count += 1
-                            if reset_count > 0:
-                                db.session.commit()
-                                print(f"[TRIAL-FIX] Reset {reset_count} users to 90-day trial from created_at")
-                            else:
-                                print("[TRIAL-FIX] All users have active trials")
+                _seed_instruments(app)
             except Exception as e:
-                print(f"[AUTO-MIGRATE] Error: {e}")
-                db.session.rollback()
+                app.logger.debug(f"Instrument seeding skipped (DB not ready?): {e}")
     
     # Register blueprints (routes)
     from app.routes import auth, main, trade as trade_routes, dashboard
@@ -182,6 +127,8 @@ def create_app(config_name='default'):
     # Build FTS index on first request (delayed startup)
     @app.before_request
     def _build_fts_once():
+        if not app.config.get('ENABLE_FTS_BUILD', True):
+            return
         if not hasattr(app, '_fts_built'):
             try:
                 from app.models.instrument_fts import build_fts_index

@@ -287,7 +287,7 @@ class BinanceImporter(BaseImporter):
             exit_date=trade_time,
             profit_loss=realized_pnl,
             commission=commission,
-            status='closed',
+            status='CLOSED',
             raw_data=trade_data
         )
     

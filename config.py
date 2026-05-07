@@ -192,6 +192,9 @@ class Config:
     # Quote rotation interval in milliseconds (30 seconds)
     QUOTE_ROTATION_INTERVAL = 30000
 
+    # Performance toggles
+    ENABLE_FTS_BUILD = True
+
 class DevelopmentConfig(Config):
     """Development environment configuration"""
     DEBUG = True
@@ -203,23 +206,19 @@ class ProductionConfig(Config):
     SESSION_COOKIE_SECURE = True  # Require HTTPS
     SQLALCHEMY_ECHO = False
     
-    # Secret key must be provided via environment variable
+    # Secrets MUST be provided via environment variables in production.
     SECRET_KEY = os.environ.get('SECRET_KEY')
-    if not SECRET_KEY:
-        # Fallback for first deployment only, should be overridden immediately
-        SECRET_KEY = 'prod-key-change-me-immediately'
     
-    # Database must be provided via environment variable (Render PostgreSQL)
-    # Render provides DATABASE_URL, but it might be suspended
-    DATABASE_URL = os.environ.get('DATABASE_URL')
-    if DATABASE_URL:
-        # Fix URL scheme for SQLAlchemy 2.0 compatibility
-        if DATABASE_URL.startswith('postgres://'):
-            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-        SQLALCHEMY_DATABASE_URI = DATABASE_URL
-    else:
-        # Fallback to SQLite for local testing
-        SQLALCHEMY_DATABASE_URI = 'sqlite:///tradeverse.db'
+    # Database MUST be provided via environment variable in production.
+    SQLALCHEMY_DATABASE_URI = fix_database_url(os.environ.get('DATABASE_URL'))
+
+    # Cookie hardening (HTTPS-only in production)
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
+    # Avoid expensive runtime index builds in production.
+    ENABLE_FTS_BUILD = False
     
     # Use /tmp for ephemeral file uploads in cloud environments
     UPLOAD_FOLDER = '/tmp/uploads'

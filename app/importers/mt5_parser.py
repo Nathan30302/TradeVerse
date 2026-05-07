@@ -263,7 +263,7 @@ class MT5Parser(BaseImporter):
         swap = self._parse_float(get_value('swap')) or 0
         profit = self._parse_float(get_value('profit'))
         
-        status = 'closed' if exit_price or profit is not None else 'open'
+        status = 'CLOSED' if exit_price or profit is not None else 'OPEN'
         
         return TradeRecord(
             broker_ticket=ticket,

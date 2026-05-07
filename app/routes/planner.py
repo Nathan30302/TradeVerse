@@ -233,6 +233,8 @@ def start_execution(plan_id):
         lot_size    = _safe_float(request.form.get('lot_size'),    plan.planned_lot_size or 1.0)
         strategy    = request.form.get('strategy') or plan.strategy or ''
         notes       = request.form.get('pre_trade_plan') or plan.pre_trade_notes or ''
+        exit_price  = _safe_float(request.form.get('exit_price'), None)
+        exit_date_s = (request.form.get('exit_date') or '').strip()
 
         trade = Trade(
             user_id=current_user.id,
@@ -270,14 +272,40 @@ def start_execution(plan_id):
         plan.executed = True
         plan.mark_as_executed()        # status='EXECUTED', executed_at=now
 
+        # Optional: if the user provided exit details at execution time, close immediately.
+        if exit_price is not None:
+            trade.exit_price = exit_price
+            if exit_date_s:
+                try:
+                    trade.exit_date = datetime.fromisoformat(exit_date_s)
+                    if trade.exit_date.tzinfo is None:
+                        trade.exit_date = trade.exit_date.replace(tzinfo=timezone.utc)
+                except Exception:
+                    trade.exit_date = datetime.now(timezone.utc)
+            else:
+                trade.exit_date = datetime.now(timezone.utc)
+
+            trade.status = 'CLOSED'
+            try:
+                trade.calculate_pnl()
+            except Exception:
+                pass
+
+            plan.actual_exit = trade.exit_price
+            plan.actual_pnl = trade.profit_loss
+            plan.mark_as_reviewed()
+
         db.session.commit()
 
-        flash(
-            '✅ Trade created and marked as Executed. '
-            'It now appears in My Trades (status: OPEN). '
-            'Complete the review when you close it.',
-            'success'
-        )
+        if trade.status == 'CLOSED':
+            flash('✅ Trade created and closed. Plan marked as Reviewed.', 'success')
+        else:
+            flash(
+                '✅ Trade created and marked as Executed. '
+                'It now appears in My Trades (status: OPEN). '
+                'Complete the review when you close it.',
+                'success'
+            )
         return redirect(url_for('trade.view', trade_id=trade.id))
 
     except Exception as exc:
@@ -495,7 +523,7 @@ def review_trade(trade_id):
 @bp.route('/api/calculate-pnl', methods=['POST'])
 @login_required
 def api_calculate_pnl():
-    from app.utils.pnl_calculator import calculate_pnl
+    from app.services.pnl import calculate_trade_pnl
     try:
         data        = request.get_json() or {}
         symbol      = data.get('symbol', '').upper().strip()
@@ -507,7 +535,7 @@ def api_calculate_pnl():
         if not all([symbol, entry_price, exit_price, lot_size]):
             return jsonify({'error': 'Missing required fields'}), 400
 
-        pnl, pips, asset_desc = calculate_pnl(
+        pnl, pips, method = calculate_trade_pnl(
             symbol=symbol,
             trade_type=trade_type,
             entry_price=entry_price,
@@ -518,7 +546,7 @@ def api_calculate_pnl():
             'success':    True,
             'pnl':        round(pnl, 2),
             'pips':       round(pips, 1),
-            'asset_type': asset_desc,
+            'asset_type': method,
         })
 
     except Exception as exc:

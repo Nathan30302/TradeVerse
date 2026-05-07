@@ -45,19 +45,19 @@
 }
 
 /* Dark theme support */
-:root.dark .category-tab {
+body[data-theme="dark"] .category-tab {
     background-color: #2a2a2a;
     border-color: #444444;
     color: #e0e0e0;
 }
 
-:root.dark .category-tab:hover {
+body[data-theme="dark"] .category-tab:hover {
     border-color: #5dade2;
     background-color: rgba(93, 173, 226, 0.1);
     color: #5dade2;
 }
 
-:root.dark .category-tab.active {
+body[data-theme="dark"] .category-tab.active {
     border-color: #5dade2;
     background-color: #5dade2;
     color: white;
@@ -135,28 +135,28 @@
 }
 
 /* Dark theme for instruments */
-:root.dark .instrument-item {
+body[data-theme="dark"] .instrument-item {
     background-color: #2a2a2a;
     border-color: #444444;
     color: #e0e0e0;
 }
 
-:root.dark .instrument-item:hover {
+body[data-theme="dark"] .instrument-item:hover {
     border-color: #5dade2;
     background-color: #3a3a3a;
 }
 
-:root.dark .instrument-item.selected {
+body[data-theme="dark"] .instrument-item.selected {
     border-color: #198754;
     background-color: #1a3a2e;
     color: #198754;
 }
 
-:root.dark .instrument-symbol {
+body[data-theme="dark"] .instrument-symbol {
     color: #ffffff;
 }
 
-:root.dark .instrument-name {
+body[data-theme="dark"] .instrument-name {
     color: #b0b0b0;
 }
 
@@ -176,12 +176,12 @@
 }
 
 /* Dark theme for selected display */
-:root.dark .selected-instrument {
+body[data-theme="dark"] .selected-instrument {
     background-color: #2a2a2a;
     color: #e0e0e0;
 }
 
-:root.dark .selected-instrument strong {
+body[data-theme="dark"] .selected-instrument strong {
     color: #40c057;
 }
 

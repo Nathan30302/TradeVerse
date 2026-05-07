@@ -81,30 +81,15 @@ def calculate_pnl():
         if not instrument:
             return jsonify({'error': 'Instrument not found'}), 404
         
-        # Create calculator
-        from app.services.pnl_calculator_advanced import PnLCalculator, InstrumentType
-        
-        # Map instrument type string to enum
-        type_map = {
-            'forex': InstrumentType.FOREX,
-            'index': InstrumentType.INDEX,
-            'crypto': InstrumentType.CRYPTO,
-            'stock': InstrumentType.STOCK,
-            'commodity': InstrumentType.COMMODITY
-        }
-        
-        inst_type = type_map.get(instrument.instrument_type, InstrumentType.FOREX)
-        
-        calculator = PnLCalculator(
-            instrument_type=inst_type,
-            pip_size=instrument.pip_size,
-            tick_value=instrument.tick_value,
-            contract_size=instrument.contract_size
-        )
-        
-        # Calculate P&L
-        pnl, pips_or_points = calculator.calculate_pnl(
-            entry_price, exit_price, lot_size, trade_type
+        # Single source of truth: use the same Exness-style calculator used for persisted trades.
+        from app.services.pnl import calculate_trade_pnl
+
+        pnl, pips_or_points, _method = calculate_trade_pnl(
+            symbol=instrument.symbol,
+            trade_type=trade_type,
+            entry_price=entry_price,
+            exit_price=exit_price,
+            lot_size=lot_size,
         )
         
         return jsonify({

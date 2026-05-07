@@ -99,6 +99,14 @@
 let selectedBroker = '{{ selected_broker }}';
 let selectedMethod = '{{ selected_method }}';
 
+function clearEl(el){ if(el) el.textContent = ''; }
+function el(tag, className, text){
+    const n = document.createElement(tag);
+    if(className) n.className = className;
+    if(typeof text !== 'undefined') n.textContent = String(text);
+    return n;
+}
+
 function selectBroker(brokerId, apiSupported) {
     selectedBroker = brokerId;
     
@@ -138,45 +146,58 @@ function selectMethod(method) {
                 if (data.success) {
                     const conn = data.connections.find(c => c.broker_id === selectedBroker);
                     if (conn) {
-                        executeContent.innerHTML = `
-                            <div class="alert alert-success">
-                                <i class="fas fa-check-circle me-2"></i>
-                                You have an existing connection to this broker.
-                            </div>
-                            <p>Account: <strong>${conn.nickname || conn.account_id || 'Unknown'}</strong></p>
-                            <button type="button" class="btn btn-primary" onclick="startAPIImport(${conn.id})">
-                                <i class="fas fa-download me-2"></i>Import Trades Now
-                            </button>
-                        `;
+                        clearEl(executeContent);
+                        const alert = el('div', 'alert alert-success');
+                        const icon = el('i', 'fas fa-check-circle me-2');
+                        alert.appendChild(icon);
+                        alert.appendChild(document.createTextNode('You have an existing connection to this broker.'));
+                        executeContent.appendChild(alert);
+
+                        const p = el('p');
+                        p.appendChild(document.createTextNode('Account: '));
+                        const strong = el('strong', null, conn.nickname || conn.account_id || 'Unknown');
+                        p.appendChild(strong);
+                        executeContent.appendChild(p);
+
+                        const btn = el('button', 'btn btn-primary');
+                        btn.type = 'button';
+                        const dli = el('i', 'fas fa-download me-2');
+                        btn.appendChild(dli);
+                        btn.appendChild(document.createTextNode('Import Trades Now'));
+                        btn.addEventListener('click', () => startAPIImport(conn.id));
+                        executeContent.appendChild(btn);
                     } else {
-                        executeContent.innerHTML = `
-                            <p>You need to connect your broker first to use API imports.</p>
-                            <a href="/brokers/connect/${selectedBroker}" class="btn btn-primary">
-                                <i class="fas fa-plug me-2"></i>Connect Broker
-                            </a>
-                        `;
+                        clearEl(executeContent);
+                        executeContent.appendChild(el('p', null, 'You need to connect your broker first to use API imports.'));
+                        const a = el('a', 'btn btn-primary');
+                        a.href = `/brokers/connect/${encodeURIComponent(selectedBroker)}`;
+                        const pi = el('i', 'fas fa-plug me-2');
+                        a.appendChild(pi);
+                        a.appendChild(document.createTextNode('Connect Broker'));
+                        executeContent.appendChild(a);
                     }
                 }
             });
     } else {
         step3Title.textContent = 'Upload File';
-        executeContent.innerHTML = `
-            <p>Upload your trade history file:</p>
-            <a href="/imports/upload?broker=${selectedBroker}" class="btn btn-primary">
-                <i class="fas fa-file-upload me-2"></i>Go to File Upload
-            </a>
-        `;
+        clearEl(executeContent);
+        executeContent.appendChild(el('p', null, 'Upload your trade history file:'));
+        const a = el('a', 'btn btn-primary');
+        a.href = `/imports/upload?broker=${encodeURIComponent(selectedBroker)}`;
+        const fi = el('i', 'fas fa-file-upload me-2');
+        a.appendChild(fi);
+        a.appendChild(document.createTextNode('Go to File Upload'));
+        executeContent.appendChild(a);
     }
 }
 
 async function startAPIImport(credentialId) {
     const executeContent = document.getElementById('executeContent');
-    executeContent.innerHTML = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary mb-3"></div>
-            <p>Importing trades from broker API...</p>
-        </div>
-    `;
+    clearEl(executeContent);
+    const wrap = el('div', 'text-center py-4');
+    wrap.appendChild(el('div', 'spinner-border text-primary mb-3'));
+    wrap.appendChild(el('p', null, 'Importing trades from broker API...'));
+    executeContent.appendChild(wrap);
     
     try {
         const response = await fetch(`/imports/api-import/${credentialId}`, {
@@ -188,40 +209,48 @@ async function startAPIImport(credentialId) {
         const data = await response.json();
         
         if (data.success) {
-            executeContent.innerHTML = `
-                <div class="alert alert-success">
-                    <h5><i class="fas fa-check-circle me-2"></i>Import Complete!</h5>
-                    <p class="mb-0">${data.message}</p>
-                </div>
-                <div class="row text-center mb-3">
-                    <div class="col-4">
-                        <h4 class="text-success">${data.trades_imported}</h4>
-                        <small>Imported</small>
-                    </div>
-                    <div class="col-4">
-                        <h4 class="text-warning">${data.trades_skipped}</h4>
-                        <small>Skipped</small>
-                    </div>
-                    <div class="col-4">
-                        <h4 class="text-danger">${data.trades_failed || 0}</h4>
-                        <small>Failed</small>
-                    </div>
-                </div>
-                <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
-            `;
+            clearEl(executeContent);
+            const alert = el('div', 'alert alert-success');
+            const h5 = el('h5');
+            h5.appendChild(el('i', 'fas fa-check-circle me-2'));
+            h5.appendChild(document.createTextNode('Import Complete!'));
+            alert.appendChild(h5);
+            alert.appendChild(el('p', 'mb-0', data.message || 'Import completed.'));
+            executeContent.appendChild(alert);
+
+            const row = el('div', 'row text-center mb-3');
+            const mkCol = (numClass, value, label) => {
+                const c = el('div', 'col-4');
+                c.appendChild(el('h4', numClass, String(value)));
+                c.appendChild(el('small', null, label));
+                return c;
+            };
+            row.appendChild(mkCol('text-success', data.trades_imported || 0, 'Imported'));
+            row.appendChild(mkCol('text-warning', data.trades_skipped || 0, 'Skipped'));
+            row.appendChild(mkCol('text-danger', data.trades_failed || 0, 'Failed'));
+            executeContent.appendChild(row);
+
+            const a = el('a', 'btn btn-primary', 'Go to Dashboard');
+            a.href = '/dashboard';
+            executeContent.appendChild(a);
         } else {
-            executeContent.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>${data.error || 'Import failed'}
-                </div>
-                <button type="button" class="btn btn-secondary" onclick="location.reload()">Try Again</button>
-            `;
+            clearEl(executeContent);
+            const alert = el('div', 'alert alert-danger');
+            alert.appendChild(el('i', 'fas fa-exclamation-circle me-2'));
+            alert.appendChild(document.createTextNode(data.error || 'Import failed'));
+            executeContent.appendChild(alert);
+            const btn = el('button', 'btn btn-secondary', 'Try Again');
+            btn.type = 'button';
+            btn.addEventListener('click', () => location.reload());
+            executeContent.appendChild(btn);
         }
     } catch (err) {
-        executeContent.innerHTML = `
-            <div class="alert alert-danger">Error: ${err.message}</div>
-            <button type="button" class="btn btn-secondary" onclick="location.reload()">Try Again</button>
-        `;
+        clearEl(executeContent);
+        executeContent.appendChild(el('div', 'alert alert-danger', `Error: ${err.message}`));
+        const btn = el('button', 'btn btn-secondary', 'Try Again');
+        btn.type = 'button';
+        btn.addEventListener('click', () => location.reload());
+        executeContent.appendChild(btn);
     }
 }
 

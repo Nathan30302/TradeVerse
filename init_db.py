@@ -5,6 +5,7 @@ Initialize the database
 
 import os
 from app import create_app, db
+from flask_migrate import upgrade
 
 app = create_app(os.getenv('FLASK_ENV') or 'development')
 
@@ -16,5 +17,5 @@ with app.app_context():
     from app.models.trade_feedback import TradeFeedback
     from app.models.cooldown import Cooldown
 
-    db.create_all()
-    print('✅ Database initialized successfully!')
+    upgrade()
+    print('✅ Database upgraded successfully (Alembic)!')

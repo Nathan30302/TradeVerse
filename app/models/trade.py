@@ -129,11 +129,9 @@ class Trade(db.Model):
             return None
         
         try:
-            # Lazy import to avoid circular import
-            from app.services.exness_pnl_calculator import calculate_pnl as exness_calculate_pnl
-            
-            # Use Exness-style P&L calculator with category-specific formulas
-            pnl, pips, method = exness_calculate_pnl(
+            from app.services.pnl import calculate_trade_pnl
+
+            pnl, pips, _method = calculate_trade_pnl(
                 symbol=self.symbol,
                 trade_type=self.trade_type,
                 entry_price=self.entry_price,

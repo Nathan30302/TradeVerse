@@ -3,9 +3,8 @@ Admin Routes
 Owner-only stats and administration page
 """
 
-from flask import Blueprint, render_template, request, abort
-from flask_login import login_required, current_user
-from app import db
+from flask import Blueprint, render_template, abort, current_app
+from flask_login import current_user
 from app.models.user import User
 from app.models.trade import Trade
 from datetime import datetime, timedelta
@@ -13,26 +12,15 @@ import os
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-def is_admin():
-    """Check if the current user is the owner via admin token"""
-    admin_token = os.environ.get('ADMIN_TOKEN')
-    # If no admin token configured, deny access
-    if not admin_token:
-        return False
-    # Check if user has admin_token in session (set after验证)
-    return request.session.get('is_admin', False)
-
 def require_admin_token(f):
-    """Decorator to require valid admin token"""
+    """
+    Admin is intentionally disabled until proper RBAC is implemented.
+    This avoids insecure query-param/token based access control.
+    """
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        admin_token = os.environ.get('ADMIN_TOKEN')
-        # Get token from query param or header
-        token = request.args.get('admin_token') or request.headers.get('X-Admin-Token')
-        if token != admin_token:
-            abort(403)
-        return f(*args, **kwargs)
+        abort(404)
     return decorated_function
 
 @bp.route('/stats')
