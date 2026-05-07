@@ -2097,8 +2097,10 @@
 
                 const chg = document.createElement('span');
                 chg.className = `instrument-change ${changeClass}`;
-                const v = Number(it.change || 0);
-                chg.textContent = `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+                const v = Number(it.change);
+                const safeV = (Number.isFinite(v) ? v : 0);
+                const arrow = safeV >= 0 ? '▲' : '▼';
+                chg.textContent = `${arrow} ${safeV >= 0 ? '+' : ''}${safeV.toFixed(2)}%`;
 
                 slot.appendChild(iconWrap);
                 slot.appendChild(sym);
@@ -2239,7 +2241,7 @@
                         topEl.classList.add('di-update');
                         setTimeout(()=>topEl.classList.remove('di-update'), 900);
                     }
-                }catch(e){ console.log('island update error (silent)'); updateIslandFallback(); }
+                }catch(e){ updateIslandFallback(); }
             }
 
             // Fallback: compute simple metrics if server unreachable
