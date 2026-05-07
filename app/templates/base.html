@@ -2362,7 +2362,8 @@
 
             async function fetchInstruments(){
                 try{
-                    const resp = await fetch('/api/db/instruments/quotes?limit=8');
+                    // Request hourly-ish data by default (server may still respond faster)
+                    const resp = await fetch('/api/db/instruments/quotes?limit=8&ttl_s=3600');
                     if(!resp.ok) return false;
                     const data = await resp.json();
                     if(data && data.quotes && data.quotes.length){
@@ -2376,6 +2377,13 @@
                             icon: (q.symbol||'').toLowerCase().includes('btc') ? 'fab fa-bitcoin' : 'fas fa-chart-line'
                         }));
                         lastQuotesAt = Date.now();
+                        // Update LIVE label tooltip with source transparency
+                        try{
+                            const liveIndicator = rotator ? rotator.querySelector('.live-indicator') : null;
+                            if(liveIndicator && data.source){
+                                liveIndicator.title = (data.is_live ? 'Live feed' : 'Simulated feed') + ' • source: ' + String(data.source);
+                            }
+                        }catch(e){}
                         return true;
                     }
                 }catch(e){ /* silent fallback */ }

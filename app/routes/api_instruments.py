@@ -364,6 +364,7 @@ def db_instrument_quotes():
     """Return trader-focused instruments for the Dynamic Island rotator (live quotes)."""
     from app.models.instrument import Instrument
     from app.services.market_data import get_quotes
+    import os
 
     trader_focused = ['BTCUSD', 'XAUUSD', 'NAS100', 'US30', 'US500', 'EURUSD']
     limit = min(int(request.args.get('limit', 6)), 10)
@@ -374,7 +375,32 @@ def db_instrument_quotes():
         inst_objs[i.symbol] = i
 
     symbols = trader_focused[:limit]
-    quotes = get_quotes(symbols, ttl_s=10)
+    # Use short TTL by default; the client decides refresh cadence.
+    ttl_s = min(int(request.args.get('ttl_s', 10)), 3600)
+    try:
+        quotes = get_quotes(symbols, ttl_s=ttl_s)
+        provider = (os.environ.get("MARKET_DATA_PROVIDER") or "twelvedata").lower()
+        is_live = True
+        # Heuristic: if no API key, provider will be simulated when allowed
+        if provider == "twelvedata" and not os.environ.get("TWELVEDATA_API_KEY"):
+            is_live = False
+    except Exception:
+        # Always return something usable for UI; mark as simulated so it’s transparent.
+        from app.services.simulated_market import market
+        quotes = []
+        sim = market.get_quotes(symbols)
+        for q in sim:
+            quotes.append(type("Q", (), {
+                "symbol": q["symbol"],
+                "name": q.get("name") or q["symbol"],
+                "price": float(q["price"]),
+                "open_price": None,
+                "prev_close": None,
+                "change_pct": float(q.get("change_pct") or 0.0),
+                "ts": 0.0,
+            })())
+        provider = "simulated"
+        is_live = False
 
     fallback_names = {
         'BTCUSD': 'Bitcoin', 'XAUUSD': 'Gold', 'NAS100': 'Nasdaq 100',
@@ -394,4 +420,4 @@ def db_instrument_quotes():
             'ts': q.ts,
         })
 
-    return jsonify({'success': True, 'quotes': out})
+    return jsonify({'success': True, 'quotes': out, 'source': provider, 'is_live': is_live})

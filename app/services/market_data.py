@@ -122,6 +122,7 @@ def get_quotes(symbols: List[str], *, ttl_s: int = 10) -> List[Quote]:
 
     provider = (os.environ.get("MARKET_DATA_PROVIDER") or "twelvedata").lower()
     is_production = (os.environ.get("FLASK_ENV") or "").lower() == "production"
+    allow_sim_fallback = (os.environ.get("MARKET_DATA_ALLOW_SIM_FALLBACK") or "").lower() in ("1", "true", "yes")
 
     out: List[Quote] = []
     missing: List[str] = []
@@ -136,9 +137,9 @@ def get_quotes(symbols: List[str], *, ttl_s: int = 10) -> List[Quote]:
         if provider == "twelvedata":
             api_key = os.environ.get("TWELVEDATA_API_KEY", "")
             if not api_key:
-                if is_production:
+                if is_production and not allow_sim_fallback:
                     raise RuntimeError("TWELVEDATA_API_KEY missing")
-                # dev fallback
+                # fallback (dev or explicitly allowed in prod)
                 from app.services.simulated_market import market
 
                 quotes = market.get_quotes(missing)
