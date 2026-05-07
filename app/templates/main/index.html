@@ -2,10 +2,96 @@
 
 {% block title %}{{ app_name }} - Professional Trading Journal{% endblock %}
 
+{% block extra_css %}
+<style>
+  /* Cinematic space hero */
+  .landing-hero {
+    position: relative;
+    border-radius: 28px;
+    overflow: hidden;
+    padding: 4.5rem 0;
+    background:
+      radial-gradient(1200px 600px at 15% 20%, rgba(99,102,241,0.20), transparent 60%),
+      radial-gradient(900px 500px at 85% 20%, rgba(16,185,129,0.14), transparent 55%),
+      linear-gradient(135deg, rgba(2,6,23,0.92), rgba(15,23,42,0.88)),
+      url("{{ url_for('static', filename='img/landing-space-hero.jpg') }}");
+    background-size: cover;
+    background-position: center right;
+    box-shadow: 0 22px 70px rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+
+  .landing-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 25% 25%, rgba(255,255,255,0.12), transparent 35%),
+      radial-gradient(circle at 70% 40%, rgba(255,255,255,0.08), transparent 40%),
+      linear-gradient(90deg, rgba(2,6,23,0.78) 0%, rgba(2,6,23,0.55) 45%, rgba(2,6,23,0.18) 100%);
+    pointer-events: none;
+  }
+
+  /* Tiny twinkling stars layer (subtle) */
+  .landing-hero::after {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    background-image:
+      radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.35) 40%, transparent 60%),
+      radial-gradient(1.5px 1.5px at 70% 20%, rgba(255,255,255,0.28) 40%, transparent 60%),
+      radial-gradient(1.5px 1.5px at 55% 65%, rgba(255,255,255,0.20) 40%, transparent 60%),
+      radial-gradient(1px 1px at 35% 80%, rgba(255,255,255,0.18) 40%, transparent 60%),
+      radial-gradient(1px 1px at 85% 70%, rgba(255,255,255,0.16) 40%, transparent 60%);
+    opacity: 0.55;
+    animation: tvTwinkle 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes tvTwinkle {
+    0%, 100% { opacity: 0.42; transform: translateY(0); }
+    50% { opacity: 0.70; transform: translateY(-6px); }
+  }
+
+  .landing-hero .hero-title,
+  .landing-hero .hero-subtitle {
+    color: rgba(255,255,255,0.96) !important;
+  }
+
+  .landing-hero .hero-subtitle {
+    color: rgba(226,232,240,0.80) !important;
+    max-width: 42rem;
+  }
+
+  .landing-hero .badge {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .landing-hero .hero-glass {
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 16px 50px rgba(0,0,0,0.35);
+  }
+
+  .landing-hero .trust-row {
+    color: rgba(226,232,240,0.90);
+  }
+
+  .landing-hero .trust-row .muted {
+    color: rgba(226,232,240,0.70);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Hero Section -->
 <div class="container mb-5">
-    <div class="row align-items-center">
+    <div class="landing-hero px-3 px-md-4">
+      <div class="row align-items-center position-relative" style="z-index: 1;">
         <div class="col-lg-7">
             <div class="hero-content">
                 <div class="d-flex align-items-center mb-3">
@@ -41,13 +127,13 @@
                 
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <div class="d-flex align-items-center text-success">
+                        <div class="d-flex align-items-center trust-row">
                             <i class="fas fa-check-circle me-2"></i>
                             <span class="fw-semibold">One-click plan execution</span>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="d-flex align-items-center text-primary">
+                        <div class="d-flex align-items-center trust-row">
                             <i class="fas fa-robot me-2"></i>
                             <span class="fw-semibold">AI-powered performance insights</span>
                         </div>
@@ -56,12 +142,11 @@
             </div>
         </div>
         <div class="col-lg-5">
-            <div class="card shadow-lg border-0" style="border-radius: 16px; overflow: hidden;">
-                <div class="card-body p-4">
+            <div class="hero-glass p-4 mt-4 mt-lg-0">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
                             <span class="badge bg-success-subtle text-success fw-semibold">Live</span>
-                            <span class="text-muted ms-2 small">Today's Performance</span>
+                            <span class="muted ms-2 small">Today's Performance</span>
                         </div>
                         <div class="dropdown">
                             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -98,11 +183,11 @@
                         <div class="progress" style="height: 8px;">
                             <div class="progress-bar bg-success" style="width: 65%"></div>
                         </div>
-                        <small class="text-muted">Monthly target: 65% complete</small>
+                        <small class="muted">Monthly target: 65% complete</small>
                     </div>
-                </div>
             </div>
         </div>
+      </div>
     </div>
 </div>
 
