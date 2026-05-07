@@ -14,9 +14,34 @@ from typing import Callable, Dict, Iterable, Optional, Set, TypeVar
 
 from flask import abort
 from flask_login import current_user
+import os
 
 T = TypeVar("T")
 
+def _parse_csv_env(name: str) -> Set[str]:
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return set()
+    return {p.strip().lower() for p in raw.split(",") if p.strip()}
+
+
+def is_owner_user(user) -> bool:
+    """
+    Secure owner bypass based on environment allowlist.
+
+    Configure ONE of:
+      - OWNER_EMAILS="owner@example.com,other@example.com"
+      - OWNER_USERNAMES="admin,founder"
+    """
+    if not user:
+        return False
+    owner_emails = _parse_csv_env("OWNER_EMAILS")
+    owner_usernames = _parse_csv_env("OWNER_USERNAMES")
+    if not owner_emails and not owner_usernames:
+        return False
+    email = (_safe_getattr(user, "email", None) or "").strip().lower()
+    username = (_safe_getattr(user, "username", None) or "").strip().lower()
+    return (email in owner_emails) or (username in owner_usernames)
 def _safe_getattr(user, name: str, default=None):
     try:
         return getattr(user, name, default)
@@ -89,7 +114,7 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     subscription_expires_at: Optional[datetime] = _safe_getattr(user, "subscription_expires_at", None)
 
     # Owner/admin bypass: full access without billing enforcement.
-    if role in {"owner"}:
+    if role in {"owner"} or is_owner_user(user):
         return SubscriptionState(tier="owner", status="active", is_active=True, trial_ends_at=None, subscription_expires_at=None)
 
     if tier == "free":

@@ -15,6 +15,7 @@ from sqlalchemy import func
 from app import db
 from app.models.user import User
 from app.models.trade import Trade
+from app.services.entitlements import is_owner_user
 
 bp = Blueprint("owner_admin", __name__, url_prefix="/owner")
 
@@ -22,7 +23,7 @@ bp = Blueprint("owner_admin", __name__, url_prefix="/owner")
 def _require_owner():
     if not current_user.is_authenticated:
         abort(401)
-    if (getattr(current_user, "role", "user") or "user").lower() != "owner":
+    if (getattr(current_user, "role", "user") or "user").lower() != "owner" and not is_owner_user(current_user):
         abort(404)
 
 
@@ -36,15 +37,24 @@ def dashboard():
     closed_trades = Trade.query.filter(Trade.status == "CLOSED").count()
 
     by_tier = (
-        db.session.query(User.subscription_tier, func.count(User.id))
-        .group_by(User.subscription_tier)
-        .all()
+        []
     )
-    by_status = (
-        db.session.query(User.subscription_status, func.count(User.id))
-        .group_by(User.subscription_status)
-        .all()
-    )
+    by_status = []
+    try:
+        by_tier = (
+            db.session.query(User.subscription_tier, func.count(User.id))
+            .group_by(User.subscription_tier)
+            .all()
+        )
+        by_status = (
+            db.session.query(User.subscription_status, func.count(User.id))
+            .group_by(User.subscription_status)
+            .all()
+        )
+    except Exception:
+        # tolerate schema drift
+        by_tier = []
+        by_status = []
 
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     active_users_7d = (
