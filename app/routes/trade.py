@@ -402,7 +402,7 @@ def edit(trade_id):
         except Exception as e:
             db.session.rollback()
             flash(f'❌ Error updating trade: {str(e)}', 'danger')
-            print(f"Edit trade error: {e}")
+            current_app.logger.exception("Edit trade error")
     
     return render_template('trade/edit.html', trade=trade)
 
@@ -426,7 +426,7 @@ def delete(trade_id):
     except Exception as e:
         db.session.rollback()
         flash(f'❌ Error deleting trade: {str(e)}', 'danger')
-        print(f"Delete trade error: {e}")
+        current_app.logger.exception("Delete trade error")
     
     return redirect(url_for('trade.list'))
 
@@ -456,7 +456,7 @@ def close(trade_id):
     except Exception as e:
         db.session.rollback()
         flash(f'❌ Error closing trade: {str(e)}', 'danger')
-        print(f"Close trade error: {e}")
+        current_app.logger.exception("Close trade error")
     
     return redirect(url_for('trade.view', trade_id=trade.id))
 

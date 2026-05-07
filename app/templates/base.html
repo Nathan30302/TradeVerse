@@ -7,6 +7,21 @@
     <meta name="application-name" content="TradeVerse">
     <meta name="apple-mobile-web-app-title" content="TradeVerse">
     <meta name="theme-color" content="#0f172a">
+    {# SEO + Social sharing meta #}
+    {% set canonical_url = (request.url_root.rstrip('/') ~ request.path) if request else '' %}
+    {% if canonical_url %}
+    <link rel="canonical" href="{{ canonical_url }}">
+    {% endif %}
+    <meta property="og:site_name" content="{{ app_name }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{% block og_title %}{{ app_name }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}TradeVerse - Professional Trading Journal for Serious Traders{% endblock %}">
+    <meta property="og:url" content="{{ canonical_url }}">
+    <meta property="og:image" content="{{ url_for('static', filename='img/favicon.png', _external=True) }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}{{ app_name }}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}TradeVerse - Professional Trading Journal for Serious Traders{% endblock %}">
+    <meta name="twitter:image" content="{{ url_for('static', filename='img/favicon.png', _external=True) }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
     <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png') }}">

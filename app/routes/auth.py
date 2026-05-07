@@ -3,7 +3,7 @@ Authentication Routes
 User registration, login, logout, and profile management
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models.user import User
@@ -11,6 +11,8 @@ from datetime import datetime, timedelta, timezone
 import re
 from flask_mail import Message
 from app import mail
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 
 # Create Blueprint
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -120,7 +122,7 @@ def register():
         except Exception as e:
             db.session.rollback()
             flash('❌ An error occurred during registration. Please try again.', 'danger')
-            print(f"Registration error: {e}")
+            current_app.logger.exception("Registration error")
     
     return render_template('auth/register.html')
 
@@ -144,7 +146,26 @@ def login():
         remember = request.form.get('remember', False)
         
         # Find user
-        user = User.query.filter_by(username=username).first()
+        user = None
+        try:
+            user = User.query.filter_by(username=username).first()
+        except OperationalError:
+            # Backward-compatible auth path for partially-migrated DBs where ORM
+            # selects columns that don't exist yet (would otherwise 500).
+            current_app.logger.exception("Login ORM query failed; attempting compat SQL fallback")
+            row = db.session.execute(
+                text(
+                    "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
+                    "timezone, preferred_currency, theme "
+                    "FROM users WHERE username = :u LIMIT 1"
+                ),
+                {"u": username},
+            ).mappings().first()
+            if row:
+                u = User()
+                for k, v in row.items():
+                    setattr(u, k, v)
+                user = u
         
         # Validate credentials
         if user and user.check_password(password):
@@ -155,7 +176,11 @@ def login():
             
             # Log the user in
             login_user(user, remember=remember)
-            user.update_last_login()
+            try:
+                user.update_last_login()
+            except Exception:
+                # Never allow ancillary tracking to break login.
+                current_app.logger.debug("update_last_login failed; continuing", exc_info=True)
             
             flash(f'👋 Welcome back, {user.username}!', 'success')
             
@@ -217,7 +242,7 @@ def profile():
         except Exception as e:
             db.session.rollback()
             flash('❌ Error updating profile. Please try again.', 'danger')
-            print(f"Profile update error: {e}")
+            current_app.logger.exception("Profile update error")
         
         return redirect(url_for('auth.profile'))
     
@@ -254,7 +279,7 @@ def change_password():
             except Exception as e:
                 db.session.rollback()
                 flash('❌ Error changing password. Please try again.', 'danger')
-                print(f"Password change error: {e}")
+                current_app.logger.exception("Password change error")
     
     return render_template('auth/change_password.html')
 
@@ -303,5 +328,5 @@ def set_theme():
         return {'ok': True, 'theme': theme}
     except Exception as e:
         db.session.rollback()
-        print(f"set_theme error: {e}")
+        current_app.logger.exception("set_theme error")
         return {'ok': False, 'error': 'server_error'}, 500

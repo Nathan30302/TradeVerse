@@ -145,8 +145,8 @@ def subscribe(plan):
 
         # Redirect user to Stripe Checkout
         return redirect(session.url, code=303)
-    except Exception as e:
-        print(f"Subscription error: {e}")
+    except Exception:
+        current_app.logger.exception("Subscription checkout error")
         flash('❌ Error initiating payment. Please try again later.', 'danger')
         return redirect(url_for('monetization.pricing'))
 
@@ -198,7 +198,7 @@ def export_data():
             writer.writerow([
                 plan.name or '',
                 len(plan.trades) if plan.trades else 0,
-                len([t for t in plan.trades if t.status == 'closed']) if plan.trades else 0,
+                len([t for t in plan.trades if (t.status or '').upper() == 'CLOSED']) if plan.trades else 0,
                 plan.status or '',
                 plan.created_at.strftime('%Y-%m-%d') if plan.created_at else '',
                 plan.updated_at.strftime('%Y-%m-%d') if plan.updated_at else ''
@@ -219,7 +219,7 @@ def export_data():
     
     except Exception as e:
         flash(f'❌ Error exporting data: {str(e)}', 'danger')
-        print(f"Export error: {e}")
+        current_app.logger.exception("Export data error")
         return redirect(url_for('dashboard.index'))
 
 
@@ -233,7 +233,7 @@ def trial_info():
     
     Shows remaining trial days and upgrade options
     """
-    trial_days = 90
+    trial_days = 60
     days_used = (datetime.now() - current_user.created_at).days
     days_remaining = max(0, trial_days - days_used)
     trial_percent = min(100, (days_used / trial_days) * 100)
