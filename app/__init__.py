@@ -77,7 +77,34 @@ def create_app(config_name='default'):
         # User loader callback for Flask-Login
         @login_manager.user_loader
         def load_user(user_id):
-            return db.session.get(user.User, int(user_id))
+            try:
+                return db.session.get(user.User, int(user_id))
+            except Exception:
+                # Protect active sessions if DB is in a partial-migration state where
+                # ORM selects columns that don't exist yet.
+                app.logger.warning("load_user ORM failed (likely schema drift); using compat fallback", exc_info=True)
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+                try:
+                    row = db.session.execute(
+                        db.text(
+                            "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
+                            "timezone, preferred_currency, theme "
+                            "FROM users WHERE id = :id LIMIT 1"
+                        ),
+                        {"id": int(user_id)},
+                    ).mappings().first()
+                    if not row:
+                        return None
+                    u = user.User()
+                    for k, v in row.items():
+                        setattr(u, k, v)
+                    return u
+                except Exception:
+                    app.logger.exception("load_user compat fallback failed")
+                    return None
 
         # Seed instruments from EXNESS catalog on startup (dev/test only).
         # Schema is managed by Alembic migrations; if the DB hasn't been upgraded yet,
