@@ -174,7 +174,7 @@ class PerformanceCalculator:
             week_number=self.week_start.isocalendar()[1],
             year=self.week_start.year,
             overall_score=0,
-            grade='N/A'
+            grade='NA'
         )
     
     def _calculate_rule_compliance(self):

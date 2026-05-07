@@ -80,6 +80,8 @@ class PerformanceScore(db.Model):
     @staticmethod
     def get_grade_color(grade):
         """Get Bootstrap color class for grade"""
+        if grade in {"NA", "N/A", None}:
+            return "secondary"
         colors = {
             'A+': 'success',
             'A': 'success',
