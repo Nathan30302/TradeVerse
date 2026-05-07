@@ -21,6 +21,13 @@ def _safe_getattr(user, name: str, default=None):
     try:
         return getattr(user, name, default)
     except Exception:
+        # If a deferred column is missing in the DB (schema drift), SQLAlchemy can
+        # abort the current transaction. Roll back to keep the request usable.
+        try:
+            from app import db
+            db.session.rollback()
+        except Exception:
+            pass
         return default
 
 
