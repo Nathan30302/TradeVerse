@@ -3,6 +3,10 @@ Dashboard Routes
 Analytics, statistics, and performance overview
 """
 
+from __future__ import annotations
+
+from typing import Optional
+
 from flask import Blueprint, render_template, jsonify, current_app, session
 from flask_login import login_required, current_user
 from app.models.trade import Trade
@@ -12,8 +16,9 @@ from app.services.performance_calculator import calculate_weekly_score, get_perf
 from app.services.pattern_detector import detect_patterns
 from app.services.emotion_analyzer import EmotionAnalyzer, analyze_emotions
 from app.services.ai_insights import AIAnalyzer
-from sqlalchemy import func, extract, or_
+from sqlalchemy import func, extract, or_, update
 from app import db
+from app.models.user import User
 from flask import request, flash, redirect, url_for
 from datetime import datetime, timedelta
 import random
@@ -623,6 +628,16 @@ def performance_history_api():
 
 # ==================== AI Buddy Dashboard ====================
 
+def _safe_same_site_redirect(target: Optional[str]):
+    """Allow only same-app relative paths (blocks open redirects)."""
+    t = (target or '').strip()
+    if not t:
+        return url_for('dashboard.index')
+    if t.startswith('/') and not t.startswith('//'):
+        return t
+    return url_for('dashboard.index')
+
+
 @bp.route('/onboarding/weekly-focus', methods=['POST'])
 @login_required
 def save_weekly_focus():
@@ -630,15 +645,23 @@ def save_weekly_focus():
     text = (request.form.get('weekly_focus') or '').strip()
     if len(text) > 4000:
         text = text[:4000]
-    next_url = request.form.get('next') or url_for('dashboard.index')
+    next_url = _safe_same_site_redirect(request.form.get('next'))
     try:
-        current_user.weekly_focus_rule = text if text else None
+        # Core UPDATE avoids deferred / load_only login edge cases on current_user.
+        db.session.execute(
+            update(User)
+            .where(User.id == current_user.id)
+            .values(weekly_focus_rule=text if text else None)
+        )
         db.session.commit()
         flash('Weekly focus saved. AI Buddy will use this as context.', 'success')
     except Exception as exc:
         db.session.rollback()
         current_app.logger.warning('save_weekly_focus failed: %s', exc)
-        flash('Could not save weekly focus. Try again.', 'danger')
+        flash(
+            'Could not save weekly focus. Run `flask db upgrade` if the database is missing the latest migrations.',
+            'danger',
+        )
     return redirect(next_url)
 
 

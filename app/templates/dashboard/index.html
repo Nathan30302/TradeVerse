@@ -144,6 +144,63 @@
 </div>
 
 {# ------------------------------------------------------------------ #}
+{# Rotating quote OR new-user quick-start (above Getting started)      #}
+{# ------------------------------------------------------------------ #}
+{% if stats.total_trades == 0 %}
+<div class="card border-0 mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <div class="card-body p-4">
+        <h4 class="mb-3"><i class="fas fa-rocket"></i> Welcome to TradeVerse!</h4>
+        <p class="mb-3">Get started with your trading journal in 3 easy steps:</p>
+        <div class="row text-center">
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="bg-white bg-opacity-10 rounded p-3">
+                    <div class="h2 mb-2">1</div>
+                    <strong>Plan Your Trade</strong>
+                    <p class="small mb-0 opacity-75">Use the Trade Planner to set your entry, SL, and TP</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="bg-white bg-opacity-10 rounded p-3">
+                    <div class="h2 mb-2">2</div>
+                    <strong>Log Your Trade</strong>
+                    <p class="small mb-0 opacity-75">Record what actually happened</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="bg-white bg-opacity-10 rounded p-3">
+                    <div class="h2 mb-2">3</div>
+                    <strong>Review &amp; Improve</strong>
+                    <p class="small mb-0 opacity-75">Learn from your patterns</p>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="{{ url_for('planner.new_plan') }}" class="btn btn-light btn-lg me-2">
+                <i class="fas fa-clipboard-list"></i> Create First Plan
+            </a>
+            <a href="{{ url_for('trade.add') }}" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-plus"></i> Log a Trade
+            </a>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="quote-container mb-4" id="quoteContainer">
+    <div class="quote-card">
+        <div class="quote-icon">
+            <i class="fas fa-lightbulb"></i>
+        </div>
+        <div class="quote-content">
+            <p class="quote-text" id="quoteText">{{ quote }}</p>
+            <div class="quote-progress">
+                <div class="quote-progress-bar" id="quoteProgressBar"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ------------------------------------------------------------------ #}
 {# Getting started checklist (hidden when complete)                   #}
 {# ------------------------------------------------------------------ #}
 {% set ob = onboarding if onboarding is defined else {} %}
@@ -210,63 +267,6 @@
                     </div>
                 </form>
             {% endif %}
-        </div>
-    </div>
-</div>
-{% endif %}
-
-{# ------------------------------------------------------------------ #}
-{# New-user quick-start OR rotating quote                             #}
-{# ------------------------------------------------------------------ #}
-{% if stats.total_trades == 0 %}
-<div class="card border-0 mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-    <div class="card-body p-4">
-        <h4 class="mb-3"><i class="fas fa-rocket"></i> Welcome to TradeVerse!</h4>
-        <p class="mb-3">Get started with your trading journal in 3 easy steps:</p>
-        <div class="row text-center">
-            <div class="col-md-4 mb-3 mb-md-0">
-                <div class="bg-white bg-opacity-10 rounded p-3">
-                    <div class="h2 mb-2">1</div>
-                    <strong>Plan Your Trade</strong>
-                    <p class="small mb-0 opacity-75">Use the Trade Planner to set your entry, SL, and TP</p>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3 mb-md-0">
-                <div class="bg-white bg-opacity-10 rounded p-3">
-                    <div class="h2 mb-2">2</div>
-                    <strong>Log Your Trade</strong>
-                    <p class="small mb-0 opacity-75">Record what actually happened</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="bg-white bg-opacity-10 rounded p-3">
-                    <div class="h2 mb-2">3</div>
-                    <strong>Review &amp; Improve</strong>
-                    <p class="small mb-0 opacity-75">Learn from your patterns</p>
-                </div>
-            </div>
-        </div>
-        <div class="text-center mt-4">
-            <a href="{{ url_for('planner.new_plan') }}" class="btn btn-light btn-lg me-2">
-                <i class="fas fa-clipboard-list"></i> Create First Plan
-            </a>
-            <a href="{{ url_for('trade.add') }}" class="btn btn-outline-light btn-lg">
-                <i class="fas fa-plus"></i> Log a Trade
-            </a>
-        </div>
-    </div>
-</div>
-{% else %}
-<div class="quote-container mb-4" id="quoteContainer">
-    <div class="quote-card">
-        <div class="quote-icon">
-            <i class="fas fa-lightbulb"></i>
-        </div>
-        <div class="quote-content">
-            <p class="quote-text" id="quoteText">{{ quote }}</p>
-            <div class="quote-progress">
-                <div class="quote-progress-bar" id="quoteProgressBar"></div>
-            </div>
         </div>
     </div>
 </div>
