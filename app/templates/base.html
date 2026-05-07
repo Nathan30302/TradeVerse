@@ -1620,6 +1620,11 @@
                         <div class="di-label">Top Move</div>
                         <div class="di-value" id="di-top">—</div>
                     </div>
+                    <div class="di-divider"></div>
+                    <div class="di-item">
+                        <div class="di-label">Updated</div>
+                        <div class="di-value" id="di-updated">—</div>
+                    </div>
                 </div>
             </div>
             
@@ -2181,6 +2186,7 @@
                     const activeEl = document.getElementById('di-active');
                     const volEl = document.getElementById('di-vol');
                     const topEl = document.getElementById('di-top');
+                    const upEl = document.getElementById('di-updated');
 
                     // Extract values from server response
                     const newPL = parseFloat(data.total_pnl || 0);
@@ -2245,6 +2251,15 @@
                         topEl.classList.add('di-update');
                         setTimeout(()=>topEl.classList.remove('di-update'), 900);
                     }
+
+                    if(upEl){
+                        const d = new Date();
+                        upEl.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        upEl.classList.remove('di-update');
+                        void upEl.offsetWidth;
+                        upEl.classList.add('di-update');
+                        setTimeout(()=>upEl.classList.remove('di-update'), 900);
+                    }
                 }catch(e){ updateIslandFallback(); }
             }
 
@@ -2285,6 +2300,14 @@
                     else topEl.textContent = '—';
                     topEl.classList.add('di-update');
                     setTimeout(()=>topEl.classList.remove('di-update'),900);
+                }
+
+                const upEl = document.getElementById('di-updated');
+                if(upEl){
+                    const d = new Date();
+                    upEl.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    upEl.classList.add('di-update');
+                    setTimeout(()=>upEl.classList.remove('di-update'),900);
                 }
             }
 

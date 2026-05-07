@@ -39,6 +39,48 @@
     {% endif %}
 </div>
 
+{% if request.args.get('review') %}
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #6366f1;">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+            <div>
+                <h5 class="mb-1"><i class="fas fa-clipboard-check me-2 text-primary"></i>Quick Post‑Trade Review</h5>
+                <div class="small text-muted">30 seconds. This feeds your Analytics and AI Buddy insights.</div>
+            </div>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('trade.view', trade_id=trade.id) }}">Dismiss</a>
+        </div>
+
+        <form class="mt-3" method="POST" action="{{ url_for('trade.edit', trade_id=trade.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Emotion</label>
+                    <select class="form-select" name="emotion">
+                        {% set emotions = ['Calm','Focused','Confident','FOMO','Anxious','Frustrated','Revenge','Overconfident'] %}
+                        <option value="">Select…</option>
+                        {% for e in emotions %}
+                        <option value="{{ e }}" {% if trade.emotion == e %}selected{% endif %}>{{ e }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Rule adherence (1–10)</label>
+                    <input class="form-control" type="number" name="discipline_score" min="1" max="10" value="{{ trade.discipline_score or '' }}" placeholder="e.g. 8">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">One lesson learned</label>
+                    <input class="form-control" type="text" name="lessons_learned" value="{{ trade.lessons_learned or '' }}" placeholder="e.g. Waited for confirmation">
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-primary" type="submit"><i class="fas fa-save me-2"></i>Save review</button>
+                <a class="btn btn-outline-primary" href="{{ url_for('dashboard.ai') }}"><i class="fas fa-robot me-2"></i>View AI Buddy</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <!-- Key Metrics -->
 <div class="row g-4 mb-4">
     <div class="col-md-3">

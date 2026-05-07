@@ -458,7 +458,7 @@ def close(trade_id):
         flash(f'❌ Error closing trade: {str(e)}', 'danger')
         current_app.logger.exception("Close trade error")
     
-    return redirect(url_for('trade.view', trade_id=trade.id))
+    return redirect(url_for('trade.view', trade_id=trade.id, review=1))
 
 # ==================== Quick Actions ====================
 
