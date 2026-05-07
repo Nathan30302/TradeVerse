@@ -3,15 +3,19 @@ Trade Routes
 Trade logging, viewing, editing, and management
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, Response
 from flask_login import login_required, current_user
 from app import db
 from app.models.trade import Trade
+from app.models.trade_plan import TradePlan
 from app.models.trade_feedback import TradeFeedback
 from app.models.cooldown import Cooldown, should_trigger_cooldown, get_cooldown_duration
 from app.services.feedback_analyzer import generate_trade_feedback
 from app.services.cooldown_manager import CooldownManager, get_active_cooldown, trigger_emotional_cooldown
 from datetime import datetime
+import csv
+from io import StringIO
+from sqlalchemy import or_
 from werkzeug.utils import secure_filename
 import os
 
@@ -24,6 +28,22 @@ def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
+
+
+def _filtered_trades_query(user_id):
+    """Build ordered query for trade list / CSV export (same filters as list view)."""
+    status_filter = request.args.get('status', 'all')
+    symbol_filter = request.args.get('symbol', '')
+    strategy_filter = request.args.get('strategy', '')
+
+    query = Trade.query.filter_by(user_id=user_id)
+    if status_filter != 'all':
+        query = query.filter_by(status=status_filter.upper())
+    if symbol_filter:
+        query = query.filter(Trade.symbol.contains(symbol_filter.upper()))
+    if strategy_filter:
+        query = query.filter_by(strategy=strategy_filter)
+    return query.order_by(Trade.entry_date.desc())
 
 # ==================== Add Trade ====================
 
@@ -182,8 +202,36 @@ def add():
             db.session.rollback()
             current_app.logger.error(f"Add trade error: {e}")
             flash(f'❌ Error adding trade: {str(e)}', 'danger')
-    
-    return render_template('trade/add.html', active_cooldown=active_cooldown)
+
+    prefill = None
+    if request.method == 'GET' and request.args.get('duplicate') in ('1', 'true', 'yes'):
+        prefill = _duplicate_prefill(current_user.id)
+        if prefill:
+            flash('Fields pre-filled from your most recent trade. Update prices and save.', 'info')
+        else:
+            flash('No previous trade to duplicate yet.', 'info')
+
+    return render_template('trade/add.html', active_cooldown=active_cooldown, prefill=prefill)
+
+
+def _duplicate_prefill(user_id):
+    """Field dict to pre-fill Add Trade from the user's most recent trade."""
+    last_trade = Trade.query.filter_by(user_id=user_id).order_by(Trade.entry_date.desc()).first()
+    if not last_trade:
+        return None
+    return {
+        'symbol': last_trade.symbol,
+        'instrument_id': last_trade.instrument_id,
+        'trade_type': last_trade.trade_type,
+        'lot_size': last_trade.lot_size,
+        'entry_price': last_trade.entry_price,
+        'stop_loss': last_trade.stop_loss,
+        'take_profit': last_trade.take_profit,
+        'strategy': last_trade.strategy or '',
+        'session_type': last_trade.session_type or '',
+        'timeframe': last_trade.timeframe or '',
+        'pre_trade_plan': last_trade.pre_trade_plan or '',
+    }
 
 
 # ==================== Cooldown Status ====================
@@ -243,37 +291,61 @@ def list():
     
     Displays list of all user's trades with filtering
     """
-    # Get filter parameters
     status_filter = request.args.get('status', 'all')
     symbol_filter = request.args.get('symbol', '')
     strategy_filter = request.args.get('strategy', '')
     page = request.args.get('page', 1, type=int)
-    
-    # Build query
-    query = Trade.query.filter_by(user_id=current_user.id)
-    
-    # Apply filters
-    if status_filter != 'all':
-        query = query.filter_by(status=status_filter.upper())
-    
-    if symbol_filter:
-        query = query.filter(Trade.symbol.contains(symbol_filter.upper()))
-    
-    if strategy_filter:
-        query = query.filter_by(strategy=strategy_filter)
-    
-    # Order by most recent first
-    query = query.order_by(Trade.entry_date.desc())
-    
+
+    query = _filtered_trades_query(current_user.id)
+
     # Paginate
     per_page = current_app.config.get('ITEMS_PER_PAGE', 20)
     trades = query.paginate(page=page, per_page=per_page, error_out=False)
-    
-    return render_template('trade/list.html', 
-                         trades=trades,
-                         status_filter=status_filter,
-                         symbol_filter=symbol_filter,
-                         strategy_filter=strategy_filter)
+
+    return render_template('trade/list.html',
+                           trades=trades,
+                           status_filter=status_filter,
+                           symbol_filter=symbol_filter,
+                           strategy_filter=strategy_filter)
+
+
+@bp.route('/export.csv')
+@login_required
+def list_export_csv():
+    """Export trades matching current list filters as CSV."""
+    query = _filtered_trades_query(current_user.id)
+    trades = query.all()
+
+    buf = StringIO()
+    w = csv.writer(buf)
+    w.writerow([
+        'id', 'symbol', 'trade_type', 'status', 'entry_date', 'exit_date',
+        'entry_price', 'exit_price', 'stop_loss', 'take_profit', 'lot_size',
+        'profit_loss', 'risk_reward', 'strategy', 'emotion', 'session_type'
+    ])
+    for t in trades:
+        w.writerow([
+            t.id,
+            t.symbol or '',
+            t.trade_type or '',
+            t.status or '',
+            t.entry_date.isoformat() if t.entry_date else '',
+            t.exit_date.isoformat() if t.exit_date else '',
+            t.entry_price if t.entry_price is not None else '',
+            t.exit_price if t.exit_price is not None else '',
+            t.stop_loss if t.stop_loss is not None else '',
+            t.take_profit if t.take_profit is not None else '',
+            t.lot_size if t.lot_size is not None else '',
+            t.profit_loss if t.profit_loss is not None else '',
+            t.risk_reward if t.risk_reward is not None else '',
+            t.strategy or '',
+            t.emotion or '',
+            t.session_type or '',
+        ])
+
+    resp = Response(buf.getvalue(), mimetype='text/csv; charset=utf-8')
+    resp.headers['Content-Disposition'] = 'attachment; filename="tradeverse-trades.csv"'
+    return resp
 
 # ==================== View Single Trade ====================
 
@@ -287,7 +359,12 @@ def view(trade_id):
     """
     try:
         trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
-        
+
+        linked_plans = TradePlan.query.filter(
+            TradePlan.user_id == current_user.id,
+            or_(TradePlan.executed_trade_id == trade.id, TradePlan.trade_id == trade.id)
+        ).order_by(TradePlan.created_at.desc()).all()
+
         # Detect mistakes safely
         mistakes = []
         try:
@@ -302,7 +379,13 @@ def view(trade_id):
         except Exception as e:
             current_app.logger.error(f"Error fetching feedback for trade {trade_id}: {e}")
         
-        return render_template('trade/view.html', trade=trade, mistakes=mistakes, feedbacks=feedbacks)
+        return render_template(
+            'trade/view.html',
+            trade=trade,
+            mistakes=mistakes,
+            feedbacks=feedbacks,
+            linked_plans=linked_plans,
+        )
         
     except Exception as e:
         # Clear any aborted transaction state before redirecting.

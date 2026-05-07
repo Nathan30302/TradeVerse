@@ -106,6 +106,29 @@
             <a class="btn btn-primary" href="{{ url_for('trade.add') }}"><i class="fas fa-plus-circle me-1"></i> Add Trade</a>
         </div>
     </div>
+    <p class="small tv-muted mb-0 mt-3 pt-3 border-top border-secondary-subtle">
+        <strong>Coach mode</strong> uses rules and your trade statistics — it is not a live ChatGPT-style web LLM unless you connect one later.
+        Quotes and market snapshots elsewhere in the app may be simulated when no market data API key is configured.
+    </p>
+</div>
+
+<div class="tv-surface soft p-3 p-md-4 mb-4">
+    <div class="tv-section-title mb-2"><i class="fas fa-bullseye me-2 text-primary"></i>Your weekly focus</div>
+    <p class="small tv-muted mb-3">One sentence AI Buddy should enforce when coaching you (review weekly).</p>
+    <form method="POST" action="{{ url_for('dashboard.save_weekly_focus') }}" class="row g-2 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ url_for('dashboard.ai') }}">
+        <div class="col-md-10">
+            <label class="form-label small mb-1" for="weekly_focus_ai">Rule for this week</label>
+            <input class="form-control" id="weekly_focus_ai" name="weekly_focus" maxlength="4000"
+                   value="{{ weekly_focus_rule or '' }}"
+                   placeholder="e.g. Max 2 trades per day; stop after −1R"
+                   autocomplete="off">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Save</button>
+        </div>
+    </form>
 </div>
 
 {% set sub = current_user.effective_subscription() %}

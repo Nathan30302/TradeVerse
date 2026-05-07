@@ -51,7 +51,8 @@ class User(UserMixin, db.Model):
     trial_ends_at = deferred(db.Column(db.DateTime))  # Trial expiration date
     subscription_expires_at = deferred(db.Column(db.DateTime))  # Paid subscription expiration
     stripe_customer_id = deferred(db.Column(db.String(255)))  # Stripe customer ID for payments
-    
+    weekly_focus_rule = deferred(db.Column(db.Text))  # AI Buddy weekly focus (user-set)
+
     # ==================== Timestamps ====================
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

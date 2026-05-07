@@ -11,6 +11,9 @@
     <div class="col-md-10 mx-auto">
         <form method="POST" action="{{ url_for('trade.add') }}" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if prefill %}
+            <script type="application/json" id="trade-prefill-json">{{ prefill | tojson }}</script>
+            {% endif %}
 
             <!-- Basic Information -->
             <div class="card mb-4">
@@ -285,6 +288,32 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/instrument-picker-simple.js') }}"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    var raw = document.getElementById('trade-prefill-json');
+    if (!raw || !raw.textContent) return;
+    try {
+        var d = JSON.parse(raw.textContent);
+        function setVal(id, v) {
+            var el = document.getElementById(id);
+            if (el && v !== undefined && v !== null && v !== '') el.value = v;
+        }
+        setVal('symbol', d.symbol);
+        setVal('instrument_id', d.instrument_id);
+        setVal('trade_type', d.trade_type);
+        setVal('lot_size', d.lot_size);
+        setVal('entry_price', d.entry_price);
+        setVal('stop_loss', d.stop_loss);
+        setVal('take_profit', d.take_profit);
+        setVal('strategy', d.strategy);
+        setVal('session_type', d.session_type);
+        setVal('timeframe', d.timeframe);
+        setVal('pre_trade_plan', d.pre_trade_plan);
+        var hdr = document.getElementById('header-instrument-code');
+        if (hdr && d.symbol) hdr.textContent = d.symbol;
+        if (typeof calculateRR === 'function') calculateRR();
+    } catch (e) { /* ignore */ }
+});
+
 // Calculate R:R ratio
 function calculateRR() {
     const entry = parseFloat(document.getElementById('entry_price').value) || 0;

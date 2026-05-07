@@ -1256,6 +1256,10 @@
             background: rgba(99, 102, 241, 0.08);
         }
 
+        .tv-table-scroll .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+
         /* Empty states */
         .tv-empty-well {
             padding: 2.75rem 1.5rem;
@@ -1896,10 +1900,10 @@
             
             <!-- Instrument display (single-slot rotator) + Dynamic Island -->
             <div class="d-flex align-items-center ms-4" style="gap:1rem;">
-                <div id="instrument-rotator" class="instrument-rotator d-none d-md-flex align-items-center" aria-label="Live market ticker">
-                    <span class="live-indicator" title="Live (simulated feed)">
+                <div id="instrument-rotator" class="instrument-rotator d-none d-md-flex align-items-center" aria-label="Market movers ticker">
+                    <span class="live-indicator" id="rot-feed-badge" title="Price-style snapshot — not your broker’s feed">
                         <span class="live-dot" aria-hidden="true"></span>
-                        LIVE
+                        <span id="rot-feed-label">—</span>
                     </span>
                     <div class="instrument-slot">
                         <span class="instrument-icon me-2"><i class="fas fa-chart-line"></i></span>
@@ -1911,30 +1915,33 @@
                     </div>
                 </div>
 
-                <div id="dynamic-island" class="dynamic-island d-none d-md-flex align-items-center">
+                <div id="dynamic-island" class="dynamic-island d-none d-md-flex flex-wrap align-items-center" title="Your journal stats — not live broker data">
                     <div class="di-item">
-                        <div class="di-label">P/L Today</div>
+                        <div class="di-label">Journal P/L</div>
                         <div class="di-value" id="di-pl">—</div>
                     </div>
                     <div class="di-divider"></div>
                     <div class="di-item">
-                        <div class="di-label">Active</div>
+                        <div class="di-label">Open</div>
                         <div class="di-value" id="di-active">—</div>
                     </div>
                     <div class="di-divider"></div>
                     <div class="di-item">
-                        <div class="di-label">Vol</div>
+                        <div class="di-label">Avg R:R</div>
                         <div class="di-value" id="di-vol">—</div>
                     </div>
                     <div class="di-divider"></div>
                     <div class="di-item">
-                        <div class="di-label">Top Move</div>
+                        <div class="di-label">Win rate</div>
                         <div class="di-value" id="di-top">—</div>
                     </div>
                     <div class="di-divider"></div>
                     <div class="di-item">
                         <div class="di-label">Updated</div>
                         <div class="di-value" id="di-updated">—</div>
+                    </div>
+                    <div class="w-100 di-disclaimer text-center pt-1" style="font-size:0.65rem;opacity:0.65;line-height:1.2;">
+                        Your stats · not broker execution data
                     </div>
                 </div>
             </div>
@@ -2457,7 +2464,11 @@
                 try{
                     // Request hourly-ish data by default (server may still respond faster)
                     const resp = await fetch('/api/db/instruments/quotes?limit=8&ttl_s=3600');
-                    if(!resp.ok) return false;
+                    if(!resp.ok) {
+                        const lbl = document.getElementById('rot-feed-label');
+                        if (lbl) lbl.textContent = '—';
+                        return false;
+                    }
                     const data = await resp.json();
                     if(data && data.quotes && data.quotes.length){
                         // map to our shape
@@ -2470,11 +2481,15 @@
                             icon: (q.symbol||'').toLowerCase().includes('btc') ? 'fab fa-bitcoin' : 'fas fa-chart-line'
                         }));
                         lastQuotesAt = Date.now();
-                        // Update LIVE label tooltip with source transparency
+                        // Update feed badge: LIVE vs SIM + tooltip
                         try{
-                            const liveIndicator = rotator ? rotator.querySelector('.live-indicator') : null;
+                            const liveIndicator = document.getElementById('rot-feed-badge');
+                            const liveLbl = document.getElementById('rot-feed-label');
+                            if (liveLbl) {
+                                liveLbl.textContent = data.is_live ? 'LIVE' : 'SIM';
+                            }
                             if(liveIndicator && data.source){
-                                liveIndicator.title = (data.is_live ? 'Live feed' : 'Simulated feed') + ' • source: ' + String(data.source);
+                                liveIndicator.title = (data.is_live ? 'Live provider' : 'Simulated / dev feed') + ' — ' + String(data.source) + ' (not your broker’s prices)';
                             }
                         }catch(e){}
                         return true;

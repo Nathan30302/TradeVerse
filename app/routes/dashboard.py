@@ -3,15 +3,16 @@ Dashboard Routes
 Analytics, statistics, and performance overview
 """
 
-from flask import Blueprint, render_template, jsonify, current_app
+from flask import Blueprint, render_template, jsonify, current_app, session
 from flask_login import login_required, current_user
 from app.models.trade import Trade
+from app.models.trade_plan import TradePlan
 from app.models.performance_score import PerformanceScore
 from app.services.performance_calculator import calculate_weekly_score, get_performance_history
 from app.services.pattern_detector import detect_patterns
 from app.services.emotion_analyzer import EmotionAnalyzer, analyze_emotions
 from app.services.ai_insights import AIAnalyzer
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, or_
 from app import db
 from flask import request, flash, redirect, url_for
 from datetime import datetime, timedelta
@@ -159,6 +160,27 @@ def index():
         status='CLOSED'
     ).order_by(Trade.profit_loss).first()
 
+    plan_exists = db.session.query(TradePlan.id).filter_by(user_id=current_user.id).limit(1).scalar()
+    review_exists = db.session.query(Trade.id).filter(
+        Trade.user_id == current_user.id,
+        Trade.status == 'CLOSED',
+        or_(Trade.post_trade_notes.isnot(None), Trade.lessons_learned.isnot(None)),
+    ).limit(1).scalar()
+
+    wf = ''
+    try:
+        wf = (getattr(current_user, 'weekly_focus_rule', None) or '').strip()
+    except Exception:
+        wf = ''
+
+    onboarding = {
+        'has_plan': bool(plan_exists),
+        'has_trade': stats['total_trades'] > 0,
+        'has_review': bool(review_exists),
+        'analytics_done': bool(session.get('onboarding_analytics_visited')),
+        'weekly_focus_set': bool(wf),
+    }
+
     return render_template('dashboard/index.html',
                            stats=stats,
                            recent_trades=recent_trades,
@@ -168,7 +190,8 @@ def index():
                            week_performance=week_performance,
                            ai_summary=ai_summary,
                            best_trade=best_trade,
-                           worst_trade=worst_trade)
+                           worst_trade=worst_trade,
+                           onboarding=onboarding)
 
 # ==================== Analytics ====================
 
@@ -180,6 +203,8 @@ def analytics():
 
     In-depth analysis of trading performance
     """
+    session['onboarding_analytics_visited'] = True
+
     # Performance by instrument
     instrument_stats = db.session.query(
         Trade.symbol,
@@ -598,6 +623,25 @@ def performance_history_api():
 
 # ==================== AI Buddy Dashboard ====================
 
+@bp.route('/onboarding/weekly-focus', methods=['POST'])
+@login_required
+def save_weekly_focus():
+    """Persist user's weekly trading rule for AI Buddy coaching."""
+    text = (request.form.get('weekly_focus') or '').strip()
+    if len(text) > 4000:
+        text = text[:4000]
+    next_url = request.form.get('next') or url_for('dashboard.index')
+    try:
+        current_user.weekly_focus_rule = text if text else None
+        db.session.commit()
+        flash('Weekly focus saved. AI Buddy will use this as context.', 'success')
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.warning('save_weekly_focus failed: %s', exc)
+        flash('Could not save weekly focus. Try again.', 'danger')
+    return redirect(next_url)
+
+
 @bp.route('/ai')
 @login_required
 def ai():
@@ -606,6 +650,10 @@ def ai():
 
     Premium AI insights built from your real trading history.
     """
+    if not current_app.config.get('FEATURE_AI_BUDDY', True):
+        flash('AI Buddy is temporarily unavailable.', 'warning')
+        return redirect(url_for('dashboard.index'))
+
     analyzer = AIAnalyzer(current_user.id)
 
     # Wrap every AI call so a data error never produces a 500
@@ -660,18 +708,28 @@ def ai():
 
     alerts = weekly_review.get('alerts', [])
 
+    wf = ''
+    try:
+        wf = (getattr(current_user, 'weekly_focus_rule', None) or '').strip()
+    except Exception:
+        wf = ''
+
     return render_template('dashboard/ai.html',
                            weekly_review=weekly_review,
                            monthly_review=monthly_review,
                            behavioral_insights=behavioral_insights,
                            voice_summary=voice_summary,
-                           alerts=alerts)
+                           alerts=alerts,
+                           weekly_focus_rule=wf)
 
 
 @bp.route('/ai/query', methods=['POST'])
 @login_required
 def ai_query():
     """Ask AI Buddy about your trading performance."""
+    if not current_app.config.get('FEATURE_AI_BUDDY', True):
+        return jsonify({'answer': 'AI Buddy is temporarily unavailable.', 'follow_ups': []}), 503
+
     payload = request.get_json() or {}
     question = payload.get('question', '').strip()
     try:
@@ -685,6 +743,12 @@ def ai_query():
         )
         answer = (result.get('answer') if isinstance(result, dict) else '') or ''
         follow_ups = (result.get('follow_ups') if isinstance(result, dict) else []) or []
+        try:
+            wf = (getattr(current_user, 'weekly_focus_rule', None) or '').strip()
+        except Exception:
+            wf = ''
+        if wf and answer:
+            answer = answer.rstrip() + f"\n\n— Weekly focus you set: {wf}"
     except Exception as exc:
         current_app.logger.warning('AI Buddy answer_question failed: %s', exc)
         answer = 'AI Buddy could not process your question right now. Please try again later.'

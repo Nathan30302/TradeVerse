@@ -144,6 +144,78 @@
 </div>
 
 {# ------------------------------------------------------------------ #}
+{# Getting started checklist (hidden when complete)                   #}
+{# ------------------------------------------------------------------ #}
+{% set ob = onboarding if onboarding is defined else {} %}
+{% set done_count = (1 if ob.get('has_plan') else 0) + (1 if ob.get('has_trade') else 0) + (1 if ob.get('has_review') else 0) + (1 if ob.get('analytics_done') else 0) + (1 if ob.get('weekly_focus_set') else 0) %}
+{% if done_count < 5 %}
+<div class="tv-surface soft p-3 p-md-4 mb-4">
+    <div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-3">
+        <div>
+            <div class="tv-section-title mb-1"><i class="fas fa-route me-2 text-primary"></i>Getting started</div>
+            <div class="small tv-muted">Finish these steps to unlock the full TradeVerse workflow.</div>
+        </div>
+        <div class="text-md-end">
+            <span class="tv-chip">{{ done_count }}/5 complete</span>
+        </div>
+    </div>
+    <div class="progress mb-3" style="height:6px;border-radius:999px;">
+        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ (done_count / 5 * 100)|round(0) }}%;" aria-valuenow="{{ done_count }}" aria-valuemin="0" aria-valuemax="5"></div>
+    </div>
+    <div class="row g-2 small">
+        <div class="col-md-6 col-lg-4">
+            {% if ob.get('has_plan') %}
+                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Create a trade plan</span>
+            {% else %}
+                <span class="tv-muted"><i class="far fa-circle me-1"></i>Create a trade plan</span>
+                <a class="d-block mt-1" href="{{ url_for('planner.new_plan') }}">Open planner →</a>
+            {% endif %}
+        </div>
+        <div class="col-md-6 col-lg-4">
+            {% if ob.get('has_trade') %}
+                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Log a trade</span>
+            {% else %}
+                <span class="tv-muted"><i class="far fa-circle me-1"></i>Log a trade</span>
+                <a class="d-block mt-1" href="{{ url_for('trade.add') }}">Add trade →</a>
+            {% endif %}
+        </div>
+        <div class="col-md-6 col-lg-4">
+            {% if ob.get('has_review') %}
+                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Review a closed trade</span>
+            {% else %}
+                <span class="tv-muted"><i class="far fa-circle me-1"></i>Review a closed trade</span>
+                <span class="d-block mt-1 tv-muted">Add notes or lessons on a closed trade.</span>
+            {% endif %}
+        </div>
+        <div class="col-md-6 col-lg-4">
+            {% if ob.get('analytics_done') %}
+                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Visit Analytics</span>
+            {% else %}
+                <span class="tv-muted"><i class="far fa-circle me-1"></i>Visit Analytics</span>
+                <a class="d-block mt-1" href="{{ url_for('dashboard.analytics') }}">Open analytics →</a>
+            {% endif %}
+        </div>
+        <div class="col-md-6 col-lg-8">
+            {% if ob.get('weekly_focus_set') %}
+                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Set your weekly focus rule</span>
+            {% else %}
+                <span class="tv-muted"><i class="far fa-circle me-1"></i>Set your weekly focus rule</span>
+                <form class="mt-2" method="POST" action="{{ url_for('dashboard.save_weekly_focus') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                    <label class="visually-hidden" for="weekly_focus_dash">Weekly focus</label>
+                    <div class="input-group input-group-sm">
+                        <input class="form-control" id="weekly_focus_dash" name="weekly_focus" maxlength="4000" placeholder="One rule for this week (e.g. only trade London open)" autocomplete="off">
+                        <button class="btn btn-primary" type="submit">Save</button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ------------------------------------------------------------------ #}
 {# New-user quick-start OR rotating quote                             #}
 {# ------------------------------------------------------------------ #}
 {% if stats.total_trades == 0 %}
@@ -459,6 +531,7 @@
         <div class="card mb-3" id="mini-live-board">
             <div class="card-header">
                 <h6 class="mb-0"><i class="fas fa-broadcast-tower"></i> Market Snapshot</h6>
+                <small class="text-muted d-block mt-1">Your stats only — not a broker feed.</small>
             </div>
             <div class="card-body">
                 <div class="d-flex flex-column gap-2">

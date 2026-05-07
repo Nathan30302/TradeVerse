@@ -192,6 +192,13 @@ class Config:
     # Quote rotation interval in milliseconds (30 seconds)
     QUOTE_ROTATION_INTERVAL = 30000
 
+    # Feature flags (set to 0/false to disable surfaces quickly)
+    FEATURE_AI_BUDDY = os.environ.get('FEATURE_AI_BUDDY', 'true').lower() in ('1', 'true', 'yes')
+    FEATURE_MARKET_QUOTES = os.environ.get('FEATURE_MARKET_QUOTES', 'true').lower() in ('1', 'true', 'yes')
+
+    # Public market-quotes endpoint: max requests per IP per rolling minute
+    MARKET_QUOTES_MAX_PER_MINUTE = int(os.environ.get('MARKET_QUOTES_MAX_PER_MINUTE', '120'))
+
     # Performance toggles
     ENABLE_FTS_BUILD = True
 

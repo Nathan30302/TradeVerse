@@ -13,11 +13,17 @@
                 </h1>
                 <p class="page-subtitle">View and manage all your trades</p>
             </div>
-            <div class="col-auto">
-                <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg">
-                    <i class="fas fa-plus-circle"></i> Add New Trade
-                </a>
-            </div>
+        <div class="col-auto d-flex flex-wrap gap-2 justify-content-end">
+            <a href="{{ url_for('trade.list_export_csv', status=status_filter, symbol=symbol_filter, strategy=strategy_filter) }}" class="btn btn-outline-secondary btn-lg">
+                <i class="fas fa-file-csv"></i> Export CSV
+            </a>
+            <a href="{{ url_for('trade.add', duplicate=1) }}" class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-copy"></i> Duplicate last
+            </a>
+            <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus-circle"></i> Add New Trade
+            </a>
+        </div>
         </div>
     </div>
 </div>
@@ -63,7 +69,7 @@
 </div>
 
 <!-- Trades Table -->
-<div class="table-container tv-table-premium">
+<div class="table-container tv-table-premium tv-table-scroll">
     {% if trades.items %}
         <div class="table-responsive">
             <table class="table table-hover">

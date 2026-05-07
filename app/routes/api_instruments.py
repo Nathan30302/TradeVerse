@@ -6,9 +6,14 @@ Provides endpoints for:
 - Instrument metadata lookup
 - Broker listing
 """
+from time import time as _monotonic_time
+
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
 from flask_login import login_required, current_user
+
+# Simple per-IP rolling window for public quote endpoint (process-local).
+_QUOTE_ENDPOINT_HITS = {}
 
 from app.services.instrument_catalog import (
     catalog, search_instruments, get_instrument, get_instrument_metadata
@@ -365,6 +370,18 @@ def db_instrument_quotes():
     from app.models.instrument import Instrument
     from app.services.market_data import get_quotes
     import os
+
+    if not current_app.config.get('FEATURE_MARKET_QUOTES', True):
+        return jsonify({'success': False, 'error': 'disabled', 'quotes': [], 'is_live': False}), 503
+
+    limit_per_min = int(current_app.config.get('MARKET_QUOTES_MAX_PER_MINUTE', 120) or 120)
+    client_ip = (request.headers.get('X-Forwarded-For') or request.remote_addr or 'unknown').split(',')[0].strip()
+    now = _monotonic_time()
+    bucket = _QUOTE_ENDPOINT_HITS.setdefault(client_ip, [])
+    bucket[:] = [t for t in bucket if now - t < 60.0]
+    if len(bucket) >= limit_per_min:
+        return jsonify({'success': False, 'error': 'rate_limited', 'quotes': [], 'is_live': False}), 429
+    bucket.append(now)
 
     trader_focused = ['BTCUSD', 'XAUUSD', 'NAS100', 'US30', 'US500', 'EURUSD']
     limit = min(int(request.args.get('limit', 6)), 10)

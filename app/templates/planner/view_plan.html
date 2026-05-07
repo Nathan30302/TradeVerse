@@ -30,6 +30,13 @@
                     <span class="text-success"><i class="fas fa-check-circle"></i> Reviewed</span>
                 {% endif %}
             </p>
+            {% if plan.executed_trade_id %}
+            <p class="mb-0 mt-2">
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('trade.view', trade_id=plan.executed_trade_id) }}">
+                    <i class="fas fa-link"></i> View linked trade #{{ plan.executed_trade_id }}
+                </a>
+            </p>
+            {% endif %}
         </div>
         <div class="btn-group">
             {% if plan.status == 'PLANNING' %}

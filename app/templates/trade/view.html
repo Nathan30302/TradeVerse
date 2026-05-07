@@ -39,6 +39,20 @@
     {% endif %}
 </div>
 
+{% if linked_plans is defined and linked_plans %}
+<div class="alert alert-info border-0 mb-4" style="background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25) !important;">
+    <div class="fw-semibold mb-2"><i class="fas fa-link me-2"></i>Linked trade plan{% if linked_plans|length > 1 %}s{% endif %}</div>
+    <ul class="mb-0 ps-3">
+        {% for p in linked_plans %}
+        <li>
+            <a href="{{ url_for('planner.view_plan', plan_id=p.id) }}">Plan #{{ p.id }} — {{ p.symbol }} {{ p.direction }}</a>
+            <span class="text-muted small">({{ p.status }})</span>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 {% if request.args.get('review') %}
 <div class="card mb-4">
     <div class="card-body">
