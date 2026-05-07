@@ -360,7 +360,6 @@ def db_instrument_counts():
 
 
 @bp.route('/db/instruments/quotes', methods=['GET'])
-@login_required
 def db_instrument_quotes():
     """Return trader-focused instruments for the Dynamic Island rotator (live quotes)."""
     from app.models.instrument import Instrument

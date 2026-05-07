@@ -19,6 +19,22 @@
     </div>
 </div>
 
+<div class="alert alert-secondary d-flex align-items-start gap-3" role="note">
+    <div style="width:40px;height:40px;border-radius:12px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+        <i class="fas fa-wand-magic-sparkles text-primary"></i>
+    </div>
+    <div class="flex-grow-1">
+        <div class="fw-semibold">Make this actionable.</div>
+        <div class="small text-muted">
+            AI Buddy highlights patterns in your recent trades. For best results, log your stop loss (or risk amount), tag strategies consistently, and add brief post-trade notes.
+        </div>
+    </div>
+    <div class="d-none d-md-flex gap-2">
+        <a class="btn btn-outline-primary btn-sm" href="{{ url_for('dashboard.analytics') }}"><i class="fas fa-chart-bar me-1"></i> Analytics</a>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('trade.add') }}"><i class="fas fa-plus-circle me-1"></i> Add Trade</a>
+    </div>
+</div>
+
 {# ------------------------------------------------------------------ #}
 {# Resolve all template variables once, safely, before rendering HTML #}
 {# ------------------------------------------------------------------ #}
