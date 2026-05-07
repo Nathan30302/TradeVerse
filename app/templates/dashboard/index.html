@@ -197,10 +197,13 @@
 {# ------------------------------------------------------------------ #}
 <div class="row g-4 mb-4">
     <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-robot"></i> AI Buddy Pulse</h5>
-                <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-light">Open AI Buddy</a>
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0"><i class="fas fa-robot"></i> AI Buddy Pulse</h5>
+                    <div class="small opacity-75 mt-1">One strength, one leak, one next action.</div>
+                </div>
+                <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-light">Open AI Buddy</a>
             </div>
             <div class="card-body">
                 <div class="row align-items-center">
@@ -240,7 +243,7 @@
                         </div>
                     </div>
                     <div class="col-md-3 text-md-end">
-                        <span class="badge bg-info py-2 px-3">AI Buddy</span>
+                        <span class="tv-chip"><i class="fas fa-wand-magic-sparkles"></i> Coach</span>
                     </div>
                 </div>
             </div>

@@ -24,11 +24,12 @@
     left: -280px;
     width: 280px;
     height: 100%;
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    background: var(--card-bg);
     z-index: 1050;
     overflow-y: auto;
     transition: left 0.3s ease;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+    border-right: 1px solid rgba(255,255,255,0.08);
 }
 
 .mobile-nav-drawer.active {
@@ -41,7 +42,9 @@
     justify-content: space-between;
     align-items: center;
     padding: 1.25rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(10px);
 }
 
 .mobile-nav-drawer .nav {
@@ -52,17 +55,19 @@
     display: flex;
     align-items: center;
     padding: 0.875rem 1.25rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-primary);
     text-decoration: none;
     transition: all 0.2s ease;
     border-left: 3px solid transparent;
+    border-radius: 12px;
+    margin: 0.2rem 0.6rem;
 }
 
 .mobile-nav-drawer .nav-link:hover,
 .mobile-nav-drawer .nav-link.active {
-    background: rgba(99, 102, 241, 0.15);
-    color: #fff;
-    border-left-color: #6366f1;
+    background: rgba(99, 102, 241, 0.14);
+    color: var(--text-primary);
+    border-left-color: var(--primary-light);
 }
 
 .mobile-nav-drawer .nav-link i {
@@ -72,7 +77,17 @@
 }
 
 .mobile-nav-drawer .nav-link.active {
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.2) 0%, transparent 100%);
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.18) 0%, transparent 100%);
+}
+
+/* Section labels inside mobile nav */
+.mobile-nav-drawer .mobile-nav-section {
+    padding: 0.75rem 1.25rem 0.25rem;
+    color: var(--text-secondary);
+    font-weight: 800;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
 
 /* Hide Bootstrap's default navbar-toggler (we use our custom #mobileMenuBtn) */

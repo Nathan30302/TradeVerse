@@ -42,10 +42,19 @@
     </div>
 </div>
 
-<div class="alert alert-info mb-4" id="advanced-metrics-locked" style="display:none;">
-    <i class="fas fa-lock me-2"></i>
-    Trader-grade metrics (R, expectancy, drawdown) are available on Pro.
-    <a class="alert-link ms-2" href="{{ url_for('monetization.pricing') }}">Upgrade →</a>
+<div class="tv-surface soft p-3 p-md-4 mb-4" id="advanced-metrics-locked" style="display:none;">
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+        <div class="d-flex align-items-start gap-3">
+            <div style="width:44px;height:44px;border-radius:14px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+                <i class="fas fa-lock text-primary"></i>
+            </div>
+            <div>
+                <div class="tv-section-title mb-1">Trader-grade metrics are Pro</div>
+                <div class="small tv-muted">Unlock expectancy (R), drawdown, and richer R-multiple performance breakdowns.</div>
+            </div>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('monetization.pricing') }}">Upgrade →</a>
+    </div>
 </div>
 
 <!-- Performance by Instrument -->
@@ -114,8 +123,7 @@
             <div class="row">
                 {% for stat in strategy_stats %}
                 <div class="col-md-6 mb-3">
-                    <div class="card border-0" style="background-color: #f8fafc;">
-                        <div class="card-body">
+                    <div class="tv-surface soft p-3 p-md-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h6 class="mb-0">{{ stat.strategy }}</h6>
                                 <span class="badge bg-primary">{{ stat.count }} trades</span>
@@ -134,7 +142,6 @@
                                     </strong>
                                 </div>
                             </div>
-                        </div>
                     </div>
                 </div>
                 {% endfor %}
