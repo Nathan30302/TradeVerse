@@ -805,7 +805,42 @@ class AIAnalyzer:
         def has(*words: str) -> bool:
             return any(w in text for w in words)
 
-        # General trading knowledge topics (non-static; still tailored with your stats when possible)
+        def _coach_basics() -> str:
+            """
+            Professional baseline guidance for broad questions.
+            Keeps it actionable and consistent with a journaling app (not news-driven).
+            """
+            lines = [
+                "Here’s the fastest way to improve (the *professional* version):",
+                "",
+                "**1) Protect downside first (risk policy)**",
+                "- Risk a fixed amount per trade (ex: 0.25–1.0% of account).",
+                "- Hard rule: stop trading after a daily loss limit (ex: −2R) or 2 consecutive losses.",
+                "",
+                "**2) Define one repeatable setup (edge)**",
+                "- One market + one session + one trigger. Write it as a checklist.",
+                "- If you can’t describe the trigger in one sentence, it’s not repeatable yet.",
+                "",
+                "**3) Execute like a machine (process)**",
+                "- Pre-trade: entry reason + SL/TP + invalidation (what proves you wrong).",
+                "- Post-trade: 2–3 lines: what was correct, what was sloppy, what’s the fix.",
+                "",
+                "**4) Review weekly (feedback loop)**",
+                "- Identify your #1 leak (overtrading, moving SL, low R:R, wrong session).",
+                "- Convert it into ONE rule for next week.",
+            ]
+            if total > 0:
+                lines += [
+                    "",
+                    f"Your recent sample: {total} closed trades, {win_rate:.0f}% win rate, net {total_pnl:.0f}, avg R:R {avg_rr:.2f}.",
+                ]
+                if avg_rr and avg_rr < 1.0:
+                    lines.append("Coach note: your average R:R is under 1.0 — that’s a common profitability killer even with a decent win rate.")
+                if win_rate and win_rate < 45:
+                    lines.append("Coach note: win rate is low — focus on trade selection and session discipline before increasing size.")
+            return "\n".join(lines)
+
+        # General trading knowledge topics (still tailored with your stats when possible)
         if has('risk', 'rr', 'r:r', 'risk reward', 'stop loss', 'sl', 'tp', 'take profit'):
             parts = [
                 f"{user_name + ', ' if user_name else ''}here’s the clean way to think about risk and R-multiples:",
@@ -881,6 +916,16 @@ class AIAnalyzer:
             if total > 0:
                 answer += f"\n\nYour context: {total} trades, win rate {win_rate:.0f}%, avg R:R {avg_rr:.2f}."
             return {'answer': answer, 'follow_ups': ["What’s my one rule next week?", "How do I stop revenge trading?", "Build me a pre-trade checklist."]}
+
+        if has('improve', 'get better', 'better trader', 'how can i', 'how do i improve', 'help me'):
+            return {
+                'answer': _coach_basics(),
+                'follow_ups': [
+                    "What’s my biggest leak this week?",
+                    "Give me one rule for next week.",
+                    "Build me a pre-trade checklist for my best setup.",
+                ],
+            }
 
         # Fallback: respond with a richer, non-repeating “coach brief” instead of the same summary
         base = weekly.get('summary') or f"Recent snapshot: {total} closed trades, {win_rate:.0f}% win rate, net {total_pnl:.0f}, avg R:R {avg_rr:.2f}."

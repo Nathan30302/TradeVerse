@@ -782,12 +782,18 @@
                 if (!recognition) {
                     recognition = new SR();
                     recognition.lang = "en-US";
-                    recognition.interimResults = false;
+                    recognition.interimResults = true;
                     recognition.maxAlternatives = 1;
                     recognition.onresult = function (evt) {
                         try {
-                            var transcript = evt.results && evt.results[0] && evt.results[0][0] ? evt.results[0][0].transcript : "";
-                            if (transcript && transcript.trim()) {
+                            var res = evt.results && evt.results[0] && evt.results[0][0] ? evt.results[0][0] : null;
+                            var transcript = res ? (res.transcript || "") : "";
+                            if (questionEl && transcript) {
+                                // Show exactly what the browser heard (user can edit).
+                                questionEl.value = transcript;
+                            }
+                            // Only auto-send when final.
+                            if (evt.results && evt.results[0] && evt.results[0].isFinal && transcript && transcript.trim()) {
                                 onAskClick(transcript.trim());
                             }
                         } catch(e) {}
