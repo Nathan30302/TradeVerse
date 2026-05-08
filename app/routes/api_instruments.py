@@ -398,9 +398,16 @@ def db_instrument_quotes():
     try:
         quotes = get_quotes(symbols, ttl_s=ttl_s)
         provider = (os.environ.get("MARKET_DATA_PROVIDER") or "twelvedata").lower()
+        # Determine whether this environment is configured for live quotes.
+        # Keep it permissive (Render env var names vary).
+        td_key = (
+            os.environ.get("TWELVEDATA_API_KEY")
+            or os.environ.get("TWELVE_DATA_API_KEY")
+            or os.environ.get("TWELVEDATA_KEY")
+        )
         is_live = True
-        # Heuristic: if no API key, provider will be simulated when allowed
-        if provider == "twelvedata" and not os.environ.get("TWELVEDATA_API_KEY"):
+        # Heuristic: if no API key, provider may be simulated when allowed
+        if provider == "twelvedata" and not td_key:
             is_live = False
     except Exception:
         # Always return something usable for UI; mark as simulated so it’s transparent.

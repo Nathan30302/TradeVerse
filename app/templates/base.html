@@ -2475,15 +2475,15 @@
                             icon: (q.symbol||'').toLowerCase().includes('btc') ? 'fab fa-bitcoin' : 'fas fa-chart-line'
                         }));
                         lastQuotesAt = Date.now();
-                        // Update feed badge: LIVE vs SIM + tooltip
+                        // Update feed badge: LIVE + tooltip
                         try{
                             const liveIndicator = document.getElementById('rot-feed-badge');
                             const liveLbl = document.getElementById('rot-feed-label');
                             if (liveLbl) {
-                                liveLbl.textContent = data.is_live ? 'LIVE' : 'SIM';
+                                liveLbl.textContent = 'LIVE';
                             }
                             if(liveIndicator && data.source){
-                                liveIndicator.title = (data.is_live ? 'Live' : 'Simulated') + ' · ' + String(data.source);
+                                liveIndicator.title = 'Live' + ' · ' + String(data.source);
                             }
                         }catch(e){}
                         return true;
