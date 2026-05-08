@@ -792,10 +792,7 @@
                                 // Show exactly what the browser heard (user can edit).
                                 questionEl.value = transcript;
                             }
-                            // Only auto-send when final.
-                            if (evt.results && evt.results[0] && evt.results[0].isFinal && transcript && transcript.trim()) {
-                                onAskClick(transcript.trim());
-                            }
+                            // Do NOT auto-send; user must press Ask (prevents misheard sends).
                         } catch(e) {}
                     };
                     recognition.onerror = function () { /* silent */ };

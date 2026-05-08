@@ -840,25 +840,33 @@ def ai_query():
         history = payload.get('history') or []
         if not isinstance(history, list):
             history = []
+
+        # Prefer local coach for reliability; if web mode is enabled but fails,
+        # gracefully fall back to local instead of returning a generic error.
+        answer = ""
+        follow_ups = []
         use_web = bool(current_app.config.get("FEATURE_AI_WEB")) and bool(os.environ.get("OPENAI_API_KEY")) and bool(os.environ.get("TAVILY_API_KEY"))
         if use_web:
-            # Build a short user-context block from server-truth stats (7D + today).
             try:
-                s = current_user.get_stats()
-                ctx = (
-                    f"username={current_user.username or ''}\n"
-                    f"open_trades={int(s.get('open_trades') or 0)}\n"
-                    f"closed_trades_total={int(s.get('closed_trades') or 0)}\n"
-                    f"win_rate_all_time={float(s.get('win_rate') or 0.0):.1f}%\n"
-                    f"avg_rr_all_time={float(s.get('avg_rr') or 0.0):.2f}\n"
-                )
-            except Exception:
-                ctx = f"username={current_user.username or ''}"
+                try:
+                    s = current_user.get_stats()
+                    ctx = (
+                        f"username={current_user.username or ''}\n"
+                        f"open_trades={int(s.get('open_trades') or 0)}\n"
+                        f"closed_trades_total={int(s.get('closed_trades') or 0)}\n"
+                        f"win_rate_all_time={float(s.get('win_rate') or 0.0):.1f}%\n"
+                        f"avg_rr_all_time={float(s.get('avg_rr') or 0.0):.2f}\n"
+                    )
+                except Exception:
+                    ctx = f"username={current_user.username or ''}"
 
-            web = answer_with_web(question=question, user_context=ctx, history=history[-12:])
-            answer = web.answer
-            follow_ups = web.follow_ups
-        else:
+                web = answer_with_web(question=question, user_context=ctx, history=history[-12:])
+                answer = web.answer
+                follow_ups = web.follow_ups
+            except Exception:
+                current_app.logger.warning("Web AI failed; falling back to local coach", exc_info=True)
+
+        if not answer:
             result = AIAnalyzer(current_user.id).answer_question(
                 question,
                 history=history[-12:],

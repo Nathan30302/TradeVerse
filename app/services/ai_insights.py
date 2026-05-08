@@ -16,6 +16,7 @@ from app.models.trade import Trade
 from app.models.trade_plan import TradePlan
 from app.services.emotion_analyzer import EmotionAnalyzer
 from app.services.performance_calculator import PerformanceCalculator
+from app.services.trading_knowledge import match_topic, render_topic
  
  
 # ---------------------------------------------------------------------------
@@ -804,6 +805,15 @@ class AIAnalyzer:
         # Simple intent detection (expanded beyond a few keywords)
         def has(*words: str) -> bool:
             return any(w in text for w in words)
+
+        # Knowledge-base match (broad trading education), before stats-specific branches.
+        kb = match_topic(text)
+        if kb:
+            kb_answer, kb_fups = render_topic(kb)
+            # Add a tiny personalization footer when we have stats.
+            if total > 0:
+                kb_answer += f"\n\nYour current context: {total} closed trades, {win_rate:.0f}% win rate, avg R:R {avg_rr:.2f}."
+            return {"answer": kb_answer, "follow_ups": kb_fups[:3]}
 
         def _coach_basics() -> str:
             """
