@@ -6,6 +6,8 @@ Manages impulse protection cooldowns
 from app import db
 from app.models.cooldown import Cooldown, DANGEROUS_EMOTIONS, should_trigger_cooldown, get_cooldown_duration
 from datetime import datetime
+from datetime import timedelta
+from app.models.trade import Trade
 
 
 class CooldownManager:
@@ -84,6 +86,60 @@ class CooldownManager:
             cooldown.override(reason)
             return True
         return False
+
+    def can_override_now(self, *, cooldown_hours: int = 24) -> bool:
+        """
+        Limit override frequency so users can't spam bypasses.
+        Default: at most one override in the last 24 hours.
+        """
+        cutoff = datetime.utcnow() - timedelta(hours=cooldown_hours)
+        recent_override = (
+            Cooldown.query.filter(
+                Cooldown.user_id == self.user_id,
+                Cooldown.was_overridden == True,
+                Cooldown.started_at >= cutoff,
+            )
+            .order_by(Cooldown.started_at.desc())
+            .first()
+        )
+        return recent_override is None
+
+    def should_trigger_loss_streak(self, *, losses: int = 2, lookback_days: int = 14) -> bool:
+        """
+        Trigger cooldown if the most recent N CLOSED trades are all losses.
+        Uses exit_date for ordering and requires profit_loss values.
+        """
+        cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+        recent = (
+            Trade.query.filter(
+                Trade.user_id == self.user_id,
+                Trade.status == "CLOSED",
+                Trade.profit_loss.isnot(None),
+                Trade.exit_date.isnot(None),
+                Trade.exit_date >= cutoff,
+            )
+            .order_by(Trade.exit_date.desc())
+            .limit(max(2, int(losses)))
+            .all()
+        )
+        if len(recent) < losses:
+            return False
+        return all((t.profit_loss or 0) < 0 for t in recent[:losses])
+
+    def trigger_loss_streak_cooldown(self, *, losses: int = 2, duration_minutes: int = 45) -> Cooldown | None:
+        """
+        Create a cooldown due to a loss streak (even if no 'emotion' was set).
+        """
+        if self.get_active_cooldown():
+            return None
+        if not self.should_trigger_loss_streak(losses=losses):
+            return None
+        return Cooldown.create_cooldown(
+            user_id=self.user_id,
+            emotion="Loss streak",
+            duration_minutes=duration_minutes,
+            reason=f"{losses} consecutive losses detected",
+        )
     
     def get_cooldown_history(self, limit=10):
         """Get recent cooldown history for user"""

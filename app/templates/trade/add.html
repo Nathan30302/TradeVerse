@@ -9,6 +9,56 @@
 {% block content %}
 <div class="row">
     <div class="col-md-10 mx-auto">
+        {% if active_cooldown %}
+        <div class="alert alert-warning d-flex align-items-start justify-content-between gap-3">
+            <div>
+                <div class="fw-bold">⏳ Cooldown active</div>
+                <div class="small text-muted">
+                    Trigger: {{ active_cooldown.trigger_emotion or 'Cooldown' }}
+                    {% if active_cooldown.trigger_reason %}· {{ active_cooldown.trigger_reason }}{% endif %}
+                </div>
+                <div class="small mt-1">
+                    Expires at: {{ active_cooldown.expires_at.strftime('%Y-%m-%d %H:%M UTC') if active_cooldown.expires_at else 'soon' }}
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-dark btn-sm" href="{{ url_for('trade.cooldown_status') }}">
+                    <i class="fas fa-hourglass-half"></i> View cooldown
+                </a>
+                <button type="button" class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#cooldownOverrideModal">
+                    <i class="fas fa-unlock"></i> Override
+                </button>
+            </div>
+        </div>
+
+        <div class="modal fade" id="cooldownOverrideModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Override cooldown</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST" action="{{ url_for('trade.override_cooldown') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="modal-body">
+                            <p class="mb-2 small text-muted">
+                                Override is limited and requires a reason. Use only if you’re still following your rules.
+                            </p>
+                            <label class="form-label fw-bold" for="override_reason">Reason</label>
+                            <textarea class="form-control" id="override_reason" name="reason" rows="3"
+                                      placeholder="Example: A+ setup, risk reduced, daily limit not hit…"
+                                      required></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-dark">Override cooldown</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <form method="POST" action="{{ url_for('trade.add') }}" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             {% if prefill %}

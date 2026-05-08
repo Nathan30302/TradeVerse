@@ -95,7 +95,7 @@ class Cooldown(db.Model):
         cooldown = Cooldown.query.filter_by(
             user_id=user_id,
             is_active=True
-        ).first()
+        ).order_by(Cooldown.started_at.desc()).first()
         
         if cooldown and cooldown.is_expired():
             cooldown.deactivate()

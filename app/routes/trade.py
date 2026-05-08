@@ -58,13 +58,16 @@ def add():
     """
     # Check for active cooldown
     active_cooldown = get_active_cooldown(current_user.id)
+    if request.method == 'GET':
+        return render_template('trade/add.html', active_cooldown=active_cooldown, prefill=None)
     
     if request.method == 'POST':
         # Block if in cooldown (unless override)
         override = request.form.get('override_cooldown') == 'true'
         if active_cooldown and not override:
-            flash('⏳ You are in a cooldown period. Please wait before trading.', 'warning')
-            return redirect(url_for('trade.cooldown_status'))
+            flash('⏳ Cooldown active. You can’t log a new trade until it expires (or override with a reason).', 'warning')
+            # Keep user on Add Trade with an inline banner instead of redirecting away.
+            return render_template('trade/add.html', active_cooldown=active_cooldown, prefill=None)
         
         # Log override if used
         if active_cooldown and override:
@@ -183,16 +186,26 @@ def add():
             # Save to database
             db.session.add(trade)
             db.session.commit()
-            
-            # Check if emotion should trigger cooldown for next trade
-            if emotion and should_trigger_cooldown(emotion):
-                cooldown = trigger_emotional_cooldown(
-                    current_user.id,
-                    emotion,
-                    f"Triggered after trading with emotion: {emotion}"
-                )
-                if cooldown:
-                    flash(f'⏳ Cooldown activated ({cooldown.duration_minutes}min) due to {emotion}. Take a break!', 'warning')
+
+            # Trigger cooldowns (emotion-based and/or loss-streak)
+            try:
+                manager = CooldownManager(current_user.id)
+                if emotion and should_trigger_cooldown(emotion):
+                    cooldown = trigger_emotional_cooldown(
+                        current_user.id,
+                        emotion,
+                        f"Triggered after trading with emotion: {emotion}"
+                    )
+                    if cooldown:
+                        flash(f'⏳ Cooldown activated ({cooldown.duration_minutes}min) due to {emotion}. Take a break!', 'warning')
+                else:
+                    # If the trade was closed and ended as a loss, check for loss-streak cooldown.
+                    if (trade.status or '').upper() == 'CLOSED' and (trade.profit_loss or 0) < 0:
+                        ls = manager.trigger_loss_streak_cooldown(losses=2, duration_minutes=45)
+                        if ls:
+                            flash('⏳ Cooldown activated due to a loss streak. Step away and review before the next trade.', 'warning')
+            except Exception:
+                current_app.logger.debug("Cooldown trigger check failed", exc_info=True)
             
             flash(f'✅ Trade {symbol} {trade_type} added successfully!', 'success')
             return redirect(url_for('trade.view', trade_id=trade.id))
@@ -261,8 +274,15 @@ def cooldown_status():
 def override_cooldown():
     """Override active cooldown"""
     manager = CooldownManager(current_user.id)
-    reason = request.form.get('reason', 'User override')
-    
+    reason = (request.form.get('reason') or '').strip()
+    if not reason or len(reason) < 8:
+        flash('Please enter a short reason (at least 8 characters) to override.', 'warning')
+        return redirect(url_for('trade.add'))
+
+    if not manager.can_override_now(cooldown_hours=24):
+        flash('Override limit reached. You can override at most once every 24 hours.', 'warning')
+        return redirect(url_for('trade.add'))
+
     if manager.override_cooldown(reason):
         flash('⚠️ Cooldown overridden. Please trade responsibly!', 'warning')
     else:
