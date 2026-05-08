@@ -321,6 +321,41 @@ def stats_api():
     Returns user's current statistics as JSON for live UI updates
     """
     stats = current_user.get_stats()
+    now = datetime.utcnow()
+    start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_7d = now - timedelta(days=7)
+
+    q_closed = Trade.query.filter(
+        Trade.user_id == current_user.id,
+        Trade.status == "CLOSED",
+        Trade.profit_loss.isnot(None),
+        Trade.exit_date.isnot(None),
+    )
+
+    def _window_agg(start_dt):
+        pnl, wins, losses, avg_rr = (
+            db.session.query(
+                func.coalesce(func.sum(Trade.profit_loss), 0.0),
+                func.coalesce(func.sum(func.case((Trade.profit_loss > 0, 1), else_=0)), 0),
+                func.coalesce(func.sum(func.case((Trade.profit_loss < 0, 1), else_=0)), 0),
+                func.coalesce(func.avg(Trade.risk_reward), 0.0),
+            )
+            .filter(q_closed.where(Trade.exit_date >= start_dt).whereclause)
+            .one()
+        )
+        wins_i = int(wins or 0)
+        losses_i = int(losses or 0)
+        denom = wins_i + losses_i
+        win_rate = (wins_i / denom) * 100.0 if denom else 0.0
+        return float(pnl or 0.0), wins_i, losses_i, float(avg_rr or 0.0), float(win_rate)
+
+    pnl_today, wins_today, losses_today, avg_rr_today, win_rate_today = _window_agg(start_today)
+    pnl_7d, wins_7d, losses_7d, avg_rr_7d, win_rate_7d = _window_agg(start_7d)
+
+    trades_today = Trade.query.filter(
+        Trade.user_id == current_user.id,
+        Trade.entry_date >= start_today,
+    ).count()
     # Ensure numeric fields are serializable
     safe = {
         'total_trades': stats.get('total_trades', 0),
@@ -331,7 +366,15 @@ def stats_api():
         'win_rate': float(stats.get('win_rate', 0.0)),
         'total_pnl': float(stats.get('total_pnl', 0.0)),
         'avg_rr': float(stats.get('avg_rr', 0.0)),
-        'trades_today': int(stats.get('trades_today', 0)) if stats.get('trades_today') is not None else 0
+        'trades_today': int(trades_today or 0),
+        'pnl_today': float(pnl_today),
+        'win_rate_today': float(win_rate_today),
+        'avg_rr_today': float(avg_rr_today),
+        'pnl_7d': float(pnl_7d),
+        'win_rate_7d': float(win_rate_7d),
+        'avg_rr_7d': float(avg_rr_7d),
+        'wins_7d': int(wins_7d),
+        'losses_7d': int(losses_7d),
     }
     return jsonify(safe)
 

@@ -2546,10 +2546,10 @@
                     const topEl = document.getElementById('di-top');
 
                     // Extract values from server response
-                    const newPL = parseFloat(data.total_pnl || 0);
+                    const newPL = parseFloat(data.pnl_today || 0);
                     const newActive = parseInt(data.open_trades || 0);
-                    const newVol = (data.avg_rr ? parseFloat(data.avg_rr).toFixed(2) : '—');
-                    const newWinRate = parseFloat(data.win_rate || 0);
+                    const newVol = (data.avg_rr_7d ? parseFloat(data.avg_rr_7d).toFixed(2) : '—');
+                    const newWinRate = parseFloat(data.win_rate_7d || 0);
 
                     // Update P/L with animated counter and color transition
                     if(plEl) {

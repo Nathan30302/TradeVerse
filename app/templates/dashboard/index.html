@@ -287,30 +287,28 @@
     </div>
     <div class="col-md-3">
         <div class="stat-card success">
-            <div class="stat-label">Win Rate</div>
-            <div class="stat-value">{{ stats.win_rate | percentage(1) }}</div>
-            <div class="stat-change text-success">
-                <i class="fas fa-arrow-up"></i> {{ stats.winning_trades }}W / {{ stats.losing_trades }}L
+            <div class="stat-label">Win Rate (7D)</div>
+            <div class="stat-value" id="stat-winrate-7d">—</div>
+            <div class="stat-change text-success" id="stat-wl-7d">
+                <i class="fas fa-arrow-up"></i> —
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card {% if stats.total_pnl >= 0 %}success{% else %}danger{% endif %}">
-            <div class="stat-label">Total P/L</div>
-            <div class="stat-value {% if stats.total_pnl >= 0 %}profit{% else %}loss{% endif %}">
-                {{ stats.total_pnl | currency(current_user.preferred_currency) }}
-            </div>
-            <div class="stat-change {% if stats.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
-                <i class="fas fa-{% if stats.total_pnl >= 0 %}arrow-up{% else %}arrow-down{% endif %}"></i> Net profit/loss
+        <div class="stat-card" id="stat-pnl-7d-card">
+            <div class="stat-label">P/L (7D)</div>
+            <div class="stat-value" id="stat-pnl-7d">—</div>
+            <div class="stat-change" id="stat-pnl-7d-sub">
+                <i class="fas fa-clock"></i> Last 7 days
             </div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stat-card warning">
-            <div class="stat-label">Avg R:R</div>
-            <div class="stat-value">{{ stats.avg_rr | rr_ratio }}</div>
+            <div class="stat-label">Avg R:R (7D)</div>
+            <div class="stat-value" id="stat-avg-rr-7d">—</div>
             <div class="stat-change text-warning">
-                <i class="fas fa-balance-scale"></i> Risk-reward ratio
+                <i class="fas fa-balance-scale"></i> Last 7 days
             </div>
         </div>
     </div>
@@ -788,6 +786,32 @@
             var newPnl    = Math.round(parseFloat(data.total_pnl  || 0));
             var newWin    = Math.round(parseFloat(data.win_rate    || 0));
             var newTrades = parseInt(data.total_trades || 0, 10);
+
+            // New: 7D stats cards
+            var win7El = document.getElementById("stat-winrate-7d");
+            var wl7El  = document.getElementById("stat-wl-7d");
+            var pnl7El = document.getElementById("stat-pnl-7d");
+            var pnl7Card = document.getElementById("stat-pnl-7d-card");
+            var rr7El  = document.getElementById("stat-avg-rr-7d");
+
+            var win7 = parseFloat(data.win_rate_7d || 0);
+            var pnl7 = parseFloat(data.pnl_7d || 0);
+            var wins7 = parseInt(data.wins_7d || 0, 10);
+            var losses7 = parseInt(data.losses_7d || 0, 10);
+            var rr7 = parseFloat(data.avg_rr_7d || 0);
+
+            if (win7El) { win7El.textContent = (isFinite(win7) ? win7.toFixed(1) : "0.0") + "%"; }
+            if (wl7El)  { wl7El.innerHTML = '<i class="fas fa-arrow-up"></i> ' + wins7 + 'W / ' + losses7 + 'L'; }
+            if (pnl7El) { pnl7El.textContent = (pnl7 >= 0 ? '+' : '') + pnl7.toFixed(2); }
+            if (rr7El)  { rr7El.textContent = '1:' + (isFinite(rr7) ? rr7.toFixed(2) : '0.00'); }
+            if (pnl7Card) {
+                pnl7Card.classList.remove("success", "danger");
+                pnl7Card.classList.add(pnl7 >= 0 ? "success" : "danger");
+            }
+            if (pnl7El) {
+                pnl7El.classList.remove("profit", "loss");
+                pnl7El.classList.add(pnl7 >= 0 ? "profit" : "loss");
+            }
 
             if (pnlEl) {
                 animateNumber(pnlEl, parseFloat(pnlEl.textContent) || 0, newPnl, 600);
