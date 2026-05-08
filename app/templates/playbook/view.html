@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Playbook - {{ setup.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h1 class="h4 mb-0">{{ setup.name }}</h1>
+                {% if setup.is_active %}
+                <span class="badge bg-success">Active</span>
+                {% else %}
+                <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+            </div>
+            <div class="text-muted small mt-1">
+                {% if setup.market %}{{ setup.market }}{% endif %}
+                {% if setup.symbol_hint %}{% if setup.market %} • {% endif %}{{ setup.symbol_hint }}{% endif %}
+                {% if setup.timeframe %}{% if setup.market or setup.symbol_hint %} • {% endif %}{{ setup.timeframe }}{% endif %}
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ url_for('playbook.index') }}">Back</a>
+            <a class="btn btn-primary" href="{{ url_for('playbook.edit', setup_id=setup.id) }}"><i class="fas fa-edit"></i> Edit</a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-7">
+            <div class="card tv-surface">
+                <div class="card-body">
+                    {% if setup_stats is defined %}
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <span class="badge bg-dark">{{ setup_stats.count }} trade{{ '' if setup_stats.count == 1 else 's' }}</span>
+                        <span class="badge bg-{{ 'success' if setup_stats.win_rate >= 55 else ('warning' if setup_stats.win_rate >= 45 else 'danger') }}">{{ '%.0f'|format(setup_stats.win_rate) }}% WR</span>
+                        <span class="badge bg-{{ 'success' if setup_stats.pnl > 0 else ('danger' if setup_stats.pnl < 0 else 'secondary') }}">{{ '%+.2f'|format(setup_stats.pnl) }} P/L</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="fw-semibold mb-2">Entry criteria</div>
+                    <div class="small text-muted" style="white-space:pre-wrap">{{ setup.entry_criteria or "—" }}</div>
+
+                    <hr class="my-3">
+
+                    <div class="fw-semibold mb-2">Invalidation (where you are wrong)</div>
+                    <div class="small text-muted" style="white-space:pre-wrap">{{ setup.invalidation or "—" }}</div>
+
+                    <hr class="my-3">
+
+                    <div class="fw-semibold mb-2">Management plan</div>
+                    <div class="small text-muted" style="white-space:pre-wrap">{{ setup.management_plan or "—" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+            <div class="card tv-surface">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="fw-semibold">Checklist</div>
+                        {% if setup.tags %}
+                        <span class="small text-muted">{{ setup.tags }}</span>
+                        {% endif %}
+                    </div>
+                    {% set items = setup.checklist_items() %}
+                    {% if items %}
+                    <ul class="small mb-0 ps-3 mt-2">
+                        {% for it in items %}
+                        <li>{{ it }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="small text-muted mt-2">—</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card tv-surface mt-3">
+                <div class="card-body">
+                    <div class="fw-semibold mb-2">How to use this</div>
+                    <ul class="small text-muted mb-0 ps-3">
+                        <li>Only trade this setup when the checklist is fully “yes”.</li>
+                        <li>Track execution mistakes in your post-trade notes.</li>
+                        <li>Refine rules weekly (don’t tweak mid-week).</li>
+                    </ul>
+                </div>
+            </div>
+
+            {% if trades is defined %}
+            <div class="card tv-surface mt-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="fw-semibold">Recent trades</div>
+                    <div class="small text-muted">Linked to this setup</div>
+                </div>
+                <div class="card-body p-0">
+                    {% if not trades %}
+                        <div class="p-3 text-muted small">No trades linked yet. Pick this setup when logging a trade.</div>
+                    {% else %}
+                        <div class="table-responsive">
+                            <table class="table mb-0 align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Trade</th>
+                                        <th class="text-end">P/L</th>
+                                        <th class="text-end">Replay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for t in trades %}
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">{{ t.symbol }}</div>
+                                            <div class="small text-muted">{{ t.trade_type }} · {{ t.entry_date.strftime('%Y-%m-%d %H:%M') if t.entry_date else '' }}</div>
+                                        </td>
+                                        <td class="text-end">
+                                            {% if t.profit_loss is not none %}
+                                                <span class="fw-bold {{ 'text-success' if t.profit_loss > 0 else ('text-danger' if t.profit_loss < 0 else '') }}">{{ '%+.2f'|format(t.profit_loss) }}</span>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <a class="btn btn-sm btn-outline-dark" href="{{ url_for('replay.trade_replay', trade_id=t.id) }}">
+                                                Open
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

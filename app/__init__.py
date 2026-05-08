@@ -123,6 +123,8 @@ def create_app(config_name='default'):
     # Register blueprints (routes)
     from app.routes import auth, main, trade as trade_routes, dashboard
     from app.routes import planner, instruments
+    from app.routes import playbook
+    from app.routes import replay
     
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
@@ -130,6 +132,8 @@ def create_app(config_name='default'):
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(planner.bp)
     app.register_blueprint(instruments.bp)
+    app.register_blueprint(playbook.bp)
+    app.register_blueprint(replay.bp)
 
     # Register admin blueprint
     from app.routes import admin

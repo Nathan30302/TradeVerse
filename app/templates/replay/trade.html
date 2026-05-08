@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Replay {{ trade.symbol }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <h3 class="mb-0"><i class="fas fa-film"></i> Replay</h3>
+      <span class="badge bg-dark">{{ trade.symbol }}</span>
+      <span class="badge bg-secondary">{{ trade.trade_type }}</span>
+      <span class="badge bg-{{ 'success' if (trade.status or '')|upper == 'CLOSED' else 'secondary' }}">{{ trade.status }}</span>
+    </div>
+    <div class="small text-muted mt-1">
+      Entry: {{ trade.entry_date.strftime('%Y-%m-%d %H:%M') if trade.entry_date else '—' }}
+      {% if trade.exit_date %} · Exit: {{ trade.exit_date.strftime('%Y-%m-%d %H:%M') }}{% endif %}
+      {% if trade.playbook_setup_id %} · <a href="{{ url_for('playbook.view', setup_id=trade.playbook_setup_id) }}">Playbook setup</a>{% endif %}
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-dark" href="{{ url_for('trade.view', trade_id=trade.id) }}"><i class="fas fa-chart-line"></i> View trade</a>
+    <a class="btn btn-outline-dark" href="{{ url_for('replay.index') }}"><i class="fas fa-arrow-left"></i> Back</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header fw-bold">Add replay moment</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('replay.add_event', trade_id=trade.id) }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="mb-2">
+            <label class="form-label fw-bold" for="event_type">Moment</label>
+            <select class="form-select" id="event_type" name="event_type">
+              <option value="before">Before (thesis)</option>
+              <option value="entry">Entry</option>
+              <option value="manage">Management</option>
+              <option value="exit">Exit</option>
+              <option value="review">Post-trade review</option>
+              <option value="note" selected>Note</option>
+            </select>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label fw-bold" for="occurred_at">Timestamp (optional)</label>
+            <input class="form-control" type="datetime-local" id="occurred_at" name="occurred_at">
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label fw-bold" for="note">Note</label>
+            <textarea class="form-control" id="note" name="note" rows="4" placeholder="What did you see? What did you do? What rule mattered?"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold" for="media">Screenshot (optional)</label>
+            <input class="form-control" type="file" id="media" name="media" accept="image/*">
+            <div class="form-text">PNG/JPG/GIF/WEBP depending on your allowed extensions.</div>
+          </div>
+
+          <button class="btn btn-dark w-100" type="submit"><i class="fas fa-plus"></i> Add to replay</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-bold">Quick prompts</div>
+      <div class="card-body small text-muted">
+        <div class="mb-2"><span class="fw-bold text-dark">Before:</span> What’s the thesis? What’s invalidation?</div>
+        <div class="mb-2"><span class="fw-bold text-dark">Entry:</span> What confirmed your entry? Was size correct?</div>
+        <div class="mb-2"><span class="fw-bold text-dark">Management:</span> What would make you reduce? What would make you exit?</div>
+        <div><span class="fw-bold text-dark">Review:</span> Was it A+? What’s the #1 fix for next time?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="fw-bold">Timeline</div>
+        <div class="small text-muted">{{ events|length }} moment{{ '' if (events|length)==1 else 's' }}</div>
+      </div>
+      <div class="card-body">
+        {% if not events %}
+          <div class="text-center text-muted py-4">
+            No replay moments yet. Add your first “Before” or “Entry” screenshot.
+          </div>
+        {% else %}
+          <div class="d-flex flex-column gap-3">
+            {% for e in events %}
+              <div class="border rounded p-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-dark text-uppercase">{{ e.event_type }}</span>
+                    <span class="small text-muted">
+                      {% if e.occurred_at %}{{ e.occurred_at.strftime('%Y-%m-%d %H:%M') }}{% else %}{{ e.created_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}
+                    </span>
+                  </div>
+                </div>
+
+                {% if e.note %}
+                  <div class="mt-2">{{ e.note }}</div>
+                {% endif %}
+
+                {% if e.media_filename %}
+                  <div class="mt-2">
+                    <a href="{{ url_for('replay.media', filename=e.media_filename) }}" target="_blank" class="text-decoration-none">
+                      <img src="{{ url_for('replay.media', filename=e.media_filename) }}"
+                           alt="Replay media"
+                           class="img-fluid rounded border"
+                           style="max-height: 360px; object-fit: contain;">
+                    </a>
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

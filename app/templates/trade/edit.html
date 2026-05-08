@@ -132,7 +132,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="strategy" class="form-label fw-bold">Strategy</label>
                             <select class="form-select" id="strategy" name="strategy">
                                 <option value="">Select strategy...</option>
@@ -144,7 +144,7 @@
                             </select>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="session_type" class="form-label fw-bold">Trading Session</label>
                             <select class="form-select" id="session_type" name="session_type">
                                 <option value="">Select session...</option>
@@ -156,7 +156,7 @@
                             </select>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="timeframe" class="form-label fw-bold">Timeframe</label>
                             <select class="form-select" id="timeframe" name="timeframe">
                                 <option value="">Select...</option>
@@ -168,6 +168,18 @@
                                 <option value="4H" {% if trade.timeframe == '4H' %}selected{% endif %}>4 Hours</option>
                                 <option value="1D" {% if trade.timeframe == '1D' %}selected{% endif %}>1 Day</option>
                                 <option value="1W" {% if trade.timeframe == '1W' %}selected{% endif %}>1 Week</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="playbook_setup_id" class="form-label fw-bold">Playbook setup</label>
+                            <select class="form-select" id="playbook_setup_id" name="playbook_setup_id">
+                                <option value="">None</option>
+                                {% for s in (playbook_setups or []) %}
+                                    <option value="{{ s.id }}" {% if trade.playbook_setup_id == s.id %}selected{% endif %}>
+                                        {{ s.name }}
+                                    </option>
+                                {% endfor %}
                             </select>
                         </div>
                     </div>

@@ -93,6 +93,9 @@ class Trade(db.Model):
     account_number = db.Column(db.String(50))
     trade_id = db.Column(db.String(100))  # Broker's trade ID
     imported_source_id = db.Column(db.Integer, db.ForeignKey('imported_trade_sources.id'), nullable=True, index=True)
+
+    # ==================== Playbook ====================
+    playbook_setup_id = db.Column(db.Integer, db.ForeignKey("playbook_setups.id"), nullable=True, index=True)
     
     # ==================== Table Constraints ====================
     __table_args__ = (

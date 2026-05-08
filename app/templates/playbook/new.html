@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}New Playbook Setup - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h1 class="h4 mb-1">New playbook setup</h1>
+            <div class="text-muted small">Write it like a checklist a robot could follow.</div>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ url_for('playbook.index') }}">Back</a>
+    </div>
+
+    <div class="card tv-surface">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('playbook.new') }}">
+                {% include "playbook/_form.html" %}
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <a class="btn btn-secondary" href="{{ url_for('playbook.index') }}">Cancel</a>
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-save"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -9,6 +9,7 @@ from app import db
 from app.models.trade import Trade
 from app.models.trade_plan import TradePlan
 from app.models.trade_feedback import TradeFeedback
+from app.models.playbook_setup import PlaybookSetup
 from app.models.cooldown import Cooldown, should_trigger_cooldown, get_cooldown_duration
 from app.services.feedback_analyzer import generate_trade_feedback
 from app.services.cooldown_manager import CooldownManager, get_active_cooldown, trigger_emotional_cooldown
@@ -59,12 +60,18 @@ def add():
     # Check for active cooldown
     active_cooldown = get_active_cooldown(current_user.id)
     accountability_required = bool(session.get("tv_accountability_required"))
+    playbook_setups = (
+        PlaybookSetup.query.filter_by(user_id=current_user.id, is_active=True)
+        .order_by(PlaybookSetup.updated_at.desc().nullslast(), PlaybookSetup.created_at.desc())
+        .all()
+    )
     if request.method == 'GET':
         return render_template(
             'trade/add.html',
             active_cooldown=active_cooldown,
             prefill=None,
             accountability_required=accountability_required,
+            playbook_setups=playbook_setups,
         )
     
     if request.method == 'POST':
@@ -79,6 +86,7 @@ def add():
                     prefill=None,
                     accountability_required=True,
                     open_accountability_modal=True,
+                    playbook_setups=playbook_setups,
                 )
 
         # Block if in cooldown (unless override)
@@ -91,6 +99,7 @@ def add():
                 active_cooldown=active_cooldown,
                 prefill=None,
                 accountability_required=accountability_required,
+                playbook_setups=playbook_setups,
             )
         
         # Log override if used
@@ -162,6 +171,16 @@ def add():
                 checklist_completed=checklist_completed,
                 playbook_followed=playbook_followed
             )
+
+            pb_setup_id = (request.form.get("playbook_setup_id") or "").strip()
+            if pb_setup_id:
+                try:
+                    pb_setup_id_int = int(pb_setup_id)
+                    ok = PlaybookSetup.query.filter_by(id=pb_setup_id_int, user_id=current_user.id).first()
+                    if ok:
+                        trade.playbook_setup_id = pb_setup_id_int
+                except ValueError:
+                    pass
 
             # Attach instrument FK if provided
             if instrument_id:
@@ -253,7 +272,13 @@ def add():
         else:
             flash('No previous trade to duplicate yet.', 'info')
 
-    return render_template('trade/add.html', active_cooldown=active_cooldown, prefill=prefill)
+    return render_template(
+        'trade/add.html',
+        active_cooldown=active_cooldown,
+        prefill=prefill,
+        playbook_setups=playbook_setups,
+        accountability_required=accountability_required,
+    )
 
 
 def _duplicate_prefill(user_id):
@@ -479,6 +504,11 @@ def edit(trade_id):
     Modify existing trade details
     """
     trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
+    playbook_setups = (
+        PlaybookSetup.query.filter_by(user_id=current_user.id, is_active=True)
+        .order_by(PlaybookSetup.updated_at.desc().nullslast(), PlaybookSetup.created_at.desc())
+        .all()
+    )
     
     if request.method == 'POST':
         try:
@@ -530,6 +560,17 @@ def edit(trade_id):
             # Update compliance
             trade.checklist_completed = request.form.get('checklist_completed') == 'on'
             trade.playbook_followed = request.form.get('playbook_followed') == 'on'
+
+            pb_setup_id = (request.form.get("playbook_setup_id") or "").strip()
+            if pb_setup_id:
+                try:
+                    pb_setup_id_int = int(pb_setup_id)
+                    ok = PlaybookSetup.query.filter_by(id=pb_setup_id_int, user_id=current_user.id).first()
+                    trade.playbook_setup_id = pb_setup_id_int if ok else None
+                except ValueError:
+                    trade.playbook_setup_id = None
+            else:
+                trade.playbook_setup_id = None
             
             # Recalculate metrics
             if trade.exit_price:
@@ -550,7 +591,7 @@ def edit(trade_id):
             flash(f'❌ Error updating trade: {str(e)}', 'danger')
             current_app.logger.exception("Edit trade error")
     
-    return render_template('trade/edit.html', trade=trade)
+    return render_template('trade/edit.html', trade=trade, playbook_setups=playbook_setups)
 
 # ==================== Delete Trade ====================
 
