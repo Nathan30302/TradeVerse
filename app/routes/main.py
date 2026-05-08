@@ -20,11 +20,15 @@ def robots():
 @bp.route('/favicon.ico')
 def favicon():
     """Serve a root favicon for crawlers/browsers expecting /favicon.ico."""
-    return send_from_directory(
-        current_app.static_folder,
-        'img/favicon.png',
-        mimetype='image/png',
-    )
+    # Prefer a real .ico if present; fall back to the PNG.
+    try:
+        return send_from_directory(current_app.static_folder, 'favicon.ico', mimetype='image/x-icon')
+    except Exception:
+        return send_from_directory(
+            current_app.static_folder,
+            'img/favicon.png',
+            mimetype='image/png',
+        )
 
 
 @bp.route('/sitemap.xml')
@@ -37,7 +41,7 @@ def sitemap():
         url_for('main.about', _external=True),
         url_for('main.features', _external=True),
         url_for('main.contact', _external=True),
-        url_for('monetization.pricing', _external=True),
+        url_for('main.pricing', _external=True),
     ]
     now = datetime.utcnow().strftime('%Y-%m-%d')
     body = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
@@ -93,7 +97,10 @@ def features():
 @bp.route('/pricing')
 def pricing():
     """Pricing page - Subscription plans"""
-    return redirect(url_for('monetization.pricing'), code=301)
+    # Render directly (avoid redirect-only indexing issues in Search Console).
+    from app.routes.monetization import pricing as pricing_view
+
+    return pricing_view()
 
 @bp.route('/contact')
 def contact():
