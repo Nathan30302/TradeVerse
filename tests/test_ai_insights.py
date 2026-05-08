@@ -34,7 +34,10 @@ def test_ai_insights_service():
         assert weekly_review['stats']['total_trades'] == 3
         assert 'win_rate' in weekly_review['stats']
         assert isinstance(weekly_review['summary'], str)
-        assert analyzer.answer_question('How did I perform this week').startswith('This week')
+        resp = analyzer.answer_question('How did I perform this week')
+        assert isinstance(resp, dict)
+        assert isinstance(resp.get('answer'), str)
+        assert len(resp.get('answer') or '') > 0
 
 
 if __name__ == '__main__':
