@@ -6,7 +6,7 @@ Core trading journal entry with comprehensive trade tracking
 from app import db
 from datetime import datetime
 from sqlalchemy import CheckConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import deferred, relationship
 from app.utils.pnl_calculator import detect_asset_type, AssetType
 
 class Trade(db.Model):
@@ -95,7 +95,11 @@ class Trade(db.Model):
     imported_source_id = db.Column(db.Integer, db.ForeignKey('imported_trade_sources.id'), nullable=True, index=True)
 
     # ==================== Playbook ====================
-    playbook_setup_id = db.Column(db.Integer, db.ForeignKey("playbook_setups.id"), nullable=True, index=True)
+    # Deferred keeps SELECTs working if the DB hasn't been migrated yet (column absent).
+    # Index is applied via migrations when the column is created.
+    playbook_setup_id = deferred(
+        db.Column(db.Integer, db.ForeignKey("playbook_setups.id"), nullable=True)
+    )
     
     # ==================== Table Constraints ====================
     __table_args__ = (
