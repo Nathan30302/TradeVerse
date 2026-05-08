@@ -149,6 +149,7 @@ venv.bak/
 tradeverse.db
 *.db
 *.sqlite
+dev.sqlite3
 
 # Local test artifacts and temporary files
 temp_homepage.html
