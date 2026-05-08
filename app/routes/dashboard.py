@@ -540,14 +540,20 @@ def monthly_performance_api():
         Trade.user_id == current_user.id,
         Trade.status == 'CLOSED',
         Trade.profit_loss.isnot(None),
-        Trade.exit_date >= datetime.now() - timedelta(days=365)
+        Trade.exit_date >= datetime.utcnow() - timedelta(days=365)
     ).all()
 
-    # Group by month
+    # Group by month (user timezone)
+    try:
+        user_tz = ZoneInfo((getattr(current_user, 'timezone', None) or 'UTC').strip() or 'UTC')
+    except Exception:
+        user_tz = ZoneInfo('UTC')
+
     monthly_data = {}
     for trade in trades:
         if trade.exit_date:
-            month_key = trade.exit_date.strftime('%Y-%m')
+            local_exit = trade.exit_date.replace(tzinfo=timezone.utc).astimezone(user_tz)
+            month_key = local_exit.strftime('%Y-%m')
             if month_key not in monthly_data:
                 monthly_data[month_key] = 0
             monthly_data[month_key] += trade.profit_loss
@@ -591,18 +597,25 @@ def calculate_max_drawdown():
     return max_dd
 
 def get_week_performance():
-    """Get performance for current week"""
-    week_ago = datetime.now() - timedelta(days=7)
+    """Get performance for last 7 days (user timezone)."""
+    try:
+        user_tz = ZoneInfo((getattr(current_user, 'timezone', None) or 'UTC').strip() or 'UTC')
+    except Exception:
+        user_tz = ZoneInfo('UTC')
+
+    now_local = datetime.now(user_tz)
+    start_local = now_local - timedelta(days=7)
+    start_utc = start_local.astimezone(timezone.utc).replace(tzinfo=None)
 
     trades = Trade.query.filter(
         Trade.user_id == current_user.id,
         Trade.status == 'CLOSED',
-        Trade.exit_date >= week_ago
+        Trade.exit_date >= start_utc
     ).all()
 
-    total_pnl = sum(t.profit_loss for t in trades if t.profit_loss)
+    total_pnl = sum((t.profit_loss or 0) for t in trades if t.profit_loss is not None)
     total_trades = len(trades)
-    wins = len([t for t in trades if t.profit_loss and t.profit_loss > 0])
+    wins = len([t for t in trades if (t.profit_loss is not None) and t.profit_loss > 0])
 
     return {
         'pnl': total_pnl,
@@ -612,7 +625,7 @@ def get_week_performance():
     }
 
 def get_performance_by_day():
-    """Get performance by day of week"""
+    """Get performance by day of week (user timezone)."""
     from calendar import day_name
 
     trades = Trade.query.filter_by(
@@ -622,9 +635,16 @@ def get_performance_by_day():
 
     day_stats = {i: {'wins': 0, 'losses': 0, 'pnl': 0} for i in range(7)}
 
+    try:
+        user_tz = ZoneInfo((getattr(current_user, 'timezone', None) or 'UTC').strip() or 'UTC')
+    except Exception:
+        user_tz = ZoneInfo('UTC')
+
     for trade in trades:
-        if trade.exit_date and trade.profit_loss:
-            day = trade.exit_date.weekday()
+        if trade.exit_date and trade.profit_loss is not None:
+            # exit_date is stored as naive UTC; interpret as UTC then convert to user TZ
+            local_exit = trade.exit_date.replace(tzinfo=timezone.utc).astimezone(user_tz)
+            day = local_exit.weekday()
             if trade.profit_loss > 0:
                 day_stats[day]['wins'] += 1
             else:

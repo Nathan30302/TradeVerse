@@ -266,6 +266,16 @@
   "use strict";
   function $(id){ return document.getElementById(id); }
 
+  var tvCurrency = {{ (current_user.preferred_currency or 'USD')|tojson }};
+  function fmtMoney(n){
+    if (typeof n !== "number" || isNaN(n)) return "—";
+    try {
+      return new Intl.NumberFormat(undefined, { style: "currency", currency: tvCurrency }).format(n);
+    } catch(e){
+      return (n >= 0 ? "" : "-") + "$" + Math.abs(n).toFixed(2);
+    }
+  }
+
   function showLocked(){
     var locked = $("advanced-metrics-locked");
     if (locked) locked.style.display = "block";
@@ -335,7 +345,7 @@ new Chart(dayCtx, {
             tooltip: {
                 callbacks: {
                     label: function(context) {
-                        return 'P/L: $' + context.parsed.y.toFixed(2);
+                        return 'P/L: ' + fmtMoney(context.parsed.y);
                     }
                 }
             }
@@ -384,7 +394,7 @@ fetch("{{ url_for('dashboard.monthly_performance_api') }}")
                         padding: 12,
                         callbacks: {
                             label: function(context) {
-                                return 'P/L: $' + context.parsed.y.toFixed(2);
+                                return 'P/L: ' + fmtMoney(context.parsed.y);
                             }
                         }
                     }
