@@ -856,6 +856,19 @@ def ai_query():
 
     payload = request.get_json() or {}
     question = payload.get('question', '').strip()
+    if not question:
+        return jsonify(
+            {
+                "answer": "Ask me anything about your recent performance or about trading in general.",
+                "follow_ups": [
+                    "What’s my biggest performance leak this week?",
+                    "What should my one rule be next week?",
+                    "Explain risk:reward and how to improve it.",
+                ],
+            }
+        )
+    if len(question) > 1200:
+        return jsonify({"answer": "That question is a bit long. Please shorten it and ask again.", "follow_ups": []}), 400
     try:
         history = payload.get('history') or []
         if not isinstance(history, list):
@@ -864,25 +877,46 @@ def ai_query():
         # Prefer local coach for reliability; if web mode is enabled but fails,
         # gracefully fall back to local instead of returning a generic error.
         answer = ""
-        follow_ups = []
+        follow_ups: list[str] = []
         use_web = bool(current_app.config.get("FEATURE_AI_WEB")) and bool(os.environ.get("OPENAI_API_KEY")) and bool(os.environ.get("TAVILY_API_KEY"))
+
+        # Compact user context so answers stay consistent with your data.
+        try:
+            wf = (getattr(current_user, 'weekly_focus_rule', None) or '').strip()
+        except Exception:
+            wf = ''
+        try:
+            weekly = AIAnalyzer(current_user.id).get_weekly_review() or {}
+            ws = (weekly.get("stats") or {}) if isinstance(weekly, dict) else {}
+            ctx_week = (
+                f"trades_7d={int(ws.get('total_trades') or 0)}\n"
+                f"win_rate_7d={float(ws.get('win_rate') or 0.0):.1f}%\n"
+                f"pnl_7d={float(ws.get('total_pnl') or 0.0):.2f}\n"
+                f"avg_rr_7d={float(ws.get('avg_rr') or 0.0):.2f}\n"
+            )
+        except Exception:
+            ctx_week = ""
+        try:
+            s = current_user.get_stats()
+            ctx_all = (
+                f"open_trades={int(s.get('open_trades') or 0)}\n"
+                f"closed_trades_total={int(s.get('closed_trades') or 0)}\n"
+                f"win_rate_all_time={float(s.get('win_rate') or 0.0):.1f}%\n"
+                f"avg_rr_all_time={float(s.get('avg_rr') or 0.0):.2f}\n"
+            )
+        except Exception:
+            ctx_all = ""
+        ctx = (
+            f"username={current_user.username or ''}\n"
+            + (f"weekly_focus_rule={wf}\n" if wf else "")
+            + ctx_week
+            + ctx_all
+        )
         if use_web:
             try:
-                try:
-                    s = current_user.get_stats()
-                    ctx = (
-                        f"username={current_user.username or ''}\n"
-                        f"open_trades={int(s.get('open_trades') or 0)}\n"
-                        f"closed_trades_total={int(s.get('closed_trades') or 0)}\n"
-                        f"win_rate_all_time={float(s.get('win_rate') or 0.0):.1f}%\n"
-                        f"avg_rr_all_time={float(s.get('avg_rr') or 0.0):.2f}\n"
-                    )
-                except Exception:
-                    ctx = f"username={current_user.username or ''}"
-
                 web = answer_with_web(question=question, user_context=ctx, history=history[-12:])
                 answer = web.answer
-                follow_ups = web.follow_ups
+                follow_ups = [str(x) for x in (web.follow_ups or []) if x]
             except Exception:
                 current_app.logger.warning("Web AI failed; falling back to local coach", exc_info=True)
 
@@ -893,18 +927,21 @@ def ai_query():
                 user_name=(current_user.username or '')
             )
             answer = (result.get('answer') if isinstance(result, dict) else '') or ''
-            follow_ups = (result.get('follow_ups') if isinstance(result, dict) else []) or []
-        try:
-            wf = (getattr(current_user, 'weekly_focus_rule', None) or '').strip()
-        except Exception:
-            wf = ''
-        if wf and answer:
-            answer = answer.rstrip() + f"\n\n— Weekly focus you set: {wf}"
+            follow_ups = [str(x) for x in ((result.get('follow_ups') if isinstance(result, dict) else []) or []) if x]
+
+        follow_ups = follow_ups[:3]
+        if not follow_ups:
+            follow_ups = [
+                "What’s my biggest performance leak this week?",
+                "What should my one rule be next week?",
+                "What should I focus on tomorrow?",
+            ]
     except Exception as exc:
         current_app.logger.warning('AI Buddy answer_question failed: %s', exc)
         answer = 'AI Buddy could not process your question right now. Please try again later.'
         follow_ups = []
-    return jsonify({'answer': answer, 'follow_ups': follow_ups})
+        wf = ''
+    return jsonify({'answer': answer, 'follow_ups': follow_ups, 'context': {'weekly_focus_rule': wf}})
 
 
 # ==================== Behavior Patterns ====================

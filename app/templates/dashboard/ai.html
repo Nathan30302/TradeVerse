@@ -467,7 +467,14 @@
 {# ------------------------------------------------------------------ #}
 <div class="card border-0 mb-4 tv-surface tv-hud-panel">
     <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="fas fa-comments"></i> Talk to AI Buddy</h5>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h5 class="mb-0"><i class="fas fa-comments"></i> Talk to AI Buddy</h5>
+            <div class="small" id="aiDataBasis" style="opacity:.9;">
+                <span class="badge bg-light text-dark">Last 7d: <span id="aiBasisTrades">—</span> trades</span>
+                <span class="badge bg-light text-dark">WR: <span id="aiBasisWR">—</span></span>
+                <span class="badge bg-light text-dark">P/L: <span id="aiBasisPNL">—</span></span>
+            </div>
+        </div>
     </div>
     <div class="card-body">
         <div class="mb-3">
@@ -534,10 +541,37 @@
     var isSpeaking   = false;
     var voiceQueue   = [];
     var voiceIdx     = 0;
+    var STATS_URL    = "/dashboard/api/stats";
 
     function getCsrf() {
         var el = document.querySelector("input[name='csrf_token']");
         return el ? el.value : "";
+    }
+
+    function fmtMoney(n) {
+        if (typeof n !== "number" || isNaN(n)) return "—";
+        try {
+            // The currency filter is server-side; client-side we keep it simple.
+            return (n >= 0 ? "" : "-") + "$" + Math.abs(n).toFixed(2);
+        } catch (e) {
+            return (n >= 0 ? "" : "-") + "$" + Math.abs(n).toFixed(2);
+        }
+    }
+
+    function refreshBasis() {
+        try {
+            fetch(STATS_URL, { headers: { "Accept": "application/json" } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var t = document.getElementById("aiBasisTrades");
+                    var wr = document.getElementById("aiBasisWR");
+                    var pnl = document.getElementById("aiBasisPNL");
+                    if (t) t.textContent = String(d && d.wins_7d !== undefined ? ((d.wins_7d || 0) + (d.losses_7d || 0)) : (d.trades_today || "—"));
+                    if (wr) wr.textContent = (d && typeof d.win_rate_7d === "number") ? (d.win_rate_7d.toFixed(1) + "%") : "—";
+                    if (pnl) pnl.textContent = (d && typeof d.pnl_7d === "number") ? fmtMoney(d.pnl_7d) : "—";
+                })
+                .catch(function () { /* silent */ });
+        } catch (e) {}
     }
 
     function stopListening() {
@@ -760,6 +794,8 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         CSRF_TOKEN = getCsrf();
+        refreshBasis();
+        setInterval(refreshBasis, 60000);
 
         var voiceBtn   = document.getElementById("voiceBtn");
         var voicePauseBtn = document.getElementById("voicePauseBtn");
