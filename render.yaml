@@ -4,7 +4,8 @@ services:
     runtime: python3
     pythonVersion: '3.11'
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT app.wsgi:app
+    # Migrate before workers start so new tables/columns exist (avoids 500s after deploy).
+    startCommand: bash scripts/render-start.sh
     healthCheckPath: /
     envVars:
       - key: FLASK_ENV

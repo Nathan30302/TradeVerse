@@ -49,6 +49,17 @@ def reset_db():
         print('Database reset cancelled.')
 
 if __name__ == '__main__':
+    # Keep local/dev DB aligned with models so routes don’t crash on schema drift.
+    if (os.getenv('FLASK_ENV') or 'development') != 'production':
+        try:
+            with app.app_context():
+                upgrade()
+        except Exception as exc:
+            print(
+                'WARNING: Automatic db upgrade failed — run `flask db upgrade` manually:',
+                exc,
+            )
+
     print('Starting TradeVerse...')
     print('Professional Trading Journal')
     print('Open your browser to: http://localhost:5000')
