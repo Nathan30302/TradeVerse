@@ -16,18 +16,33 @@ depends_on = None
 
 
 def upgrade():
-    op.create_table(
-        "ai_coaching_notes",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False, index=True),
-        sa.Column("pinned_rule", sa.Text(), nullable=False, server_default=""),
-        sa.Column("checklist_text", sa.Text(), nullable=False, server_default=""),
-        sa.Column("source", sa.String(length=30), nullable=False, server_default="manual"),
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), nullable=True),
-    )
-    op.create_index("ix_ai_coaching_notes_user_id", "ai_coaching_notes", ["user_id"])
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+
+    if not insp.has_table("ai_coaching_notes"):
+        op.create_table(
+            "ai_coaching_notes",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+            sa.Column("pinned_rule", sa.Text(), nullable=False, server_default=""),
+            sa.Column("checklist_text", sa.Text(), nullable=False, server_default=""),
+            sa.Column("source", sa.String(length=30), nullable=False, server_default="manual"),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
+            sa.Column("created_at", sa.DateTime(), nullable=False),
+            sa.Column("updated_at", sa.DateTime(), nullable=True),
+        )
+
+    # Ensure index exists (idempotent across partial runs)
+    existing = set()
+    try:
+        existing = {ix.get("name") for ix in insp.get_indexes("ai_coaching_notes")}
+    except Exception:
+        existing = set()
+    if "ix_ai_coaching_notes_user_id" not in existing:
+        try:
+            op.create_index("ix_ai_coaching_notes_user_id", "ai_coaching_notes", ["user_id"])
+        except Exception:
+            pass
 
 
 def downgrade():

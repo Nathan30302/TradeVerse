@@ -959,7 +959,8 @@
         if (voiceBtn)   { voiceBtn.addEventListener("click", onVoiceClick); }
         if (voicePauseBtn) { voicePauseBtn.addEventListener("click", onVoicePauseToggle); }
         if (voiceStopBtn)  { voiceStopBtn.addEventListener("click", onVoiceStop); }
-        if (submitBtn)  { submitBtn.addEventListener("click", onAskClick); }
+        // Don't pass the click event object as the question.
+        if (submitBtn)  { submitBtn.addEventListener("click", function(){ onAskClick(); }); }
         if (clearBtn)   { clearBtn.addEventListener("click", clearChat); }
         if (questionEl) { questionEl.addEventListener("keydown", onQuestionKeydown); }
         if (tdBtn) { tdBtn.addEventListener("click", runTradeDoctor); }

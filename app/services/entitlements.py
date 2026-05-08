@@ -95,6 +95,19 @@ class SubscriptionState:
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
+def _as_utc_aware(dt: Optional[datetime]) -> Optional[datetime]:
+    """
+    Normalize DB datetimes for safe comparisons.
+
+    Our DB stores naive UTC datetimes in several columns. Flask/Python comparisons
+    will raise if we compare naive to timezone-aware.
+    """
+    if dt is None:
+        return None
+    if getattr(dt, "tzinfo", None) is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
 
 def get_effective_subscription_state(user) -> SubscriptionState:
     """
@@ -110,8 +123,8 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     role = (_safe_getattr(user, "role", None) or "user").lower()
 
     now = _utcnow()
-    trial_ends_at: Optional[datetime] = _safe_getattr(user, "trial_ends_at", None)
-    subscription_expires_at: Optional[datetime] = _safe_getattr(user, "subscription_expires_at", None)
+    trial_ends_at: Optional[datetime] = _as_utc_aware(_safe_getattr(user, "trial_ends_at", None))
+    subscription_expires_at: Optional[datetime] = _as_utc_aware(_safe_getattr(user, "subscription_expires_at", None))
 
     # Owner/admin bypass: full access without billing enforcement.
     if role in {"owner"} or is_owner_user(user):

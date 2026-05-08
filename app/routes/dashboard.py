@@ -17,7 +17,7 @@ from app.services.pattern_detector import detect_patterns
 from app.services.emotion_analyzer import EmotionAnalyzer, analyze_emotions
 from app.services.ai_insights import AIAnalyzer
 from app.services.web_ai import answer_with_web
-from sqlalchemy import func, extract, or_, update
+from sqlalchemy import case, extract, func, or_, update
 from app import db
 from app.models.user import User
 from app.models.ai_coaching_note import AICoachingNote
@@ -368,8 +368,8 @@ def stats_api():
         pnl, wins, losses, avg_rr = (
             db.session.query(
                 func.coalesce(func.sum(Trade.profit_loss), 0.0),
-                func.coalesce(func.sum(func.case((Trade.profit_loss > 0, 1), else_=0)), 0),
-                func.coalesce(func.sum(func.case((Trade.profit_loss < 0, 1), else_=0)), 0),
+                func.coalesce(func.sum(case((Trade.profit_loss > 0, 1), else_=0)), 0),
+                func.coalesce(func.sum(case((Trade.profit_loss < 0, 1), else_=0)), 0),
                 func.coalesce(func.avg(Trade.risk_reward), 0.0),
             )
             .filter(q_closed.where(Trade.exit_date >= start_dt).whereclause)
@@ -382,11 +382,11 @@ def stats_api():
         return float(pnl or 0.0), wins_i, losses_i, float(avg_rr or 0.0), float(win_rate)
 
     # Today's window: [start_today, end_today)
-    pnl_today, wins_today, losses_today, avg_rr_today, win_rate_today = (
+    pnl_today, wins_today, losses_today, avg_rr_today = (
         db.session.query(
             func.coalesce(func.sum(Trade.profit_loss), 0.0),
-            func.coalesce(func.sum(func.case((Trade.profit_loss > 0, 1), else_=0)), 0),
-            func.coalesce(func.sum(func.case((Trade.profit_loss < 0, 1), else_=0)), 0),
+            func.coalesce(func.sum(case((Trade.profit_loss > 0, 1), else_=0)), 0),
+            func.coalesce(func.sum(case((Trade.profit_loss < 0, 1), else_=0)), 0),
             func.coalesce(func.avg(Trade.risk_reward), 0.0),
         )
         .filter(
