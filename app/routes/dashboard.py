@@ -16,6 +16,7 @@ from app.services.performance_calculator import calculate_weekly_score, get_perf
 from app.services.pattern_detector import detect_patterns
 from app.services.emotion_analyzer import EmotionAnalyzer, analyze_emotions
 from app.services.ai_insights import AIAnalyzer
+from app.services.web_ai import answer_with_web
 from sqlalchemy import func, extract, or_, update
 from app import db
 from app.models.user import User
@@ -24,6 +25,7 @@ from datetime import datetime, timedelta, timezone
 import random
 from app.services.entitlements import require_feature
 from zoneinfo import ZoneInfo
+import os
 
 # Create Blueprint
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
@@ -838,13 +840,32 @@ def ai_query():
         history = payload.get('history') or []
         if not isinstance(history, list):
             history = []
-        result = AIAnalyzer(current_user.id).answer_question(
-            question,
-            history=history[-12:],
-            user_name=(current_user.username or '')
-        )
-        answer = (result.get('answer') if isinstance(result, dict) else '') or ''
-        follow_ups = (result.get('follow_ups') if isinstance(result, dict) else []) or []
+        use_web = bool(current_app.config.get("FEATURE_AI_WEB")) and bool(os.environ.get("OPENAI_API_KEY")) and bool(os.environ.get("TAVILY_API_KEY"))
+        if use_web:
+            # Build a short user-context block from server-truth stats (7D + today).
+            try:
+                s = current_user.get_stats()
+                ctx = (
+                    f"username={current_user.username or ''}\n"
+                    f"open_trades={int(s.get('open_trades') or 0)}\n"
+                    f"closed_trades_total={int(s.get('closed_trades') or 0)}\n"
+                    f"win_rate_all_time={float(s.get('win_rate') or 0.0):.1f}%\n"
+                    f"avg_rr_all_time={float(s.get('avg_rr') or 0.0):.2f}\n"
+                )
+            except Exception:
+                ctx = f"username={current_user.username or ''}"
+
+            web = answer_with_web(question=question, user_context=ctx, history=history[-12:])
+            answer = web.answer
+            follow_ups = web.follow_ups
+        else:
+            result = AIAnalyzer(current_user.id).answer_question(
+                question,
+                history=history[-12:],
+                user_name=(current_user.username or '')
+            )
+            answer = (result.get('answer') if isinstance(result, dict) else '') or ''
+            follow_ups = (result.get('follow_ups') if isinstance(result, dict) else []) or []
         try:
             wf = (getattr(current_user, 'weekly_focus_rule', None) or '').strip()
         except Exception:

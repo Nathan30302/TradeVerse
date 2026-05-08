@@ -195,6 +195,8 @@ class Config:
     # Feature flags (set to 0/false to disable surfaces quickly)
     FEATURE_AI_BUDDY = os.environ.get('FEATURE_AI_BUDDY', 'true').lower() in ('1', 'true', 'yes')
     FEATURE_MARKET_QUOTES = os.environ.get('FEATURE_MARKET_QUOTES', 'true').lower() in ('1', 'true', 'yes')
+    # Optional: enable web-enabled AI answers (OpenAI + Tavily). If false, AI Buddy uses local coach only.
+    FEATURE_AI_WEB = os.environ.get('FEATURE_AI_WEB', 'false').lower() in ('1', 'true', 'yes')
 
     # Public market-quotes endpoint: max requests per IP per rolling minute
     MARKET_QUOTES_MAX_PER_MINUTE = int(os.environ.get('MARKET_QUOTES_MAX_PER_MINUTE', '120'))
