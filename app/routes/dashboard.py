@@ -20,6 +20,7 @@ from app.services.web_ai import answer_with_web
 from sqlalchemy import func, extract, or_, update
 from app import db
 from app.models.user import User
+from app.models.ai_coaching_note import AICoachingNote
 from flask import request, flash, redirect, url_for
 from datetime import datetime, timedelta, timezone
 import random
@@ -189,6 +190,19 @@ def index():
         'weekly_focus_set': bool(wf),
     }
 
+    pinned_note = None
+    try:
+        pinned_note = (
+            AICoachingNote.query.filter(
+                AICoachingNote.user_id == current_user.id,
+                AICoachingNote.is_active == True,
+            )
+            .order_by(AICoachingNote.updated_at.desc().nullslast(), AICoachingNote.created_at.desc())
+            .first()
+        )
+    except Exception:
+        pinned_note = None
+
     return render_template('dashboard/index.html',
                            stats=stats,
                            recent_trades=recent_trades,
@@ -199,7 +213,8 @@ def index():
                            ai_summary=ai_summary,
                            best_trade=best_trade,
                            worst_trade=worst_trade,
-                           onboarding=onboarding)
+                           onboarding=onboarding,
+                           pinned_note=pinned_note)
 
 # ==================== Analytics ====================
 
@@ -838,13 +853,85 @@ def ai():
     except Exception:
         wf = ''
 
+    pinned_note = None
+    try:
+        pinned_note = (
+            AICoachingNote.query.filter(
+                AICoachingNote.user_id == current_user.id,
+                AICoachingNote.is_active == True,
+            )
+            .order_by(AICoachingNote.updated_at.desc().nullslast(), AICoachingNote.created_at.desc())
+            .first()
+        )
+    except Exception:
+        pinned_note = None
+
     return render_template('dashboard/ai.html',
                            weekly_review=weekly_review,
                            monthly_review=monthly_review,
                            behavioral_insights=behavioral_insights,
                            voice_summary=voice_summary,
                            alerts=alerts,
-                           weekly_focus_rule=wf)
+                           weekly_focus_rule=wf,
+                           pinned_note=pinned_note)
+
+
+@bp.route('/ai/notes/save', methods=['POST'])
+@login_required
+def save_ai_note():
+    """Save (or replace) the user's pinned coaching note."""
+    rule = (request.form.get("pinned_rule") or "").strip()
+    checklist = (request.form.get("checklist_text") or "").strip()
+    source = (request.form.get("source") or "manual").strip()[:30] or "manual"
+    next_url = _safe_same_site_redirect(request.form.get("next"))
+
+    if len(rule) > 4000:
+        rule = rule[:4000]
+    if len(checklist) > 8000:
+        checklist = checklist[:8000]
+
+    try:
+        # Only one active pinned note per user
+        AICoachingNote.query.filter(
+            AICoachingNote.user_id == current_user.id,
+            AICoachingNote.is_active == True,
+        ).update({"is_active": False})
+
+        note = AICoachingNote(
+            user_id=current_user.id,
+            pinned_rule=rule,
+            checklist_text=checklist,
+            source=source,
+            is_active=True,
+        )
+        db.session.add(note)
+        db.session.commit()
+        flash("Saved. Your coaching note is pinned on your dashboard.", "success")
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.warning("save_ai_note failed: %s", exc)
+        flash("Could not save coaching note right now.", "danger")
+
+    return redirect(next_url)
+
+
+@bp.route('/ai/notes/clear', methods=['POST'])
+@login_required
+def clear_ai_note():
+    """Unpin/clear the active coaching note."""
+    next_url = _safe_same_site_redirect(request.form.get("next"))
+    try:
+        AICoachingNote.query.filter(
+            AICoachingNote.user_id == current_user.id,
+            AICoachingNote.is_active == True,
+        ).update({"is_active": False})
+        db.session.commit()
+        flash("Pinned coaching note cleared.", "info")
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.warning("clear_ai_note failed: %s", exc)
+        flash("Could not clear the coaching note right now.", "danger")
+    return redirect(next_url)
 
 
 @bp.route('/ai/query', methods=['POST'])
@@ -942,6 +1029,20 @@ def ai_query():
         follow_ups = []
         wf = ''
     return jsonify({'answer': answer, 'follow_ups': follow_ups, 'context': {'weekly_focus_rule': wf}})
+
+
+@bp.route('/ai/trade-doctor')
+@login_required
+def trade_doctor_api():
+    """Premium: Diagnose the #1 leak from the last 10 closed trades."""
+    try:
+        result = AIAnalyzer(current_user.id).trade_doctor(last_n=10)
+        if not isinstance(result, dict):
+            return jsonify({"text": "Trade Doctor is unavailable right now."}), 200
+        return jsonify(result)
+    except Exception as exc:
+        current_app.logger.warning("trade_doctor_api failed: %s", exc)
+        return jsonify({"text": "Trade Doctor could not analyze your trades right now."}), 200
 
 
 # ==================== Behavior Patterns ====================

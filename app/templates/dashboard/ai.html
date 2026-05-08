@@ -159,6 +159,57 @@
     </form>
 </div>
 
+{# ------------------------------------------------------------------ #}
+{# Saved coaching note (pinned)                                        #}
+{# ------------------------------------------------------------------ #}
+<div class="card border-0 mb-4 tv-surface tv-hud-panel">
+    <div class="card-header bg-secondary text-white d-flex align-items-center justify-content-between">
+        <h5 class="mb-0"><i class="fas fa-thumbtack"></i> Saved coaching note</h5>
+        <span class="small opacity-75">Pinned to your dashboard</span>
+    </div>
+    <div class="card-body">
+        {% if pinned_note %}
+            <div class="mb-2 small text-muted">Current pinned rule</div>
+            <div class="fw-semibold mb-3">{{ pinned_note.pinned_rule }}</div>
+            {% set items = pinned_note.checklist_items() %}
+            {% if items %}
+            <div class="mb-2 small text-muted">Checklist</div>
+            <ul class="ps-3">
+                {% for it in items[:12] %}
+                <li class="small">{{ it }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            <form method="POST" action="{{ url_for('dashboard.clear_ai_note') }}" class="mt-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ url_for('dashboard.ai') }}">
+                <button class="btn btn-outline-danger btn-sm" type="submit"><i class="fas fa-trash"></i> Clear pinned note</button>
+            </form>
+            <hr class="my-4">
+        {% endif %}
+
+        <div class="small tv-muted mb-2">Save a pinned rule + checklist (AI Buddy will coach you against it).</div>
+        <form method="POST" action="{{ url_for('dashboard.save_ai_note') }}" class="row g-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ url_for('dashboard.ai') }}">
+            <input type="hidden" name="source" value="manual">
+            <div class="col-12">
+                <label class="form-label fw-bold small" for="pinned_rule">Pinned rule</label>
+                <input class="form-control" id="pinned_rule" name="pinned_rule" maxlength="4000"
+                       placeholder="Example: Stop after −2R or 2 losses; only A+ setups">
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-bold small" for="checklist_text">Checklist (one per line)</label>
+                <textarea class="form-control" id="checklist_text" name="checklist_text" rows="4"
+                          placeholder="Setup matches playbook\nSL is placed and sized\nEntry at level, not chasing\nNews checked\nPlan written in 1 sentence"></textarea>
+            </div>
+            <div class="col-12 d-flex justify-content-end">
+                <button class="btn btn-secondary" type="submit"><i class="fas fa-save"></i> Save pinned note</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% set sub = current_user.effective_subscription() %}
 {% if sub.tier not in ['pro_plus', 'elite', 'owner'] %}
 <div class="card tv-surface soft mb-4" style="border-left: 4px solid #6366f1;">
@@ -507,6 +558,9 @@
                     <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What should my one rule be next week?">One rule</button>
                     <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my best strategy and why?">Best strategy</button>
                     <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="Explain risk:reward and how to improve it.">Risk:Reward</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="tradeDoctorBtn">
+                        <i class="fas fa-stethoscope"></i> Trade Doctor
+                    </button>
                 </div>
                 <div class="mt-3 small tv-muted"><em>Ask AI Buddy about your win rate, mistakes, best setups, or general trading questions.</em></div>
             </div>
@@ -542,6 +596,7 @@
     var voiceQueue   = [];
     var voiceIdx     = 0;
     var STATS_URL    = "/dashboard/api/stats";
+    var TRADE_DOCTOR_URL = "{{ url_for('dashboard.trade_doctor_api') }}";
 
     function getCsrf() {
         var el = document.querySelector("input[name='csrf_token']");
@@ -838,6 +893,37 @@
         xhr.send(payload);
     }
 
+    function runTradeDoctor(){
+        appendChat("assistant", "**Trade Doctor** is analyzing your last 10 closed trades…");
+        setLoading(true);
+        try {
+            fetch(TRADE_DOCTOR_URL, { headers: { "Accept": "application/json" } })
+              .then(function(r){ return r.json(); })
+              .then(function(d){
+                  var text = (d && d.text) ? d.text : "Trade Doctor returned no analysis.";
+                  appendChat("assistant", text);
+
+                  // Offer a 1-click save as pinned note
+                  if (d && d.leak) {
+                      appendChat("assistant", "If you want, click “Save pinned note” and I’ll pin this plan + checklist on your dashboard.");
+                      // prefill the pinned note form (best effort)
+                      try {
+                          var ruleEl = document.getElementById("pinned_rule");
+                          var clEl = document.getElementById("checklist_text");
+                          if (ruleEl && d.leak) ruleEl.value = "Trade Doctor: " + d.leak;
+                          if (clEl && d.checklist && Array.isArray(d.checklist)) clEl.value = d.checklist.join("\n");
+                      } catch(e) {}
+                  }
+              })
+              .catch(function(){
+                  appendChat("assistant", "Trade Doctor couldn’t load right now. Try again in a moment.");
+              })
+              .finally(function(){ setLoading(false); });
+        } catch(e){
+            setLoading(false);
+        }
+    }
+
     function clearChat() {
         HISTORY = [];
         try { sessionStorage.removeItem("tv_ai_history"); } catch(e) {}
@@ -868,6 +954,7 @@
         var stopBtn    = document.getElementById("coachStopBtn");
         var quickWrap  = document.getElementById("aiQuickChips");
         var followWrap = document.getElementById("aiFollowUps");
+        var tdBtn      = document.getElementById("tradeDoctorBtn");
 
         if (voiceBtn)   { voiceBtn.addEventListener("click", onVoiceClick); }
         if (voicePauseBtn) { voicePauseBtn.addEventListener("click", onVoicePauseToggle); }
@@ -875,6 +962,7 @@
         if (submitBtn)  { submitBtn.addEventListener("click", onAskClick); }
         if (clearBtn)   { clearBtn.addEventListener("click", clearChat); }
         if (questionEl) { questionEl.addEventListener("keydown", onQuestionKeydown); }
+        if (tdBtn) { tdBtn.addEventListener("click", runTradeDoctor); }
 
         function startListening() {
             if (!coachActive) { return; }

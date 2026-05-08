@@ -121,6 +121,7 @@
 {% set ai_weaknesses = (ai_summary.get('weaknesses')      if ai_summary else []) or [] %}
 {% set ai_recs       = (ai_summary.get('recommendations') if ai_summary else []) or [] %}
 {% set ai_text       = (ai_summary.get('summary')         if ai_summary else '') or 'Log trades to unlock AI Buddy insights.' %}
+{% set pinned = pinned_note %}
 
 {# ------------------------------------------------------------------ #}
 {# Page Header                                                         #}
@@ -142,6 +143,33 @@
         </div>
     </div>
 </div>
+
+{# ------------------------------------------------------------------ #}
+{# Pinned coaching note (premium)                                     #}
+{# ------------------------------------------------------------------ #}
+{% if pinned %}
+<div class="card tv-surface mb-4" style="border-left: 4px solid #6366f1;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0"><i class="fas fa-thumbtack"></i> Saved coaching note</h5>
+            <div class="small opacity-75 mt-1">Your pinned rule + checklist.</div>
+        </div>
+        <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-light">Open AI Buddy</a>
+    </div>
+    <div class="card-body">
+        <div class="fw-semibold mb-2">{{ pinned.pinned_rule }}</div>
+        {% set items = pinned.checklist_items() %}
+        {% if items %}
+        <div class="small text-muted mb-1">Checklist</div>
+        <ul class="mb-0 ps-3">
+            {% for it in items[:10] %}
+            <li class="small">{{ it }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 {# ------------------------------------------------------------------ #}
 {# Rotating quote OR new-user quick-start (above Getting started)      #}

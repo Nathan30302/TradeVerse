@@ -9,6 +9,19 @@
 {% block content %}
 <div class="row">
     <div class="col-md-10 mx-auto">
+        {% if accountability_required %}
+        <div class="alert alert-info d-flex align-items-start justify-content-between gap-3">
+            <div>
+                <div class="fw-bold"><i class="fas fa-shield-alt"></i> Accountability mode</div>
+                <div class="small text-muted">Because you overrode a cooldown, you must complete the pre-trade checklist once before logging a trade.</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#accountabilityModal">
+                    <i class="fas fa-clipboard-check"></i> Open checklist
+                </button>
+            </div>
+        </div>
+        {% endif %}
         {% if active_cooldown %}
         <div class="alert alert-warning d-flex align-items-start justify-content-between gap-3">
             <div>
@@ -61,6 +74,7 @@
 
         <form method="POST" action="{{ url_for('trade.add') }}" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="accountability_confirmed" id="accountability_confirmed" value="false">
             {% if prefill %}
             <script type="application/json" id="trade-prefill-json">{{ prefill | tojson }}</script>
             {% endif %}
@@ -333,6 +347,46 @@
         </form>
     </div>
 </div>
+
+{% if accountability_required %}
+<div class="modal fade" id="accountabilityModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pre-trade checklist (required)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">Complete all items to unlock trade logging. This is logged as a safety step after a cooldown override.</p>
+                <div class="form-check mb-2">
+                    <input class="form-check-input acc-item" type="checkbox" id="acc1">
+                    <label class="form-check-label" for="acc1">Setup is A+ and matches my playbook</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input acc-item" type="checkbox" id="acc2">
+                    <label class="form-check-label" for="acc2">SL is placed (or risk $ is defined) before entry</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input acc-item" type="checkbox" id="acc3">
+                    <label class="form-check-label" for="acc3">R:R is acceptable (planned ≥ 1:1.5)</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input acc-item" type="checkbox" id="acc4">
+                    <label class="form-check-label" for="acc4">I will stop after 2 losses or −2R today</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input acc-item" type="checkbox" id="acc5">
+                    <label class="form-check-label" for="acc5">My entry reason is written in one sentence</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Not ready</button>
+                <button type="button" class="btn btn-primary" id="accConfirmBtn" disabled>Unlock logging</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -403,4 +457,52 @@ function calculateRR() {
     if (el) el.addEventListener('input', calculateRR);
 });
 </script>
+
+{% if accountability_required %}
+<script>
+(function(){
+  "use strict";
+  function allChecked(){
+    var items = document.querySelectorAll(".acc-item");
+    if (!items || !items.length) return false;
+    for (var i=0;i<items.length;i++){ if(!items[i].checked) return false; }
+    return true;
+  }
+  function refresh(){
+    var btn = document.getElementById("accConfirmBtn");
+    if (btn) btn.disabled = !allChecked();
+  }
+  document.addEventListener("change", function(e){
+    if (e && e.target && e.target.classList && e.target.classList.contains("acc-item")) refresh();
+  });
+  document.addEventListener("DOMContentLoaded", function(){
+    refresh();
+    var btn = document.getElementById("accConfirmBtn");
+    if (btn) {
+      btn.addEventListener("click", function(){
+        var hidden = document.getElementById("accountability_confirmed");
+        if (hidden) hidden.value = "true";
+        try {
+          var modalEl = document.getElementById("accountabilityModal");
+          if (modalEl && window.bootstrap && window.bootstrap.Modal) {
+            var m = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl);
+            m.hide();
+          }
+        } catch(e) {}
+      });
+    }
+
+    {% if open_accountability_modal %}
+    try {
+      var modalEl2 = document.getElementById("accountabilityModal");
+      if (modalEl2 && window.bootstrap && window.bootstrap.Modal) {
+        var m2 = new window.bootstrap.Modal(modalEl2);
+        m2.show();
+      }
+    } catch(e) {}
+    {% endif %}
+  });
+}());
+</script>
+{% endif %}
 {% endblock %}

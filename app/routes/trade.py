@@ -3,7 +3,7 @@ Trade Routes
 Trade logging, viewing, editing, and management
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, Response
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, Response, session
 from flask_login import login_required, current_user
 from app import db
 from app.models.trade import Trade
@@ -58,16 +58,40 @@ def add():
     """
     # Check for active cooldown
     active_cooldown = get_active_cooldown(current_user.id)
+    accountability_required = bool(session.get("tv_accountability_required"))
     if request.method == 'GET':
-        return render_template('trade/add.html', active_cooldown=active_cooldown, prefill=None)
+        return render_template(
+            'trade/add.html',
+            active_cooldown=active_cooldown,
+            prefill=None,
+            accountability_required=accountability_required,
+        )
     
     if request.method == 'POST':
+        # Accountability mode: after overriding a cooldown, user must complete a checklist once.
+        if accountability_required:
+            confirmed = (request.form.get("accountability_confirmed") or "").lower() in ("1", "true", "yes", "on")
+            if not confirmed:
+                flash('Accountability mode: complete the pre-trade checklist before logging a trade.', 'warning')
+                return render_template(
+                    'trade/add.html',
+                    active_cooldown=active_cooldown,
+                    prefill=None,
+                    accountability_required=True,
+                    open_accountability_modal=True,
+                )
+
         # Block if in cooldown (unless override)
         override = request.form.get('override_cooldown') == 'true'
         if active_cooldown and not override:
             flash('⏳ Cooldown active. You can’t log a new trade until it expires (or override with a reason).', 'warning')
             # Keep user on Add Trade with an inline banner instead of redirecting away.
-            return render_template('trade/add.html', active_cooldown=active_cooldown, prefill=None)
+            return render_template(
+                'trade/add.html',
+                active_cooldown=active_cooldown,
+                prefill=None,
+                accountability_required=accountability_required,
+            )
         
         # Log override if used
         if active_cooldown and override:
@@ -187,6 +211,10 @@ def add():
             db.session.add(trade)
             db.session.commit()
 
+            # Clear one-time accountability gate after successful log
+            if session.get("tv_accountability_required"):
+                session.pop("tv_accountability_required", None)
+
             # Trigger cooldowns (emotion-based and/or loss-streak)
             try:
                 manager = CooldownManager(current_user.id)
@@ -284,6 +312,8 @@ def override_cooldown():
         return redirect(url_for('trade.add'))
 
     if manager.override_cooldown(reason):
+        # Premium: accountability mode — require a pre-trade checklist once after override
+        session["tv_accountability_required"] = True
         flash('⚠️ Cooldown overridden. Please trade responsibly!', 'warning')
     else:
         flash('No active cooldown to override.', 'info')

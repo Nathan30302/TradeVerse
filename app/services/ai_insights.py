@@ -957,6 +957,174 @@ class AIAnalyzer:
             answer += "\n\nIf your question is general trading knowledge, ask directly (e.g. “Explain liquidity”, “How to journal properly”, “How to manage drawdown”)."
 
         return {'answer': answer, 'follow_ups': ["Explain position sizing.", "What’s a good journaling process?", "What’s my best session?"]}
+
+    def trade_doctor(self, *, last_n: int = 10) -> Dict[str, Any]:
+        """
+        Premium: Inspect the last N closed trades and return the single biggest leak + a strict plan.
+        This is deterministic and avoids generic advice.
+        """
+        try:
+            trades = (
+                Trade.query.filter(
+                    Trade.user_id == self.user_id,
+                    Trade.status == "CLOSED",
+                    Trade.profit_loss.isnot(None),
+                    Trade.exit_date.isnot(None),
+                )
+                .order_by(Trade.exit_date.desc())
+                .limit(int(last_n))
+                .all()
+            )
+        except Exception:
+            trades = []
+
+        if not trades:
+            return {
+                "leak": "No recent closed trades",
+                "evidence": ["Log and close at least 1–3 trades to unlock Trade Doctor."],
+                "plan": [
+                    "Log your next 10 trades with: strategy tag, emotion, SL, and a 1‑line plan.",
+                    "Ask Trade Doctor again.",
+                ],
+                "checklist": [
+                    "Strategy tag selected",
+                    "SL placed (or risk $ entered)",
+                    "Entry reason written in 1 sentence",
+                    "Stop rule defined for the day (ex: −2R / 2 losses)",
+                ],
+            }
+
+        # Metrics
+        pnl = [float(t.profit_loss or 0.0) for t in trades]
+        wins = sum(1 for x in pnl if x > 0)
+        losses = sum(1 for x in pnl if x < 0)
+        zeros = sum(1 for x in pnl if x == 0)
+        rr = [float(t.risk_reward) for t in trades if t.risk_reward is not None]
+        avg_rr = sum(rr) / len(rr) if rr else None
+
+        missing_risk = sum(1 for t in trades if not getattr(t, "stop_loss", None) and not getattr(t, "risk_amount", None))
+        missing_tags = sum(1 for t in trades if not getattr(t, "strategy", None))
+        low_quality = sum(1 for t in trades if (getattr(t, "execution_quality", None) or 0) and (getattr(t, "execution_quality", 0) <= 2))
+
+        # Candidate leaks with scores (higher = more likely biggest)
+        candidates: list[tuple[int, str, list[str], list[str], list[str]]] = []
+
+        # Leak 1: undefined risk / no SL
+        if missing_risk >= 3:
+            evidence = [f"{missing_risk}/{len(trades)} of your last {len(trades)} trades had no SL or risk amount logged."]
+            plan = [
+                "Rule: No SL / no risk = no trade. Period.",
+                "Set SL first, then size position (risk fixed per trade).",
+                "If SL is technical and wide, reduce size; don’t widen risk.",
+            ]
+            checklist = [
+                "SL placed at invalidation level",
+                "Risk per trade fixed (ex: 0.5% or $X)",
+                "Position sized from SL distance",
+                "If SL moved, it’s only to reduce risk (never widen)",
+            ]
+            candidates.append((90 + missing_risk, "Undefined risk (missing SL/risk)", evidence, plan, checklist))
+
+        # Leak 2: low R:R
+        if avg_rr is not None and avg_rr < 1.2 and losses >= 3:
+            evidence = [f"Average R:R over last {len(trades)} closed trades is ~{avg_rr:.2f}."]
+            plan = [
+                "Rule: Minimum planned R:R = 1:1.5 (prefer 1:2) before entering.",
+                "Stop taking partials too early; scale only after consistency.",
+                "Move SL to breakeven only after structure confirms, not immediately.",
+            ]
+            checklist = [
+                "Planned R:R ≥ 1:1.5",
+                "TP mapped to a real level (not random)",
+                "No early close unless rule-based (time/news)",
+                "Exit plan written before entry",
+            ]
+            candidates.append((80 + int((1.2 - avg_rr) * 50), "Low R:R (reward too small vs risk)", evidence, plan, checklist))
+
+        # Leak 3: overtrading / churn (many trades, low edge)
+        if len(trades) >= 8 and wins <= 3:
+            evidence = [f"Last {len(trades)} trades: {wins}W / {losses}L / {zeros}BE. This looks like churn (too many B/C setups)."]
+            plan = [
+                "Rule: A+ setups only for the next 10 trades.",
+                "Max 2 trades per day. Stop after 2 losses.",
+                "Trade only your best session + one market.",
+            ]
+            checklist = [
+                "Is this an A+ setup? (yes/no)",
+                "Session matches your best window",
+                "No trade after 2 losses",
+                "2-trade max per day",
+            ]
+            candidates.append((75 + (len(trades) - wins), "Overtrading (too many low-quality attempts)", evidence, plan, checklist))
+
+        # Leak 4: poor journaling signals (missing strategy tags / notes)
+        if missing_tags >= 4:
+            evidence = [f"{missing_tags}/{len(trades)} trades are missing a strategy tag."]
+            plan = [
+                "Rule: Every trade must be tagged with a strategy (even if it’s 'Other').",
+                "Write a 1‑line pre-trade plan and 1‑line post-trade review.",
+                "After 10 tagged trades, we’ll identify your true edge.",
+            ]
+            checklist = [
+                "Strategy selected",
+                "Pre-trade plan (1 sentence)",
+                "Post-trade review (1 sentence)",
+            ]
+            candidates.append((60 + missing_tags, "Missing structure (no strategy tags / journaling)", evidence, plan, checklist))
+
+        # Leak 5: execution issues
+        if low_quality >= 3:
+            evidence = [f"{low_quality}/{len(trades)} trades had low execution quality (≤2)."]
+            plan = [
+                "Rule: No market orders unless the setup is already triggered.",
+                "Use alerts/levels; enter at level or skip.",
+                "If you miss the entry, do NOT chase — wait for next setup.",
+            ]
+            checklist = [
+                "Entry at level (no chase)",
+                "Alert set before session",
+                "If missed, skip without revenge",
+            ]
+            candidates.append((65 + low_quality, "Execution errors (chasing / poor entries)", evidence, plan, checklist))
+
+        if not candidates:
+            # Default: use “one rule” framing
+            total_pnl = sum(pnl)
+            leak = "Need more signal"
+            evidence = [f"Last {len(trades)} trades: {wins}W / {losses}L, net {total_pnl:.2f}. Not enough tagged data to isolate one leak."]
+            plan = [
+                "Tag strategy + emotion for the next 10 trades.",
+                "Log SL (or risk $) on every trade.",
+                "Ask Trade Doctor again.",
+            ]
+            checklist = [
+                "Strategy tag",
+                "Emotion selected",
+                "SL / risk recorded",
+                "1-line plan written",
+            ]
+        else:
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            _score, leak, evidence, plan, checklist = candidates[0]
+
+        # Strict plan wrapper
+        strict = [
+            f"**Trade Doctor diagnosis:** {leak}",
+            "",
+            "**Evidence (from last 10 closed trades)**",
+            *[f"- {e}" for e in evidence],
+            "",
+            "**Strict plan (follow exactly for next 10 trades)**",
+            *[f"- {p}" for p in plan],
+        ]
+
+        return {
+            "leak": leak,
+            "evidence": evidence,
+            "plan": plan,
+            "checklist": checklist,
+            "text": "\n".join(strict),
+        }
  
  
 def get_ai_insights(user_id: int) -> Dict[str, Any]:
