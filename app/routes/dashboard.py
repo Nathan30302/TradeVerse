@@ -20,9 +20,10 @@ from sqlalchemy import func, extract, or_, update
 from app import db
 from app.models.user import User
 from flask import request, flash, redirect, url_for
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 from app.services.entitlements import require_feature
+from zoneinfo import ZoneInfo
 
 # Create Blueprint
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
@@ -321,9 +322,23 @@ def stats_api():
     Returns user's current statistics as JSON for live UI updates
     """
     stats = current_user.get_stats()
-    now = datetime.utcnow()
-    start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    start_7d = now - timedelta(days=7)
+
+    # Use user's timezone for day/week windows; convert boundaries to naive UTC
+    # because DB datetimes are stored as naive UTC across the app.
+    tz_name = (getattr(current_user, "timezone", None) or "UTC").strip()
+    try:
+        user_tz = ZoneInfo(tz_name)
+    except Exception:
+        user_tz = ZoneInfo("UTC")
+
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc.astimezone(user_tz)
+    start_today_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_tomorrow_local = start_today_local + timedelta(days=1)
+
+    start_today = start_today_local.astimezone(timezone.utc).replace(tzinfo=None)
+    end_today = start_tomorrow_local.astimezone(timezone.utc).replace(tzinfo=None)
+    start_7d = (now_utc - timedelta(days=7)).replace(tzinfo=None)
 
     q_closed = Trade.query.filter(
         Trade.user_id == current_user.id,
@@ -349,12 +364,33 @@ def stats_api():
         win_rate = (wins_i / denom) * 100.0 if denom else 0.0
         return float(pnl or 0.0), wins_i, losses_i, float(avg_rr or 0.0), float(win_rate)
 
-    pnl_today, wins_today, losses_today, avg_rr_today, win_rate_today = _window_agg(start_today)
+    # Today's window: [start_today, end_today)
+    pnl_today, wins_today, losses_today, avg_rr_today, win_rate_today = (
+        db.session.query(
+            func.coalesce(func.sum(Trade.profit_loss), 0.0),
+            func.coalesce(func.sum(func.case((Trade.profit_loss > 0, 1), else_=0)), 0),
+            func.coalesce(func.sum(func.case((Trade.profit_loss < 0, 1), else_=0)), 0),
+            func.coalesce(func.avg(Trade.risk_reward), 0.0),
+        )
+        .filter(
+            q_closed.where(Trade.exit_date >= start_today).whereclause,
+            Trade.exit_date < end_today,
+        )
+        .one()
+    )
+    wins_today = int(wins_today or 0)
+    losses_today = int(losses_today or 0)
+    denom_today = wins_today + losses_today
+    win_rate_today = (wins_today / denom_today) * 100.0 if denom_today else 0.0
+    pnl_today = float(pnl_today or 0.0)
+    avg_rr_today = float(avg_rr_today or 0.0)
+
     pnl_7d, wins_7d, losses_7d, avg_rr_7d, win_rate_7d = _window_agg(start_7d)
 
     trades_today = Trade.query.filter(
         Trade.user_id == current_user.id,
         Trade.entry_date >= start_today,
+        Trade.entry_date < end_today,
     ).count()
     # Ensure numeric fields are serializable
     safe = {

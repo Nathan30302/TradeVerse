@@ -3,6 +3,11 @@
 {% block title %}My Trades - {{ app_name }}{% endblock %}
 
 {% block content %}
+<style>
+  /* Prevent action buttons from "slipping away" due to row hover transforms */
+  .table-container .tv-clickrow:hover { transform: none !important; }
+  .table-container .btn-group .btn { transform: none !important; }
+</style>
 <!-- Page Header -->
 <div class="tv-page-hero">
     <div class="page-header">
