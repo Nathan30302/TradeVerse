@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="TradeVerse">
     <meta name="theme-color" content="#0f172a">
     {# SEO + Social sharing meta #}
-    {% set canonical_url = (request.url_root.rstrip('/') ~ request.path) if request else '' %}
+    {% set canonical_url = (('https://' ~ request.host) ~ request.path) if request and request.host else '' %}
     {% if canonical_url %}
     <link rel="canonical" href="{{ canonical_url }}">
     {% endif %}

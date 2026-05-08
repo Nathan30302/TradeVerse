@@ -35,13 +35,18 @@ def favicon():
 def sitemap():
     """Simple sitemap for public marketing pages."""
     from flask import Response
+    from flask import request as _request
 
+    # Force HTTPS URLs in sitemap to avoid Search Console "redirect error" when
+    # the app runs behind a TLS-terminating proxy.
+    host = (_request.host or "").strip()
+    base = f"https://{host}" if host else ""
     pages = [
-        url_for('main.index', _external=True),
-        url_for('main.about', _external=True),
-        url_for('main.features', _external=True),
-        url_for('main.contact', _external=True),
-        url_for('main.pricing', _external=True),
+        base + url_for('main.index'),
+        base + url_for('main.about'),
+        base + url_for('main.features'),
+        base + url_for('main.contact'),
+        base + url_for('main.pricing'),
     ]
     now = datetime.utcnow().strftime('%Y-%m-%d')
     body = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']

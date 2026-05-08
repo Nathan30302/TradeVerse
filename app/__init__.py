@@ -10,6 +10,7 @@ from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 from config import config
 import os
 
@@ -31,6 +32,10 @@ def create_app(config_name='default'):
 
     # Load configuration
     app.config.from_object(config[config_name])
+
+    # Trust proxy headers in hosted environments (Render / Nginx).
+    # This prevents generating http:// canonical/sitemap URLs behind HTTPS.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     # Production hardening: require env-managed secrets (no fallbacks).
     if config_name == 'production':
