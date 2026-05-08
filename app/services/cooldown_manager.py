@@ -87,22 +87,39 @@ class CooldownManager:
             return True
         return False
 
-    def can_override_now(self, *, cooldown_hours: int = 24) -> bool:
+    def can_override_now(
+        self,
+        *,
+        max_per_day: int = 1,
+        max_per_week: int = 3,
+        window_days: int = 7,
+    ) -> bool:
         """
         Limit override frequency so users can't spam bypasses.
-        Default: at most one override in the last 24 hours.
+
+        Rules:
+        - max_per_day: max overrides in the last 24 hours
+        - max_per_week: max overrides in the last `window_days` days (default 7)
         """
-        cutoff = datetime.utcnow() - timedelta(hours=cooldown_hours)
-        recent_override = (
-            Cooldown.query.filter(
-                Cooldown.user_id == self.user_id,
-                Cooldown.was_overridden == True,
-                Cooldown.started_at >= cutoff,
-            )
-            .order_by(Cooldown.started_at.desc())
-            .first()
+        now = datetime.utcnow()
+        cutoff_day = now - timedelta(hours=24)
+        cutoff_week = now - timedelta(days=window_days)
+
+        q = Cooldown.query.filter(
+            Cooldown.user_id == self.user_id,
+            Cooldown.was_overridden == True,
+            Cooldown.started_at >= cutoff_week,
         )
-        return recent_override is None
+
+        recent_day = q.filter(Cooldown.started_at >= cutoff_day).count()
+        if recent_day >= max_per_day:
+            return False
+
+        recent_week = q.count()
+        if recent_week >= max_per_week:
+            return False
+
+        return True
 
     def should_trigger_loss_streak(self, *, losses: int = 2, lookback_days: int = 14) -> bool:
         """

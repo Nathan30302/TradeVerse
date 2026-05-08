@@ -370,6 +370,7 @@ def register_context_processors(app):
     import random
     from flask_login import current_user
     from app.services.entitlements import user_has_feature
+    from app.services.cooldown_manager import get_active_cooldown
     
     @app.context_processor
     def inject_globals():
@@ -388,3 +389,16 @@ def register_context_processors(app):
             return user_has_feature(current_user, feature)
 
         return {'has_feature': has_feature}
+
+    @app.context_processor
+    def inject_cooldown():
+        """
+        Provide active cooldown to all templates so base.html can enforce a global lock overlay.
+        """
+        if not getattr(current_user, 'is_authenticated', False):
+            return {'global_active_cooldown': None}
+        try:
+            cd = get_active_cooldown(current_user.id)
+        except Exception:
+            cd = None
+        return {'global_active_cooldown': cd}

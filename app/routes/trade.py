@@ -279,8 +279,8 @@ def override_cooldown():
         flash('Please enter a short reason (at least 8 characters) to override.', 'warning')
         return redirect(url_for('trade.add'))
 
-    if not manager.can_override_now(cooldown_hours=24):
-        flash('Override limit reached. You can override at most once every 24 hours.', 'warning')
+    if not manager.can_override_now(max_per_day=1, max_per_week=3):
+        flash('Override limit reached. Max 1 per day and 3 per week.', 'warning')
         return redirect(url_for('trade.add'))
 
     if manager.override_cooldown(reason):

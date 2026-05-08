@@ -2691,5 +2691,108 @@
     </script>
 
     {% block extra_js %}{% endblock %}
+
+    {% if current_user.is_authenticated and global_active_cooldown %}
+    <!-- Global cooldown lock overlay -->
+    <div id="tvCooldownLock" style="position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,0.86);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:18px;">
+        <div style="max-width:720px;width:100%;border:1px solid rgba(99,102,241,0.35);border-radius:18px;background:rgba(15,23,42,0.92);box-shadow:0 18px 70px rgba(0,0,0,0.55);overflow:hidden;">
+            <div style="padding:16px 18px;border-bottom:1px solid rgba(99,102,241,0.22);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <div style="font-weight:800;letter-spacing:-0.01em;">
+                    ⏳ Cooldown active
+                </div>
+                <a href="{{ url_for('trade.cooldown_status') }}" class="btn btn-sm btn-outline-light">View details</a>
+            </div>
+            <div style="padding:18px;">
+                <div class="small text-muted mb-2">Trading is locked until the timer ends (or you use a limited override).</div>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="badge bg-warning text-dark">Trigger: {{ global_active_cooldown.trigger_emotion or 'Cooldown' }}</span>
+                    {% if global_active_cooldown.trigger_reason %}
+                    <span class="badge bg-secondary">{{ global_active_cooldown.trigger_reason }}</span>
+                    {% endif %}
+                </div>
+                <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+                    <div>
+                        <div class="small text-muted">Time remaining</div>
+                        <div id="tvCooldownCountdown" style="font-size:2.1rem;font-weight:900;letter-spacing:-0.02em;">—</div>
+                        <div class="small text-muted mt-1">Expires at <span id="tvCooldownExpiresAt">—</span></div>
+                    </div>
+                    <div class="d-flex flex-column gap-2" style="min-width:260px;">
+                        <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#tvCooldownOverrideModal">
+                            Override (limited)
+                        </button>
+                        <div class="small text-muted">
+                            Limits: <strong>1 per day</strong> and <strong>3 per week</strong>. Requires a reason.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="tvCooldownOverrideModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Override cooldown</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{{ url_for('trade.override_cooldown') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="modal-body">
+                        <p class="small text-muted mb-2">This override is logged. Use only if you will strictly follow your rules.</p>
+                        <label class="form-label fw-bold" for="tvCooldownOverrideReason">Reason</label>
+                        <textarea class="form-control" id="tvCooldownOverrideReason" name="reason" rows="3"
+                                  minlength="8" required
+                                  placeholder="Example: A+ setup, reduced risk, stopping after this trade…"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-dark">Override</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function(){
+        "use strict";
+        var lock = document.getElementById("tvCooldownLock");
+        if (!lock) return;
+
+        // Prevent any clicks reaching the app behind the overlay
+        document.documentElement.style.overflow = "hidden";
+
+        var expiresIso = {{ (global_active_cooldown.expires_at.isoformat() if global_active_cooldown.expires_at else '')|tojson }};
+        var countdownEl = document.getElementById("tvCooldownCountdown");
+        var expiresEl = document.getElementById("tvCooldownExpiresAt");
+
+        function pad(n){ return (n < 10 ? "0" : "") + n; }
+
+        function render(){
+            if (!expiresIso) return;
+            var expires = new Date(expiresIso + "Z"); // stored as UTC-naive
+            var now = new Date();
+            var ms = expires.getTime() - now.getTime();
+            if (expiresEl) {
+                try { expiresEl.textContent = expires.toLocaleString(); } catch(e) { expiresEl.textContent = expiresIso; }
+            }
+            if (ms <= 0) {
+                // Unlock automatically when timer ends
+                lock.remove();
+                document.documentElement.style.overflow = "";
+                return;
+            }
+            var s = Math.floor(ms / 1000);
+            var h = Math.floor(s / 3600); s -= h * 3600;
+            var m = Math.floor(s / 60);   s -= m * 60;
+            if (countdownEl) countdownEl.textContent = (h > 0 ? (h + ":" + pad(m) + ":" + pad(s)) : (m + ":" + pad(s)));
+        }
+
+        render();
+        setInterval(render, 1000);
+    }());
+    </script>
+    {% endif %}
 </body>
 </html>

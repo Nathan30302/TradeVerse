@@ -637,7 +637,8 @@
         }
     }
 
-    function appendChat(role, content) {
+    function appendChat(role, content, opts) {
+        opts = opts || {};
         var chat = document.getElementById("aiChatLog");
         if (!chat) { return; }
         var bubble = document.createElement("div");
@@ -651,10 +652,14 @@
         bubble.appendChild(head);
         bubble.appendChild(body);
         chat.appendChild(bubble);
-        // keep small-ish history
-        HISTORY.push({ role: role, content: content });
-        if (HISTORY.length > 14) { HISTORY = HISTORY.slice(-14); }
-        try { sessionStorage.setItem("tv_ai_history", JSON.stringify(HISTORY)); } catch(e) {}
+        if (!opts.skipHistory) {
+            // keep small-ish history
+            HISTORY.push({ role: role, content: content });
+            if (HISTORY.length > 14) { HISTORY = HISTORY.slice(-14); }
+        }
+        if (!opts.skipStore) {
+            try { sessionStorage.setItem("tv_ai_history", JSON.stringify(HISTORY)); } catch(e) {}
+        }
     }
 
     function setLoading(isLoading) {
@@ -855,7 +860,7 @@
                     HISTORY = parsed.slice(-14);
                     for (var i = 0; i < HISTORY.length; i++) {
                         var m = HISTORY[i];
-                        if (m && m.role && m.content) appendChat(m.role, m.content);
+                        if (m && m.role && m.content) appendChat(m.role, m.content, { skipHistory: true, skipStore: true });
                     }
                 }
             }
