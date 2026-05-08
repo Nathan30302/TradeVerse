@@ -678,11 +678,72 @@
         var bubble = document.createElement("div");
         bubble.className = "tv-surface soft p-3 mb-2";
         var head = document.createElement("div");
-        head.className = "small tv-muted mb-1";
-        head.textContent = role === "user" ? (USERNAME ? (USERNAME + " (you)") : "You") : "AI Buddy";
+        head.className = "d-flex align-items-center justify-content-between gap-2 small tv-muted mb-2";
+        var who = document.createElement("div");
+        who.textContent = role === "user" ? (USERNAME ? (USERNAME + " (you)") : "You") : "AI Buddy";
+        head.appendChild(who);
+
+        // Premium: assistant actions (copy / speak)
+        if (role === "assistant") {
+            var actions = document.createElement("div");
+            actions.className = "d-flex gap-2";
+
+            var copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.className = "btn btn-sm btn-outline-secondary";
+            copyBtn.textContent = "Copy";
+            copyBtn.addEventListener("click", function(){
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(String(content || ""));
+                    }
+                } catch(e) {}
+            });
+
+            var speakBtn = document.createElement("button");
+            speakBtn.type = "button";
+            speakBtn.className = "btn btn-sm btn-outline-secondary";
+            speakBtn.textContent = "Speak";
+            speakBtn.addEventListener("click", function(){
+                try { speakText(String(content || "")); } catch(e) {}
+            });
+
+            actions.appendChild(copyBtn);
+            actions.appendChild(speakBtn);
+            head.appendChild(actions);
+        }
         var body = document.createElement("div");
-        body.style.whiteSpace = "pre-wrap";
-        body.textContent = content;
+        body.style.whiteSpace = "normal";
+
+        // Safe mini-formatting: **bold** and "- " bullet lists (no raw HTML)
+        function esc(s){
+            return String(s || "")
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;");
+        }
+        function formatText(s){
+            var safe = esc(s);
+            safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+            var lines = safe.split("\n");
+            var out = [];
+            var inList = false;
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                var isBullet = line.trim().startsWith("- ");
+                if (isBullet) {
+                    if (!inList) { out.push("<ul style='margin:0 0 0.5rem 1.25rem;'>"); inList = true; }
+                    out.push("<li>" + line.trim().slice(2) + "</li>");
+                } else {
+                    if (inList) { out.push("</ul>"); inList = false; }
+                    if (line.trim() === "") out.push("<div style='height:0.5rem;'></div>");
+                    else out.push("<div style='white-space:pre-wrap;'>" + line + "</div>");
+                }
+            }
+            if (inList) out.push("</ul>");
+            return out.join("");
+        }
+        body.innerHTML = formatText(content);
         bubble.appendChild(head);
         bubble.appendChild(body);
         chat.appendChild(bubble);

@@ -869,22 +869,27 @@ class AIAnalyzer:
             summary = weekly.get('summary') or ''
             if not summary:
                 summary = f"Weekly snapshot: {total} closed trades, {win_rate:.0f}% win rate, net {total_pnl:.0f}, average R:R {avg_rr:.2f}."
-            answer = summary
-            if alerts:
-                answer += "\n\nTop alerts:\n- " + "\n- ".join(alerts[:3])
-            if recs:
-                answer += "\n\nNext actions:\n- " + "\n- ".join(recs[:3])
+            # Premium: structured coach brief with actions + evidence.
+            answer = (
+                "**Weekly Coach Brief**\n"
+                + summary
+                + "\n\n**Top alerts (what’s costing you)**\n"
+                + ("- " + "\n- ".join(alerts[:3]) if alerts else "- No strong alerts yet (log more trades + notes).")
+                + "\n\n**Next actions (do these next)**\n"
+                + ("- " + "\n- ".join(recs[:3]) if recs else "- Pick one leak and write one rule for next week.")
+            )
             # Evidence lines
             try:
                 best_trade = stats.get('best_trade')
                 worst_trade = stats.get('worst_trade')
                 if best_trade and getattr(best_trade, 'symbol', None) and getattr(best_trade, 'profit_loss', None) is not None:
-                    answer += f"\n\nEvidence:\n- Best trade: {best_trade.symbol} ({best_trade.profit_loss:.0f})"
+                    answer += f"\n\n**Evidence**\n- Best trade: {best_trade.symbol} ({best_trade.profit_loss:.0f})"
                 if worst_trade and getattr(worst_trade, 'symbol', None) and getattr(worst_trade, 'profit_loss', None) is not None:
                     answer += f"\n- Worst trade: {worst_trade.symbol} ({worst_trade.profit_loss:.0f})"
             except Exception:
                 pass
-            return {'answer': answer, 'follow_ups': ["What’s my biggest leak?", "What should I stop doing next week?", "Which strategy should I focus on?"]}
+            answer += "\n\n**One premium question for you:** What is your daily stop rule (in R)? If you don’t have one, I’ll give you one."
+            return {'answer': answer, 'follow_ups': ["What’s my biggest leak this week?", "Give me one rule for next week.", "Build me a pre-trade checklist."]}
 
         if has('best day', 'worst day', 'weekday', 'day of week'):
             bd = day_insights.get('best_day') if isinstance(day_insights, dict) else None
