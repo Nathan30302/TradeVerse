@@ -49,6 +49,38 @@
     border-color: var(--card-border);
     color: var(--text-primary);
   }
+
+  /* Talk-to-AI: live/typing polish */
+  .tv-typing {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    height: 18px;
+  }
+  .tv-typing span{
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.65);
+    animation: tvDot 0.9s infinite ease-in-out;
+  }
+  .tv-typing span:nth-child(2){ animation-delay: 0.12s; }
+  .tv-typing span:nth-child(3){ animation-delay: 0.24s; }
+  @keyframes tvDot {
+    0%, 100% { transform: translateY(0); opacity: 0.55; }
+    50% { transform: translateY(-3px); opacity: 1; }
+  }
+
+  .tv-speaking {
+    animation: tvSpeak 0.14s infinite ease-in-out;
+  }
+  @keyframes tvSpeak {
+    0% { transform: translate(0,0); }
+    25% { transform: translate(0.5px, -0.5px); }
+    50% { transform: translate(-0.5px, 0.5px); }
+    75% { transform: translate(0.5px, 0.5px); }
+    100% { transform: translate(0,0); }
+  }
 </style>
 {% endblock %}
 
@@ -449,6 +481,9 @@
             <button id="aiSubmitBtn" type="button" class="btn btn-outline-primary">
                 <i class="fas fa-paper-plane"></i> Ask AI Buddy
             </button>
+            <button id="aiClearBtn" type="button" class="btn btn-outline-secondary" title="Clear this chat">
+                <i class="fas fa-eraser"></i> Clear
+            </button>
             <button id="coachTalkBtn" type="button" class="btn btn-outline-secondary" title="Voice conversation (if supported)">
                 <i class="fas fa-microphone"></i> Coach Talk
             </button>
@@ -468,6 +503,7 @@
                 </div>
                 <div class="mt-3 small tv-muted"><em>Ask AI Buddy about your win rate, mistakes, best setups, or general trading questions.</em></div>
             </div>
+            <div id="aiChatLog" class="mt-3"></div>
             <div class="mt-3 d-flex flex-wrap gap-2" id="aiFollowUps"></div>
         </div>
     </div>
@@ -532,8 +568,18 @@
             if (v) u.voice = v;
 
             isSpeaking = true;
-            u.onend = function(){ isSpeaking = false; resolve(); };
-            u.onerror = function(){ isSpeaking = false; resolve(); };
+            var coachBtn = document.getElementById("coachTalkBtn");
+            if (coachBtn) coachBtn.classList.add("tv-speaking");
+            u.onend = function(){
+                isSpeaking = false;
+                if (coachBtn) coachBtn.classList.remove("tv-speaking");
+                resolve();
+            };
+            u.onerror = function(){
+                isSpeaking = false;
+                if (coachBtn) coachBtn.classList.remove("tv-speaking");
+                resolve();
+            };
             window.speechSynthesis.speak(u);
         });
     }
@@ -592,7 +638,7 @@
     }
 
     function appendChat(role, content) {
-        var chat = document.getElementById("aiChat");
+        var chat = document.getElementById("aiChatLog");
         if (!chat) { return; }
         var bubble = document.createElement("div");
         bubble.className = "tv-surface soft p-3 mb-2";
@@ -616,6 +662,31 @@
         if (!btn) { return; }
         btn.disabled = !!isLoading;
         btn.classList.toggle("loading", !!isLoading);
+
+        var q = document.getElementById("aiQuestion");
+        if (q) q.disabled = !!isLoading;
+
+        // Typing bubble
+        var log = document.getElementById("aiChatLog");
+        if (!log) { return; }
+        var existing = document.getElementById("aiTyping");
+        if (isLoading) {
+            if (!existing) {
+                var bubble = document.createElement("div");
+                bubble.id = "aiTyping";
+                bubble.className = "tv-surface soft p-3 mb-2";
+                var head = document.createElement("div");
+                head.className = "small tv-muted mb-1";
+                head.textContent = "AI Buddy";
+                var body = document.createElement("div");
+                body.innerHTML = '<div class="tv-typing" aria-label="AI Buddy is thinking"><span></span><span></span><span></span></div>';
+                bubble.appendChild(head);
+                bubble.appendChild(body);
+                log.appendChild(bubble);
+            }
+        } else if (existing) {
+            existing.remove();
+        }
     }
 
     function onAskClick(forcedQuestion) {
@@ -667,6 +738,15 @@
         xhr.send(payload);
     }
 
+    function clearChat() {
+        HISTORY = [];
+        try { sessionStorage.removeItem("tv_ai_history"); } catch(e) {}
+        renderFollowUps([]);
+        var log = document.getElementById("aiChatLog");
+        if (log) log.textContent = "";
+        appendChat("assistant", "Cleared. Ask a fresh question whenever you're ready.");
+    }
+
     function onQuestionKeydown(e) {
         if (e.keyCode === 13) {
             onAskClick();
@@ -680,6 +760,7 @@
         var voicePauseBtn = document.getElementById("voicePauseBtn");
         var voiceStopBtn  = document.getElementById("voiceStopBtn");
         var submitBtn  = document.getElementById("aiSubmitBtn");
+        var clearBtn   = document.getElementById("aiClearBtn");
         var questionEl = document.getElementById("aiQuestion");
         var coachBtn   = document.getElementById("coachTalkBtn");
         var stopBtn    = document.getElementById("coachStopBtn");
@@ -690,6 +771,7 @@
         if (voicePauseBtn) { voicePauseBtn.addEventListener("click", onVoicePauseToggle); }
         if (voiceStopBtn)  { voiceStopBtn.addEventListener("click", onVoiceStop); }
         if (submitBtn)  { submitBtn.addEventListener("click", onAskClick); }
+        if (clearBtn)   { clearBtn.addEventListener("click", clearChat); }
         if (questionEl) { questionEl.addEventListener("keydown", onQuestionKeydown); }
 
         function startListening() {

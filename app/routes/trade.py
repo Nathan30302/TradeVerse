@@ -146,7 +146,7 @@ def add():
             # Set optional fields
             if exit_price:
                 trade.exit_price = float(exit_price)
-                trade.exit_date = exit_date
+                trade.exit_date = exit_date or datetime.utcnow()
                 trade.status = 'CLOSED'
             
             if stop_loss:
@@ -450,6 +450,12 @@ def edit(trade_id):
             if exit_price:
                 trade.exit_price = float(exit_price)
                 trade.status = 'CLOSED'
+                if not trade.exit_date:
+                    trade.exit_date = datetime.utcnow()
+            else:
+                trade.exit_price = None
+                trade.exit_date = None
+                trade.status = 'OPEN'
             
             stop_loss = request.form.get('stop_loss')
             trade.stop_loss = float(stop_loss) if stop_loss else None
