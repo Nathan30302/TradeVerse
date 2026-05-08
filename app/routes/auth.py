@@ -98,7 +98,6 @@ def register():
 
             # Welcome email (best-effort)
             try:
-                from flask import current_app
                 sender = current_app.config.get("MAIL_DEFAULT_SENDER")
                 if sender and new_user.email:
                     msg = Message(
