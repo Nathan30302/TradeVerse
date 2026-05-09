@@ -142,22 +142,35 @@ DANGEROUS_EMOTIONS = {
     'Revenge Trading': {'duration': 60, 'severity': 'critical'},
     'Angry': {'duration': 45, 'severity': 'critical'},
     'FOMO': {'duration': 30, 'severity': 'high'},
+    'FOMO (Fear of Missing Out)': {'duration': 30, 'severity': 'high'},
     'Greedy': {'duration': 30, 'severity': 'high'},
     'Frustrated': {'duration': 30, 'severity': 'high'},
     'Anxious': {'duration': 20, 'severity': 'medium'},
     'Fearful': {'duration': 20, 'severity': 'medium'},
     'Tired': {'duration': 45, 'severity': 'high'},
     'Bored': {'duration': 20, 'severity': 'medium'},
+    'Impulsive': {'duration': 30, 'severity': 'high'},
 }
+
+
+def _normalize_emotion(emotion):
+    if not emotion:
+        return None
+    e = str(emotion).strip()
+    if e.upper().startswith("FOMO"):
+        return e if e in DANGEROUS_EMOTIONS else "FOMO"
+    return e
 
 
 def should_trigger_cooldown(emotion):
     """Check if an emotion should trigger a cooldown"""
-    return emotion in DANGEROUS_EMOTIONS
+    e = _normalize_emotion(emotion)
+    return bool(e) and e in DANGEROUS_EMOTIONS
 
 
 def get_cooldown_duration(emotion):
     """Get the cooldown duration for an emotion"""
-    if emotion in DANGEROUS_EMOTIONS:
-        return DANGEROUS_EMOTIONS[emotion]['duration']
+    e = _normalize_emotion(emotion)
+    if e in DANGEROUS_EMOTIONS:
+        return DANGEROUS_EMOTIONS[e]['duration']
     return 15  # Default 15 minutes

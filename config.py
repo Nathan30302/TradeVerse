@@ -102,14 +102,18 @@ class Config:
         'Nervous',
         'Anxious',
         'Fearful',
+        'Angry',
         'Greedy',
         'Revenge Trading',
+        'FOMO',
         'FOMO (Fear of Missing Out)',
         'Overconfident',
         'Frustrated',
         'Disciplined',
         'Patient',
-        'Impulsive'
+        'Impulsive',
+        'Tired',
+        'Bored',
     ]
     
     # Session Types

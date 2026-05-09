@@ -2061,12 +2061,6 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('trade.cooldown') %}active{% endif %}"
-                   href="{{ url_for('trade.cooldown_status') }}">
-                    <i class="fas fa-hourglass-half"></i> Cooldown
-                </a>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}" 
                    href="{{ url_for('trade.add') }}">
                     <i class="fas fa-plus-circle"></i> Add Trade
@@ -2166,13 +2160,6 @@
                                href="{{ url_for('trade.list') }}">
                                 <i class="fas fa-list"></i>
                                 <span>My Trades</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('trade.cooldown') %}active{% endif %}"
-                               href="{{ url_for('trade.cooldown_status') }}">
-                                <i class="fas fa-hourglass-half"></i>
-                                <span>Cooldown</span>
                             </a>
                         </li>
                         <li class="nav-item">
