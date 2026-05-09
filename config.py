@@ -24,6 +24,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-please-change-in-production'
     # Optional override for /owner/unlock; if unset, unlock compares against SECRET_KEY (Render-friendly).
     OWNER_ADMIN_TOKEN = os.environ.get('OWNER_ADMIN_TOKEN')
+    # Query-token access for legacy /admin/stats?admin_token=... (prefer ADMIN_TOKEN; else OWNER_ADMIN_TOKEN).
+    ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
     
     # Database - Fix URL scheme for SQLAlchemy 2.0
     _raw_db_url = os.environ.get('DATABASE_URL') or 'sqlite:///tradeverse.db'
@@ -236,6 +238,7 @@ class ProductionConfig(Config):
     # Secrets MUST be provided via environment variables in production.
     SECRET_KEY = os.environ.get('SECRET_KEY')
     OWNER_ADMIN_TOKEN = os.environ.get('OWNER_ADMIN_TOKEN')
+    ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
     
     # Database MUST be provided via environment variable in production.
     SQLALCHEMY_DATABASE_URI = fix_database_url(os.environ.get('DATABASE_URL'))
