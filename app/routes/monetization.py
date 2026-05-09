@@ -16,6 +16,8 @@ from importlib import import_module
 from flask_mail import Message
 from app import mail
 from app.services.entitlements import require_feature
+import secrets
+from sqlalchemy import text
 
 # Create Blueprint
 bp = Blueprint('monetization', __name__, url_prefix='/monetization')
@@ -109,26 +111,83 @@ def subscribe(plan):
         flash('❌ Invalid plan selected.', 'danger')
         return redirect(url_for('monetization.pricing'))
 
-    # Dynamically import stripe and initialize
+    # Prefer Flutterwave if configured (works in more African countries).
+    flw_secret = current_app.config.get('FLW_SECRET_KEY') or os.environ.get('FLW_SECRET_KEY')
+    flw_public = current_app.config.get('FLW_PUBLIC_KEY') or os.environ.get('FLW_PUBLIC_KEY')
+    flw_currency = (current_app.config.get('FLW_CURRENCY') or os.environ.get('FLW_CURRENCY') or 'USD').upper()
+    if flw_secret and flw_public:
+        try:
+            requests = import_module('requests')
+        except Exception:
+            flash('⚠️ Payment gateway not available (requests package missing).', 'warning')
+            return redirect(url_for('monetization.pricing'))
+
+        # Amounts should match the pricing page.
+        amount_map = {'pro': 5, 'pro_plus': 15}
+        amount = amount_map.get(plan.lower())
+        if amount is None:
+            flash('❌ Invalid plan selected.', 'danger')
+            return redirect(url_for('monetization.pricing'))
+
+        tx_ref = f"tv_{current_user.id}_{plan.lower()}_{secrets.token_urlsafe(10)}"
+        redirect_url = url_for('monetization.flutterwave_callback', _external=True)
+        cancel_url = current_app.config.get('FLW_CANCEL_URL') or os.environ.get('FLW_CANCEL_URL') or url_for('monetization.pricing', _external=True)
+
+        payload = {
+            "tx_ref": tx_ref,
+            "amount": str(amount),
+            "currency": flw_currency,
+            "redirect_url": redirect_url,
+            "customer": {"email": current_user.email, "name": current_user.username},
+            "meta": {"user_id": current_user.id, "plan": plan.lower()},
+            "customizations": {"title": "TradeVerse", "description": f"TradeVerse {plan.lower()} subscription"},
+        }
+
+        # Optional recurring payment plan IDs set in Flutterwave dashboard.
+        plan_id_env = {
+            "pro": current_app.config.get("FLW_PLAN_PRO") or os.environ.get("FLW_PLAN_PRO"),
+            "pro_plus": current_app.config.get("FLW_PLAN_PRO_PLUS") or os.environ.get("FLW_PLAN_PRO_PLUS"),
+        }.get(plan.lower())
+        if plan_id_env:
+            payload["payment_plan"] = plan_id_env
+
+        try:
+            resp = requests.post(
+                "https://api.flutterwave.com/v3/payments",
+                json=payload,
+                headers={"Authorization": f"Bearer {flw_secret}"},
+                timeout=20,
+            )
+            data = resp.json() if resp.content else {}
+            link = (data or {}).get("data", {}).get("link")
+            if resp.status_code >= 400 or not link:
+                current_app.logger.warning("Flutterwave init failed: status=%s body=%s", resp.status_code, data)
+                flash('❌ Error initiating payment. Please try again later.', 'danger')
+                return redirect(cancel_url)
+            return redirect(link, code=303)
+        except Exception:
+            current_app.logger.exception("Flutterwave checkout error")
+            flash('❌ Error initiating payment. Please try again later.', 'danger')
+            return redirect(url_for('monetization.pricing'))
+
+    # Fallback: Stripe (if configured)
     try:
         stripe = import_module('stripe')
     except Exception:
-        flash('⚠️ Payment gateway not available (stripe package not installed).', 'warning')
+        flash('⚠️ Payment gateway not configured yet. Please contact support.', 'warning')
         return redirect(url_for('monetization.pricing'))
 
     stripe_key = current_app.config.get('STRIPE_SECRET_KEY') or os.environ.get('STRIPE_SECRET_KEY')
     if not stripe_key:
-        flash('⚠️ Payment gateway not configured. Ask the admin to set STRIPE_SECRET_KEY.', 'warning')
+        flash('⚠️ Payment gateway not configured yet. Please contact support.', 'warning')
         return redirect(url_for('monetization.pricing'))
 
     stripe.api_key = stripe_key
 
-    # Map plan to Stripe price IDs configured in app config or environment
     price_map = {
         'pro': current_app.config.get('STRIPE_PRICE_PRO') or os.environ.get('STRIPE_PRICE_PRO'),
         'pro_plus': current_app.config.get('STRIPE_PRICE_PRO_PLUS') or os.environ.get('STRIPE_PRICE_PRO_PLUS')
     }
-
     price_id = price_map.get(plan.lower())
     if not price_id:
         flash('⚠️ Price for selected plan is not configured.', 'warning')
@@ -137,26 +196,140 @@ def subscribe(plan):
     try:
         success_url = current_app.config.get('STRIPE_SUCCESS_URL') or url_for('dashboard.index', _external=True)
         cancel_url = current_app.config.get('STRIPE_CANCEL_URL') or url_for('monetization.pricing', _external=True)
-
-        # Create a Stripe Checkout Session for subscription
         session = stripe.checkout.Session.create(
             customer_email=current_user.email,
             payment_method_types=['card'],
-            line_items=[{
-                'price': price_id,
-                'quantity': 1,
-            }],
+            line_items=[{'price': price_id, 'quantity': 1}],
             mode='subscription',
             success_url=success_url + '?session_id={CHECKOUT_SESSION_ID}',
             cancel_url=cancel_url,
         )
-
-        # Redirect user to Stripe Checkout
         return redirect(session.url, code=303)
     except Exception:
         current_app.logger.exception("Subscription checkout error")
         flash('❌ Error initiating payment. Please try again later.', 'danger')
         return redirect(url_for('monetization.pricing'))
+
+
+@bp.route('/flutterwave/callback')
+@login_required
+def flutterwave_callback():
+    """
+    Flutterwave redirect/callback after hosted checkout.
+    We verify the transaction server-side and then update the user's tier.
+    """
+    flw_secret = current_app.config.get('FLW_SECRET_KEY') or os.environ.get('FLW_SECRET_KEY')
+    if not flw_secret:
+        flash('⚠️ Payment verification unavailable. Please contact support.', 'warning')
+        return redirect(url_for('dashboard.index'))
+
+    status = (request.args.get("status") or "").lower()
+    tx_ref = request.args.get("tx_ref") or ""
+    transaction_id = request.args.get("transaction_id") or ""
+
+    # If user cancelled, go back to pricing.
+    if status in {"cancelled", "canceled"}:
+        flash("Payment cancelled.", "info")
+        return redirect(url_for("monetization.pricing"))
+
+    if not transaction_id:
+        flash("Could not verify payment. Please contact support.", "warning")
+        return redirect(url_for("monetization.pricing"))
+
+    try:
+        requests = import_module("requests")
+        vr = requests.get(
+            f"https://api.flutterwave.com/v3/transactions/{transaction_id}/verify",
+            headers={"Authorization": f"Bearer {flw_secret}"},
+            timeout=20,
+        )
+        data = vr.json() if vr.content else {}
+        d = (data or {}).get("data") or {}
+        verified_status = (d.get("status") or "").lower()
+        charge_tx_ref = d.get("tx_ref") or ""
+        meta = d.get("meta") or {}
+        paid_amount = d.get("amount")
+        currency = (d.get("currency") or "").upper()
+    except Exception:
+        current_app.logger.exception("Flutterwave verify failed")
+        flash("Could not verify payment. Please try again.", "warning")
+        return redirect(url_for("monetization.pricing"))
+
+    if verified_status != "successful":
+        flash("Payment not completed.", "warning")
+        return redirect(url_for("monetization.pricing"))
+
+    # Trust meta plan if present; fall back to parsing our tx_ref.
+    plan = (meta.get("plan") or "").lower()
+    if plan not in {"pro", "pro_plus"}:
+        for p in ("pro_plus", "pro"):
+            if f"_{p}_" in (charge_tx_ref or tx_ref):
+                plan = p
+                break
+    if plan not in {"pro", "pro_plus"}:
+        plan = "pro"
+
+    # Update user subscription fields.
+    try:
+        current_user.subscription_tier = plan
+        current_user.subscription_status = "active"
+        current_user.subscription_expires_at = None
+        if not getattr(current_user, "stripe_customer_id", None):
+            # Keep this column as a generic "customer id" if present in schema; if missing it will be stripped by orm hooks.
+            pass
+        db.session.add(current_user)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Failed to persist Flutterwave subscription state")
+        flash("Payment succeeded, but we couldn't update your account yet. Contact support.", "warning")
+        return redirect(url_for("dashboard.index"))
+
+    flash(f"✅ Subscription activated: {plan.replace('_', ' ').title()}", "success")
+    return redirect(url_for("dashboard.index"))
+
+
+@bp.route('/flutterwave/webhook', methods=['POST'])
+@csrf.exempt
+def flutterwave_webhook():
+    """
+    Flutterwave webhook.
+    Verify using the `verif-hash` header (set in Flutterwave dashboard).
+    """
+    expected = current_app.config.get("FLW_WEBHOOK_HASH") or os.environ.get("FLW_WEBHOOK_HASH")
+    got = request.headers.get("verif-hash") or request.headers.get("Verif-Hash") or ""
+    if expected and got != expected:
+        return jsonify({"ok": False}), 401
+
+    payload = request.get_json(silent=True) or {}
+    event = (payload.get("event") or payload.get("type") or "").lower()
+    data = payload.get("data") or {}
+
+    # Best-effort: if we can link an email to a user, mark active.
+    try:
+        if event in {"charge.completed", "payment.completed"}:
+            customer = (data.get("customer") or {}) if isinstance(data, dict) else {}
+            email = (customer.get("email") or "").strip().lower()
+            meta = data.get("meta") or {}
+            plan = (meta.get("plan") or "").lower()
+            if plan not in {"pro", "pro_plus"}:
+                plan = "pro"
+            if email:
+                from app.models.user import User
+                user = User.query.filter(func.lower(User.email) == email).first()
+                if user:
+                    user.subscription_tier = plan
+                    user.subscription_status = "active"
+                    user.subscription_expires_at = None
+                    db.session.add(user)
+                    db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Flutterwave webhook processing failed")
+        # Return 200 anyway so Flutterwave doesn't hammer retries forever.
+        return jsonify({"ok": True})
+
+    return jsonify({"ok": True})
 
 
 # ==================== Data Export ====================
