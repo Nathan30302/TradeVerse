@@ -24,6 +24,7 @@
             </div>
 
             <form id="uploadForm" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-4">
                     <label for="broker" class="form-label">Select Broker</label>
                     <select class="form-select" id="broker" name="broker" required>
@@ -229,6 +230,7 @@ async function previewUpload() {
     try {
         const response = await fetch('/imports/upload', {
             method: 'POST',
+            credentials: 'same-origin',
             body: formData
         });
         
@@ -318,6 +320,7 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
     try {
         const response = await fetch('/imports/upload', {
             method: 'POST',
+            credentials: 'same-origin',
             body: formData
         });
         

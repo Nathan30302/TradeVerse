@@ -192,10 +192,16 @@
         swatches.forEach(s => s.addEventListener('click', async function(e){
             const theme = this.getAttribute('data-theme');
             try{
-                const csrf = document.querySelector('input[name="csrf_token"]')?.value || '';
+                const csrf = (typeof tvGetCsrf === 'function' ? tvGetCsrf() : '') ||
+                    (document.querySelector('input[name="csrf_token"]')?.value || '');
                 const res = await fetch('/auth/set-theme', {
                     method: 'POST',
-                    headers: {'Content-Type':'application/json', 'X-CSRFToken': csrf},
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrf,
+                        'X-CSRF-Token': csrf
+                    },
+                    credentials: 'same-origin',
                     body: JSON.stringify({theme})
                 });
                 if(res.ok){

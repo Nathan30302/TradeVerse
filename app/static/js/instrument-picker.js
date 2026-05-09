@@ -460,12 +460,16 @@ class TradeCalculator {
         }
 
         try {
+            const csrf = (typeof window.tvGetCsrf === 'function' ? window.tvGetCsrf() : '') ||
+                (document.querySelector('[name="csrf_token"]')?.value || '');
             const response = await fetch('/api/calculate-pnl', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-Token': document.querySelector('[name="csrf_token"]')?.value
+                    'X-CSRFToken': csrf,
+                    'X-CSRF-Token': csrf
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     instrument_id: instrumentId,
                     entry_price: entryPrice,

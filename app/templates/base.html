@@ -3,6 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        window.tvGetCsrf = function () {
+            var m = document.querySelector('meta[name="csrf-token"]');
+            if (m && m.getAttribute('content')) return m.getAttribute('content');
+            var i = document.querySelector('input[name="csrf_token"]');
+            return i ? i.value : '';
+        };
+        window.tvCsrfHeaders = function () {
+            var t = window.tvGetCsrf();
+            return t ? { 'X-CSRFToken': t, 'X-CSRF-Token': t } : {};
+        };
+    </script>
     <meta name="description" content="TradeVerse - Professional Trading Journal for Serious Traders">
     <meta name="application-name" content="TradeVerse">
     <meta name="apple-mobile-web-app-title" content="TradeVerse">
@@ -2404,13 +2417,15 @@
                     try {
                         const userId = document.body.getAttribute('data-user-id');
                         if(userId){
-                            const csrf = document.querySelector('input[name="csrf_token"]')?.value || '';
+                            const csrf = (typeof tvGetCsrf === 'function' ? tvGetCsrf() : '') || '';
                             fetch('/auth/set-theme', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type':'application/json',
-                                    'X-CSRFToken': csrf
+                                    'X-CSRFToken': csrf,
+                                    'X-CSRF-Token': csrf
                                 },
+                                credentials: 'same-origin',
                                 body: JSON.stringify({theme: name})
                             }).then(resp => {
                                 if(!resp.ok) console.warn('Theme save failed:', resp.statusText);

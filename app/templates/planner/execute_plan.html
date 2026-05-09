@@ -267,6 +267,10 @@
 
     /* ---- Helpers ---- */
     function getCsrf() {
+        if (typeof window.tvGetCsrf === "function") {
+            var t = window.tvGetCsrf();
+            if (t) { return t; }
+        }
         var el = document.querySelector("input[name='csrf_token']");
         return el ? el.value : "";
     }
@@ -310,6 +314,7 @@
         xhr.open("POST", PNL_URL, true);
         xhr.setRequestHeader("Content-Type", "application/json");
         xhr.setRequestHeader("X-CSRFToken", CSRF_TOKEN);
+        xhr.setRequestHeader("X-CSRF-Token", CSRF_TOKEN);
         xhr.onreadystatechange = function () {
             if (xhr.readyState !== 4) { return; }
             if (xhr.status === 200) {

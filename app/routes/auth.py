@@ -3,7 +3,7 @@ Authentication Routes
 User registration, login, logout, and profile management
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models.user import User
@@ -426,11 +426,11 @@ def set_theme():
         data = request.get_json(force=True)
         theme = (data.get('theme') or 'light').strip().lower()
         if theme not in ('light','dark','blue'):
-            return {'ok': False, 'error': 'invalid_theme'}, 400
+            return jsonify(ok=False, error='invalid_theme'), 400
         current_user.theme = theme
         db.session.commit()
-        return {'ok': True, 'theme': theme}
+        return jsonify(ok=True, theme=theme)
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception("set_theme error")
-        return {'ok': False, 'error': 'server_error'}, 500
+        return jsonify(ok=False, error='server_error'), 500

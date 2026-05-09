@@ -156,9 +156,15 @@ document.getElementById('connectForm').addEventListener('submit', async function
     };
     
     try {
+        const csrf = (typeof tvGetCsrf === 'function' ? tvGetCsrf() : (document.querySelector('input[name="csrf_token"]')||{}).value) || '';
         const response = await fetch('/brokers/api/connect', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf,
+                'X-CSRF-Token': csrf
+            },
+            credentials: 'same-origin',
             body: JSON.stringify(payload)
         });
         

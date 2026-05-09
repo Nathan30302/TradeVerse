@@ -171,9 +171,15 @@ document.getElementById('brokerSearch').addEventListener('input', function(e) {
 });
 
 function testConnection(credentialId) {
+    var csrf = (typeof tvGetCsrf === 'function' ? tvGetCsrf() : (document.querySelector('input[name="csrf_token"]')||{}).value) || '';
     fetch(`/brokers/api/test-connection/${credentialId}`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'}
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf,
+            'X-CSRF-Token': csrf
+        },
+        credentials: 'same-origin'
     })
     .then(r => r.json())
     .then(data => {
@@ -192,9 +198,15 @@ function disconnectBroker(credentialId) {
         return;
     }
     
+    var csrf2 = (typeof tvGetCsrf === 'function' ? tvGetCsrf() : (document.querySelector('input[name="csrf_token"]')||{}).value) || '';
     fetch(`/brokers/api/disconnect/${credentialId}`, {
         method: 'DELETE',
-        headers: {'Content-Type': 'application/json'}
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf2,
+            'X-CSRF-Token': csrf2
+        },
+        credentials: 'same-origin'
     })
     .then(r => r.json())
     .then(data => {
