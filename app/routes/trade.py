@@ -21,11 +21,81 @@ from sqlalchemy import or_
 from sqlalchemy.orm import load_only
 from werkzeug.utils import secure_filename
 import os
+from math import ceil
+import builtins
 
 # Create Blueprint
 bp = Blueprint('trade', __name__, url_prefix='/trade')
 
 # ==================== Helper Functions ====================
+
+class _ManualPagination:
+    """Minimal pagination object for templates when Query.paginate() can't be used safely."""
+
+    def __init__(self, *, items, page: int, per_page: int, total: int):
+        # trade.list route name shadows built-in list(); use builtins.list
+        self.items = builtins.list(items)
+        self.page = int(page)
+        self.per_page = int(per_page)
+        self.total = int(total)
+
+    @property
+    def pages(self) -> int:
+        if self.total <= 0:
+            return 0
+        return int(ceil(self.total / self.per_page))
+
+    @property
+    def has_prev(self) -> bool:
+        return self.page > 1
+
+    @property
+    def prev_num(self):
+        return self.page - 1 if self.has_prev else None
+
+    @property
+    def has_next(self) -> bool:
+        return self.page < self.pages
+
+    @property
+    def next_num(self):
+        return self.page + 1 if self.has_next else None
+
+    def iter_pages(
+        self,
+        *,
+        left_edge: int = 2,
+        left_current: int = 2,
+        right_current: int = 4,
+        right_edge: int = 2,
+    ):
+        pages_end = self.pages + 1
+        if pages_end == 1:
+            return
+
+        left_end = min(1 + left_edge, pages_end)
+        yield from range(1, left_end)
+
+        if left_end == pages_end:
+            return
+
+        mid_start = max(left_end, self.page - left_current)
+        mid_end = min(self.page + right_current + 1, pages_end)
+
+        if mid_start - left_end > 0:
+            yield None
+
+        yield from range(mid_start, mid_end)
+
+        if mid_end == pages_end:
+            return
+
+        right_start = max(mid_end, pages_end - right_edge)
+
+        if right_start - mid_end > 0:
+            yield None
+
+        yield from range(right_start, pages_end)
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -408,9 +478,13 @@ def list():
         )
     )
 
-    # Paginate
+    # Paginate (manual): Flask-SQLAlchemy Query.paginate() calls Query.count(),
+    # which can SELECT missing columns when migrations lag behind prod DB.
     per_page = current_app.config.get('ITEMS_PER_PAGE', 20)
-    trades = query.paginate(page=page, per_page=per_page, error_out=False)
+    offset = max(0, (page - 1) * per_page)
+    items = query.limit(per_page).offset(offset).all()
+    total = int(query.order_by(None).with_entities(Trade.id).count() or 0)
+    trades = _ManualPagination(items=items, page=page, per_page=per_page, total=total)
 
     return render_template('trade/list.html',
                            trades=trades,
