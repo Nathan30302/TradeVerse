@@ -408,7 +408,7 @@ def stats_api():
         Trade.user_id == current_user.id,
         Trade.entry_date >= start_today,
         Trade.entry_date < end_today,
-    ).count()
+    ).with_entities(Trade.id).count()
     # Ensure numeric fields are serializable
     safe = {
         'total_trades': stats.get('total_trades', 0),
@@ -1070,7 +1070,7 @@ def patterns():
         Trade.user_id == current_user.id,
         Trade.status == 'CLOSED',
         Trade.entry_date >= datetime.utcnow() - timedelta(days=days)
-    ).count()
+    ).with_entities(Trade.id).count()
 
     return render_template('dashboard/patterns.html',
                            patterns=detected_patterns,

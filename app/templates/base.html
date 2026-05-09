@@ -2011,7 +2011,7 @@
                                     <small class="text-muted">Member since</small>
                                     <div style="font-weight:700;">{% if current_user.created_at %}{{ current_user.created_at.strftime('%b %Y') }}{% else %}—{% endif %}</div>
                                 </li>
-                                <li><a class="dropdown-item" href="{{ url_for('trade.list') }}"><i class="fas fa-list me-2"></i> Trades taken <span class="badge bg-secondary ms-2">{{ current_user.trades.count() }}</span></a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('trade.list') }}"><i class="fas fa-list me-2"></i> Trades taken <span class="badge bg-secondary ms-2">{{ current_user.safe_trade_count() }}</span></a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('auth.settings') }}"><i class="fas fa-cog me-2"></i> Settings</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li class="dropdown-item section-label">Appearance</li>

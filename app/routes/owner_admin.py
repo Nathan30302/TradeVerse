@@ -33,8 +33,15 @@ def dashboard():
     _require_owner()
 
     total_users = User.query.count()
-    total_trades = Trade.query.count()
-    closed_trades = Trade.query.filter(Trade.status == "CLOSED").count()
+    # Avoid Query.count() on ORM entities; it may SELECT missing columns if
+    # migrations (e.g. playbook_setup_id) haven't been applied yet.
+    total_trades = int(db.session.query(func.count(Trade.id)).scalar() or 0)
+    closed_trades = int(
+        db.session.query(func.count(Trade.id))
+        .filter(Trade.status == "CLOSED")
+        .scalar()
+        or 0
+    )
 
     by_tier = (
         []

@@ -18,6 +18,7 @@ from datetime import datetime
 import csv
 from io import StringIO
 from sqlalchemy import or_
+from sqlalchemy.orm import load_only
 from werkzeug.utils import secure_filename
 import os
 
@@ -385,6 +386,27 @@ def list():
     page = request.args.get('page', 1, type=int)
 
     query = _filtered_trades_query(current_user.id)
+
+    # IMPORTANT: when the DB schema is behind migrations, Query.count() used by
+    # Flask-SQLAlchemy pagination can SELECT missing columns (e.g. playbook_setup_id)
+    # even though it's "just" a count. Restrict the query columns to the ones this
+    # page actually needs.
+    query = query.options(
+        load_only(
+            Trade.id,
+            Trade.entry_date,
+            Trade.symbol,
+            Trade.emotion,
+            Trade.trade_type,
+            Trade.entry_price,
+            Trade.exit_price,
+            Trade.lot_size,
+            Trade.profit_loss,
+            Trade.risk_reward,
+            Trade.strategy,
+            Trade.status,
+        )
+    )
 
     # Paginate
     per_page = current_app.config.get('ITEMS_PER_PAGE', 20)

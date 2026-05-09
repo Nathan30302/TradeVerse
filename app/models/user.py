@@ -118,10 +118,17 @@ class User(UserMixin, db.Model):
                 - expectancy: Expected value per trade
         """
         from app.models.trade import Trade
+        from sqlalchemy.orm import load_only
         
-        # Get all trades
-        all_trades = self.trades
-        total_trades = all_trades.count()
+        # IMPORTANT: When DB migrations lag behind the ORM, count() on an ORM
+        # entity query can select missing columns (e.g. trades.playbook_setup_id).
+        # Use id-only aggregates.
+        total_trades = (
+            db.session.query(func.count(Trade.id))
+            .filter(Trade.user_id == self.id)
+            .scalar()
+            or 0
+        )
         
         # Initialize default stats
         stats = {
@@ -145,17 +152,41 @@ class User(UserMixin, db.Model):
             return stats
         
         # Count open vs closed trades
-        open_trades = all_trades.filter(Trade.status == 'OPEN').count()
-        closed_trades = all_trades.filter(Trade.status == 'CLOSED').count()
+        open_trades = (
+            db.session.query(func.count(Trade.id))
+            .filter(Trade.user_id == self.id, Trade.status == 'OPEN')
+            .scalar()
+            or 0
+        )
+        closed_trades = (
+            db.session.query(func.count(Trade.id))
+            .filter(Trade.user_id == self.id, Trade.status == 'CLOSED')
+            .scalar()
+            or 0
+        )
 
         stats['open_trades'] = open_trades
         stats['closed_trades'] = closed_trades
         
         # Get closed trades with P/L
-        closed_trades_list = all_trades.filter(
-            Trade.status == 'CLOSED',
-            Trade.profit_loss.isnot(None)
-        ).all()
+        closed_trades_list = (
+            Trade.query.options(
+                load_only(
+                    Trade.id,
+                    Trade.user_id,
+                    Trade.status,
+                    Trade.profit_loss,
+                    Trade.risk_reward,
+                    Trade.exit_date,
+                )
+            )
+            .filter(
+                Trade.user_id == self.id,
+                Trade.status == 'CLOSED',
+                Trade.profit_loss.isnot(None),
+            )
+            .all()
+        )
         
         # If there are no closed trades with P/L data, still return counts but keep numerical stats at defaults
         if not closed_trades_list:
@@ -211,6 +242,29 @@ class User(UserMixin, db.Model):
             stats['expectancy'] = stats['total_pnl'] / closed_with_pnl_count
         
         return stats
+
+    def safe_trade_count(self) -> int:
+        """
+        Return a robust count of trades for this user.
+
+        Avoids Query.count() on ORM entities which can SELECT missing columns
+        when the database schema is behind migrations.
+        """
+        from app.models.trade import Trade
+
+        try:
+            return int(
+                db.session.query(func.count(Trade.id))
+                .filter(Trade.user_id == self.id)
+                .scalar()
+                or 0
+            )
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            return 0
     
     # ==================== Recent Activity ====================
     def get_recent_trades(self, limit=10):

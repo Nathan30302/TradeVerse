@@ -18,7 +18,7 @@
             <div class="card-body">
                 <div class="row text-center">
                     <div class="col-md-4">
-                        <h3 class="text-primary">{{ current_user.trades.count() }}</h3>
+                        <h3 class="text-primary">{{ current_user.safe_trade_count() }}</h3>
                         <p class="text-muted mb-0">Total Trades</p>
                     </div>
                     <div class="col-md-4">
