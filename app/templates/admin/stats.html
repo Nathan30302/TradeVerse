@@ -150,7 +150,7 @@
                     </p>
                 </div>
                 <div class="text-md-end small text-secondary">
-                    <div class="mb-1"><i class="far fa-clock me-1"></i> Generated <strong class="text-light">{{ generated_at.strftime('%b %d, %Y · %I:%M %p') }} UTC</strong></div>
+                    <div class="mb-1"><i class="far fa-clock me-1"></i> Generated <strong class="text-light">{% if generated_at %}{{ generated_at.strftime('%b %d, %Y · %I:%M %p') }} UTC{% else %}—{% endif %}</strong></div>
                     <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="location.reload()" title="Reload latest numbers">
                         <i class="fas fa-sync-alt me-1"></i> Refresh data
                     </button>
@@ -221,7 +221,7 @@
                                             <span class="fw-semibold ms-1">{{ user.username }}</span>
                                         </td>
                                         <td class="small text-break">{{ user.email or '—' }}</td>
-                                        <td class="small text-nowrap text-secondary">{{ user.created_at.strftime('%b %d, %Y') }}</td>
+                                        <td class="small text-nowrap text-secondary">{% if user.created_at %}{{ user.created_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -263,7 +263,7 @@
                                                 </span>
                                             {% else %}<span class="text-secondary">—</span>{% endif %}
                                         </td>
-                                        <td class="small text-secondary text-nowrap">{{ trade.created_at.strftime('%b %d · %H:%M') }}</td>
+                                        <td class="small text-secondary text-nowrap">{% if trade.created_at %}{{ trade.created_at.strftime('%b %d · %H:%M') }}{% else %}—{% endif %}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
