@@ -2055,7 +2055,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if 'trade.list' in request.endpoint %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint and 'trade.list' in request.endpoint %}active{% endif %}" 
                    href="{{ url_for('trade.list') }}">
                     <i class="fas fa-list"></i> My Trades
                 </a>
@@ -2112,7 +2112,7 @@
                 <small class="text-muted px-3">PLANNING</small>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if 'planner' in request.endpoint %}active{% endif %}"
+                <a class="nav-link {% if request.endpoint and 'planner' in request.endpoint %}active{% endif %}"
                    href="{{ url_for('planner.index') }}">
                     <i class="fas fa-clipboard-list"></i> Trade Planner
                 </a>
@@ -2156,7 +2156,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if 'trade.list' in request.endpoint %}active{% endif %}" 
+                            <a class="nav-link {% if request.endpoint and 'trade.list' in request.endpoint %}active{% endif %}" 
                                href="{{ url_for('trade.list') }}">
                                 <i class="fas fa-list"></i>
                                 <span>My Trades</span>
@@ -2222,7 +2222,7 @@
                             <small class="text-muted px-3">PLANNING</small>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if 'planner' in request.endpoint %}active{% endif %}"
+                            <a class="nav-link {% if request.endpoint and 'planner' in request.endpoint %}active{% endif %}"
                                href="{{ url_for('planner.index') }}">
                                 <i class="fas fa-clipboard-list"></i>
                                 <span>Trade Planner</span>
@@ -2527,8 +2527,9 @@
                         try{
                             const liveIndicator = document.getElementById('rot-feed-badge');
                             const liveLbl = document.getElementById('rot-feed-label');
+                            // Keep the green indicator but remove the "LIVE" text.
                             if (liveLbl) {
-                                liveLbl.textContent = 'LIVE';
+                                liveLbl.textContent = '';
                             }
                             if(liveIndicator && data.source){
                                 liveIndicator.title = 'Live' + ' · ' + String(data.source);
