@@ -6,9 +6,60 @@
 <div class="mb-4">
     <h1 class="h3 text-white mb-1"><i class="fas fa-paper-plane text-primary me-2"></i>Email outreach</h1>
     <p class="text-secondary mb-0 small">
-        Plain-text emails only — best deliverability. Use placeholders so each trader gets a personal greeting.
-        Bulk sends are capped at <strong class="text-warning">{{ max_per_run }}</strong> per run (<code class="small">OWNER_EMAIL_MAX_PER_RUN</code>).
+        Plain-text only — best deliverability. Sends logged today: <strong class="text-info">{{ emails_sent_today }}</strong>
+        · cap <strong class="text-warning">{{ max_per_run }}</strong> per bulk run.
+        Bulk requires checkbox + exact phrase <code class="small">SEND {{ bulk_code }}</code>.
     </p>
+</div>
+
+<div class="card tv-panel border-0 mb-4">
+    <div class="card-header border-0 py-2 small"><i class="fas fa-save me-2 text-secondary"></i>Saved drafts</div>
+    <div class="card-body py-3">
+        <form method="post" action="{{ url_for('admin.email_draft_save') }}" class="row g-2 align-items-end mb-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-3">
+                <label class="form-label small text-secondary mb-0">Name</label>
+                <input type="text" name="draft_name" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Weekly nudge" maxlength="120">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-secondary mb-0">Subject</label>
+                <input type="text" name="draft_subject" class="form-control form-control-sm bg-dark text-white border-secondary" maxlength="200">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-secondary mb-0">Audience hint</label>
+                <select name="draft_audience" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="test_self">test</option>
+                    <option value="all_registered">all</option>
+                    <option value="inactive">inactive</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill">Save draft</button>
+            </div>
+            <div class="col-12">
+                <textarea name="draft_body" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" rows="3" placeholder="Body template…"></textarea>
+            </div>
+        </form>
+        {% if drafts %}
+        <ul class="list-unstyled mb-0 small">
+            {% for d in drafts %}
+            <li class="d-flex flex-wrap justify-content-between gap-2 py-2 border-top border-secondary border-opacity-25">
+                <textarea class="d-none" id="draft-body-{{ d.id }}" aria-hidden="true">{{ d.body }}</textarea>
+                <span><strong class="text-light">{{ d.name }}</strong> <span class="text-secondary">— {{ d.subject[:48] }}{% if d.subject|length > 48 %}…{% endif %}</span></span>
+                <span>
+                    <button type="button" class="btn btn-link btn-sm p-0 text-info js-load-draft" data-draft-id="{{ d.id }}" data-subject="{{ d.subject|e }}" data-aud="{{ d.audience_hint or 'test_self' }}">Load</button>
+                    <form method="post" action="{{ url_for('admin.email_draft_delete', draft_id=d.id) }}" class="d-inline" onsubmit="return confirm('Delete this draft?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-link btn-sm p-0 text-danger">Delete</button>
+                    </form>
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-secondary small mb-0">No drafts yet — save reusable templates above.</p>
+        {% endif %}
+    </div>
 </div>
 
 {% if not mail_configured %}
@@ -86,6 +137,20 @@
                         </div>
                     </fieldset>
 
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small" for="bulk_phrase">Bulk confirmation phrase</label>
+                        <input type="text" class="form-control bg-dark text-white border-secondary font-monospace" id="bulk_phrase" name="bulk_phrase" autocomplete="off"
+                               placeholder="SEND {{ bulk_code }}">
+                        <div class="form-text text-secondary small">For bulk audiences only: type exactly <strong class="text-warning">SEND {{ bulk_code }}</strong></div>
+                    </div>
+
+                    <div class="mb-4">
+                        <button type="button" class="btn btn-outline-info btn-sm rounded-pill" id="btn-preview-email" {% if not mail_configured %}disabled{% endif %}>
+                            <i class="fas fa-eye me-1"></i> Preview sample (random user)
+                        </button>
+                        <pre class="small text-secondary mt-2 mb-0 d-none bg-black bg-opacity-25 p-3 rounded border border-secondary border-opacity-25" id="preview-email-out"></pre>
+                    </div>
+
                     <div class="form-check mb-4">
                         <input class="form-check-input" type="checkbox" value="1" id="confirm_bulk" name="confirm_bulk">
                         <label class="form-check-label text-secondary small" for="confirm_bulk">
@@ -131,4 +196,40 @@
         </div>
     </div>
 </div>
+<script>
+(function () {
+    document.querySelectorAll('.js-load-draft').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.getElementById('ad_subject').value = btn.getAttribute('data-subject') || '';
+            var bid = btn.getAttribute('data-draft-id');
+            var tb = bid ? document.getElementById('draft-body-' + bid) : null;
+            document.getElementById('ad_body').value = tb ? tb.value : '';
+            var aud = btn.getAttribute('data-aud') || 'test_self';
+            if (aud === 'all_registered') document.getElementById('aud_all').checked = true;
+            else if (aud === 'inactive') document.getElementById('aud_inactive').checked = true;
+            else document.getElementById('aud_test').checked = true;
+        });
+    });
+    var prevBtn = document.getElementById('btn-preview-email');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', async function () {
+            var fd = new FormData();
+            fd.append('csrf_token', window.tvGetCsrf ? window.tvGetCsrf() : '');
+            fd.append('body', document.getElementById('ad_body').value);
+            fd.append('audience', document.querySelector('input[name=audience]:checked') ? document.querySelector('input[name=audience]:checked').value : 'all_registered');
+            fd.append('inactive_days', document.getElementById('inactive_days').value);
+            var out = document.getElementById('preview-email-out');
+            try {
+                var r = await fetch('{{ url_for("admin.email_preview") }}', { method: 'POST', body: fd });
+                var j = await r.json();
+                out.classList.remove('d-none');
+                out.textContent = (j.sample_label ? ('Sample: ' + j.sample_label + '\n\n') : '') + (j.body || '(empty)');
+            } catch (e) {
+                out.classList.remove('d-none');
+                out.textContent = 'Preview failed';
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

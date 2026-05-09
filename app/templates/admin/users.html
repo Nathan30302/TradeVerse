@@ -1,0 +1,41 @@
+{% extends "admin/base_console.html" %}
+
+{% block title %}User lookup{% endblock %}
+
+{% block admin_content %}
+<h1 class="h4 text-white mb-3"><i class="fas fa-user-search text-info me-2"></i>User lookup</h1>
+<p class="text-secondary small mb-4">Search by email fragment, username, or numeric user id. Read-only inspector — not login-as.</p>
+
+<form method="get" action="{{ url_for('admin.user_search') }}" class="row g-2 align-items-center mb-4">
+    <div class="col-md-8">
+        <input type="search" name="q" value="{{ q }}" class="form-control bg-dark text-white border-secondary" placeholder="email, username, or id">
+    </div>
+    <div class="col-md-4">
+        <button type="submit" class="btn btn-primary rounded-pill">Search</button>
+    </div>
+</form>
+
+{% if q and results %}
+<div class="card tv-panel border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-tv mb-0">
+                <thead><tr><th>ID</th><th>Username</th><th>Email</th><th></th></tr></thead>
+                <tbody>
+                    {% for u in results %}
+                    <tr>
+                        <td class="tv-mono">{{ u.id }}</td>
+                        <td>{{ u.username }}</td>
+                        <td class="small">{{ u.email }}</td>
+                        <td><a class="btn btn-sm btn-outline-info rounded-pill" href="{{ url_for('admin.user_inspect', user_id=u.id) }}">Inspect</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% elif q %}
+<div class="tv-empty small">No matches.</div>
+{% endif %}
+{% endblock %}

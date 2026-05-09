@@ -1,0 +1,67 @@
+{% extends "admin/base_console.html" %}
+
+{% block title %}Ops &amp; audit{% endblock %}
+
+{% block admin_content %}
+<h1 class="h4 text-white mb-3"><i class="fas fa-server text-info me-2"></i>Operations</h1>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0 h-100">
+            <div class="card-header border-0"><i class="fas fa-heartbeat me-2 text-danger"></i>Health</div>
+            <div class="card-body small">
+                <ul class="list-unstyled mb-0">
+                    <li class="d-flex justify-content-between py-1 border-bottom border-secondary border-opacity-25"><span>Database</span><strong class="{% if health.database_ok %}text-success{% else %}text-danger{% endif %}">{{ 'OK' if health.database_ok else 'FAIL' }}</strong></li>
+                    <li class="d-flex justify-content-between py-1 border-bottom border-secondary border-opacity-25"><span>Alembic revision</span><span class="text-secondary tv-mono">{{ health.alembic_revision or '—' }}</span></li>
+                    <li class="d-flex justify-content-between py-1 border-bottom border-secondary border-opacity-25"><span>Mail env</span><span>{{ 'configured' if health.mail_configured else 'missing' }}</span></li>
+                    <li class="d-flex justify-content-between py-1 border-bottom border-secondary border-opacity-25"><span>Sentry DSN</span><span>{{ 'set' if health.sentry_configured else 'not set' }}</span></li>
+                    <li class="d-flex justify-content-between py-1 border-bottom border-secondary border-opacity-25"><span>Maintenance banner</span><span>{{ 'on' if health.maintenance_mode else 'off' }}</span></li>
+                    {% if health.worker_heartbeat %}<li class="d-flex justify-content-between py-1"><span>Worker heartbeat</span><span class="text-secondary">{{ health.worker_heartbeat }}</span></li>{% endif %}
+                </ul>
+                <p class="text-secondary mt-3 mb-0 small">Set <code class="small">MAINTENANCE_MODE=true</code> for the yellow global banner. Optional <code class="small">WORKER_LAST_HEARTBEAT</code> text for scheduled jobs.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0 h-100">
+            <div class="card-header border-0"><i class="fas fa-file-alt me-2 text-warning"></i>Logs &amp; incidents</div>
+            <div class="card-body small text-secondary">
+                <p>Use your host dashboard for streaming logs (e.g. <a href="{{ render_logs_url }}" target="_blank" rel="noopener">Render dashboard</a>). Paste an incident or ticket ID below so it appears in the audit trail.</p>
+                <form method="post" action="{{ url_for('admin.ops_incident_note') }}" class="mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label class="form-label small">Incident / ticket reference</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="incident_ref" class="form-control bg-dark text-white border-secondary" maxlength="500" placeholder="inc-2026-05-09-a7f">
+                        <button type="submit" class="btn btn-outline-primary">Record</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card tv-panel border-0 mt-4">
+    <div class="card-header border-0"><i class="fas fa-history me-2"></i>Recent audit events</div>
+    <div class="card-body p-0">
+        {% if audit_tail %}
+        <div class="table-responsive">
+            <table class="table table-tv mb-0">
+                <thead><tr><th>When</th><th>Type</th><th>IP</th><th>Detail</th></tr></thead>
+                <tbody>
+                    {% for row in audit_tail %}
+                    <tr>
+                        <td class="small text-nowrap text-secondary">{% if row.at %}{{ row.at.strftime('%m-%d %H:%M') }}{% else %}—{% endif %}</td>
+                        <td class="small">{{ row.type }}</td>
+                        <td class="small tv-mono">{{ row.ip or '—' }}</td>
+                        <td class="small text-break"><code class="small">{{ row.meta[:120] if row.meta }}{% if row.meta and row.meta|length > 120 %}…{% endif %}</code></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="tv-empty small">No events recorded yet — bulk sends and toggles appear here.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

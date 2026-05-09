@@ -315,6 +315,7 @@
         <div class="auth-card">
             <form method="POST" action="{{ url_for('auth.register') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="signup_utm_source" value="{{ signup_utm_default|default('', true) }}">
                 
                 <div class="form-row">
                     <div class="form-group">

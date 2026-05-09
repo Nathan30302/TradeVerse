@@ -406,7 +406,8 @@ def register_context_processors(app):
             'app_name': app.config.get('APP_NAME'),
             'app_tagline': app.config.get('APP_TAGLINE'),
             'app_version': app.config.get('APP_VERSION'),
-            'random_quote': random.choice(app.config.get('QUOTES', []))
+            'random_quote': random.choice(app.config.get('QUOTES', [])),
+            'maintenance_mode': bool(app.config.get('MAINTENANCE_MODE')),
         }
 
     @app.context_processor

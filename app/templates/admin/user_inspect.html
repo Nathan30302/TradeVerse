@@ -1,0 +1,50 @@
+{% extends "admin/base_console.html" %}
+
+{% block title %}User #{{ user.id }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="h4 text-white mb-2"><i class="fas fa-id-badge text-info me-2"></i>{{ user.username }}</h1>
+<p class="text-secondary small mb-4">Read-only inspector · user id <span class="tv-mono">#{{ user.id }}</span></p>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0">
+            <div class="card-header border-0">Account</div>
+            <div class="card-body small">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-secondary">Email</dt><dd class="col-sm-8">{{ user.email }}</dd>
+                    <dt class="col-sm-4 text-secondary">Created</dt><dd class="col-sm-8">{% if user.created_at %}{{ user.created_at.strftime('%Y-%m-%d %H:%M') }} UTC{% else %}—{% endif %}</dd>
+                    <dt class="col-sm-4 text-secondary">Last login</dt><dd class="col-sm-8">{% if user.last_login %}{{ user.last_login.strftime('%Y-%m-%d %H:%M') }} UTC{% else %}—{% endif %}</dd>
+                    <dt class="col-sm-4 text-secondary">Active</dt><dd class="col-sm-8">{{ user.is_active }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0">
+            <div class="card-header border-0">Trading</div>
+            <div class="card-body small">
+                <p class="mb-2">Closed trades: <strong>{{ closed_trades_n }}</strong></p>
+                <p class="mb-0">All trades: <strong>{{ total_trades_n }}</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card tv-panel border-0 mt-4">
+    <div class="card-header border-0"><i class="fas fa-ban me-2 text-warning"></i>Exports</div>
+    <div class="card-body">
+        <p class="small text-secondary mb-3">When blocked, CSV and monetization data exports redirect with an error (support / abuse workflows).</p>
+        <form method="post" action="{{ url_for('admin.user_toggle_exports', user_id=user.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="exports_blocked" value="1" id="exp_blk" {% if exports_blocked %}checked{% endif %}>
+                <label class="form-check-label" for="exp_blk">Block exports for this account</label>
+            </div>
+            <button type="submit" class="btn btn-sm btn-outline-warning rounded-pill mt-3">Save</button>
+        </form>
+    </div>
+</div>
+
+<p class="mt-4"><a href="{{ url_for('admin.user_search', q=user.email or user.username) }}" class="link-secondary small">← Back to search</a></p>
+{% endblock %}

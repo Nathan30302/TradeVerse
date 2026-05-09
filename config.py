@@ -223,6 +223,12 @@ class Config:
     # Owner console bulk email safety cap (per POST request)
     OWNER_EMAIL_MAX_PER_RUN = int(os.environ.get('OWNER_EMAIL_MAX_PER_RUN', '200'))
 
+    # Short-lived admin URL (?admin_ts=) max age in seconds (signed with SECRET_KEY).
+    ADMIN_TIMED_LINK_MAX_AGE = int(os.environ.get('ADMIN_TIMED_LINK_MAX_AGE', '3600'))
+
+    # Optional global banner (exports still served; use for warnings before deploys).
+    MAINTENANCE_MODE = os.environ.get('MAINTENANCE_MODE', '').lower() in ('1', 'true', 'yes')
+
     # Market data
     MARKET_DATA_PROVIDER = os.environ.get('MARKET_DATA_PROVIDER') or 'twelvedata'
 
@@ -275,6 +281,7 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # Use in-memory database for tests
     WTF_CSRF_ENABLED = False  # Disable CSRF for testing
     PROMETHEUS_METRICS_ENABLED = False
+    MAINTENANCE_MODE = False
 
 # Configuration dictionary
 config = {

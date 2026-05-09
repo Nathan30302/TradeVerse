@@ -53,6 +53,8 @@ class User(UserMixin, db.Model):
     stripe_customer_id = deferred(db.Column(db.String(255)))  # Stripe customer ID for payments
     # Deferred like other billing/extra columns so login SELECT works if migrations lag behind prod DB.
     weekly_focus_rule = deferred(db.Column(db.Text))  # AI Buddy weekly focus (persist via dashboard.save_weekly_focus Core UPDATE)
+    exports_blocked = deferred(db.Column(db.Boolean, default=False))  # Admin-toggle: block data exports for account
+    signup_utm_source = deferred(db.Column(db.String(255)))  # Optional acquisition tag (?utm_source= on signup)
 
     # ==================== Timestamps ====================
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

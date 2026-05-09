@@ -77,12 +77,16 @@ def register():
         if errors:
             for error in errors:
                 flash(error, 'danger')
-            return render_template('auth/register.html')
+            utm_keep = (
+                (request.form.get('signup_utm_source') or request.args.get('utm_source') or "").strip()
+            )[:255]
+            return render_template("auth/register.html", signup_utm_default=utm_keep)
         
         # Create new user
         try:
             now = datetime.now(timezone.utc)
             trial_days = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
+            utm_src = (request.form.get('signup_utm_source') or '').strip()[:255]
             new_user = User(
                 username=username,
                 email=email,
@@ -93,6 +97,11 @@ def register():
                 subscription_status='trialing',
                 trial_ends_at=now + timedelta(days=trial_days),
             )
+            if utm_src:
+                try:
+                    new_user.signup_utm_source = utm_src
+                except Exception:
+                    pass
             new_user.set_password(password)
             
             db.session.add(new_user)
@@ -126,7 +135,10 @@ def register():
             flash('❌ An error occurred during registration. Please try again.', 'danger')
             current_app.logger.exception("Registration error")
     
-    return render_template('auth/register.html')
+    utm_default = (
+        (request.args.get("utm_source") or request.args.get("utm_campaign") or "").strip()
+    )[:255]
+    return render_template("auth/register.html", signup_utm_default=utm_default)
 
 # ==================== Login ====================
 

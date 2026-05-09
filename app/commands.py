@@ -159,4 +159,21 @@ def register_commands(app):
             db.session.commit()
         click.echo(f'Downgraded {changed} expired trials.')
 
+    @app.cli.command('admin-timed-link')
+    @click.option(
+        '--base-url',
+        default='',
+        help='Site origin, e.g. https://tradeverse.example.com (defaults to http://localhost:5000)',
+    )
+    def admin_timed_link_cmd(base_url: str):
+        """Print a short-lived /admin/stats?admin_ts=… URL (signed with SECRET_KEY)."""
+        from app.services.admin_console_support import generate_admin_ts_token
+
+        tok = generate_admin_ts_token(current_app)
+        base = (base_url or '').strip().rstrip('/') or 'http://localhost:5000'
+        click.echo(f'{base}/admin/stats?admin_ts={tok}')
+        click.echo(
+            f'(Expires in {current_app.config.get("ADMIN_TIMED_LINK_MAX_AGE", 3600)} seconds.)'
+        )
+
     return None

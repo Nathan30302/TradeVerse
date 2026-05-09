@@ -15,6 +15,7 @@ import os
 from importlib import import_module
 from flask_mail import Message
 from app import mail
+from app.services.account_flags import current_user_exports_blocked
 from app.services.entitlements import require_feature
 import secrets
 from sqlalchemy import text
@@ -497,6 +498,12 @@ def export_data():
     
     Generates CSV export of all user trades and performance data
     """
+    if current_user_exports_blocked(current_user):
+        flash(
+            "Data export is temporarily disabled for this account. Contact support if this is unexpected.",
+            "danger",
+        )
+        return redirect(url_for('dashboard.index'))
     try:
         # Prepare CSV
         output = StringIO()

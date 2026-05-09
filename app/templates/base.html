@@ -1926,6 +1926,12 @@
 </head>
 <body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{{ current_user.theme or 'light' }}{% else %}{% endif %}">
 
+    {% if maintenance_mode %}
+    <div class="alert alert-warning rounded-0 border-0 mb-0 text-center py-2 small" role="alert">
+        <strong>Maintenance:</strong> {{ app_name }} is in maintenance mode — expect brief instability during upgrades.
+    </div>
+    {% endif %}
+
     {# Load theme-specific stylesheet to set :root variables server-side and avoid FOUC. #}
     {% set theme_name = current_user.theme if current_user.is_authenticated else 'light' %}
     <link id="theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + (theme_name or 'light') + '.css') }}">

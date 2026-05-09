@@ -13,6 +13,7 @@ from app.models.playbook_setup import PlaybookSetup
 from app.models.cooldown import Cooldown, should_trigger_cooldown, get_cooldown_duration
 from app.services.feedback_analyzer import generate_trade_feedback
 from app.services.cooldown_manager import CooldownManager, get_active_cooldown, trigger_emotional_cooldown
+from app.services.account_flags import current_user_exports_blocked
 from app.services.entitlements import require_feature
 from datetime import datetime
 import csv
@@ -498,6 +499,12 @@ def list():
 @require_feature('exports')
 def list_export_csv():
     """Export trades matching current list filters as CSV."""
+    if current_user_exports_blocked(current_user):
+        flash(
+            "CSV export is temporarily disabled for this account. Contact support if this is unexpected.",
+            "danger",
+        )
+        return redirect(url_for('trade.list'))
     query = _filtered_trades_query(current_user.id)
     trades = query.all()
 

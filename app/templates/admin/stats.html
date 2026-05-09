@@ -27,8 +27,8 @@
             </div>
             <h1 class="mb-2"><i class="fas fa-chart-pie me-2" style="color: var(--tv-admin-accent2);"></i>Platform snapshot</h1>
             <p class="text-secondary mb-0 small" style="max-width: 42rem;">
-                High-level counts for {{ app_name }} — ideal for a quick health check. Open the bookmark URL with
-                <code class="small text-info">?admin_token=…</code> once per browser; after that this session can use Overview and Email until you choose <strong>Lock session</strong>.
+                Summary metrics for {{ app_name }}. Use <code class="small text-info">?admin_token=…</code> or a short-lived
+                <code class="small text-info">?admin_ts=…</code> link (<span class="text-secondary">flask admin-timed-link</span>) once per browser; then this session can access all admin tabs until <strong>Lock session</strong>.
             </p>
         </div>
         <div class="text-md-end small text-secondary">
@@ -39,6 +39,115 @@
         </div>
     </div>
 </header>
+
+<div class="card tv-panel border-0 mb-4">
+    <div class="card-body py-3">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-8">
+                <div class="small text-secondary mb-1"><i class="fas fa-heartbeat text-danger me-1"></i> Health</div>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge rounded-pill {% if health.database_ok %}bg-success{% else %}bg-danger{% endif %} bg-opacity-25">DB {{ 'OK' if health.database_ok else 'FAIL' }}</span>
+                    <span class="badge rounded-pill bg-secondary bg-opacity-25 text-secondary border border-secondary border-opacity-25">Alembic {{ health.alembic_revision or '—' }}</span>
+                    <span class="badge rounded-pill {% if health.mail_configured %}bg-info{% else %}bg-warning{% endif %} bg-opacity-25">Mail {{ 'ready' if health.mail_configured else 'not set' }}</span>
+                    <span class="badge rounded-pill bg-secondary bg-opacity-25">Sentry {{ 'on' if health.sentry_configured else 'off' }}</span>
+                    {% if health.worker_heartbeat %}<span class="badge rounded-pill bg-secondary bg-opacity-25">Worker {{ health.worker_heartbeat }}</span>{% endif %}
+                    {% if health.maintenance_mode %}<span class="badge rounded-pill bg-warning bg-opacity-25 text-warning">MAINT banner</span>{% endif %}
+                </div>
+                {% if extended.schema_notes %}
+                <div class="small text-warning mt-2">{% for n in extended.schema_notes %}{{ n }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+                {% endif %}
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <button type="button" class="btn btn-sm btn-outline-info rounded-pill mb-2" id="btn-issue-admin-ts">Copy timed admin link</button>
+                <div class="small"><a href="{{ url_for('admin.export_users_csv') }}" class="link-info">users.csv</a> · <a href="{{ url_for('admin.export_trades_recent_csv') }}" class="link-info">trades_recent.csv</a></div>
+                <div class="small text-secondary mt-1">Emails today (logged): {{ emails_sent_today }} · cap/run {{ owner_email_cap }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if extended %}
+<div class="row g-3 g-md-4 mb-4">
+    {% if extended.signup_wow %}
+    <div class="col-6 col-md-4">
+        <div class="tv-stat-card">
+            <div class="label">Signups (rolling 7d)</div>
+            <div class="value text-info">{{ extended.signup_wow.current_7d }}</div>
+            <div class="small text-secondary">Prior 7d: {{ extended.signup_wow.previous_7d }}</div>
+        </div>
+    </div>
+    {% endif %}
+    {% if extended.activation_rate_30d is not none %}
+    <div class="col-6 col-md-4">
+        <div class="tv-stat-card">
+            <div class="label">Activation (30d)</div>
+            <div class="value">{{ extended.activation_rate_30d }}%</div>
+            <div class="small text-secondary">Signed up last 30d with ≥1 closed trade</div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="col-6 col-md-4">
+        <div class="tv-stat-card">
+            <div class="label">Imports / replay / playbook</div>
+            <div class="value small text-start">
+                {% if extended.imports_total is not none %}Imp {{ extended.imports_total }}{% else %}Imp —{% endif %}
+                · {% if extended.replay_events_total is not none %}Rp {{ extended.replay_events_total }}{% else %}Rp —{% endif %}
+                · {% if extended.playbook_setups_total is not none %}Pb {{ extended.playbook_setups_total }}{% else %}Pb —{% endif %}
+            </div>
+            <div class="small text-secondary mt-2">Feature usage (totals)</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card tv-panel border-0 h-100">
+            <div class="card-header border-0"><i class="fas fa-moon me-2 text-secondary"></i>Inactive users (approx)</div>
+            <div class="card-body small">
+                {% for k, v in extended.inactive_buckets.items() %}
+                <div class="d-flex justify-content-between py-1 border-bottom border-secondary border-opacity-25"><span>{{ k }} idle</span><strong>{{ v }}</strong></div>
+                {% else %}
+                <span class="text-secondary">—</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card tv-panel border-0 h-100">
+            <div class="card-header border-0"><i class="fas fa-bullhorn me-2 text-warning"></i>Signup UTM / source</div>
+            <div class="card-body small">
+                {% if extended.utm_top %}
+                <table class="table table-tv mb-0"><thead><tr><th>Source</th><th class="text-end">Users</th></tr></thead>
+                <tbody>
+                    {% for src, cnt in extended.utm_top %}
+                    <tr><td class="text-break">{{ src }}</td><td class="text-end">{{ cnt }}</td></tr>
+                    {% endfor %}
+                </tbody></table>
+                {% else %}
+                <span class="text-secondary">No utm_source captured yet — pass <code>?utm_source=</code> on register links.</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="tv-stat-card">
+            <div class="label">Orphan trades</div>
+            <div class="value {% if extended.orphan_trades and extended.orphan_trades > 0 %}text-warning{% endif %}">{{ extended.orphan_trades if extended.orphan_trades is not none else '—' }}</div>
+            <div class="small text-secondary">Rows without matching user id</div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="tv-stat-card">
+            <div class="label">Negative lot_size</div>
+            <div class="value {% if extended.negative_lots and extended.negative_lots > 0 %}text-warning{% endif %}">{{ extended.negative_lots if extended.negative_lots is not none else '—' }}</div>
+            <div class="small text-secondary">Data sanity check</div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="row g-3 g-md-4 mb-4">
     <div class="col-6 col-lg-3">
@@ -163,4 +272,23 @@
     <p class="mb-2"><i class="fas fa-shield-alt me-1 text-info"></i><strong>Privacy tip:</strong> Anyone with a valid admin token or this browser session can see aggregate stats and send mail. Do not share tokens in public chats; use <strong>Lock session</strong> on shared devices.</p>
     <p class="mb-0">{{ app_name }} · Quick metrics · For full owner dashboards after login, use <span class="text-light">Platform analytics</span> from the app menu.</p>
 </footer>
+{% endblock %}
+
+{% block admin_scripts %}
+<script>
+document.getElementById('btn-issue-admin-ts')?.addEventListener('click', async function () {
+    try {
+        var r = await fetch('{{ url_for("admin.issue_timed_link") }}');
+        var j = await r.json();
+        if (j.ok && j.url) {
+            await navigator.clipboard.writeText(j.url);
+            alert('Copied timed admin URL');
+        } else {
+            alert('Could not issue link');
+        }
+    } catch (e) {
+        alert('Could not copy link');
+    }
+});
+</script>
 {% endblock %}
