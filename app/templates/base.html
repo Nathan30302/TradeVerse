@@ -460,6 +460,39 @@
             box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
         }
 
+        /* Sidebar bottom account / plan */
+        .sidebar-inner.tv-sidebar-inner {
+            min-height: calc(100vh - 5.5rem);
+        }
+        .tv-sidebar-account-wrap {
+            margin-top: auto;
+            padding-top: 0.75rem;
+        }
+        .tv-account-chip {
+            background: linear-gradient(155deg, rgba(99, 102, 241, 0.14), rgba(15, 23, 42, 0.85));
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 14px;
+            padding: 0.85rem 0.9rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        }
+        .tv-account-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(99, 102, 241, 0.25);
+            color: #c7d2fe;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+        }
+        .mobile-nav-drawer .tv-sidebar-account-wrap {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            margin-top: 0.5rem;
+            padding: 1rem 1rem 1.25rem;
+            background: rgba(0, 0, 0, 0.15);
+        }
+
         /* Nav Tabs - Settings Page */
         .nav-tabs {
             border-bottom: 3px solid var(--tab-border) !important;
@@ -2139,6 +2172,9 @@
                 </a>
             </li>
         </ul>
+        <div class="tv-sidebar-account-wrap">
+            {% include 'partials/sidebar_account_panel.html' %}
+        </div>
     </div>
 
     <div class="container-fluid">
@@ -2146,8 +2182,8 @@
             {% if current_user.is_authenticated %}
             <!-- Sidebar -->
             <nav class="col-md-2 d-none d-md-block sidebar">
-                <div class="position-sticky">
-                    <ul class="nav flex-column">
+                <div class="sidebar-inner tv-sidebar-inner d-flex flex-column">
+                    <ul class="nav flex-column flex-grow-1 mb-0">
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" 
                                href="{{ url_for('dashboard.index') }}">
@@ -2253,6 +2289,9 @@
                             </a>
                         </li>
                     </ul>
+                    <div class="tv-sidebar-account-wrap px-1 mt-2">
+                        {% include 'partials/sidebar_account_panel.html' %}
+                    </div>
                 </div>
             </nav>
             {% endif %}

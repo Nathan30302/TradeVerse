@@ -1,0 +1,42 @@
+{# Bottom sidebar / drawer: identity + plan + upgrade (authenticated only). #}
+{% set sub = current_user.effective_subscription() %}
+<div class="tv-account-chip">
+    <div class="d-flex align-items-start gap-2 mb-2">
+        <div class="tv-account-avatar flex-shrink-0">
+            <i class="fas fa-user"></i>
+        </div>
+        <div class="min-w-0 flex-grow-1">
+            <div class="fw-semibold text-truncate text-white" title="{{ current_user.username }}">{{ current_user.username }}</div>
+            <div class="small mt-1">
+                {% if sub.tier == 'owner' %}
+                    <span class="badge rounded-pill bg-warning text-dark">Owner</span>
+                {% elif sub.status == 'trialing' %}
+                    <span class="badge rounded-pill bg-info text-dark">
+                        {% if sub.tier == 'pro_plus' %}Pro Plus trial{% elif sub.tier == 'pro' %}Pro trial{% else %}Trial{% endif %}
+                    </span>
+                {% elif sub.tier == 'pro_plus' %}
+                    <span class="badge rounded-pill bg-primary">Pro Plus</span>
+                {% elif sub.tier == 'pro' %}
+                    <span class="badge rounded-pill bg-primary bg-opacity-75">Pro</span>
+                {% else %}
+                    <span class="badge rounded-pill bg-secondary">Free</span>
+                {% endif %}
+            </div>
+            {% if sub.trial_ends_at and sub.status == 'trialing' %}
+            <div class="small text-muted mt-1 text-truncate" title="{{ sub.trial_ends_at.isoformat() if sub.trial_ends_at else '' }}">
+                <i class="far fa-clock me-1"></i>Until {{ sub.trial_ends_at.strftime('%b %d, %Y') }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% if sub.tier == 'owner' %}
+    <a href="{{ url_for('owner_admin.platform_stats') }}" class="btn btn-outline-warning btn-sm w-100 rounded-pill fw-semibold">
+        <i class="fas fa-chart-line me-1"></i> Analytics
+    </a>
+    {% else %}
+    <a href="{{ url_for('monetization.pricing') }}" class="btn btn-primary btn-sm w-100 rounded-pill fw-semibold shadow-sm">
+        <i class="fas fa-arrow-circle-up me-1"></i>
+        {% if sub.tier == 'pro_plus' and sub.status == 'active' %}Manage plan{% else %}Upgrade{% endif %}
+    </a>
+    {% endif %}
+</div>

@@ -1,88 +1,124 @@
- {% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Account Settings - {{ app_name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .tv-settings-wrap { max-width: 960px; }
+    .tv-settings-hero {
+        border-radius: 20px;
+        padding: 1.75rem 1.5rem;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(14, 165, 233, 0.08));
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        margin-bottom: 1.75rem;
+    }
+    .tv-settings-hero h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+    .tv-settings-tabs.nav-pills { gap: 0.5rem; flex-wrap: wrap; }
+    .tv-settings-tabs .nav-link {
+        border-radius: 999px;
+        padding: 0.55rem 1.15rem !important;
+        font-weight: 600;
+        color: var(--bs-body-color, #334155) !important;
+        background: var(--bs-secondary-bg, #f1f5f9);
+        border: 1px solid transparent;
+    }
+    .tv-settings-tabs .nav-link:hover { background: rgba(99, 102, 241, 0.12); }
+    .tv-settings-tabs .nav-link.active {
+        color: #fff !important;
+        background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    }
+    [data-theme="dark"] .tv-settings-tabs .nav-link {
+        color: #e2e8f0 !important;
+        background: rgba(30, 41, 59, 0.6);
+    }
+    .tv-settings-card {
+        border-radius: 18px !important;
+        border: 1px solid rgba(148, 163, 184, 0.18) !important;
+        box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+    .tv-settings-card .card-header {
+        font-weight: 700;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        padding: 1rem 1.25rem;
+    }
+    .theme-card {
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 16px;
+        padding: 1.25rem;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        height: 100%;
+        background: var(--bs-body-bg, #fff);
+    }
+    .theme-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 28px rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.35);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row">
-    <div class="col-lg-10 mx-auto">
-        <!-- Page Header -->
-        <div class="page-header mb-5">
-            <h1 class="page-title">
-                <i class="fas fa-user-circle"></i> Account Settings
-            </h1>
-            <p class="page-subtitle">Manage your profile, preferences, and subscription</p>
+{% set sub = current_user.effective_subscription() %}
+<div class="row justify-content-center">
+    <div class="col-lg-11 tv-settings-wrap mx-auto px-2 px-md-3">
+
+        <div class="tv-settings-hero">
+            <h1 class="mb-1"><i class="fas fa-sliders-h text-primary me-2"></i>Settings</h1>
+            <p class="text-muted mb-0 small">Profile, appearance, billing summary, and security — your plan and upgrade shortcut live in the <strong>left sidebar</strong>.</p>
         </div>
 
-        <!-- Tabs Navigation -->
-        <ul class="nav nav-tabs mb-4" role="tablist">
+        <ul class="nav nav-pills tv-settings-tabs mb-4" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="true">
-                    <i class="fas fa-user me-2"></i>Profile
+                    <i class="fas fa-user me-1"></i>Profile
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="appearance-tab" data-bs-toggle="tab" data-bs-target="#appearance" type="button" role="tab" aria-controls="appearance" aria-selected="false">
-                    <i class="fas fa-paint-brush me-2"></i>Appearance
+                    <i class="fas fa-palette me-1"></i>Appearance
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="billing-tab" data-bs-toggle="tab" data-bs-target="#billing" type="button" role="tab" aria-controls="billing" aria-selected="false">
-                    <i class="fas fa-credit-card me-2"></i>Billing
+                    <i class="fas fa-receipt me-1"></i>Billing
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab" aria-controls="security" aria-selected="false">
-                    <i class="fas fa-shield-alt me-2"></i>Security
+                    <i class="fas fa-shield-alt me-1"></i>Security
                 </button>
             </li>
         </ul>
 
-        <!-- Tab Content -->
-        <div class="tab-content">
-            {% set sub = current_user.effective_subscription() %}
-            <div class="tv-surface soft p-3 p-md-4 d-flex align-items-center justify-content-between mb-4" role="status">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="fas fa-crown text-warning"></i>
-                    <div>
-                        <div class="fw-semibold">Current tier</div>
-                        <div class="small text-muted">
-                            {% if sub.status == 'trialing' %}Trial{% elif sub.tier == 'pro_plus' %}Pro Plus{% elif sub.tier == 'pro' %}Pro{% else %}Free{% endif %}
-                            {% if sub.status and sub.status not in ['active'] %} • {{ sub.status }}{% endif %}
-                        </div>
-                    </div>
-                </div>
-                <a class="btn btn-outline-primary btn-sm" href="{{ url_for('monetization.pricing') }}">
-                    View Plans
-                </a>
-            </div>
-            <!-- Profile Tab -->
+        <div class="tab-content pb-5">
+            <!-- Profile -->
             <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-user me-2"></i>Profile Information</h5>
-                    </div>
-                    <div class="card-body">
+                <div class="card tv-settings-card">
+                    <div class="card-header bg-transparent"><i class="fas fa-id-card me-2 text-primary"></i>Profile</div>
+                    <div class="card-body p-4">
                         <form method="POST" action="{{ url_for('auth.profile') }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="theme" id="form-theme" value="{{ current_user.theme or 'light' }}">
-                            <div class="row mb-4">
+                            <div class="row g-4">
                                 <div class="col-md-6">
-                                    <label class="form-label">Full Name</label>
-                                    <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name or '' }}">
+                                    <label class="form-label fw-semibold">Full name</label>
+                                    <input type="text" name="full_name" class="form-control form-control-lg" value="{{ current_user.full_name or '' }}" autocomplete="name">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Username</label>
-                                    <input type="text" class="form-control" value="{{ current_user.username }}" disabled>
-                                </div>
-                            </div>
-                            <div class="row mb-4">
-                                <div class="col-md-6">
-                                    <label class="form-label">Email</label>
-                                    <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
+                                    <label class="form-label fw-semibold">Username</label>
+                                    <input type="text" class="form-control form-control-lg bg-secondary bg-opacity-10" value="{{ current_user.username }}" disabled>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Timezone</label>
-                                    <select name="timezone" class="form-select">
+                                    <label class="form-label fw-semibold">Email</label>
+                                    <input type="email" class="form-control form-control-lg bg-secondary bg-opacity-10" value="{{ current_user.email }}" disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Timezone</label>
+                                    <select name="timezone" class="form-select form-select-lg">
                                         <option value="UTC" {% if current_user.timezone == 'UTC' %}selected{% endif %}>UTC</option>
                                         <option value="EST" {% if current_user.timezone == 'EST' %}selected{% endif %}>Eastern Time</option>
                                         <option value="CST" {% if current_user.timezone == 'CST' %}selected{% endif %}>Central Time</option>
@@ -90,15 +126,13 @@
                                         <option value="PST" {% if current_user.timezone == 'PST' %}selected{% endif %}>Pacific Time</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="row mb-4">
                                 <div class="col-md-6">
-                                    <label class="form-label">Bio</label>
-                                    <textarea name="bio" class="form-control" rows="3" placeholder="Tell us about yourself...">{{ current_user.bio or '' }}</textarea>
+                                    <label class="form-label fw-semibold">Bio</label>
+                                    <textarea name="bio" class="form-control" rows="4" placeholder="Short intro…">{{ current_user.bio or '' }}</textarea>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Preferred Currency</label>
-                                    <select name="preferred_currency" class="form-select">
+                                    <label class="form-label fw-semibold">Preferred currency</label>
+                                    <select name="preferred_currency" class="form-select form-select-lg">
                                         <option value="USD" {% if current_user.preferred_currency == 'USD' %}selected{% endif %}>USD ($)</option>
                                         <option value="EUR" {% if current_user.preferred_currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
                                         <option value="GBP" {% if current_user.preferred_currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
@@ -106,190 +140,156 @@
                                     </select>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Save Changes
-                            </button>
+                            <div class="mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg rounded-pill px-4">
+                                    <i class="fas fa-save me-2"></i>Save changes
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
             </div>
 
-            <!-- Appearance Tab -->
+            <!-- Appearance -->
             <div class="tab-pane fade" id="appearance" role="tabpanel" aria-labelledby="appearance-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-paint-brush me-2"></i>Theme & Appearance</h5>
-                    </div>
-                    <div class="card-body">
-                        <h6 class="mb-4">Choose Your Theme</h6>
-                        <div class="row g-3 mb-4">
+                <div class="card tv-settings-card">
+                    <div class="card-header bg-transparent"><i class="fas fa-palette me-2 text-primary"></i>Theme</div>
+                    <div class="card-body p-4">
+                        <p class="text-muted mb-4">Pick a look — it saves to your account and follows you across devices.</p>
+                        <div class="row g-4">
                             <div class="col-md-4">
                                 <div class="theme-card" data-theme="light" onclick="window.applyTheme('light');">
                                     <div class="mb-3">
-                                        <div class="rounded" style="width: 60px; height: 60px; background: linear-gradient(135deg, #6366f1, #8b5cf6); margin: 0 auto;"></div>
+                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #6366f1, #8b5cf6);"></div>
                                     </div>
-                                    <h6>Light</h6>
-                                    <p class="small text-muted">Clean and minimal</p>
-                                    <button type="button" class="btn btn-sm btn-primary mt-2 theme-select-btn" data-theme="light">
-                                        <i class="fas fa-check me-1"></i>Select
-                                    </button>
+                                    <h6 class="fw-bold">Light</h6>
+                                    <p class="small text-muted mb-3">Bright workspace</p>
+                                    <button type="button" class="btn btn-sm btn-primary theme-select-btn rounded-pill" data-theme="light"><i class="fas fa-check me-1"></i>Select</button>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="theme-card" data-theme="dark" onclick="window.applyTheme('dark');">
                                     <div class="mb-3">
-                                        <div class="rounded" style="width: 60px; height: 60px; background: linear-gradient(135deg, #1e293b, #374151); margin: 0 auto;"></div>
+                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #1e293b, #334155);"></div>
                                     </div>
-                                    <h6>Dark</h6>
-                                    <p class="small text-muted">Easy on the eyes</p>
-                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2 theme-select-btn" data-theme="dark">
-                                        <i class="fas fa-check me-1"></i>Select
-                                    </button>
+                                    <h6 class="fw-bold">Dark</h6>
+                                    <p class="small text-muted mb-3">Low glare</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill" data-theme="dark"><i class="fas fa-check me-1"></i>Select</button>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="theme-card" data-theme="blue" onclick="window.applyTheme('blue');">
                                     <div class="mb-3">
-                                        <div class="rounded" style="width: 60px; height: 60px; background: linear-gradient(135deg, #0ea5e9, #06b6d4); margin: 0 auto;"></div>
+                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #0ea5e9, #06b6d4);"></div>
                                     </div>
-                                    <h6>Blue</h6>
-                                    <p class="small text-muted">Modern and vibrant</p>
-                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2 theme-select-btn" data-theme="blue">
-                                        <i class="fas fa-check me-1"></i>Select
-                                    </button>
+                                    <h6 class="fw-bold">Blue</h6>
+                                    <p class="small text-muted mb-3">Cool accent</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill" data-theme="blue"><i class="fas fa-check me-1"></i>Select</button>
                                 </div>
                             </div>
                         </div>
-                        <p class="text-muted small"><i class="fas fa-info-circle me-2"></i>Theme changes instantly and are automatically saved to your account.</p>
+                        <p class="text-muted small mt-4 mb-0"><i class="fas fa-info-circle me-1"></i>You can also switch theme from the user menu in the top bar.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Billing Tab -->
+            <!-- Billing (summary only — plan CTA is in sidebar) -->
             <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Billing & Subscription</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-5">
-                            <div class="col-md-6">
-                                <h6 class="mb-3">Current Plan</h6>
-                                <div class="tv-surface soft p-3 p-md-4">
-                                    <h6 class="mb-0">
-                                        {% set sub = current_user.effective_subscription() %}
-                                        {% if sub.status == 'trialing' %}
-                                            2-Month Free Trial Active
-                                        {% else %}
-                                            Free Trial Expired - Upgrade to Pro
-                                        {% endif %}
-                                    </h6>
-                                    {% if sub.status == 'trialing' %}
-                                        <small>
-                                            {% set remaining = (sub.trial_ends_at - now()).days if sub.trial_ends_at else 0 %}
-                                            {{ 'Expires in ' + remaining|string + ' days' if remaining > 0 else 'Expired ' + remaining|abs|string + ' days ago' }}
-                                            <br>Then <strong>$5/month</strong> (PRO)
-                                        </small>
-                                    {% else %}
-                                        <small>No active trial. <a href="{{ url_for('monetization.pricing') }}">Upgrade Now</a></small>
+                <div class="card tv-settings-card">
+                    <div class="card-header bg-transparent"><i class="fas fa-receipt me-2 text-primary"></i>Billing snapshot</div>
+                    <div class="card-body p-4">
+                        <div class="tv-surface soft rounded-3 p-4 mb-4">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <div>
+                                    <div class="small text-muted text-uppercase fw-semibold mb-1">Current access</div>
+                                    <div class="fs-5 fw-bold">
+                                        {% if sub.tier == 'owner' %}Owner
+                                        {% elif sub.status == 'trialing' %}
+                                            {% if sub.tier == 'pro_plus' %}Pro Plus (trial){% elif sub.tier == 'pro' %}Pro (trial){% else %}Trial{% endif %}
+                                        {% elif sub.tier == 'pro_plus' %}Pro Plus
+                                        {% elif sub.tier == 'pro' %}Pro
+                                        {% else %}Free{% endif %}
+                                    </div>
+                                    {% if sub.status == 'trialing' and sub.trial_ends_at %}
+                                    <div class="small text-muted mt-1">
+                                        Trial reference date: <strong>{{ sub.trial_ends_at.strftime('%B %d, %Y') }}</strong>
+                                    </div>
                                     {% endif %}
                                 </div>
-                                <p class="text-muted small mt-3">Your free trial includes:</p>
-                                <ul class="list-unstyled small text-muted">
-                                    <li><i class="fas fa-check text-success me-2"></i>Unlimited trades</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>Basic analytics</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>AI trade feedback</li>
-                                    <li><i class="fas fa-times text-danger me-2"></i>Advanced analytics (coming with Pro)</li>
-                                </ul>
+                                <a class="btn btn-primary rounded-pill px-4" href="{{ url_for('monetization.pricing') }}">
+                                    <i class="fas fa-external-link-alt me-2"></i>Open pricing &amp; checkout
+                                </a>
                             </div>
-                            <div class="col-md-6">
-                                <h6 class="mb-3">Upgrade to Pro</h6>
-                                <div class="tv-surface p-3 p-md-4" style="border-color: rgba(99,102,241,0.35);">
-                                        <h5 class="mb-2">Pro Plan</h5>
-                                        <div class="display-6 mb-3">$5<small>/mo</small></div>
-                                        <ul class="list-unstyled small mb-4">
-                                            <li><i class="fas fa-check text-success me-2"></i>Everything in Free</li>
-                                            <li><i class="fas fa-check text-success me-2"></i>Advanced analytics</li>
-                                            <li><i class="fas fa-check text-success me-2"></i>Data export (CSV, JSON)</li>
-                                            <li><i class="fas fa-check text-success me-2"></i>API access</li>
-                                            <li><i class="fas fa-check text-success me-2"></i>Priority support</li>
-                                        </ul>
-                                        <a class="btn btn-primary btn-sm w-100" href="{{ url_for('monetization.pricing') }}">
-                                            View Plans & Upgrade
-                                        </a>
-                                </div>
-                            </div>
+                            <p class="small text-muted mb-0 mt-3">Use the <strong>Upgrade</strong> button in the bottom-left sidebar for quick access anytime.</p>
                         </div>
 
-                        <hr>
-
-                        <h6 class="mb-3">Billing History</h6>
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Description</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>{{ current_user.created_at.strftime('%B %d, %Y') }}</td>
-                                    <td>Free Trial Started</td>
-                                    <td>-</td>
-                                    <td><span class="badge bg-success">Active</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <h6 class="fw-bold mb-3">Activity</h6>
+                        <div class="table-responsive rounded-3 border">
+                            <table class="table table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Description</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>{% if current_user.created_at %}{{ current_user.created_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}</td>
+                                        <td>Account created</td>
+                                        <td>—</td>
+                                        <td><span class="badge bg-success">Active</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">Detailed invoices appear here when paid subscriptions are linked to your account.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Security Tab -->
+            <!-- Security -->
             <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Security & Privacy</h5>
-                    </div>
-                    <div class="card-body">
-                        <h6 class="mb-4">Password Management</h6>
-                        <div class="mb-4">
-                            <p class="text-muted small">Last changed: {{ current_user.updated_at.strftime('%B %d, %Y') if current_user.updated_at else 'Never' }}</p>
-                            <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-key me-2"></i>Change Password
-                            </a>
-                        </div>
-
-                        <hr>
-
-                        <h6 class="mb-4">Login History</h6>
-                        <div class="tv-surface soft p-3 p-md-4">
-                            <i class="fas fa-laptop me-2"></i>
-                            <strong>Current Session:</strong> Last login {{ current_user.last_login.strftime('%B %d, %Y at %I:%M %p') if current_user.last_login else 'Never' }}
-                        </div>
-
-                        <hr>
-
-                        <h6 class="mb-4">Data & Privacy</h6>
-                        <div class="mb-3">
-                            {% if has_feature('exports') %}
-                            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('monetization.export_data') }}">
-                                <i class="fas fa-download me-2"></i>Export My Data
-                            </a>
-                            {% else %}
-                            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('monetization.pricing') }}">
-                                <i class="fas fa-arrow-up me-2"></i>Upgrade to export (Pro)
-                            </a>
-                            {% endif %}
-                        </div>
-                        <p class="text-muted small">Download your trades, plans, and performance data in CSV format (Pro and above).</p>
+                <div class="card tv-settings-card">
+                    <div class="card-header bg-transparent"><i class="fas fa-shield-alt me-2 text-primary"></i>Security &amp; data</div>
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold mb-3">Password</h6>
+                        <p class="text-muted small">Last updated: {{ current_user.updated_at.strftime('%B %d, %Y') if current_user.updated_at else 'Never' }}</p>
+                        <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary rounded-pill mb-4">
+                            <i class="fas fa-key me-2"></i>Change password
+                        </a>
 
                         <hr class="my-4">
 
-                        <h6 class="mb-2 text-danger">Delete account</h6>
-                        <p class="text-muted small">This removes your journal, trades, and plans from TradeVerse. If you have an active subscription, cancel it in your payment provider&rsquo;s portal; we do not auto-cancel external billing from this action.</p>
-                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                        <h6 class="fw-bold mb-3">Sessions</h6>
+                        <div class="tv-surface soft rounded-3 p-3 mb-4">
+                            <i class="fas fa-laptop me-2 text-primary"></i>
+                            <strong>Last login:</strong>
+                            {{ current_user.last_login.strftime('%B %d, %Y · %I:%M %p') if current_user.last_login else 'Not recorded' }}
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h6 class="fw-bold mb-3">Export</h6>
+                        <div class="mb-4">
+                            {% if has_feature('exports') %}
+                            <a class="btn btn-outline-primary rounded-pill" href="{{ url_for('monetization.export_data') }}">
+                                <i class="fas fa-download me-2"></i>Export my data
+                            </a>
+                            {% else %}
+                            <a class="btn btn-outline-secondary rounded-pill" href="{{ url_for('monetization.pricing') }}">
+                                <i class="fas fa-arrow-up me-2"></i>Upgrade to export (Pro)
+                            </a>
+                            {% endif %}
+                            <p class="small text-muted mt-2 mb-0">CSV export unlocks on eligible plans.</p>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h6 class="fw-bold text-danger mb-2">Delete account</h6>
+                        <p class="text-muted small">Permanently removes your journal and trades. External subscriptions must be cancelled with your payment provider separately.</p>
+                        <button type="button" class="btn btn-outline-danger rounded-pill" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
                             <i class="fas fa-trash me-1"></i> Delete my account
                         </button>
                     </div>
@@ -331,27 +331,18 @@
 <script>
     function updateThemeUI(theme) {
         document.querySelectorAll('.theme-select-btn').forEach(btn => {
-            if (btn.getAttribute('data-theme') === theme) {
-                btn.classList.remove('btn-outline-primary');
-                btn.classList.add('btn-primary');
-                btn.textContent = '';
-                const i = document.createElement('i');
-                i.className = 'fas fa-check me-1';
-                btn.appendChild(i);
-                btn.appendChild(document.createTextNode('Selected'));
-            } else {
-                btn.classList.add('btn-outline-primary');
-                btn.classList.remove('btn-primary');
-                btn.textContent = '';
-                const i = document.createElement('i');
-                i.className = 'fas fa-check me-1';
-                btn.appendChild(i);
-                btn.appendChild(document.createTextNode('Select'));
-            }
+            const t = btn.getAttribute('data-theme');
+            const active = t === theme;
+            btn.classList.toggle('btn-primary', active);
+            btn.classList.toggle('btn-outline-primary', !active);
+            btn.innerHTML = '';
+            const i = document.createElement('i');
+            i.className = 'fas fa-check me-1';
+            btn.appendChild(i);
+            btn.appendChild(document.createTextNode(active ? 'Selected' : 'Select'));
         });
     }
 
-    // Initialize UI on load
     document.addEventListener('DOMContentLoaded', function() {
         const currentTheme = localStorage.getItem('tv_theme') || document.body.getAttribute('data-server-theme') || 'light';
         updateThemeUI(currentTheme);
