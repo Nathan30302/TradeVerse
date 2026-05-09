@@ -63,6 +63,9 @@ def create_app(config_name='default'):
     bcrypt.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
+    from app.orm_hooks import install_once as _install_tradeverse_orm_hooks
+
+    _install_tradeverse_orm_hooks()
     mail.init_app(app)
     csrf.init_app(app)
     
