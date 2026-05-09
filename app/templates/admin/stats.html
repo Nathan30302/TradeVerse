@@ -1,77 +1,287 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Stats - TradeVerse</title>
+    <meta name="robots" content="noindex,nofollow">
+    <title>Platform snapshot · {{ app_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        h1 { color: #1a1a2e; margin-bottom: 30px; font-size: 28px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
-        .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        .stat-card h3 { color: #666; font-size: 14px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; }
-        .stat-card .value { color: #1a1a2e; font-size: 36px; font-weight: 700; }
-        .stat-card.users .value { color: #3498db; }
-        .stat-card.trades .value { color: #27ae60; }
-        .section { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        .section h2 { color: #1a1a2e; font-size: 20px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { color: #666; font-weight: 500; font-size: 12px; text-transform: uppercase; }
-        td { color: #1a1a2e; }
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
-        .badge-buy { background: #d4edda; color: #155724; }
-        .badge-sell { background: #f8d7da; color: #721c24; }
-        .badge-win { background: #d4edda; color: #155724; }
-        .badge-loss { background: #f8d7da; color: #721c24; }
-        .empty { text-align: center; color: #999; padding: 40px; }
+        :root {
+            --tv-admin-bg: #0c1222;
+            --tv-admin-surface: rgba(30, 41, 59, 0.55);
+            --tv-admin-border: rgba(148, 163, 184, 0.14);
+            --tv-admin-accent: #6366f1;
+            --tv-admin-accent2: #22d3ee;
+        }
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            background: radial-gradient(1200px 600px at 10% -10%, rgba(99, 102, 241, 0.18), transparent 55%),
+                radial-gradient(900px 500px at 100% 0%, rgba(34, 211, 238, 0.1), transparent 50%),
+                linear-gradient(165deg, var(--tv-admin-bg) 0%, #0f172a 45%, #020617 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        .tv-admin-hero {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(14, 165, 233, 0.12));
+            border: 1px solid var(--tv-admin-border);
+            border-radius: 20px;
+            padding: 1.75rem 1.5rem;
+            margin-bottom: 1.75rem;
+        }
+        .tv-admin-hero h1 {
+            font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: #f8fafc;
+        }
+        .tv-stat-card {
+            background: var(--tv-admin-surface);
+            border: 1px solid var(--tv-admin-border);
+            border-radius: 16px;
+            padding: 1.25rem 1.35rem;
+            height: 100%;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .tv-stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.45);
+            border-color: rgba(99, 102, 241, 0.35);
+        }
+        .tv-stat-card .label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            margin-bottom: 0.35rem;
+            font-weight: 600;
+        }
+        .tv-stat-card .value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1.1;
+            color: #f8fafc;
+        }
+        .tv-stat-card .icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+        .tv-panel {
+            background: var(--tv-admin-surface);
+            border: 1px solid var(--tv-admin-border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .tv-panel .card-header {
+            background: rgba(15, 23, 42, 0.65);
+            border-bottom: 1px solid var(--tv-admin-border);
+            padding: 1rem 1.25rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        .table-tv {
+            --bs-table-bg: transparent;
+            --bs-table-color: #e2e8f0;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        .table-tv thead th {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            border-bottom-color: var(--tv-admin-border);
+            padding-top: 0.85rem;
+            padding-bottom: 0.85rem;
+        }
+        .table-tv tbody td {
+            border-color: rgba(148, 163, 184, 0.12);
+            vertical-align: middle;
+        }
+        .table-tv tbody tr:hover td {
+            background: rgba(99, 102, 241, 0.06);
+        }
+        .tv-mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.82rem;
+        }
+        .tv-empty {
+            text-align: center;
+            color: #64748b;
+            padding: 2.5rem 1rem;
+            font-size: 0.95rem;
+        }
+        .tv-footer-note {
+            font-size: 0.8rem;
+            color: #64748b;
+            border-top: 1px solid var(--tv-admin-border);
+            margin-top: 2rem;
+            padding-top: 1.25rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .tv-stat-card { transition: none; }
+            .tv-stat-card:hover { transform: none; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📊 Admin Stats</h1>
-        <div class="stats-grid">
-            <div class="stat-card users"><h3>Total Users</h3><div class="value">{{ total_users }}</div></div>
-            <div class="stat-card users"><h3>Users Today</h3><div class="value">{{ users_today }}</div></div>
-            <div class="stat-card trades"><h3>Total Trades</h3><div class="value">{{ total_trades }}</div></div>
-            <div class="stat-card trades"><h3>Trades Today</h3><div class="value">{{ trades_today }}</div></div>
+    <div class="container py-4 py-md-5 px-3 px-md-4" style="max-width: 1100px;">
+        <header class="tv-admin-hero">
+            <div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3">
+                <div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <span class="badge rounded-pill bg-dark bg-opacity-50 border border-secondary border-opacity-25 px-3 py-2">
+                            <i class="fas fa-link me-1 text-info"></i> Token link
+                        </span>
+                        <span class="badge rounded-pill bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-3 py-2">
+                            <i class="fas fa-check-circle me-1"></i> Live snapshot
+                        </span>
+                    </div>
+                    <h1 class="mb-2"><i class="fas fa-chart-pie me-2" style="color: var(--tv-admin-accent2);"></i>Platform snapshot</h1>
+                    <p class="text-secondary mb-0 small" style="max-width: 42rem;">
+                        High-level counts for {{ app_name }} — ideal for a quick health check. Bookmark this page in your browser to return anytime (your access token stays in the URL).
+                    </p>
+                </div>
+                <div class="text-md-end small text-secondary">
+                    <div class="mb-1"><i class="far fa-clock me-1"></i> Generated <strong class="text-light">{{ generated_at.strftime('%b %d, %Y · %I:%M %p') }} UTC</strong></div>
+                    <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="location.reload()" title="Reload latest numbers">
+                        <i class="fas fa-sync-alt me-1"></i> Refresh data
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="row g-3 g-md-4 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="tv-stat-card">
+                    <div class="icon-wrap" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="label">Total users</div>
+                    <div class="value">{{ total_users }}</div>
+                    <div class="small text-secondary mt-2">All registered accounts</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="tv-stat-card">
+                    <div class="icon-wrap" style="background: rgba(34, 211, 238, 0.15); color: #67e8f9;">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div class="label">New today</div>
+                    <div class="value text-info">{{ users_today }}</div>
+                    <div class="small text-secondary mt-2">Joined since midnight UTC</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="tv-stat-card">
+                    <div class="icon-wrap" style="background: rgba(52, 211, 153, 0.15); color: #6ee7b7;">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="label">Closed trades</div>
+                    <div class="value text-success">{{ total_trades }}</div>
+                    <div class="small text-secondary mt-2">Completed journal rows</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="tv-stat-card">
+                    <div class="icon-wrap" style="background: rgba(251, 191, 36, 0.12); color: #fcd34d;">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div class="label">Trades today</div>
+                    <div class="value text-warning">{{ trades_today }}</div>
+                    <div class="small text-secondary mt-2">By entry date (UTC)</div>
+                </div>
+            </div>
         </div>
-        <div class="section">
-            <h2>Latest 5 Users</h2>
-            {% if latest_users %}
-            <table>
-                <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Created</th></tr></thead>
-                <tbody>
-                    {% for user in latest_users %}
-                    <tr><td>{{ user.id }}</td><td>{{ user.username }}</td><td>{{ user.email }}</td><td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}<div class="empty">No users yet</div>{% endif %}
+
+        <div class="row g-4 mb-2">
+            <div class="col-lg-6">
+                <div class="card tv-panel border-0 shadow-none">
+                    <div class="card-header border-0 d-flex align-items-center justify-content-between">
+                        <span><i class="fas fa-id-card me-2 text-primary"></i>Latest signups</span>
+                        <span class="small text-secondary fw-normal">Most recent 5</span>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if latest_users %}
+                        <div class="table-responsive">
+                            <table class="table table-tv mb-0">
+                                <thead><tr><th>User</th><th>Email</th><th>Joined</th></tr></thead>
+                                <tbody>
+                                    {% for user in latest_users %}
+                                    <tr>
+                                        <td>
+                                            <span class="tv-mono text-secondary">#{{ user.id }}</span>
+                                            <span class="fw-semibold ms-1">{{ user.username }}</span>
+                                        </td>
+                                        <td class="small text-break">{{ user.email or '—' }}</td>
+                                        <td class="small text-nowrap text-secondary">{{ user.created_at.strftime('%b %d, %Y') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="tv-empty"><i class="far fa-folder-open fa-2x mb-2 d-block opacity-50"></i>No users yet — share your invite link to get started.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card tv-panel border-0 shadow-none">
+                    <div class="card-header border-0 d-flex align-items-center justify-content-between">
+                        <span><i class="fas fa-exchange-alt me-2 text-success"></i>Latest activity</span>
+                        <span class="small text-secondary fw-normal">Recent trades</span>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if latest_trades %}
+                        <div class="table-responsive">
+                            <table class="table table-tv mb-0">
+                                <thead><tr><th>Symbol</th><th>Side</th><th>P&amp;L</th><th>When</th></tr></thead>
+                                <tbody>
+                                    {% for trade in latest_trades %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ trade.symbol }}</td>
+                                        <td>
+                                            {% set side = (trade.trade_type or 'BUY')|upper %}
+                                            {% if side == 'BUY' %}
+                                            <span class="badge rounded-pill bg-success bg-opacity-25 text-success border border-success border-opacity-25">Buy</span>
+                                            {% else %}
+                                            <span class="badge rounded-pill bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25">Sell</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if trade.profit_loss is not none %}
+                                                <span class="fw-semibold {% if trade.profit_loss >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                    {% if trade.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(trade.profit_loss) }}
+                                                </span>
+                                            {% else %}<span class="text-secondary">—</span>{% endif %}
+                                        </td>
+                                        <td class="small text-secondary text-nowrap">{{ trade.created_at.strftime('%b %d · %H:%M') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="tv-empty"><i class="fas fa-chart-line fa-2x mb-2 d-block opacity-50"></i>No trades logged yet.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="section">
-            <h2>Latest 5 Trades</h2>
-            {% if latest_trades %}
-            <table>
-                <thead><tr><th>ID</th><th>User</th><th>Symbol</th><th>Type</th><th>Lots</th><th>P&L</th><th>Date</th></tr></thead>
-                <tbody>
-                    {% for trade in latest_trades %}
-                    <tr>
-                        <td>{{ trade.id }}</td>
-                        <td>{{ trade.trader.username if trade.trader else 'N/A' }}</td>
-                        <td>{{ trade.symbol }}</td>
-                        <td><span class="badge badge-{{ (trade.trade_type or 'BUY')|lower }}">{{ trade.trade_type or '—' }}</span></td>
-                        <td>{{ trade.lot_size }}</td>
-                        <td>{% if trade.profit_loss %}<span class="badge {% if trade.profit_loss > 0 %}badge-win{% else %}badge-loss{% endif %}">${{ "%.2f"|format(trade.profit_loss) }}</span>{% else %}-{% endif %}</td>
-                        <td>{{ trade.created_at.strftime('%Y-%m-%d') }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}<div class="empty">No trades yet</div>{% endif %}
-        </div>
+
+        <footer class="tv-footer-note">
+            <p class="mb-2"><i class="fas fa-shield-alt me-1 text-info"></i><strong>Privacy tip:</strong> Anyone with this link can see aggregate stats. Do not share it in public chats or screenshots with the URL visible.</p>
+            <p class="mb-0">{{ app_name }} · Quick metrics · For full owner dashboards after login, use <span class="text-light">Platform analytics</span> from the app menu.</p>
+        </footer>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

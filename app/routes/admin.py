@@ -96,6 +96,8 @@ def stats():
 
     return render_template(
         'admin/stats.html',
+        app_name=current_app.config.get('APP_NAME', 'TradeVerse'),
+        generated_at=datetime.utcnow(),
         total_users=total_users,
         users_today=users_today,
         total_trades=total_trades,
