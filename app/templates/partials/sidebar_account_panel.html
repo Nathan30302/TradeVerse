@@ -1,4 +1,5 @@
 {# Bottom sidebar / drawer: identity + plan + upgrade (authenticated only). #}
+{% if current_user.is_authenticated %}
 {% set sub = current_user.effective_subscription() %}
 <div class="tv-account-chip">
     <div class="d-flex align-items-start gap-2 mb-2">
@@ -45,3 +46,4 @@
     </a>
     {% endif %}
 </div>
+{% endif %}
