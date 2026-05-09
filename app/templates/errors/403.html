@@ -4,6 +4,9 @@
     <h1 class="display-1">403</h1>
     <h2>Forbidden</h2>
     <p>You don't have permission to access this page.</p>
+    <p class="small text-muted mt-3">
+        <strong>Owner analytics:</strong> your deploy must set <code>OWNER_USERNAMES</code> or <code>OWNER_EMAILS</code> to include your account (e.g. on Render environment variables), then redeploy.
+    </p>
     <a href="{{ url_for('main.index') }}" class="btn btn-primary">Go Home</a>
 </div>
 {% endblock %}

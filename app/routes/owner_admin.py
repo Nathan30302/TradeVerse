@@ -6,7 +6,7 @@ Owner has full access and is excluded from billing enforcement.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from flask import Blueprint, abort, redirect, render_template, url_for
 from flask_login import login_required, current_user
@@ -20,24 +20,48 @@ from app.services.entitlements import is_owner_user
 bp = Blueprint("owner_admin", __name__, url_prefix="/owner")
 
 
-@bp.route("/")
-@login_required
-def index():
-    """Shortcut to analytics."""
-    _require_owner()
-    return redirect(url_for("owner_admin.platform_stats"))
-
-
 def _require_owner():
     if not current_user.is_authenticated:
         abort(401)
-    if (getattr(current_user, "role", "user") or "user").lower() != "owner" and not is_owner_user(current_user):
-        abort(404)
+    role = (getattr(current_user, "role", None) or "user").strip().lower()
+    if role == "owner" or is_owner_user(current_user):
+        return
+    # 403 (not 404): clearer for founders debugging OWNER_* env on production
+    abort(403)
 
 
 def _safe_scalar(q):
     try:
         return int(q.scalar() or 0)
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return 0
+
+
+def _active_traders_7d(week_ago_naive: datetime) -> int:
+    """Count distinct users with a trade in the lookback window (Postgres/SQLite safe)."""
+    try:
+        return int(
+            db.session.query(func.count(func.distinct(Trade.user_id)))
+            .filter(Trade.created_at >= week_ago_naive)
+            .scalar()
+            or 0
+        )
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+    try:
+        return (
+            db.session.query(Trade.user_id)
+            .filter(Trade.created_at >= week_ago_naive)
+            .distinct()
+            .count()
+        )
     except Exception:
         try:
             db.session.rollback()
@@ -54,13 +78,13 @@ def platform_stats():
     """
     _require_owner()
 
-    now = datetime.now(timezone.utc)
-    week_ago = now - timedelta(days=7)
-    days_30_ago = now - timedelta(days=30)
+    # Naive UTC matches typical TIMESTAMP columns and avoids aware/naive compare issues on Postgres.
+    week_ago_naive = datetime.utcnow() - timedelta(days=7)
+    days_30_naive = datetime.utcnow() - timedelta(days=30)
 
     total_users = _safe_scalar(db.session.query(func.count(User.id)))
     users_new_30d = _safe_scalar(
-        db.session.query(func.count(User.id)).filter(User.created_at >= days_30_ago)
+        db.session.query(func.count(User.id)).filter(User.created_at >= days_30_naive)
     )
     users_before_30d = max(0, total_users - users_new_30d)
 
@@ -73,14 +97,10 @@ def platform_stats():
     )
 
     trades_7d = _safe_scalar(
-        db.session.query(func.count(Trade.id)).filter(Trade.created_at >= week_ago)
+        db.session.query(func.count(Trade.id)).filter(Trade.created_at >= week_ago_naive)
     )
 
-    active_users_7d = _safe_scalar(
-        db.session.query(func.count(func.distinct(Trade.user_id))).filter(
-            Trade.created_at >= week_ago
-        )
-    )
+    active_users_7d = _active_traders_7d(week_ago_naive)
 
     by_trade_type = []
     by_trade_status = []
@@ -161,6 +181,14 @@ def platform_stats():
 @bp.route("/dashboard")
 @login_required
 def dashboard():
-    """Back-compat: full journal shell; prefer /owner/stats for analytics-only view."""
+    """Back-compat: prefer /owner/stats for analytics-only view."""
+    _require_owner()
+    return redirect(url_for("owner_admin.platform_stats"))
+
+
+@bp.route("/")
+@login_required
+def index():
+    """Shortcut to analytics."""
     _require_owner()
     return redirect(url_for("owner_admin.platform_stats"))

@@ -321,6 +321,19 @@ def _seed_instruments(app):
 
 def register_error_handlers(app):
     """Register custom error handlers"""
+
+    try:
+        from flask_wtf.csrf import CSRFError
+    except ImportError:  # pragma: no cover
+        CSRFError = None
+
+    if CSRFError is not None:
+
+        @app.errorhandler(CSRFError)
+        def csrf_error(error):
+            """Avoid opaque 400s when POST arrives without a valid CSRF token."""
+            db.session.rollback()
+            return render_template('errors/csrf.html'), 400
     
     @app.errorhandler(404)
     def not_found_error(error):
