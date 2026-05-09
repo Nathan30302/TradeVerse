@@ -10,6 +10,8 @@
             <div class="small mt-1">
                 {% if sub.tier == 'owner' %}
                     <span class="badge rounded-pill bg-warning text-dark">Owner</span>
+                {% elif owner_platform_session_only %}
+                    <span class="badge rounded-pill bg-warning text-dark">Admin</span>
                 {% elif sub.status == 'trialing' %}
                     <span class="badge rounded-pill bg-info text-dark">
                         {% if sub.tier == 'pro_plus' %}Pro Plus trial{% elif sub.tier == 'pro' %}Pro trial{% else %}Trial{% endif %}
@@ -29,10 +31,13 @@
             {% endif %}
         </div>
     </div>
-    {% if sub.tier == 'owner' %}
+    {% if owner_platform_access %}
     <a href="{{ url_for('owner_admin.platform_stats') }}" class="btn btn-outline-warning btn-sm w-100 rounded-pill fw-semibold">
         <i class="fas fa-chart-line me-1"></i> Analytics
     </a>
+    {% if sub.tier != 'owner' %}
+    <a href="{{ url_for('monetization.pricing') }}" class="btn btn-link btn-sm text-white-50 py-1 mt-1 text-decoration-none">Plans &amp; pricing</a>
+    {% endif %}
     {% else %}
     <a href="{{ url_for('monetization.pricing') }}" class="btn btn-primary btn-sm w-100 rounded-pill fw-semibold shadow-sm">
         <i class="fas fa-arrow-circle-up me-1"></i>

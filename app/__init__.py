@@ -440,3 +440,25 @@ def register_context_processors(app):
             'feature_playbook': bool(tv.get('playbook_ready') and ('playbook' in app.blueprints)),
             'feature_replay': bool(tv.get('replay_ready') and ('replay' in app.blueprints)),
         }
+
+    @app.context_processor
+    def inject_owner_platform():
+        """Owner analytics: RBAC allowlist or /owner/unlock session (SECRET_KEY / OWNER_ADMIN_TOKEN)."""
+        from flask import session
+        from app.routes.owner_admin import SESSION_OWNER_PLATFORM
+        from app.services.entitlements import is_owner_user
+
+        if not getattr(current_user, 'is_authenticated', False):
+            return {
+                'owner_platform_access': False,
+                'owner_platform_session_only': False,
+            }
+
+        role = (getattr(current_user, 'role', None) or 'user').strip().lower()
+        rbac = role == 'owner' or is_owner_user(current_user)
+        sess = bool(session.get(SESSION_OWNER_PLATFORM))
+
+        return {
+            'owner_platform_access': rbac or sess,
+            'owner_platform_session_only': sess and not rbac,
+        }

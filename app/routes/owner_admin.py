@@ -1,14 +1,28 @@
 """
-Owner admin dashboard (RBAC secured).
+Owner admin dashboard (RBAC + optional platform unlock).
 
-Owner has full access and is excluded from billing enforcement.
+Primary access: User.role == "owner", or email/username allowlists (OWNER_EMAILS / OWNER_USERNAMES).
+
+Hosted deployments (e.g. Render) often only set SECRET_KEY. Logged-in founders can unlock a browser
+session at /owner/unlock using OWNER_ADMIN_TOKEN if set, otherwise the same value as SECRET_KEY.
 """
 
 from __future__ import annotations
 
+import secrets as secrets_stdlib
 from datetime import datetime, timedelta
 
-from flask import Blueprint, abort, redirect, render_template, url_for
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_login import login_required, current_user
 from sqlalchemy import func
 
@@ -19,15 +33,68 @@ from app.services.entitlements import is_owner_user
 
 bp = Blueprint("owner_admin", __name__, url_prefix="/owner")
 
+SESSION_OWNER_PLATFORM = "tv_owner_platform"
 
-def _require_owner():
+
+def _safe_internal_path(candidate: str | None) -> str | None:
+    """Avoid open redirects: only allow same-origin relative paths."""
+    c = (candidate or "").strip()
+    if c.startswith("/") and not c.startswith("//"):
+        return c
+    return None
+
+
+def _rbac_owner_ok() -> bool:
+    role = (getattr(current_user, "role", None) or "user").strip().lower()
+    return role == "owner" or is_owner_user(current_user)
+
+
+def _platform_session_ok() -> bool:
+    return bool(session.get(SESSION_OWNER_PLATFORM))
+
+
+def owner_platform_access_granted() -> bool:
+    """Whether current login may open /owner/* (RBAC or unlocked session)."""
+    if not getattr(current_user, "is_authenticated", False):
+        return False
+    return _rbac_owner_ok() or _platform_session_ok()
+
+
+def owner_platform_session_only() -> bool:
+    """Session passphrase unlock without DB owner role / allowlist."""
+    if not getattr(current_user, "is_authenticated", False):
+        return False
+    return _platform_session_ok() and not _rbac_owner_ok()
+
+
+def _expected_unlock_secret() -> str:
+    """
+    Token that must be POSTed to /owner/unlock.
+
+    OWNER_ADMIN_TOKEN wins when set (recommended for production).
+    Otherwise falls back to SECRET_KEY so a single Render secret can unlock analytics.
+    """
+    raw = current_app.config.get("OWNER_ADMIN_TOKEN")
+    if raw is not None and str(raw).strip() != "":
+        return str(raw).strip()
+    sk = current_app.config.get("SECRET_KEY") or ""
+    return str(sk).strip()
+
+
+def _owner_gate():
+    """
+    Returns None if access allowed, else a redirect to unlock with flash.
+    """
     if not current_user.is_authenticated:
         abort(401)
-    role = (getattr(current_user, "role", None) or "user").strip().lower()
-    if role == "owner" or is_owner_user(current_user):
-        return
-    # 403 (not 404): clearer for founders debugging OWNER_* env on production
-    abort(403)
+    if owner_platform_access_granted():
+        return None
+    flash(
+        "Platform analytics requires owner access or a one-time unlock. "
+        "Use /owner/unlock with your deployment secret (same as SECRET_KEY on Render unless you set OWNER_ADMIN_TOKEN).",
+        "warning",
+    )
+    return redirect(url_for("owner_admin.unlock", next=request.full_path))
 
 
 def _safe_scalar(q):
@@ -70,13 +137,64 @@ def _active_traders_7d(week_ago_naive: datetime) -> int:
         return 0
 
 
+@bp.route("/unlock", methods=["GET", "POST"])
+@login_required
+def unlock():
+    """
+    Unlock owner analytics for this browser session using the platform secret.
+    """
+    expected = _expected_unlock_secret()
+    fallback = url_for("owner_admin.platform_stats")
+    next_url = _safe_internal_path(request.args.get("next")) or _safe_internal_path(
+        request.form.get("next")
+    ) or fallback
+
+    if not expected:
+        return render_template(
+            "owner_admin/unlock.html",
+            unlock_disabled=True,
+            next_url=next_url,
+        )
+
+    if request.method == "POST":
+        submitted = (request.form.get("platform_token") or "").strip()
+        if not submitted:
+            flash("Paste your platform token.", "danger")
+        elif not secrets_stdlib.compare_digest(submitted, expected):
+            flash("Token did not match. Check OWNER_ADMIN_TOKEN or SECRET_KEY on the server.", "danger")
+        else:
+            session[SESSION_OWNER_PLATFORM] = True
+            session.permanent = True
+            flash("Platform analytics unlocked for this browser session.", "success")
+            return redirect(next_url)
+
+    uses_fallback = not (current_app.config.get("OWNER_ADMIN_TOKEN") or "").strip()
+    return render_template(
+        "owner_admin/unlock.html",
+        unlock_disabled=False,
+        next_url=next_url,
+        uses_secret_key_fallback=uses_fallback,
+    )
+
+
+@bp.route("/lock", methods=["POST"])
+@login_required
+def lock_platform():
+    """Clear passphrase-based unlock (RBAC owners unaffected)."""
+    session.pop(SESSION_OWNER_PLATFORM, None)
+    flash("Platform unlock cleared for this browser.", "info")
+    return redirect(url_for("dashboard.index"))
+
+
 @bp.route("/stats")
 @login_required
 def platform_stats():
     """
     Standalone owner analytics: usage + trade mix (minimal journal chrome).
     """
-    _require_owner()
+    gate = _owner_gate()
+    if gate:
+        return gate
 
     # Naive UTC matches typical TIMESTAMP columns and avoids aware/naive compare issues on Postgres.
     week_ago_naive = datetime.utcnow() - timedelta(days=7)
@@ -182,7 +300,9 @@ def platform_stats():
 @login_required
 def dashboard():
     """Back-compat: prefer /owner/stats for analytics-only view."""
-    _require_owner()
+    gate = _owner_gate()
+    if gate:
+        return gate
     return redirect(url_for("owner_admin.platform_stats"))
 
 
@@ -190,5 +310,7 @@ def dashboard():
 @login_required
 def index():
     """Shortcut to analytics."""
-    _require_owner()
+    gate = _owner_gate()
+    if gate:
+        return gate
     return redirect(url_for("owner_admin.platform_stats"))

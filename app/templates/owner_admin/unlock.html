@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Unlock platform analytics · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 560px;">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4 p-md-5">
+            <h1 class="h4 mb-2"><i class="fas fa-shield-alt text-primary me-2"></i>Platform analytics</h1>
+            <p class="text-muted small mb-4">
+                Enter the deployment secret configured on your host (for example Render).
+                If <strong>OWNER_ADMIN_TOKEN</strong> is not set, this must match <strong>SECRET_KEY</strong> exactly.
+            </p>
+
+            {% if unlock_disabled %}
+            <div class="alert alert-danger mb-0">
+                Missing <strong>SECRET_KEY</strong> (and no <strong>OWNER_ADMIN_TOKEN</strong>). Fix environment variables and redeploy.
+            </div>
+            {% else %}
+            <form method="post" action="{{ url_for('owner_admin.unlock') }}" autocomplete="off">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ next_url }}">
+
+                <label class="form-label fw-semibold" for="platform_token">Platform token</label>
+                <textarea class="form-control font-monospace small mb-3" id="platform_token" name="platform_token"
+                          rows="3" required placeholder="Paste OWNER_ADMIN_TOKEN or SECRET_KEY"
+                          spellcheck="false"></textarea>
+
+                {% if uses_secret_key_fallback %}
+                <p class="small text-muted mb-3">
+                    This server compares against <strong>SECRET_KEY</strong> because <code class="small">OWNER_ADMIN_TOKEN</code> is unset.
+                    Prefer adding a dedicated <strong>OWNER_ADMIN_TOKEN</strong> on Render so you never paste the Flask signing key from day-to-day prompts.
+                </p>
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-semibold">
+                    Unlock for this browser
+                </button>
+            </form>
+            {% endif %}
+
+            <p class="small text-muted mt-4 mb-0">
+                <a href="{{ url_for('dashboard.index') }}">← Back to app</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
