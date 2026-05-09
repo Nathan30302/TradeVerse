@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex,nofollow">
+    <title>{% block title %}Admin{% endblock %} · {{ app_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    <style>
+        :root {
+            --tv-admin-bg: #0c1222;
+            --tv-admin-surface: rgba(30, 41, 59, 0.55);
+            --tv-admin-border: rgba(148, 163, 184, 0.14);
+            --tv-admin-accent: #6366f1;
+            --tv-admin-accent2: #22d3ee;
+        }
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            background: radial-gradient(1200px 600px at 10% -10%, rgba(99, 102, 241, 0.18), transparent 55%),
+                radial-gradient(900px 500px at 100% 0%, rgba(34, 211, 238, 0.1), transparent 50%),
+                linear-gradient(165deg, var(--tv-admin-bg) 0%, #0f172a 45%, #020617 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        .tv-admin-topnav {
+            background: rgba(15, 23, 42, 0.92);
+            border-bottom: 1px solid var(--tv-admin-border);
+            backdrop-filter: blur(8px);
+        }
+        .tv-admin-tabs .nav-link {
+            color: #94a3b8;
+            border-radius: 999px;
+            padding: 0.45rem 1.1rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .tv-admin-tabs .nav-link:hover { color: #e2e8f0; background: rgba(99, 102, 241, 0.12); }
+        .tv-admin-tabs .nav-link.active {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff;
+        }
+        .tv-admin-hero {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(14, 165, 233, 0.12));
+            border: 1px solid var(--tv-admin-border);
+            border-radius: 20px;
+            padding: 1.75rem 1.5rem;
+            margin-bottom: 1.75rem;
+        }
+        .tv-stat-card {
+            background: var(--tv-admin-surface);
+            border: 1px solid var(--tv-admin-border);
+            border-radius: 16px;
+            padding: 1.25rem 1.35rem;
+            height: 100%;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .tv-stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.45);
+            border-color: rgba(99, 102, 241, 0.35);
+        }
+        .tv-stat-card .label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            margin-bottom: 0.35rem;
+            font-weight: 600;
+        }
+        .tv-stat-card .value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1.1;
+            color: #f8fafc;
+        }
+        .tv-stat-card .icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+        .tv-panel {
+            background: var(--tv-admin-surface);
+            border: 1px solid var(--tv-admin-border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .tv-panel .card-header {
+            background: rgba(15, 23, 42, 0.65);
+            border-bottom: 1px solid var(--tv-admin-border);
+            padding: 1rem 1.25rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        .table-tv {
+            --bs-table-bg: transparent;
+            --bs-table-color: #e2e8f0;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        .table-tv thead th {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            border-bottom-color: var(--tv-admin-border);
+            padding-top: 0.85rem;
+            padding-bottom: 0.85rem;
+        }
+        .table-tv tbody td {
+            border-color: rgba(148, 163, 184, 0.12);
+            vertical-align: middle;
+        }
+        .table-tv tbody tr:hover td {
+            background: rgba(99, 102, 241, 0.06);
+        }
+        .tv-mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.82rem;
+        }
+        .tv-empty {
+            text-align: center;
+            color: #64748b;
+            padding: 2.5rem 1rem;
+            font-size: 0.95rem;
+        }
+        .tv-footer-note {
+            font-size: 0.8rem;
+            color: #64748b;
+            border-top: 1px solid var(--tv-admin-border);
+            margin-top: 2rem;
+            padding-top: 1.25rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .tv-stat-card { transition: none; }
+            .tv-stat-card:hover { transform: none; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg tv-admin-topnav py-2">
+        <div class="container-fluid px-3 px-md-4" style="max-width: 1100px;">
+            <span class="navbar-brand text-white mb-0 fw-bold">
+                <i class="fas fa-shield-alt text-info me-2"></i>{{ app_name }} <span class="text-secondary fw-normal">Admin</span>
+            </span>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <a class="btn btn-outline-secondary btn-sm rounded-pill" href="{{ url_for('main.index') }}"><i class="fas fa-home me-1"></i>Site</a>
+                <a class="btn btn-outline-warning btn-sm rounded-pill" href="{{ url_for('admin.admin_lock') }}"><i class="fas fa-lock me-1"></i>Lock session</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-3 py-md-4 px-3 px-md-4" style="max-width: 1100px;">
+        <ul class="nav nav-pills tv-admin-tabs flex-wrap gap-2 mb-4">
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin.stats' %}active{% endif %}" href="{{ url_for('admin.stats') }}">
+                    <i class="fas fa-chart-pie me-1"></i> Overview
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin.email_outreach' %}active{% endif %}" href="{{ url_for('admin.email_outreach') }}">
+                    <i class="fas fa-envelope me-1"></i> Email
+                </a>
+            </li>
+        </ul>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block admin_content %}{% endblock %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

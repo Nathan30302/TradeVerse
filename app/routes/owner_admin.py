@@ -24,12 +24,19 @@ from flask import (
     url_for,
 )
 from flask_login import login_required, current_user
+from flask_mail import Message
 from sqlalchemy import func
 
-from app import db
+from app import db, mail
 from app.models.user import User
 from app.models.trade import Trade
 from app.services.entitlements import is_owner_user
+from app.services.owner_email import (
+    apply_email_placeholders,
+    audience_users,
+    mail_is_configured,
+    mail_sender_address,
+)
 
 bp = Blueprint("owner_admin", __name__, url_prefix="/owner")
 
@@ -293,6 +300,153 @@ def platform_stats():
         by_status=by_status,
         top_symbols=top_symbols,
         top_strategies=top_strategies,
+    )
+
+
+@bp.route("/email", methods=["GET", "POST"])
+@login_required
+def email_outreach():
+    """
+    Send encouragement / announcement emails to registered users (plain text).
+    Requires MAIL_* env configuration; bulk sends are capped per request.
+    """
+    gate = _owner_gate()
+    if gate:
+        return gate
+
+    cfg = current_app.config
+    mail_ok = mail_is_configured(cfg)
+    app_name = cfg.get("APP_NAME", "TradeVerse")
+    login_url = url_for("auth.login", _external=True)
+    inactive_default = 14
+    max_per_run = int(cfg.get("OWNER_EMAIL_MAX_PER_RUN", 200))
+
+    if request.method == "POST":
+        if not mail_ok:
+            flash(
+                "Mail is not configured. Set MAIL_USERNAME, MAIL_PASSWORD, and MAIL_DEFAULT_SENDER "
+                "(or rely on MAIL_USERNAME as sender) on the server.",
+                "danger",
+            )
+            return redirect(url_for("owner_admin.email_outreach"))
+
+        subject_line = (request.form.get("subject") or "").strip()
+        body_tpl = (request.form.get("body") or "").strip()
+        audience = (request.form.get("audience") or "test_self").strip()
+        inactive_days = int(request.form.get("inactive_days") or inactive_default)
+        confirm_bulk = request.form.get("confirm_bulk") == "1"
+
+        if not subject_line or not body_tpl:
+            flash("Subject and message body are required.", "warning")
+            return redirect(url_for("owner_admin.email_outreach"))
+
+        sender = mail_sender_address(cfg)
+        if not sender:
+            flash("Could not resolve a sender address from mail configuration.", "danger")
+            return redirect(url_for("owner_admin.email_outreach"))
+
+        if audience == "test_self":
+            if not current_user.email:
+                flash("Your account has no email address — cannot send a test.", "danger")
+                return redirect(url_for("owner_admin.email_outreach"))
+            body = apply_email_placeholders(
+                body_tpl,
+                user=current_user,
+                app_name=app_name,
+                login_url=login_url,
+            )
+            msg = Message(
+                subject=subject_line,
+                sender=sender,
+                recipients=[current_user.email],
+                body=body,
+            )
+            try:
+                mail.send(msg)
+                flash(f"Test email sent to {current_user.email}.", "success")
+            except Exception as exc:
+                current_app.logger.exception("Owner test email failed")
+                flash(f"Send failed: {exc}", "danger")
+            return redirect(url_for("owner_admin.email_outreach"))
+
+        if audience in ("all_registered", "inactive"):
+            if not confirm_bulk:
+                flash(
+                    "Confirm the acknowledgement checkbox before sending to many recipients.",
+                    "warning",
+                )
+                return redirect(url_for("owner_admin.email_outreach"))
+
+            candidates = audience_users(
+                audience="all_registered" if audience == "all_registered" else "inactive",
+                inactive_days=inactive_days,
+            )
+            truncated = False
+            if len(candidates) > max_per_run:
+                candidates = candidates[:max_per_run]
+                truncated = True
+
+            sent = 0
+            failed = 0
+            for u in candidates:
+                try:
+                    body = apply_email_placeholders(
+                        body_tpl,
+                        user=u,
+                        app_name=app_name,
+                        login_url=login_url,
+                    )
+                    msg = Message(
+                        subject=subject_line,
+                        sender=sender,
+                        recipients=[u.email],
+                        body=body,
+                    )
+                    mail.send(msg)
+                    sent += 1
+                except Exception:
+                    current_app.logger.warning(
+                        "Owner bulk email failed for user id=%s", u.id, exc_info=True
+                    )
+                    failed += 1
+
+            parts = [f"Finished: {sent} sent", f"{failed} failed."]
+            if truncated:
+                parts.append(f"Capped at {max_per_run} recipients per run (set OWNER_EMAIL_MAX_PER_RUN to raise).")
+            flash(" ".join(parts), "success" if failed == 0 else "warning")
+            return redirect(url_for("owner_admin.email_outreach"))
+
+        flash("Unknown audience selection.", "danger")
+        return redirect(url_for("owner_admin.email_outreach"))
+
+    activity = func.coalesce(User.last_login, User.created_at)
+    cutoff = datetime.utcnow() - timedelta(days=inactive_default)
+    n_all = _safe_scalar(
+        db.session.query(func.count(User.id)).filter(
+            User.is_active.is_(True),
+            User.email.isnot(None),
+            User.email != "",
+        )
+    )
+    n_inactive = _safe_scalar(
+        db.session.query(func.count(User.id)).filter(
+            User.is_active.is_(True),
+            User.email.isnot(None),
+            User.email != "",
+            activity.isnot(None),
+            activity < cutoff,
+        )
+    )
+
+    return render_template(
+        "owner_admin/email_outreach.html",
+        mail_configured=mail_ok,
+        app_name=app_name,
+        login_url=login_url,
+        recipient_count_all=n_all,
+        recipient_count_inactive=n_inactive,
+        inactive_days_default=inactive_default,
+        max_per_run=max_per_run,
     )
 
 

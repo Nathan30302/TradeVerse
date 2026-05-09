@@ -1,0 +1,128 @@
+{% extends "owner_admin/base_stats.html" %}
+
+{% block title %}Email outreach{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 text-white mb-1"><i class="fas fa-paper-plane text-primary me-2"></i>Email outreach</h1>
+    <p class="text-secondary mb-0 small">
+        Plain-text emails only — best deliverability. Use placeholders so each trader gets a personal greeting.
+        Bulk sends are capped at <strong class="text-warning">{{ max_per_run }}</strong> per run (see <code class="small">OWNER_EMAIL_MAX_PER_RUN</code>).
+    </p>
+</div>
+
+{% if not mail_configured %}
+<div class="alert alert-warning border-0 mb-4">
+    <strong>Mail not wired up.</strong> Add <code class="small">MAIL_USERNAME</code>, <code class="small">MAIL_PASSWORD</code>,
+    and typically <code class="small">MAIL_DEFAULT_SENDER</code> (or rely on username as sender) in your environment.
+    On Render, attach these to your web service and redeploy.
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card tv-panel border-0 bg-transparent">
+            <div class="card-header border-0 text-white py-3"><i class="fas fa-edit me-2 text-info"></i>Compose</div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('owner_admin.email_outreach') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-semibold" for="oa_subject">Subject</label>
+                        <input type="text" class="form-control bg-dark text-white border-secondary" id="oa_subject"
+                               name="subject" maxlength="200"
+                               placeholder="{{ app_name }}: quick tip for your journal"
+                               {% if mail_configured %}required{% endif %}>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-semibold" for="oa_body">Message</label>
+                        <textarea class="form-control bg-dark text-white border-secondary font-monospace small" id="oa_body"
+                                  name="body" rows="14" placeholder="Hi {username},..."
+                                  {% if mail_configured %}required{% endif %}></textarea>
+                        <div class="form-text text-secondary small mt-2">
+                            Placeholders:
+                            <code>{username}</code>,
+                            <code>{email}</code>,
+                            <code>{app_name}</code>,
+                            <code>{login_url}</code>
+                        </div>
+                    </div>
+
+                    <fieldset class="mb-3">
+                        <legend class="form-label text-secondary small fw-semibold mb-2">Audience</legend>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="audience" id="aud_test" value="test_self" checked>
+                            <label class="form-check-label text-light" for="aud_test">
+                                <strong>Send test</strong> — only to <span class="text-info">{{ current_user.email or 'your account (no email!)' }}</span>
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="audience" id="aud_all" value="all_registered">
+                            <label class="form-check-label text-light" for="aud_all">
+                                <strong>All registered</strong> — active accounts with email (~{{ recipient_count_all }} users)
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="audience" id="aud_inactive" value="inactive">
+                            <label class="form-check-label text-light" for="aud_inactive">
+                                <strong>Inactive</strong> — no login since threshold (~{{ recipient_count_inactive }} users)
+                            </label>
+                        </div>
+                        <div class="row g-2 align-items-center mt-2">
+                            <div class="col-auto">
+                                <label class="col-form-label text-secondary small mb-0" for="inactive_days">Inactive threshold (days)</label>
+                            </div>
+                            <div class="col-auto">
+                                <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary" style="width:5rem;"
+                                       id="inactive_days" name="inactive_days" min="1" max="365" value="{{ inactive_days_default }}">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" value="1" id="confirm_bulk" name="confirm_bulk">
+                        <label class="form-check-label text-secondary small" for="confirm_bulk">
+                            I understand this will email multiple customers. I have permission to contact them for product updates.
+                        </label>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary rounded-pill px-4" {% if not mail_configured %}disabled{% endif %}>
+                            <i class="fas fa-paper-plane me-2"></i>Send
+                        </button>
+                        <a class="btn btn-outline-secondary rounded-pill" href="{{ url_for('owner_admin.platform_stats') }}">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card tv-panel border-0 h-100">
+            <div class="card-header border-0 text-white py-3"><i class="fas fa-lightbulb me-2 text-warning"></i>Tips</div>
+            <div class="card-body text-secondary small">
+                <ul class="mb-3 ps-3">
+                    <li class="mb-2">Start with <strong>Send test</strong> so you see exactly what traders receive.</li>
+                    <li class="mb-2">Keep messages short; one clear call-to-action (e.g. log a trade, explore Analytics).</li>
+                    <li class="mb-2">Inactive audience uses the latest of last login or signup date.</li>
+                    <li class="mb-2">SMTP providers rate-limit bulk mail — raise the cap gradually or run multiple batches.</li>
+                </ul>
+                <p class="mb-0 text-muted border-top border-secondary pt-3">
+                    Login link for placeholders:<br>
+                    <span class="text-break font-monospace text-info small">{{ login_url }}</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="card tv-panel border-0 mt-3">
+            <div class="card-header border-0 text-white py-3"><i class="fas fa-terminal me-2"></i>Automation</div>
+            <div class="card-body text-secondary small">
+                Server-side commands still exist for cron jobs:
+                <code class="d-block mt-2 small text-light">flask send-nudges</code>
+                <code class="d-block mt-1 small text-light">flask send-weekly-summaries</code>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

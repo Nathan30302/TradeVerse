@@ -220,6 +220,9 @@ class Config:
     # Email summaries
     WEEKLY_SUMMARY_SENDER = os.environ.get('WEEKLY_SUMMARY_SENDER') or os.environ.get('MAIL_USERNAME')
 
+    # Owner console bulk email safety cap (per POST request)
+    OWNER_EMAIL_MAX_PER_RUN = int(os.environ.get('OWNER_EMAIL_MAX_PER_RUN', '200'))
+
     # Market data
     MARKET_DATA_PROVIDER = os.environ.get('MARKET_DATA_PROVIDER') or 'twelvedata'
 

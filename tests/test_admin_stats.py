@@ -42,9 +42,33 @@ def test_admin_stats_401_wrong_token(app, client):
 
 
 def test_admin_stats_200_empty_db(app, client):
-    r = client.get('/admin/stats?admin_token=test_admin_token_value')
+    r = client.get(
+        '/admin/stats?admin_token=test_admin_token_value', follow_redirects=True
+    )
     assert r.status_code == 200
     assert b'Platform snapshot' in r.data
+
+
+def test_admin_stats_redirect_strips_token(app, client):
+    r = client.get('/admin/stats?admin_token=test_admin_token_value', follow_redirects=False)
+    assert r.status_code == 302
+    loc = r.headers.get('Location', '')
+    assert '/admin/stats' in loc
+    assert 'admin_token' not in loc
+
+
+def test_admin_email_200_after_token_session(app, client):
+    client.get('/admin/stats?admin_token=test_admin_token_value', follow_redirects=True)
+    r = client.get('/admin/email')
+    assert r.status_code == 200
+    assert b'Email outreach' in r.data
+
+
+def test_admin_lock_clears_session(app, client):
+    client.get('/admin/stats?admin_token=test_admin_token_value', follow_redirects=True)
+    client.get('/admin/lock')
+    r = client.get('/admin/stats')
+    assert r.status_code == 401
 
 
 def test_admin_stats_200_with_rows(app, client):
@@ -71,6 +95,8 @@ def test_admin_stats_200_with_rows(app, client):
     db.session.add(t)
     db.session.commit()
 
-    r = client.get('/admin/stats?admin_token=test_admin_token_value')
+    r = client.get(
+        '/admin/stats?admin_token=test_admin_token_value', follow_redirects=True
+    )
     assert r.status_code == 200
     assert b'EURUSD' in r.data
