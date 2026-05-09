@@ -111,6 +111,77 @@ def subscribe(plan):
         flash('❌ Invalid plan selected.', 'danger')
         return redirect(url_for('monetization.pricing'))
 
+    # Prefer Paytiko if configured (global orchestration like AquaFunded).
+    paytiko_secret = current_app.config.get("PAYTIKO_MERCHANT_SECRET_KEY") or os.environ.get("PAYTIKO_MERCHANT_SECRET_KEY")
+    paytiko_core_url = current_app.config.get("PAYTIKO_CORE_URL") or os.environ.get("PAYTIKO_CORE_URL")
+    paytiko_currency = (current_app.config.get("PAYTIKO_DEFAULT_CURRENCY") or os.environ.get("PAYTIKO_DEFAULT_CURRENCY") or "USD").upper()
+    if paytiko_secret and paytiko_core_url:
+        try:
+            requests = import_module("requests")
+        except Exception:
+            flash("⚠️ Payment gateway not available (requests package missing).", "warning")
+            return redirect(url_for("monetization.pricing"))
+
+        # Amounts should match the pricing page.
+        amount_map = {"pro": 5, "pro_plus": 15}
+        amount = amount_map.get(plan.lower())
+        if amount is None:
+            flash("❌ Invalid plan selected.", "danger")
+            return redirect(url_for("monetization.pricing"))
+
+        # Paytiko signature: sha256("{email};{timestamp};{merchant_secret}")
+        ts = int(datetime.now(timezone.utc).timestamp())
+        email = (current_user.email or "").strip()
+        signature = __import__("hashlib").sha256(f"{email};{ts};{paytiko_secret}".encode("utf-8")).hexdigest()
+
+        # Encode user + plan in OrderId so webhook can update the right account.
+        order_id = f"tvsub-{current_user.id}-{plan.lower()}-{secrets.token_hex(4)}"
+
+        webhook_url = current_app.config.get("PAYTIKO_WEBHOOK_URL") or os.environ.get("PAYTIKO_WEBHOOK_URL") or url_for("monetization.paytiko_webhook", _external=True)
+        success_url = current_app.config.get("PAYTIKO_SUCCESS_REDIRECT_URL") or os.environ.get("PAYTIKO_SUCCESS_REDIRECT_URL") or url_for("monetization.paytiko_success", _external=True)
+        failed_url = current_app.config.get("PAYTIKO_FAILED_REDIRECT_URL") or os.environ.get("PAYTIKO_FAILED_REDIRECT_URL") or url_for("monetization.paytiko_failed", _external=True)
+
+        payload = {
+            "Timestamp": ts,
+            "OrderId": order_id,
+            "Signature": signature,
+            "BillingDetails": {
+                "FirstName": (current_user.username or "Trader")[:255],
+                "LastName": "",
+                "Email": email,
+                # Paytiko expects ISO-3166 alpha-2.
+                "Country": (os.environ.get("PAYTIKO_DEFAULT_COUNTRY") or "ZM")[:2].upper(),
+                "Phone": (getattr(current_user, "phone", None) or os.environ.get("SUPPORT_PHONE") or "+260")[:20],
+                "Currency": paytiko_currency,
+                # lock the amount on hosted page (per Paytiko request shape used by integrations)
+                "LockedAmount": int(amount),
+            },
+            "WebhookUrl": webhook_url,
+            "SuccessRedirectUrl": success_url,
+            "FailedRedirectUrl": failed_url,
+            "CashierDescription": f"TradeVerse {plan.lower()} subscription",
+        }
+
+        try:
+            core = paytiko_core_url.rstrip("/")
+            resp = requests.post(
+                f"{core}/api/payment/hosted-page",
+                json=payload,
+                headers={"Content-Type": "application/json", "X-Merchant-Secret": paytiko_secret},
+                timeout=20,
+            )
+            data = resp.json() if resp.content else {}
+            redirect_url = (data or {}).get("redirectUrl") or (data or {}).get("redirect_url")
+            if resp.status_code >= 400 or not redirect_url:
+                current_app.logger.warning("Paytiko init failed: status=%s body=%s", resp.status_code, data)
+                flash("❌ Error initiating payment. Please try again later.", "danger")
+                return redirect(url_for("monetization.pricing"))
+            return redirect(redirect_url, code=303)
+        except Exception:
+            current_app.logger.exception("Paytiko checkout error")
+            flash("❌ Error initiating payment. Please try again later.", "danger")
+            return redirect(url_for("monetization.pricing"))
+
     # Prefer Flutterwave if configured (works in more African countries).
     flw_secret = current_app.config.get('FLW_SECRET_KEY') or os.environ.get('FLW_SECRET_KEY')
     flw_public = current_app.config.get('FLW_PUBLIC_KEY') or os.environ.get('FLW_PUBLIC_KEY')
@@ -209,6 +280,82 @@ def subscribe(plan):
         current_app.logger.exception("Subscription checkout error")
         flash('❌ Error initiating payment. Please try again later.', 'danger')
         return redirect(url_for('monetization.pricing'))
+
+
+@bp.route("/paytiko/success")
+@login_required
+def paytiko_success():
+    flash("✅ Payment received. Activating your subscription…", "success")
+    return redirect(url_for("dashboard.index"))
+
+
+@bp.route("/paytiko/failed")
+@login_required
+def paytiko_failed():
+    flash("Payment not completed. Please try again.", "warning")
+    return redirect(url_for("monetization.pricing"))
+
+
+@bp.route("/paytiko/webhook", methods=["POST"])
+@csrf.exempt
+def paytiko_webhook():
+    """
+    Paytiko webhook: verifies payload signature and updates subscription status.
+    Signature is expected in payload['Signature'] and is sha256(\"{merchant_secret}:{order_id}\").
+    """
+    paytiko_secret = current_app.config.get("PAYTIKO_MERCHANT_SECRET_KEY") or os.environ.get("PAYTIKO_MERCHANT_SECRET_KEY")
+    if not paytiko_secret:
+        return jsonify({"ok": False}), 500
+
+    payload = request.get_json(silent=True) or request.form.to_dict() or {}
+    order_id = payload.get("OrderId") or payload.get("orderId") or ""
+    sig = payload.get("Signature") or payload.get("signature") or ""
+    if not order_id or not sig:
+        return jsonify({"ok": False}), 400
+
+    expected = __import__("hashlib").sha256(f"{paytiko_secret}:{order_id}".encode("utf-8")).hexdigest()
+    if expected != sig:
+        return jsonify({"ok": False}), 400
+
+    status = (payload.get("TransactionStatus") or payload.get("transactionStatus") or "").upper()
+    # We only act on successful SALE-like events.
+    if status not in {"SUCCESS", "SUCCESSFUL", "APPROVED", "OK"}:
+        return jsonify({"ok": True})
+
+    # Extract user_id and plan from order id: tvsub-<uid>-<plan>-<rand>
+    plan = "pro"
+    user_id = None
+    try:
+        parts = str(order_id).split("-")
+        if len(parts) >= 4 and parts[0] == "tvsub":
+            user_id = int(parts[1])
+            plan = (parts[2] or "pro").lower()
+    except Exception:
+        user_id = None
+
+    if plan not in {"pro", "pro_plus"}:
+        plan = "pro"
+
+    if not user_id:
+        return jsonify({"ok": True})
+
+    try:
+        from app.models.user import User
+
+        user = db.session.get(User, user_id)
+        if not user:
+            return jsonify({"ok": True})
+        user.subscription_tier = plan
+        user.subscription_status = "active"
+        user.subscription_expires_at = None
+        db.session.add(user)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Paytiko webhook failed to update user")
+        return jsonify({"ok": True})
+
+    return jsonify({"ok": True})
 
 
 @bp.route('/flutterwave/callback')

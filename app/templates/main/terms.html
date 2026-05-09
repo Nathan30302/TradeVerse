@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Terms & Disclaimer - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-9 mx-auto">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 p-md-5">
+                    <h1 class="h3 mb-3">Terms & Disclaimer</h1>
+                    <p class="text-muted mb-4">
+                        TradeVerse is a journaling and analytics platform designed to help traders track decisions,
+                        review performance, and improve discipline.
+                    </p>
+
+                    <h2 class="h5 mt-4">Not financial advice</h2>
+                    <p class="mb-0">
+                        TradeVerse does <strong>not</strong> provide investment, financial, legal, or tax advice.
+                        Any insights, analytics, or AI-generated content are for informational and educational purposes only.
+                        You are solely responsible for your trading decisions and risk management.
+                    </p>
+
+                    <h2 class="h5 mt-4">Trading risk</h2>
+                    <p class="mb-0">
+                        Trading involves significant risk and can result in losses. Past performance is not indicative of future results.
+                        Always trade responsibly and only risk what you can afford to lose.
+                    </p>
+
+                    <h2 class="h5 mt-4">No broker / no funds</h2>
+                    <p class="mb-0">
+                        TradeVerse is <strong>not</strong> a broker, exchange, or prop firm. We do not execute trades, hold customer funds,
+                        or provide brokerage services.
+                    </p>
+
+                    <h2 class="h5 mt-4">Accountability</h2>
+                    <p class="mb-0">
+                        Some features (e.g., cooldowns, checklists) are provided to encourage safer behavior. They do not guarantee outcomes.
+                    </p>
+
+                    <hr class="my-4">
+                    <p class="text-muted small mb-0">
+                        By using TradeVerse you agree to use the platform responsibly and in accordance with applicable laws.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -8,7 +8,7 @@ manually reason about tiers/statuses.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 from typing import Callable, Dict, Iterable, Optional, Set, TypeVar
 
@@ -125,6 +125,22 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     now = _utcnow()
     trial_ends_at: Optional[datetime] = _as_utc_aware(_safe_getattr(user, "trial_ends_at", None))
     subscription_expires_at: Optional[datetime] = _as_utc_aware(_safe_getattr(user, "subscription_expires_at", None))
+
+    # Marketing mode: give everyone Pro Plus features for a limited time.
+    # This avoids forcing immediate payment setup and keeps the platform fully usable.
+    #
+    # Turn off by setting: TV_ALL_USERS_PROPLUS_TRIAL=0
+    force_all_trial = (os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL", "1") or "1").strip().lower() in {"1", "true", "yes", "on"}
+    if force_all_trial:
+        days = int(os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL_DAYS", "60") or "60")
+        forced_end = now + timedelta(days=days)
+        return SubscriptionState(
+            tier="pro_plus",
+            status="trialing",
+            is_active=True,
+            trial_ends_at=forced_end,
+            subscription_expires_at=None,
+        )
 
     # Owner/admin bypass: full access without billing enforcement.
     if role in {"owner"} or is_owner_user(user):

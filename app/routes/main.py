@@ -47,6 +47,7 @@ def sitemap():
         base + url_for('main.features'),
         base + url_for('main.contact'),
         base + url_for('main.pricing'),
+        base + url_for('main.terms'),
     ]
     now = datetime.utcnow().strftime('%Y-%m-%d')
     body = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
@@ -111,6 +112,12 @@ def pricing():
 def contact():
     """Contact page - Contact form"""
     return render_template('main/contact.html')
+
+
+@bp.route('/terms')
+def terms():
+    """Terms and risk disclaimer (not financial advice)."""
+    return render_template('main/terms.html')
 
 
 @bp.route('/api/calculate-pnl', methods=['POST'])

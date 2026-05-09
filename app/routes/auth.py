@@ -86,8 +86,8 @@ def register():
                 email=email,
                 full_name=full_name if full_name else None,
                 created_at=now,
-                # 2-month trial for all new users (Pro features during trial)
-                subscription_tier='pro',
+                # 2-month trial for all new users (Pro Plus features during trial)
+                subscription_tier='pro_plus',
                 subscription_status='trialing',
                 trial_ends_at=now + timedelta(days=60),
             )
@@ -107,7 +107,7 @@ def register():
                     )
                     msg.body = (
                         f"Hi {new_user.username},\n\n"
-                        "Welcome to TradeVerse! Your 2-month Pro trial is active.\n\n"
+                        "Welcome to TradeVerse! Your 2-month Pro Plus trial is active.\n\n"
                         "Log your first trade and start improving your consistency.\n"
                     )
                     mail.send(msg)
