@@ -39,60 +39,67 @@ def pricing():
         except Exception:
             current_tier = "free"
 
+    # Feature gates are defined in app/services/entitlements.py (FEATURES_BY_TIER).
+    # Keep marketing bullets aligned with those tiers so the page matches actual access.
+    trial_days_new_accounts = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
+    extended_promo = (os.environ.get('TV_ALL_USERS_PROPLUS_TRIAL', '1') or '1').strip().lower() in {
+        '1', 'true', 'yes', 'on',
+    }
+
     plans = [
         {
             'name': 'Free',
+            'slug': 'free',
             'price': '$0',
             'period': '/month',
-            'description': 'Perfect for getting started',
+            'description': 'Journal trades with core dashboard stats',
             'features': [
-                'Unlimited trades',
-                'Basic analytics',
-                'Trade journaling',
-                'AI feedback',
-                'Community access'
+                'Trading journal & trade history',
+                'Dashboard overview & core statistics',
+                'Basic analytics views',
             ],
             'cta': 'Current Plan' if (not current_user.is_authenticated or current_tier == 'free') else 'Downgrade',
             'cta_disabled': True,
-            'recommended': False
+            'recommended': False,
         },
         {
             'name': 'Pro',
+            'slug': 'pro',
             'price': '$5',
             'period': '/month',
-            'description': 'Core analytics + enhanced tools (2-month trial for new users)',
+            'description': 'Advanced analytics, exports, and broker API imports',
             'features': [
                 'Everything in Free',
-                'Advanced analytics',
-                'Performance charts',
-                'Data export (CSV, JSON)',
-                'API access',
-                'Priority support'
+                'Advanced analytics (metrics API: expectancy, drawdown, R)',
+                'Export trades & data (CSV / JSON)',
+                'Broker API imports',
             ],
             'cta': 'Upgrade Now',
             'cta_disabled': current_user.is_authenticated and current_tier == 'pro',
-            'recommended': True
+            'recommended': True,
         },
         {
             'name': 'Pro Plus',
+            'slug': 'pro_plus',
             'price': '$15',
             'period': '/month',
-            'description': 'Full analytics suite + priority features',
+            'description': 'Full Pro feature set plus coach-mode tier',
             'features': [
                 'Everything in Pro',
-                'Advanced AI insights',
-                'Custom dashboards & alerts',
-                'Unlimited API calls',
-                'Coach mode (coming soon)',
-                'Dedicated support'
+                'Coach mode & premium coaching track (rolled out in-app)',
             ],
             'cta': 'Upgrade Now',
             'cta_disabled': current_user.is_authenticated and current_tier == 'pro_plus',
-            'recommended': False
-        }
+            'recommended': False,
+        },
     ]
-    
-    return render_template('monetization/pricing.html', plans=plans)
+
+    return render_template(
+        'monetization/pricing.html',
+        plans=plans,
+        trial_days_new_accounts=trial_days_new_accounts,
+        extended_promo_active=extended_promo,
+    )
 
 
 # ==================== Subscriptions ====================

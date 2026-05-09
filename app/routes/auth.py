@@ -8,6 +8,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models.user import User
 from datetime import datetime, timedelta, timezone
+import os
 import re
 from flask_mail import Message
 from app import mail
@@ -81,15 +82,16 @@ def register():
         # Create new user
         try:
             now = datetime.now(timezone.utc)
+            trial_days = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
             new_user = User(
                 username=username,
                 email=email,
                 full_name=full_name if full_name else None,
                 created_at=now,
-                # 2-month trial for all new users (Pro Plus features during trial)
+                # Pro Plus tier during trial (aligned with pricing page / TV_TRIAL_DAYS_PRO_PLUS)
                 subscription_tier='pro_plus',
                 subscription_status='trialing',
-                trial_ends_at=now + timedelta(days=60),
+                trial_ends_at=now + timedelta(days=trial_days),
             )
             new_user.set_password(password)
             
