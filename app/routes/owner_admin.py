@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, abort, render_template
+from flask import Blueprint, abort, redirect, render_template, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import func
 
@@ -20,6 +20,14 @@ from app.services.entitlements import is_owner_user
 bp = Blueprint("owner_admin", __name__, url_prefix="/owner")
 
 
+@bp.route("/")
+@login_required
+def index():
+    """Shortcut to analytics."""
+    _require_owner()
+    return redirect(url_for("owner_admin.platform_stats"))
+
+
 def _require_owner():
     if not current_user.is_authenticated:
         abort(401)
@@ -27,25 +35,92 @@ def _require_owner():
         abort(404)
 
 
-@bp.route("/dashboard")
+def _safe_scalar(q):
+    try:
+        return int(q.scalar() or 0)
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return 0
+
+
+@bp.route("/stats")
 @login_required
-def dashboard():
+def platform_stats():
+    """
+    Standalone owner analytics: usage + trade mix (minimal journal chrome).
+    """
     _require_owner()
 
-    total_users = User.query.count()
-    # Avoid Query.count() on ORM entities; it may SELECT missing columns if
-    # migrations (e.g. playbook_setup_id) haven't been applied yet.
-    total_trades = int(db.session.query(func.count(Trade.id)).scalar() or 0)
-    closed_trades = int(
-        db.session.query(func.count(Trade.id))
-        .filter(Trade.status == "CLOSED")
-        .scalar()
-        or 0
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+    days_30_ago = now - timedelta(days=30)
+
+    total_users = _safe_scalar(db.session.query(func.count(User.id)))
+    users_new_30d = _safe_scalar(
+        db.session.query(func.count(User.id)).filter(User.created_at >= days_30_ago)
+    )
+    users_before_30d = max(0, total_users - users_new_30d)
+
+    total_trades = _safe_scalar(db.session.query(func.count(Trade.id)))
+    open_trades = _safe_scalar(
+        db.session.query(func.count(Trade.id)).filter(Trade.status == "OPEN")
+    )
+    closed_trades = _safe_scalar(
+        db.session.query(func.count(Trade.id)).filter(Trade.status == "CLOSED")
     )
 
-    by_tier = (
-        []
+    trades_7d = _safe_scalar(
+        db.session.query(func.count(Trade.id)).filter(Trade.created_at >= week_ago)
     )
+
+    active_users_7d = _safe_scalar(
+        db.session.query(func.count(func.distinct(Trade.user_id))).filter(
+            Trade.created_at >= week_ago
+        )
+    )
+
+    by_trade_type = []
+    by_trade_status = []
+    top_symbols = []
+    top_strategies = []
+    try:
+        by_trade_type = (
+            db.session.query(Trade.trade_type, func.count(Trade.id))
+            .group_by(Trade.trade_type)
+            .order_by(func.count(Trade.id).desc())
+            .all()
+        )
+        by_trade_status = (
+            db.session.query(Trade.status, func.count(Trade.id))
+            .group_by(Trade.status)
+            .order_by(func.count(Trade.id).desc())
+            .all()
+        )
+        top_symbols = (
+            db.session.query(Trade.symbol, func.count(Trade.id))
+            .group_by(Trade.symbol)
+            .order_by(func.count(Trade.id).desc())
+            .limit(20)
+            .all()
+        )
+        top_strategies = (
+            db.session.query(Trade.strategy, func.count(Trade.id))
+            .filter(Trade.strategy.isnot(None), Trade.strategy != "")
+            .group_by(Trade.strategy)
+            .order_by(func.count(Trade.id).desc())
+            .limit(20)
+            .all()
+        )
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+    by_tier = []
     by_status = []
     try:
         by_tier = (
@@ -59,25 +134,33 @@ def dashboard():
             .all()
         )
     except Exception:
-        # tolerate schema drift
-        by_tier = []
-        by_status = []
-
-    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    active_users_7d = (
-        db.session.query(Trade.user_id)
-        .filter(Trade.created_at >= week_ago)
-        .distinct()
-        .count()
-    )
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
     return render_template(
-        "owner_admin/dashboard.html",
+        "owner_admin/platform_stats.html",
         total_users=total_users,
+        users_new_30d=users_new_30d,
+        users_before_30d=users_before_30d,
         total_trades=total_trades,
+        open_trades=open_trades,
         closed_trades=closed_trades,
+        trades_7d=trades_7d,
+        active_users_7d=active_users_7d,
+        by_trade_type=by_trade_type,
+        by_trade_status=by_trade_status,
         by_tier=by_tier,
         by_status=by_status,
-        active_users_7d=active_users_7d,
+        top_symbols=top_symbols,
+        top_strategies=top_strategies,
     )
 
+
+@bp.route("/dashboard")
+@login_required
+def dashboard():
+    """Back-compat: full journal shell; prefer /owner/stats for analytics-only view."""
+    _require_owner()
+    return redirect(url_for("owner_admin.platform_stats"))

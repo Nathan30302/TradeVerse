@@ -1,0 +1,180 @@
+{% extends "owner_admin/base_stats.html" %}
+
+{% block title %}Platform stats{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 text-white mb-1">Platform overview</h1>
+    <p class="text-secondary mb-0 small">Aggregate usage only — no individual trader journal UI here.</p>
+</div>
+
+<div class="row g-3 g-md-4 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="tv-stat-card">
+            <div class="label">Total users</div>
+            <div class="value">{{ total_users }}</div>
+            <div class="hint">Accounts registered</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="tv-stat-card">
+            <div class="label">New users (30d)</div>
+            <div class="value text-info">{{ users_new_30d }}</div>
+            <div class="hint">Joined in last 30 days</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="tv-stat-card">
+            <div class="label">Established users</div>
+            <div class="value text-secondary">{{ users_before_30d }}</div>
+            <div class="hint">Joined before last 30 days</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="tv-stat-card">
+            <div class="label">Active traders (7d)</div>
+            <div class="value text-warning">{{ active_users_7d }}</div>
+            <div class="hint">Logged ≥1 trade this week</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 g-md-4 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="tv-stat-card">
+            <div class="label">Total trades</div>
+            <div class="value">{{ total_trades }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="tv-stat-card">
+            <div class="label">Open</div>
+            <div class="value">{{ open_trades }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="tv-stat-card">
+            <div class="label">Closed</div>
+            <div class="value text-success">{{ closed_trades }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="tv-stat-card">
+            <div class="label">Trades logged (7d)</div>
+            <div class="value">{{ trades_7d }}</div>
+            <div class="hint">Rows created this week</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0">
+            <div class="card-header py-3 text-white border-0"><i class="fas fa-exchange-alt me-2 text-primary"></i>Trade direction</div>
+            <div class="card-body p-0">
+                <table class="table table-dark-custom mb-0">
+                    <thead><tr><th>Type</th><th class="text-end">Count</th></tr></thead>
+                    <tbody>
+                    {% for t, cnt in by_trade_type %}
+                        <tr><td>{{ t or '—' }}</td><td class="text-end">{{ cnt }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="2" class="text-secondary px-3 py-3">No data yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0">
+            <div class="card-header py-3 text-white border-0"><i class="fas fa-folder-open me-2 text-primary"></i>Trade status</div>
+            <div class="card-body p-0">
+                <table class="table table-dark-custom mb-0">
+                    <thead><tr><th>Status</th><th class="text-end">Count</th></tr></thead>
+                    <tbody>
+                    {% for s, cnt in by_trade_status %}
+                        <tr><td>{{ s or '—' }}</td><td class="text-end">{{ cnt }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="2" class="text-secondary px-3 py-3">No data yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0">
+            <div class="card-header py-3 text-white border-0"><i class="fas fa-layer-group me-2 text-warning"></i>Subscription tiers</div>
+            <div class="card-body p-0">
+                <table class="table table-dark-custom mb-0">
+                    <thead><tr><th>Tier</th><th class="text-end">Users</th></tr></thead>
+                    <tbody>
+                    {% for tier, cnt in by_tier %}
+                        <tr><td>{{ tier or 'unknown' }}</td><td class="text-end">{{ cnt }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="2" class="text-secondary px-3 py-3">Unavailable or no rows.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0">
+            <div class="card-header py-3 text-white border-0"><i class="fas fa-tag me-2 text-warning"></i>Subscription status</div>
+            <div class="card-body p-0">
+                <table class="table table-dark-custom mb-0">
+                    <thead><tr><th>Status</th><th class="text-end">Users</th></tr></thead>
+                    <tbody>
+                    {% for status, cnt in by_status %}
+                        <tr><td>{{ status or 'unknown' }}</td><td class="text-end">{{ cnt }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="2" class="text-secondary px-3 py-3">Unavailable or no rows.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0">
+            <div class="card-header py-3 text-white border-0"><i class="fas fa-coins me-2 text-success"></i>Top symbols (by trade count)</div>
+            <div class="card-body p-0">
+                <table class="table table-dark-custom mb-0">
+                    <thead><tr><th>Symbol</th><th class="text-end">Trades</th></tr></thead>
+                    <tbody>
+                    {% for sym, cnt in top_symbols %}
+                        <tr><td><code class="text-info">{{ sym }}</code></td><td class="text-end">{{ cnt }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="2" class="text-secondary px-3 py-3">No trades yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0">
+            <div class="card-header py-3 text-white border-0"><i class="fas fa-chess me-2 text-success"></i>Top strategies (by trade count)</div>
+            <div class="card-body p-0">
+                <table class="table table-dark-custom mb-0">
+                    <thead><tr><th>Strategy</th><th class="text-end">Trades</th></tr></thead>
+                    <tbody>
+                    {% for strat, cnt in top_strategies %}
+                        <tr><td>{{ strat or '—' }}</td><td class="text-end">{{ cnt }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="2" class="text-secondary px-3 py-3">No strategies tagged yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
