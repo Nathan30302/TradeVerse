@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone
-from app import create_app, db
+from app import create_app, db, schema_compat
 from app.models.user import User
 from app.models.trade_plan import TradePlan
 from app.models.trade import Trade
@@ -13,6 +13,7 @@ def app():
         # Ensure fresh DB
         db.drop_all()
         db.create_all()
+        schema_compat.refresh(app)
         yield app
 
 

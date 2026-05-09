@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app import create_app, db
+from app import create_app, db, schema_compat
 from app.models.user import User
 from app.models.trade import Trade
 from app.services.ai_insights import AIAnalyzer
@@ -14,6 +14,7 @@ def test_ai_insights_service():
     with app.app_context():
         db.drop_all()
         db.create_all()
+        schema_compat.refresh(app)
 
         user = User(username='aiuser', email='ai@example.com')
         user.set_password('password')

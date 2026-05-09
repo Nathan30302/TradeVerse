@@ -32,6 +32,21 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 
+def _playbook_setups_for_trade_form():
+    """Empty when Playbook migrations are not installed (avoids 500 on missing tables/columns)."""
+    if not current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready'):
+        return []
+    try:
+        return (
+            PlaybookSetup.query.filter_by(user_id=current_user.id, is_active=True)
+            .order_by(PlaybookSetup.updated_at.desc().nullslast(), PlaybookSetup.created_at.desc())
+            .all()
+        )
+    except Exception:
+        current_app.logger.debug('PlaybookSetup list skipped (schema drift)', exc_info=True)
+        return []
+
+
 def _filtered_trades_query(user_id):
     """Build ordered query for trade list / CSV export (same filters as list view)."""
     status_filter = request.args.get('status', 'all')
@@ -60,11 +75,7 @@ def add():
     # Check for active cooldown
     active_cooldown = get_active_cooldown(current_user.id)
     accountability_required = bool(session.get("tv_accountability_required"))
-    playbook_setups = (
-        PlaybookSetup.query.filter_by(user_id=current_user.id, is_active=True)
-        .order_by(PlaybookSetup.updated_at.desc().nullslast(), PlaybookSetup.created_at.desc())
-        .all()
-    )
+    playbook_setups = _playbook_setups_for_trade_form()
     if request.method == 'GET':
         return render_template(
             'trade/add.html',
@@ -172,15 +183,16 @@ def add():
                 playbook_followed=playbook_followed
             )
 
-            pb_setup_id = (request.form.get("playbook_setup_id") or "").strip()
-            if pb_setup_id:
-                try:
-                    pb_setup_id_int = int(pb_setup_id)
-                    ok = PlaybookSetup.query.filter_by(id=pb_setup_id_int, user_id=current_user.id).first()
-                    if ok:
-                        trade.playbook_setup_id = pb_setup_id_int
-                except ValueError:
-                    pass
+            if current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready'):
+                pb_setup_id = (request.form.get("playbook_setup_id") or "").strip()
+                if pb_setup_id:
+                    try:
+                        pb_setup_id_int = int(pb_setup_id)
+                        ok = PlaybookSetup.query.filter_by(id=pb_setup_id_int, user_id=current_user.id).first()
+                        if ok:
+                            trade.playbook_setup_id = pb_setup_id_int
+                    except ValueError:
+                        pass
 
             # Attach instrument FK if provided
             if instrument_id:
@@ -504,11 +516,7 @@ def edit(trade_id):
     Modify existing trade details
     """
     trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
-    playbook_setups = (
-        PlaybookSetup.query.filter_by(user_id=current_user.id, is_active=True)
-        .order_by(PlaybookSetup.updated_at.desc().nullslast(), PlaybookSetup.created_at.desc())
-        .all()
-    )
+    playbook_setups = _playbook_setups_for_trade_form()
     
     if request.method == 'POST':
         try:
@@ -561,16 +569,17 @@ def edit(trade_id):
             trade.checklist_completed = request.form.get('checklist_completed') == 'on'
             trade.playbook_followed = request.form.get('playbook_followed') == 'on'
 
-            pb_setup_id = (request.form.get("playbook_setup_id") or "").strip()
-            if pb_setup_id:
-                try:
-                    pb_setup_id_int = int(pb_setup_id)
-                    ok = PlaybookSetup.query.filter_by(id=pb_setup_id_int, user_id=current_user.id).first()
-                    trade.playbook_setup_id = pb_setup_id_int if ok else None
-                except ValueError:
+            if current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready'):
+                pb_setup_id = (request.form.get("playbook_setup_id") or "").strip()
+                if pb_setup_id:
+                    try:
+                        pb_setup_id_int = int(pb_setup_id)
+                        ok = PlaybookSetup.query.filter_by(id=pb_setup_id_int, user_id=current_user.id).first()
+                        trade.playbook_setup_id = pb_setup_id_int if ok else None
+                    except ValueError:
+                        trade.playbook_setup_id = None
+                else:
                     trade.playbook_setup_id = None
-            else:
-                trade.playbook_setup_id = None
             
             # Recalculate metrics
             if trade.exit_price:

@@ -1968,16 +1968,20 @@
                                 <i class="fas fa-clipboard-list"></i> Planner
                             </a>
                         </li>
+                        {% if feature_playbook %}
                         <li class="nav-item d-none d-lg-block">
                             <a class="nav-link" href="{{ url_for('playbook.index') }}">
                                 <i class="fas fa-book-open"></i> Playbook
                             </a>
                         </li>
+                        {% endif %}
+                        {% if feature_replay %}
                         <li class="nav-item d-none d-lg-block">
                             <a class="nav-link" href="{{ url_for('replay.index') }}">
                                 <i class="fas fa-film"></i> Replay
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item d-none d-lg-block">
                             <a class="nav-link" href="{{ url_for('dashboard.analytics') }}">
                                 <i class="fas fa-chart-bar"></i> Analytics
@@ -2113,18 +2117,22 @@
                     <i class="fas fa-clipboard-list"></i> Trade Planner
                 </a>
             </li>
+            {% if feature_playbook %}
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint and request.endpoint.startswith('playbook.') %}active{% endif %}"
                    href="{{ url_for('playbook.index') }}">
                     <i class="fas fa-book-open"></i> Playbook
                 </a>
             </li>
+            {% endif %}
+            {% if feature_replay %}
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint and request.endpoint.startswith('replay.') %}active{% endif %}"
                    href="{{ url_for('replay.index') }}">
                     <i class="fas fa-film"></i> Replay
                 </a>
             </li>
+            {% endif %}
             <li class="nav-item mt-3 border-top border-secondary pt-2">
                 <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}">
                     <i class="fas fa-sign-out-alt"></i> Logout
@@ -2220,6 +2228,7 @@
                                 <span>Trade Planner</span>
                             </a>
                         </li>
+                        {% if feature_playbook %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint and request.endpoint.startswith('playbook.') %}active{% endif %}"
                                href="{{ url_for('playbook.index') }}">
@@ -2227,6 +2236,8 @@
                                 <span>Playbook</span>
                             </a>
                         </li>
+                        {% endif %}
+                        {% if feature_replay %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint and request.endpoint.startswith('replay.') %}active{% endif %}"
                                href="{{ url_for('replay.index') }}">
@@ -2234,6 +2245,7 @@
                                 <span>Replay</span>
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item mt-3">
                             <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}">
                                 <i class="fas fa-sign-out-alt"></i>

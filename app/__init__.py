@@ -73,6 +73,10 @@ def create_app(config_name='default'):
     
     # Import models (inside app context to avoid circular imports)
     with app.app_context():
+        from app import schema_compat
+
+        schema_compat.refresh(app)
+
         from app.models import user, trade
         from app.models.trade_plan import TradePlan
         from app.models.performance_score import PerformanceScore
@@ -125,6 +129,8 @@ def create_app(config_name='default'):
     from app.routes import planner, instruments
     from app.routes import playbook
     from app.routes import replay
+
+    tv_schema = app.extensions.get("tradeverse_schema") or {}
     
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
@@ -132,8 +138,10 @@ def create_app(config_name='default'):
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(planner.bp)
     app.register_blueprint(instruments.bp)
-    app.register_blueprint(playbook.bp)
-    app.register_blueprint(replay.bp)
+    if tv_schema.get("playbook_ready"):
+        app.register_blueprint(playbook.bp)
+    if tv_schema.get("replay_ready"):
+        app.register_blueprint(replay.bp)
 
     # Register admin blueprint
     from app.routes import admin
@@ -406,3 +414,13 @@ def register_context_processors(app):
         except Exception:
             cd = None
         return {'global_active_cooldown': cd}
+
+    @app.context_processor
+    def inject_tradeverse_optional_features():
+        """Expose feature flags when Playbook/Replay migrations are not applied yet."""
+        tv = app.extensions.get("tradeverse_schema") or {}
+        # Require blueprint + schema so url_for(playbook.index) can't run when routes were not registered at boot.
+        return {
+            'feature_playbook': bool(tv.get('playbook_ready') and ('playbook' in app.blueprints)),
+            'feature_replay': bool(tv.get('replay_ready') and ('replay' in app.blueprints)),
+        }

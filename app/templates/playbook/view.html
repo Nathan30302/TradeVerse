@@ -103,7 +103,9 @@
                                     <tr>
                                         <th>Trade</th>
                                         <th class="text-end">P/L</th>
+                                        {% if feature_replay %}
                                         <th class="text-end">Replay</th>
+                                        {% endif %}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -120,11 +122,13 @@
                                                 <span class="text-muted">—</span>
                                             {% endif %}
                                         </td>
+                                        {% if feature_replay %}
                                         <td class="text-end">
                                             <a class="btn btn-sm btn-outline-dark" href="{{ url_for('replay.trade_replay', trade_id=t.id) }}">
                                                 Open
                                             </a>
                                         </td>
+                                        {% endif %}
                                     </tr>
                                     {% endfor %}
                                 </tbody>

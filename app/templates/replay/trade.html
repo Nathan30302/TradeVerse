@@ -14,7 +14,7 @@
     <div class="small text-muted mt-1">
       Entry: {{ trade.entry_date.strftime('%Y-%m-%d %H:%M') if trade.entry_date else '—' }}
       {% if trade.exit_date %} · Exit: {{ trade.exit_date.strftime('%Y-%m-%d %H:%M') }}{% endif %}
-      {% if trade.playbook_setup_id %} · <a href="{{ url_for('playbook.view', setup_id=trade.playbook_setup_id) }}">Playbook setup</a>{% endif %}
+      {% if feature_playbook and trade.playbook_setup_id %} · <a href="{{ url_for('playbook.view', setup_id=trade.playbook_setup_id) }}">Playbook setup</a>{% endif %}
     </div>
   </div>
   <div class="d-flex flex-wrap gap-2">

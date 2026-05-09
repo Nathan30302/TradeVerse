@@ -135,7 +135,9 @@
                 </h1>
                 <p class="page-subtitle mb-0">
                     Build your edge: keep a tight playbook, trade your best setups, and review weekly.
+                    {% if feature_playbook %}
                     <a class="ms-1" href="{{ url_for('playbook.index') }}">Open Playbook →</a>
+                    {% endif %}
                 </p>
             </div>
             <div class="col-auto">

@@ -211,7 +211,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
                             <label for="strategy" class="form-label fw-bold">Strategy</label>
                             <select class="form-select" id="strategy" name="strategy">
                                 <option value="">Select strategy...</option>
@@ -223,7 +223,7 @@
                             </select>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
                             <label for="session_type" class="form-label fw-bold">Trading Session</label>
                             <select class="form-select" id="session_type" name="session_type">
                                 <option value="">Select session...</option>
@@ -235,7 +235,7 @@
                             </select>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
                             <label for="timeframe" class="form-label fw-bold">Timeframe</label>
                             <select class="form-select" id="timeframe" name="timeframe">
                                 <option value="">Select...</option>
@@ -250,6 +250,7 @@
                             </select>
                         </div>
 
+                        {% if feature_playbook %}
                         <div class="col-md-3">
                             <label for="playbook_setup_id" class="form-label fw-bold">Playbook setup</label>
                             <select class="form-select" id="playbook_setup_id" name="playbook_setup_id">
@@ -262,6 +263,7 @@
                                 Link this trade to a setup so you can track setup stats and build Replay faster.
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
