@@ -46,7 +46,8 @@ class Config:
     # File Upload Configuration
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     UPLOAD_FOLDER = os.path.join('app', 'static', 'uploads')
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+    # Screenshots use png/jpg/webp/heic; pdf kept for other uploads (e.g. statements).
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'pdf'}
     
     # Pagination
     ITEMS_PER_PAGE = 20

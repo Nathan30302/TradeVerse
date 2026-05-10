@@ -40,7 +40,10 @@ def _save_screenshot(file, prefix='trade'):
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = secure_filename(file.filename)
     unique_name = f"{prefix}_{current_user.id}_{timestamp}_{filename}"
-    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'trade_screenshots')
+    upload_dir = (
+        current_app.config.get('TRADE_SCREENSHOTS_FOLDER')
+        or os.path.join(current_app.root_path, 'static', 'uploads', 'trade_screenshots')
+    )
     os.makedirs(upload_dir, exist_ok=True)
     file.save(os.path.join(upload_dir, unique_name))
     return f"uploads/trade_screenshots/{unique_name}"
@@ -168,6 +171,11 @@ def new_plan():
                 path = _save_screenshot(form.screenshot_before.data, 'before')
                 if path:
                     plan.screenshot_before_path = path
+                else:
+                    flash(
+                        'Before screenshot was not saved (use PNG, JPG, GIF, WebP, or HEIC).',
+                        'warning',
+                    )
 
             plan.calculate_plan_quality()
             db.session.add(plan)
@@ -396,6 +404,11 @@ def execute_plan(plan_id):
                 path = _save_screenshot(form.screenshot_after.data, 'after')
                 if path:
                     plan.screenshot_after_path = path
+                else:
+                    flash(
+                        'After screenshot was not saved (use PNG, JPG, GIF, WebP, or HEIC).',
+                        'warning',
+                    )
 
             # --- Finalise plan ---
             plan.mark_as_reviewed()
@@ -455,6 +468,11 @@ def edit_plan(plan_id):
                 path = _save_screenshot(form.screenshot_before.data, 'before')
                 if path:
                     plan.screenshot_before_path = path
+                else:
+                    flash(
+                        'Before screenshot was not saved (use PNG, JPG, GIF, WebP, or HEIC).',
+                        'warning',
+                    )
 
             db.session.commit()
             flash('✅ Trade plan updated!', 'success')

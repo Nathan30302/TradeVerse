@@ -3,8 +3,10 @@ Main Routes
 Homepage and general application routes
 """
 
-from flask import Blueprint, render_template, redirect, url_for, request, jsonify, send_from_directory, current_app
-from flask_login import current_user
+import os
+
+from flask import Blueprint, render_template, redirect, url_for, request, jsonify, send_from_directory, current_app, abort
+from flask_login import login_required, current_user
 from app.models.instrument import Instrument
 from datetime import datetime, date
 
@@ -125,6 +127,36 @@ def terms():
 def privacy():
     """Privacy policy — how we handle account and usage data."""
     return render_template('main/privacy.html')
+
+
+@bp.route('/planner-screenshot/<path:stored>')
+@login_required
+def planner_screenshot_file(stored):
+    """
+    Serve Trade Planner before/after images.
+
+    Files may live under TRADE_SCREENSHOTS_FOLDER (production volume / tmp) or
+    app/static/uploads/trade_screenshots (development). DB stores paths like
+    uploads/trade_screenshots/name.png.
+    """
+    rel = (stored or '').replace('\\', '/').strip()
+    prefix = 'uploads/trade_screenshots/'
+    if not rel.startswith(prefix):
+        abort(404)
+    fname = rel[len(prefix) :].strip()
+    if not fname or '..' in fname or fname.startswith('/'):
+        abort(404)
+
+    cfg_dir = current_app.config.get('TRADE_SCREENSHOTS_FOLDER')
+    static_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'trade_screenshots')
+
+    for folder in (cfg_dir, static_dir):
+        if not folder:
+            continue
+        full = os.path.join(folder, fname)
+        if os.path.isfile(full):
+            return send_from_directory(folder, fname)
+    abort(404)
 
 
 @bp.route('/api/calculate-pnl', methods=['POST'])

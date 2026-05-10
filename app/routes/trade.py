@@ -21,6 +21,7 @@ from io import StringIO
 from sqlalchemy import or_
 from sqlalchemy.orm import load_only
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import HTTPException
 import os
 from math import ceil
 import builtins
@@ -578,8 +579,11 @@ def view(trade_id):
             feedbacks=feedbacks,
             linked_plans=linked_plans,
         )
-        
-    except Exception as e:
+
+    except HTTPException:
+        # Preserve real 404/403 responses — do not flash a misleading DB/template error.
+        raise
+    except Exception:
         # Clear any aborted transaction state before redirecting.
         try:
             db.session.rollback()

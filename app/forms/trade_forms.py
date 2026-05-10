@@ -84,7 +84,7 @@ class TradePlanBeforeForm(FlaskForm):
     screenshot_before = FileField(
         'Before Screenshot (Chart Analysis)',
         validators=[
-            FileAllowed(['png', 'jpg', 'jpeg', 'gif', 'webp'], 'Images only!')
+            FileAllowed(['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'], 'Images only!')
         ]
     )
     
@@ -149,7 +149,7 @@ class TradePlanAfterForm(FlaskForm):
     screenshot_after = FileField(
         'After Screenshot (Result)',
         validators=[
-            FileAllowed(['png', 'jpg', 'jpeg', 'gif', 'webp'], 'Images only!')
+            FileAllowed(['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'], 'Images only!')
         ]
     )
     
@@ -261,7 +261,7 @@ class TradePlanForm(FlaskForm):
     screenshot_before = FileField(
         'Upload Chart Screenshot (Before)',
         validators=[
-            FileAllowed(['png', 'jpg', 'jpeg', 'gif', 'webp'], 'Images only!')
+            FileAllowed(['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'], 'Images only!')
         ]
     )
     
@@ -343,7 +343,7 @@ class TradeReviewForm(FlaskForm):
     screenshot_after = FileField(
         'Upload Chart Screenshot (After)',
         validators=[
-            FileAllowed(['png', 'jpg', 'jpeg', 'gif', 'webp'], 'Images only!')
+            FileAllowed(['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'], 'Images only!')
         ]
     )
     

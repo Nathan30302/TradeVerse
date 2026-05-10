@@ -443,6 +443,22 @@ def register_context_processors(app):
         }
 
     @app.context_processor
+    def inject_planner_screenshot_url():
+        """URLs for planner images (works when files live on TRADE_SCREENSHOTS_FOLDER or under static/)."""
+
+        def planner_screenshot_url(stored_path):
+            from flask import url_for
+
+            if not stored_path:
+                return ''
+            try:
+                return url_for('main.planner_screenshot_file', stored=stored_path)
+            except Exception:
+                return ''
+
+        return {'planner_screenshot_url': planner_screenshot_url}
+
+    @app.context_processor
     def inject_owner_platform():
         """Owner analytics: RBAC allowlist or /owner/unlock session (SECRET_KEY / OWNER_ADMIN_TOKEN)."""
         from flask import session

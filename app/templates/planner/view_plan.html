@@ -145,12 +145,12 @@
                     <small class="text-muted ms-2">Click to enlarge</small>
                 </h6>
                 <div class="screenshot-thumbnail-container">
-                    <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}" 
+                    <img src="{{ planner_screenshot_url(plan.screenshot_before_path) }}" 
                          class="img-fluid rounded shadow-sm screenshot-thumbnail" 
                          alt="Before trade screenshot"
                          data-bs-toggle="modal" 
                          data-bs-target="#screenshotModal"
-                         data-screenshot-src="{{ url_for('static', filename=plan.screenshot_before_path) }}"
+                         data-screenshot-src="{{ planner_screenshot_url(plan.screenshot_before_path) }}"
                          style="cursor: pointer; transition: transform 0.2s;"
                          onmouseover="this.style.transform='scale(1.02)'"
                          onmouseout="this.style.transform='scale(1)'">
@@ -238,12 +238,12 @@
                         <small class="text-muted ms-2">Click to enlarge</small>
                     </h6>
                     <div class="screenshot-thumbnail-container">
-                        <img src="{{ url_for('static', filename=plan.screenshot_after_path) }}" 
+                        <img src="{{ planner_screenshot_url(plan.screenshot_after_path) }}" 
                              class="img-fluid rounded shadow-sm screenshot-thumbnail" 
                              alt="After trade screenshot"
                              data-bs-toggle="modal" 
                              data-bs-target="#screenshotModal"
-                             data-screenshot-src="{{ url_for('static', filename=plan.screenshot_after_path) }}"
+                             data-screenshot-src="{{ planner_screenshot_url(plan.screenshot_after_path) }}"
                              style="cursor: pointer; transition: transform 0.2s;"
                              onmouseover="this.style.transform='scale(1.02)'"
                              onmouseout="this.style.transform='scale(1)'">

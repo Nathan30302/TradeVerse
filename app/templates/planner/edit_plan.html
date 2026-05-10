@@ -255,7 +255,7 @@
                         {% if plan.screenshot_before_path %}
                         <div class="text-center mb-3">
                             <p class="text-muted small mb-2">Current screenshot:</p>
-                            <img src="{{ url_for('static', filename=plan.screenshot_before_path) }}" class="current-screenshot" alt="Current">
+                            <img src="{{ planner_screenshot_url(plan.screenshot_before_path) }}" class="current-screenshot" alt="Current">
                         </div>
                         {% endif %}
                         

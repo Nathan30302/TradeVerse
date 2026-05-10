@@ -348,12 +348,18 @@ class Trade(db.Model):
     
     # ==================== Plan Methods ====================
     def has_plan(self):
-        """Check if trade has an associated plan"""
-        return self.plan is not None
-    
+        """Check if trade has an associated plan (legacy trade_id link or planner execution)."""
+        if self.plan is not None:
+            return True
+        # Trade created from Trade Planner uses TradePlan.executed_trade_id; trade_id may be unset.
+        ep = getattr(self, "executed_plan", None)
+        return ep is not None
+
     def get_plan(self):
-        """Get the trade plan"""
-        return self.plan
+        """Return the linked TradePlan (legacy or executed-from-planner)."""
+        if self.plan is not None:
+            return self.plan
+        return getattr(self, "executed_plan", None)
     
     # ==================== Utility Methods ====================
     def to_dict(self):
