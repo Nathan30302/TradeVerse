@@ -13,11 +13,67 @@
 
 {% if not mail_configured %}
 <div class="alert alert-warning border-0 mb-4">
-    <strong>Mail not wired up.</strong> Add <code class="small">MAIL_USERNAME</code>, <code class="small">MAIL_PASSWORD</code>,
-    and typically <code class="small">MAIL_DEFAULT_SENDER</code> (or rely on username as sender) in your environment.
-    On Render, attach these to your web service and redeploy.
+    <strong>Mail not wired up on the server yet.</strong> You can still reach everyone: use <strong>Copy all addresses</strong>
+    below and paste into Gmail <strong>BCC</strong>, or follow <strong>Gmail App Password</strong> so bulk send works from this page.
+    Env vars: <code class="small">MAIL_USERNAME</code>, <code class="small">MAIL_PASSWORD</code> (see Gmail steps below),
+    on Render attach them to the web service and redeploy.
 </div>
 {% endif %}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0 h-100">
+            <div class="card-header border-0 text-white py-3">
+                <i class="fab fa-google me-2 text-danger"></i>Gmail App Password (for bulk send here)
+            </div>
+            <div class="card-body text-secondary small">
+                <p class="mb-2">
+                    Logging into Gmail in your phone or browser uses your <strong>normal password</strong>.
+                    TradeVerse sends mail <strong>from the server</strong> (like Outlook “SMTP”). Google does not allow your normal password there,
+                    so you create a separate <strong>App Password</strong>—one long code—to paste into <code class="text-light">MAIL_PASSWORD</code>.
+                </p>
+                <ol class="mb-3 ps-3">
+                    <li class="mb-2">Open <a href="https://myaccount.google.com/security" target="_blank" rel="noopener">Google Account → Security</a>.</li>
+                    <li class="mb-2">Turn on <strong>2-Step Verification</strong> if it is not on yet.</li>
+                    <li class="mb-2">Search for <strong>App passwords</strong> (or “App passwords” under 2-Step Verification).</li>
+                    <li class="mb-2">Create one for “Mail” / “Other” → copy the <strong>16-character</strong> password (spaces optional).</li>
+                    <li class="mb-0">On your host (e.g. Render), set <code class="text-light">MAIL_USERNAME</code> = your Gmail address (e.g. {{ support_email }}),
+                        <code class="text-light">MAIL_PASSWORD</code> = that App Password, redeploy, then use <strong>Send test</strong> on this page.</li>
+                </ol>
+                <p class="mb-0 text-muted border-top border-secondary pt-3 small">
+                    If you prefer not to set this up, use the panel on the right: copy addresses and send one campaign from Gmail yourself (use BCC).
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card tv-panel border-0 h-100">
+            <div class="card-header border-0 text-white py-3">
+                <i class="fas fa-copy me-2 text-info"></i>Copy all user emails (Gmail / manual)
+            </div>
+            <div class="card-body">
+                <p class="text-secondary small mb-2">
+                    Same list as “All registered” recipients. Paste into Gmail’s <strong>BCC</strong> field so each person does not see others’ addresses.
+                    Put your own address in <strong>To</strong>. Write your message (e.g. TradeVerse is easier to find now, new features).
+                </p>
+                <label class="form-label text-secondary small fw-semibold mb-1" for="owner-email-list-textarea">Addresses (one per line)</label>
+                <textarea class="form-control bg-dark text-white border-secondary font-monospace small"
+                          id="owner-email-list-textarea" rows="10" readonly>{{ registered_emails_text }}</textarea>
+                <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+                    <button type="button" class="btn btn-info btn-sm rounded-pill px-3" id="copy-all-emails-btn">
+                        <i class="fas fa-clipboard me-1"></i>Copy all
+                    </button>
+                    <a class="btn btn-outline-secondary btn-sm rounded-pill"
+                       href="{{ url_for('owner_admin.download_user_emails_list') }}">
+                        <i class="fas fa-download me-1"></i>Download .txt
+                    </a>
+                    <span class="small text-muted ms-auto"><strong class="text-light">{{ registered_email_count }}</strong> addresses</span>
+                </div>
+                <p class="text-muted small mb-0 mt-2" id="copy-emails-feedback" aria-live="polite"></p>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="row g-4">
     <div class="col-lg-7">
@@ -125,4 +181,41 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var btn = document.getElementById('copy-all-emails-btn');
+  var ta = document.getElementById('owner-email-list-textarea');
+  var fb = document.getElementById('copy-emails-feedback');
+  if (!btn || !ta) return;
+  btn.addEventListener('click', function () {
+    var text = ta.value || '';
+    function ok() {
+      if (fb) { fb.textContent = 'Copied to clipboard.'; }
+    }
+    function fail() {
+      if (fb) { fb.textContent = 'Select all in the box and copy (Ctrl/Cmd+C).'; }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok).catch(function () {
+        try {
+          ta.focus();
+          ta.select();
+          ta.setSelectionRange(0, text.length);
+          if (document.execCommand('copy')) ok(); else fail();
+        } catch (e) { fail(); }
+      });
+    } else {
+      try {
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, text.length);
+        if (document.execCommand('copy')) ok(); else fail();
+      } catch (e) { fail(); }
+    }
+  });
+})();
+</script>
 {% endblock %}

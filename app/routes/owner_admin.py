@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 from flask import (
     Blueprint,
+    Response,
     abort,
     current_app,
     flash,
@@ -113,6 +114,28 @@ def _safe_scalar(q):
         except Exception:
             pass
         return 0
+
+
+def _active_user_emails_ordered() -> list[str]:
+    """Email addresses for active users who have a non-empty email (signup order by id)."""
+    try:
+        rows = (
+            db.session.query(User.email)
+            .filter(
+                User.is_active.is_(True),
+                User.email.isnot(None),
+                User.email != "",
+            )
+            .order_by(User.id.asc())
+            .all()
+        )
+        return [str(r[0]).strip() for r in rows if r and r[0]]
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return []
 
 
 def _active_traders_7d(week_ago_naive: datetime) -> int:
@@ -438,6 +461,8 @@ def email_outreach():
         )
     )
 
+    emails = _active_user_emails_ordered()
+
     return render_template(
         "owner_admin/email_outreach.html",
         mail_configured=mail_ok,
@@ -447,6 +472,34 @@ def email_outreach():
         recipient_count_inactive=n_inactive,
         inactive_days_default=inactive_default,
         max_per_run=max_per_run,
+        registered_emails_text="\n".join(emails),
+        registered_email_count=len(emails),
+        support_email=(cfg.get("SUPPORT_EMAIL") or "tradeversesupport@gmail.com"),
+    )
+
+
+@bp.route("/email/user-emails.txt")
+@login_required
+def download_user_emails_list():
+    """
+    Plain-text download of active user emails (one per line) for manual outreach (e.g. Gmail BCC).
+    Owner console access only.
+    """
+    gate = _owner_gate()
+    if gate:
+        return gate
+
+    emails = _active_user_emails_ordered()
+    body = "\n".join(emails)
+    if body:
+        body += "\n"
+    return Response(
+        body,
+        mimetype="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="tradeverse-active-user-emails.txt"',
+            "Cache-Control": "no-store",
+        },
     )
 
 
