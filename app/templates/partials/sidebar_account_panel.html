@@ -15,7 +15,7 @@
                     <span class="badge rounded-pill bg-warning text-dark">Admin</span>
                 {% elif sub.status == 'trialing' %}
                     <span class="badge rounded-pill bg-info text-dark">
-                        {% if sub.tier == 'pro_plus' %}Pro Plus trial{% elif sub.tier == 'pro' %}Pro trial{% else %}Trial{% endif %}
+                        {% if sub.tier == 'pro_plus' %}{{ trial_period_days }}-day Pro Plus trial{% elif sub.tier == 'pro' %}Pro trial{% else %}Trial{% endif %}
                     </span>
                 {% elif sub.tier == 'pro_plus' %}
                     <span class="badge rounded-pill bg-primary">Pro Plus</span>
@@ -27,7 +27,13 @@
             </div>
             {% if sub.trial_ends_at and sub.status == 'trialing' %}
             <div class="small text-muted mt-1 text-truncate" title="{{ sub.trial_ends_at.isoformat() if sub.trial_ends_at else '' }}">
-                <i class="far fa-clock me-1"></i>Until {{ sub.trial_ends_at.strftime('%b %d, %Y') }}
+                <i class="far fa-clock me-1"></i>
+                {% if trial_days_remaining is not none %}
+                    <strong>{{ trial_days_remaining }}</strong> day{% if trial_days_remaining != 1 %}s{% endif %} left
+                    <span class="opacity-75">· ends {{ sub.trial_ends_at.strftime('%b %d, %Y') }}</span>
+                {% else %}
+                    Until {{ sub.trial_ends_at.strftime('%b %d, %Y') }}
+                {% endif %}
             </div>
             {% endif %}
         </div>

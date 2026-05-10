@@ -159,6 +159,89 @@ def register_commands(app):
             db.session.commit()
         click.echo(f'Downgraded {changed} expired trials.')
 
+    @app.cli.command('send-trial-reminders')
+    @click.option(
+        '--days-left',
+        default='7,3,1',
+        help='Comma-separated exact days remaining to notify (e.g. 7,3,1). Run daily via cron.',
+    )
+    def send_trial_reminders(days_left: str):
+        """
+        Email users whose Pro Plus trial hits specific \"days left\" milestones.
+
+        Uses persisted trial_ends_at + subscription_status=trialing. Requires the same
+        SMTP env vars as other mail commands (MAIL_USERNAME, MAIL_PASSWORD, sender).
+
+        Schedule example (cron): 0 10 * * * cd /app && flask send-trial-reminders
+        """
+        from flask_mail import Message
+        from app import mail
+        from app.models.user import User
+
+        sender = current_app.config.get('MAIL_DEFAULT_SENDER') or current_app.config.get('MAIL_USERNAME')
+        if not sender or not current_app.config.get('MAIL_USERNAME') or not current_app.config.get('MAIL_PASSWORD'):
+            click.echo('Mail not configured; skipping trial reminders.')
+            return
+
+        try:
+            match_days = {int(x.strip()) for x in days_left.split(',') if x.strip()}
+        except ValueError:
+            click.echo('Invalid --days-left; use integers like 7,3,1')
+            return
+
+        now = datetime.now(timezone.utc)
+        support = (current_app.config.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com').strip()
+        base_url = (current_app.config.get('PUBLIC_SITE_URL') or '').strip().rstrip('/')
+
+        users = User.query.filter(
+            User.is_active.is_(True),
+            User.email.isnot(None),
+            User.email != '',
+            User.subscription_status == 'trialing',
+            User.trial_ends_at.isnot(None),
+        ).all()
+
+        sent = 0
+        for u in users:
+            end = u.trial_ends_at
+            if end is None:
+                continue
+            if getattr(end, 'tzinfo', None) is None:
+                end = end.replace(tzinfo=timezone.utc)
+            else:
+                end = end.astimezone(timezone.utc)
+            left = max(0, (end - now).days)
+            if left not in match_days:
+                continue
+
+            msg = Message(
+                subject=f'TradeVerse: {left} day{"s" if left != 1 else ""} left on your Pro Plus trial',
+                sender=sender,
+                recipients=[u.email],
+            )
+            lines = [
+                f'Hi {u.username},',
+                '',
+                f'Your TradeVerse Pro Plus trial has {left} day{"s" if left != 1 else ""} remaining '
+                f'(ends {end.strftime("%b %d, %Y")}).',
+                '',
+                'If you want help getting the most from your journal, reply to this email or write to '
+                f'{support}.',
+                '',
+            ]
+            if base_url:
+                lines.append(f'Open TradeVerse: {base_url}')
+                lines.append('')
+            lines.append('— TradeVerse')
+            msg.body = '\n'.join(lines)
+            try:
+                mail.send(msg)
+                sent += 1
+            except Exception:
+                continue
+
+        click.echo(f'Sent {sent} trial reminder(s).')
+
     @app.cli.command('admin-timed-link')
     @click.option(
         '--base-url',

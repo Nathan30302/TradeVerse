@@ -7,13 +7,14 @@
   <div class="row justify-content-center">
     <div class="col-lg-8">
       <h1 class="display-6 fw-bold mb-3">Contact</h1>
-      <p class="text-muted mb-4">
-        For support or feedback, email us at
-        <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
+      <p class="text-muted mb-3">
+        Email
+        <a href="mailto:{{ support_email }}?subject={{ ('TradeVerse — feedback or ideas')|urlencode }}&amp;body={{ ('Hi TradeVerse team,%0D%0A%0D%0A') }}">{{ support_email }}</a>
+        for anything related to TradeVerse: questions, bugs, feature ideas, how you’d like the product to evolve, or a short success story if we’ve helped your process (similar to community feedback on TradingView).
         We typically reply within one to two business days.
       </p>
       <div class="alert alert-info mb-0" role="alert">
-        If you’re reporting a bug, include your username and the approximate time the error occurred.
+        For bugs, include your username and when the issue happened. For suggestions or wins, a sentence or two is enough — we read everything.
       </div>
     </div>
   </div>

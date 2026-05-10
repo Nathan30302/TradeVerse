@@ -71,6 +71,8 @@ class Config:
 
     # Public support contact (mailto + footer). Override via SUPPORT_EMAIL if needed.
     SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com'
+    # Optional absolute site URL for transactional emails (trial reminders, etc.).
+    PUBLIC_SITE_URL = (os.environ.get('PUBLIC_SITE_URL') or '').strip().rstrip('/')
     
     # Trading Instruments
     INSTRUMENTS = [

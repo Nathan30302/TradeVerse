@@ -133,14 +133,21 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     force_all_trial = (os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL", "1") or "1").strip().lower() in {"1", "true", "yes", "on"}
     if force_all_trial:
         days = int(os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL_DAYS", "60") or "60")
-        forced_end = now + timedelta(days=days)
-        return SubscriptionState(
-            tier="pro_plus",
-            status="trialing",
-            is_active=True,
-            trial_ends_at=forced_end,
-            subscription_expires_at=None,
-        )
+        created = _as_utc_aware(_safe_getattr(user, "created_at", None)) or now
+        # Anchor trial end to signup (DB column or created_at), not "now + N days" per request.
+        if trial_ends_at:
+            trial_end = trial_ends_at
+        else:
+            trial_end = created + timedelta(days=days)
+        if trial_end >= now:
+            return SubscriptionState(
+                tier="pro_plus",
+                status="trialing",
+                is_active=True,
+                trial_ends_at=trial_end,
+                subscription_expires_at=None,
+            )
+        # Marketing trial window elapsed — use normal tier logic below.
 
     # Owner/admin bypass: full access without billing enforcement.
     if role in {"owner"} or is_owner_user(user):
@@ -165,6 +172,18 @@ def get_effective_subscription_state(user) -> SubscriptionState:
         return SubscriptionState(tier=tier, status="canceled", is_active=False, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
 
     return SubscriptionState(tier=tier, status=status, is_active=False, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
+
+
+def get_trial_days_remaining(user) -> Optional[int]:
+    """Whole calendar days left in the effective trial, or None if not trialing."""
+    st = get_effective_subscription_state(user)
+    if st.status != "trialing" or not st.trial_ends_at:
+        return None
+    end = _as_utc_aware(st.trial_ends_at)
+    if not end:
+        return None
+    delta = end - _utcnow()
+    return max(0, int(delta.total_seconds() // 86400))
 
 
 def user_has_feature(user, feature: str) -> bool:

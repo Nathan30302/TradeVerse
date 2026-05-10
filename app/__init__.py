@@ -422,6 +422,20 @@ def register_context_processors(app):
         return {'has_feature': has_feature}
 
     @app.context_processor
+    def inject_trial_countdown():
+        """Days left in Pro Plus trial + configured trial length (for UI copy)."""
+        import os
+        from app.services.entitlements import get_trial_days_remaining
+
+        period = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
+        if not getattr(current_user, 'is_authenticated', False):
+            return {'trial_days_remaining': None, 'trial_period_days': period}
+        return {
+            'trial_days_remaining': get_trial_days_remaining(current_user),
+            'trial_period_days': period,
+        }
+
+    @app.context_processor
     def inject_cooldown():
         """
         Provide active cooldown to all templates so base.html can enforce a global lock overlay.
