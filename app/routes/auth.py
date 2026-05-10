@@ -13,11 +13,30 @@ import re
 from flask_mail import Message
 from app import mail
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError, ProgrammingError, InternalError
+from sqlalchemy.exc import OperationalError, ProgrammingError, InternalError, IntegrityError
 from sqlalchemy.orm import load_only
 
 # Create Blueprint
 bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+
+def _safe_trial_days_pro_plus() -> int:
+    """Parse TV_TRIAL_DAYS_PRO_PLUS; invalid values must not break registration."""
+    default = 60
+    raw = os.environ.get('TV_TRIAL_DAYS_PRO_PLUS')
+    if raw is None or str(raw).strip() == '':
+        return default
+    try:
+        n = int(raw)
+        return max(1, min(n, 3650))
+    except (TypeError, ValueError):
+        current_app.logger.warning(
+            'Invalid TV_TRIAL_DAYS_PRO_PLUS=%r; using default %s',
+            raw,
+            default,
+        )
+        return default
+
 
 # ==================== Registration ====================
 
@@ -85,7 +104,7 @@ def register():
         # Create new user
         try:
             now = datetime.now(timezone.utc)
-            trial_days = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
+            trial_days = _safe_trial_days_pro_plus()
             utm_src = (request.form.get('signup_utm_source') or '').strip()[:255]
             new_user = User(
                 username=username,
@@ -103,7 +122,7 @@ def register():
                 except Exception:
                     pass
             new_user.set_password(password)
-            
+
             db.session.add(new_user)
             db.session.commit()
 
@@ -124,13 +143,26 @@ def register():
                     mail.send(msg)
             except Exception:
                 pass
-            
-            flash(f'🎉 Welcome to TradeVerse, {username}! Your account has been created successfully.', 'success')
-            flash('📊 You can now log in and start tracking your trades!', 'info')
-            
-            return redirect(url_for('auth.login'))
-            
-        except Exception as e:
+
+            login_user(new_user, remember=False)
+            flash(
+                f'🎉 Welcome to TradeVerse, {username}! Your account is ready — you are signed in.',
+                'success',
+            )
+            return redirect(url_for('dashboard.index'))
+
+        except IntegrityError:
+            db.session.rollback()
+            flash(
+                'That username or email is already registered. Try signing in or use different details.',
+                'danger',
+            )
+            utm_keep = (
+                (request.form.get('signup_utm_source') or request.args.get('utm_source') or '').strip()
+            )[:255]
+            return render_template("auth/register.html", signup_utm_default=utm_keep)
+
+        except Exception:
             db.session.rollback()
             flash('❌ An error occurred during registration. Please try again.', 'danger')
             current_app.logger.exception("Registration error")

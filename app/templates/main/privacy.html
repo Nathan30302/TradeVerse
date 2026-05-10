@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-9 mx-auto">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 p-md-5">
+                    <h1 class="h3 mb-3">Privacy Policy</h1>
+                    <p class="text-muted mb-4">
+                        This policy describes how {{ app_name }} collects, uses, and protects information when you use our service.
+                        Last updated: May 2026.
+                    </p>
+
+                    <h2 class="h5 mt-4">Information we collect</h2>
+                    <p class="mb-0">
+                        We collect information you provide when you create an account (such as username, email, and password hash),
+                        content you add to your journal (trades, notes, screenshots you upload), and preferences you set in the app
+                        (for example theme or currency). We may also record technical data needed to operate the service
+                        (such as approximate timestamps and basic diagnostics).
+                    </p>
+
+                    <h2 class="h5 mt-4">How we use information</h2>
+                    <p class="mb-0">
+                        We use your information to provide and improve {{ app_name }}, authenticate you, show your data back to you,
+                        and communicate important account or security notices. Marketing emails are sent only when we have a lawful basis
+                        and you can opt out where applicable.
+                    </p>
+
+                    <h2 class="h5 mt-4">Cookies and sessions</h2>
+                    <p class="mb-0">
+                        We use cookies or similar technologies to keep you signed in securely and to protect forms (including CSRF protection).
+                        You can clear cookies in your browser; doing so may sign you out.
+                    </p>
+
+                    <h2 class="h5 mt-4">Data retention and deletion</h2>
+                    <p class="mb-0">
+                        We retain your data while your account is active and as needed to comply with legal obligations.
+                        You may request deletion of your account through in-app account settings where available; deletion removes your
+                        journal data associated with that account subject to any backups or legal holds we must maintain.
+                    </p>
+
+                    <h2 class="h5 mt-4">Security</h2>
+                    <p class="mb-0">
+                        We take reasonable measures to protect your information. No online service can guarantee perfect security;
+                        use a strong, unique password and protect access to your devices.
+                    </p>
+
+                    <h2 class="h5 mt-4">Third parties</h2>
+                    <p class="mb-0">
+                        We may use trusted providers (for example hosting, email delivery, or payments) who process data on our behalf under appropriate agreements.
+                        {{ app_name }} is not a broker and does not execute trades on your behalf.
+                    </p>
+
+                    <h2 class="h5 mt-4">Children</h2>
+                    <p class="mb-0">
+                        {{ app_name }} is not directed at children under the age required by applicable law to consent without parental approval.
+                    </p>
+
+                    <h2 class="h5 mt-4">Contact</h2>
+                    <p class="mb-0">
+                        For privacy-related requests, use the <a href="{{ url_for('main.contact') }}">contact</a> page after signing in or as described there.
+                    </p>
+
+                    <hr class="my-4">
+                    <p class="text-muted small mb-0">
+                        For trading disclaimers, see our <a href="{{ url_for('main.terms') }}">Terms &amp; Disclaimer</a>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -23,6 +23,8 @@ USER_OPTIONAL_COLUMNS: FrozenSet[str] = frozenset(
         "subscription_expires_at",
         "stripe_customer_id",
         "weekly_focus_rule",
+        "signup_utm_source",
+        "exports_blocked",
     }
 )
 
