@@ -69,8 +69,9 @@ class Config:
     UI_THEME_CHOICES = ('light', 'dark', 'blue', 'midnight', 'sand')
     ALLOWED_UI_THEMES = frozenset(UI_THEME_CHOICES)
 
-    # Public support contact — override via SUPPORT_EMAIL in production
-    SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL') or 'support@tradeverse.com'
+    # Public support contact (mailto + footer). Default is a free Gmail-style address —
+    # create that inbox at gmail.com, or set SUPPORT_EMAIL to any mailbox you control.
+    SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL') or 'tradebase.help@gmail.com'
     
     # Trading Instruments
     INSTRUMENTS = [

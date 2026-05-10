@@ -408,7 +408,7 @@ def register_context_processors(app):
             'app_version': app.config.get('APP_VERSION'),
             'random_quote': random.choice(app.config.get('QUOTES', [])),
             'maintenance_mode': bool(app.config.get('MAINTENANCE_MODE')),
-            'support_email': app.config.get('SUPPORT_EMAIL') or 'support@tradeverse.com',
+            'support_email': app.config.get('SUPPORT_EMAIL') or 'tradebase.help@gmail.com',
             'ui_theme_choices': tuple(app.config.get('UI_THEME_CHOICES') or ()),
         }
 
