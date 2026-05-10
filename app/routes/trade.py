@@ -14,7 +14,7 @@ from app.models.cooldown import Cooldown, should_trigger_cooldown, get_cooldown_
 from app.services.feedback_analyzer import generate_trade_feedback
 from app.services.cooldown_manager import CooldownManager, get_active_cooldown, trigger_emotional_cooldown
 from app.services.account_flags import current_user_exports_blocked
-from app.services.entitlements import require_feature
+from app.services.entitlements import user_has_feature
 from datetime import datetime
 import csv
 from io import StringIO
@@ -497,48 +497,61 @@ def list():
 
 @bp.route('/export.csv')
 @login_required
-@require_feature('exports')
 def list_export_csv():
     """Export trades matching current list filters as CSV."""
+    if not user_has_feature(current_user, 'exports'):
+        flash(
+            'CSV export is included with Pro and Pro Plus (and during eligible trials). '
+            'Upgrade to download your trades.',
+            'warning',
+        )
+        return redirect(url_for('monetization.pricing'))
+
     if current_user_exports_blocked(current_user):
         flash(
             "CSV export is temporarily disabled for this account. Contact support if this is unexpected.",
             "danger",
         )
         return redirect(url_for('trade.list'))
-    query = _filtered_trades_query(current_user.id)
-    trades = query.all()
 
-    buf = StringIO()
-    w = csv.writer(buf)
-    w.writerow([
-        'id', 'symbol', 'trade_type', 'status', 'entry_date', 'exit_date',
-        'entry_price', 'exit_price', 'stop_loss', 'take_profit', 'lot_size',
-        'profit_loss', 'risk_reward', 'strategy', 'emotion', 'session_type'
-    ])
-    for t in trades:
+    try:
+        query = _filtered_trades_query(current_user.id)
+        trades = query.all()
+
+        buf = StringIO()
+        w = csv.writer(buf)
         w.writerow([
-            t.id,
-            t.symbol or '',
-            t.trade_type or '',
-            t.status or '',
-            t.entry_date.isoformat() if t.entry_date else '',
-            t.exit_date.isoformat() if t.exit_date else '',
-            t.entry_price if t.entry_price is not None else '',
-            t.exit_price if t.exit_price is not None else '',
-            t.stop_loss if t.stop_loss is not None else '',
-            t.take_profit if t.take_profit is not None else '',
-            t.lot_size if t.lot_size is not None else '',
-            t.profit_loss if t.profit_loss is not None else '',
-            t.risk_reward if t.risk_reward is not None else '',
-            t.strategy or '',
-            t.emotion or '',
-            t.session_type or '',
+            'id', 'symbol', 'trade_type', 'status', 'entry_date', 'exit_date',
+            'entry_price', 'exit_price', 'stop_loss', 'take_profit', 'lot_size',
+            'profit_loss', 'risk_reward', 'strategy', 'emotion', 'session_type'
         ])
+        for t in trades:
+            w.writerow([
+                t.id,
+                t.symbol or '',
+                t.trade_type or '',
+                t.status or '',
+                t.entry_date.isoformat() if t.entry_date else '',
+                t.exit_date.isoformat() if t.exit_date else '',
+                t.entry_price if t.entry_price is not None else '',
+                t.exit_price if t.exit_price is not None else '',
+                t.stop_loss if t.stop_loss is not None else '',
+                t.take_profit if t.take_profit is not None else '',
+                t.lot_size if t.lot_size is not None else '',
+                t.profit_loss if t.profit_loss is not None else '',
+                t.risk_reward if t.risk_reward is not None else '',
+                t.strategy or '',
+                t.emotion or '',
+                t.session_type or '',
+            ])
 
-    resp = Response(buf.getvalue(), mimetype='text/csv; charset=utf-8')
-    resp.headers['Content-Disposition'] = 'attachment; filename="tradeverse-trades.csv"'
-    return resp
+        resp = Response(buf.getvalue(), mimetype='text/csv; charset=utf-8')
+        resp.headers['Content-Disposition'] = 'attachment; filename="tradeverse-trades.csv"'
+        return resp
+    except Exception as exc:
+        current_app.logger.exception('Trade CSV export failed: %s', exc)
+        flash('Could not generate CSV. Please try again or contact support.', 'danger')
+        return redirect(url_for('trade.list'))
 
 # ==================== View Single Trade ====================
 

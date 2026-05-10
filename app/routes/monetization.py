@@ -16,7 +16,7 @@ from importlib import import_module
 from flask_mail import Message
 from app import mail
 from app.services.account_flags import current_user_exports_blocked
-from app.services.entitlements import _safe_getattr, require_feature
+from app.services.entitlements import _safe_getattr, user_has_feature
 import secrets
 from sqlalchemy import text
 
@@ -491,13 +491,20 @@ def flutterwave_webhook():
 
 @bp.route('/export-data')
 @login_required
-@require_feature('exports')
 def export_data():
     """
     Export User Data
     
     Generates CSV export of all user trades and performance data
     """
+    if not user_has_feature(current_user, 'exports'):
+        flash(
+            'Full data export is included with Pro and Pro Plus (and during trials). '
+            'Upgrade to download your trades and plans as CSV.',
+            'warning',
+        )
+        return redirect(url_for('monetization.pricing'))
+
     if current_user_exports_blocked(current_user):
         flash(
             "Data export is temporarily disabled for this account. Contact support if this is unexpected.",
@@ -515,37 +522,78 @@ def export_data():
         writer.writerow(['User', current_user.username])
         writer.writerow([])
         
-        # Trades
+        # Trades (columns match Trade model — not legacy aliases like entry_time / pnl / notes)
         writer.writerow(['TRADES'])
-        writer.writerow(['Date', 'Symbol', 'Type', 'Entry', 'Exit', 'P&L', 'Status', 'Notes'])
-        
-        trades = Trade.query.filter_by(user_id=current_user.id).all()
+        writer.writerow(
+            [
+                'Entry date',
+                'Symbol',
+                'Type',
+                'Entry',
+                'Exit',
+                'P&L',
+                'Status',
+                'Strategy',
+                'Notes',
+            ]
+        )
+
+        trades = Trade.query.filter_by(user_id=current_user.id).order_by(Trade.entry_date.desc()).all()
+
+        def _trade_notes_row(t: Trade) -> str:
+            parts = [t.pre_trade_plan, t.post_trade_notes, t.mistakes, t.lessons_learned]
+            s = ' | '.join(p.strip() for p in parts if p and str(p).strip())
+            return s[:4000] if s else ''
+
         for trade in trades:
-            writer.writerow([
-                trade.entry_time.strftime('%Y-%m-%d') if trade.entry_time else '',
-                trade.symbol or '',
-                trade.trade_type or '',
-                f"${trade.entry_price:.2f}" if trade.entry_price else '',
-                f"${trade.exit_price:.2f}" if trade.exit_price else '',
-                f"${trade.pnl:.2f}" if trade.pnl else '',
-                trade.status or '',
-                trade.notes or ''
-            ])
-        
+            ed = trade.entry_date
+            pl = trade.profit_loss
+            writer.writerow(
+                [
+                    ed.strftime('%Y-%m-%d %H:%M') if ed else '',
+                    trade.symbol or '',
+                    trade.trade_type or '',
+                    f'{trade.entry_price:.5f}' if trade.entry_price is not None else '',
+                    f'{trade.exit_price:.5f}' if trade.exit_price is not None else '',
+                    f'{pl:.2f}' if pl is not None else '',
+                    trade.status or '',
+                    trade.strategy or '',
+                    _trade_notes_row(trade),
+                ]
+            )
+
         writer.writerow([])
         writer.writerow(['TRADE PLANS'])
-        writer.writerow(['Name', 'Trades Planned', 'Trades Executed', 'Status', 'Created', 'Updated'])
-        
-        plans = TradePlan.query.filter_by(user_id=current_user.id).all()
+        writer.writerow(
+            [
+                'Label',
+                'Plan rows',
+                'Executed',
+                'Status',
+                'Created',
+                'Updated',
+            ]
+        )
+
+        plans = TradePlan.query.filter_by(user_id=current_user.id).order_by(TradePlan.created_at.desc()).all()
         for plan in plans:
-            writer.writerow([
-                plan.name or '',
-                len(plan.trades) if plan.trades else 0,
-                len([t for t in plan.trades if (t.status or '').upper() == 'CLOSED']) if plan.trades else 0,
-                plan.status or '',
-                plan.created_at.strftime('%Y-%m-%d') if plan.created_at else '',
-                plan.updated_at.strftime('%Y-%m-%d') if plan.updated_at else ''
-            ])
+            label = (f"{plan.symbol} {plan.direction}".strip() if plan.symbol else f"Plan #{plan.id}")
+            st = (plan.status or '').upper()
+            executed_flag = bool(
+                plan.executed
+                or st in {'EXECUTED', 'REVIEWED'}
+                or plan.executed_trade_id is not None
+            )
+            writer.writerow(
+                [
+                    label,
+                    1,
+                    1 if executed_flag else 0,
+                    plan.status or '',
+                    plan.created_at.strftime('%Y-%m-%d') if plan.created_at else '',
+                    plan.updated_at.strftime('%Y-%m-%d') if plan.updated_at else '',
+                ]
+            )
         
         # Convert to bytes and send as attachment
         csv_bytes = output.getvalue().encode('utf-8')
