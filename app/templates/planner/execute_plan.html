@@ -87,10 +87,10 @@
                         </div>
                     </div>
 
-                    <!-- P&L Preview -->
-                    <div class="mt-4 p-4 bg-light rounded text-center">
+                    <!-- P&L Preview — fixed min-height avoids layout jump while API updates -->
+                    <div class="mt-4 p-4 bg-light rounded text-center tv-pnl-preview-box" style="min-height: 7rem;">
                         <small class="text-muted d-block mb-2">Estimated P&amp;L</small>
-                        <strong id="pnl_preview" class="h2 text-secondary">$0.00</strong>
+                        <strong id="pnl_preview" class="h2 text-secondary" style="font-variant-numeric: tabular-nums;">$0.00</strong>
                         <div class="mt-2">
                             <small class="text-muted">
                                 Lot Size: {{ plan.planned_lot_size }} &nbsp;|&nbsp; Symbol: {{ plan.symbol }}
@@ -279,6 +279,7 @@
         var el = document.getElementById("pnl_preview");
         if (!el) { return; }
         el.textContent = "$" + pnl.toFixed(2);
+        el.style.fontVariantNumeric = "tabular-nums";
         if (pnl > 0) {
             el.className = "h2 text-success";
         } else if (pnl < 0) {
@@ -288,8 +289,10 @@
         }
     }
 
-    /* ---- P&L preview via backend API ---- */
-    function calculatePnL() {
+    var pnlDebounceTimer = null;
+
+    /* ---- P&L preview via backend API (debounced on input to reduce layout jitter) ---- */
+    function calculatePnLImmediate() {
         var entryEl = document.getElementById("actual_entry");
         var exitEl  = document.getElementById("actual_exit");
         if (!entryEl || !exitEl) { return; }
@@ -332,6 +335,16 @@
         xhr.send(payload);
     }
 
+    function calculatePnL() {
+        if (pnlDebounceTimer) {
+            clearTimeout(pnlDebounceTimer);
+        }
+        pnlDebounceTimer = setTimeout(function () {
+            pnlDebounceTimer = null;
+            calculatePnLImmediate();
+        }, 200);
+    }
+
     /* ---- Screenshot preview ---- */
     function initScreenshotPreview() {
         var input = document.getElementById("screenshot_after");
@@ -367,8 +380,8 @@
         if (entryEl) { entryEl.addEventListener("input", calculatePnL); }
         if (exitEl)  { exitEl.addEventListener("input",  calculatePnL); }
 
-        /* Run once in case form is pre-filled */
-        calculatePnL();
+        /* Run once in case form is pre-filled (no debounce on load) */
+        calculatePnLImmediate();
     });
 
 }());

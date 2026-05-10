@@ -11,8 +11,8 @@
             <li class="breadcrumb-item active">{{ plan.symbol }} {{ plan.direction }}</li>
         </ol>
     </nav>
-    <div class="d-flex justify-content-between align-items-start">
-        <div>
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3">
+        <div class="flex-grow-1 min-w-0">
             <h1 class="page-title">
                 <i class="fas fa-clipboard-list"></i> {{ plan.symbol }}
                 <span class="badge bg-{% if plan.direction == 'BUY' %}success{% else %}danger{% endif %} ms-2">
@@ -38,17 +38,17 @@
             </p>
             {% endif %}
         </div>
-        <div class="btn-group">
+        <div class="d-flex flex-wrap gap-2 align-items-center flex-shrink-0">
             {% if plan.status == 'PLANNING' %}
                 <a href="{{ url_for('planner.edit_plan', plan_id=plan.id) }}" class="btn btn-outline-primary">
                     <i class="fas fa-edit"></i> Edit Plan
                 </a>
-                <a href="{{ url_for('planner.execute_plan', plan_id=plan.id) }}" class="btn btn-success">
-                    <i class="fas fa-check"></i> Complete Trade
-                </a>
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#viewPlanExecuteModal">
+                    <i class="fas fa-play"></i> Execute trade
+                </button>
             {% elif plan.status == 'EXECUTED' %}
                 <a href="{{ url_for('planner.execute_plan', plan_id=plan.id) }}" class="btn btn-success">
-                    <i class="fas fa-clipboard-check"></i> Review Trade
+                    <i class="fas fa-clipboard-check"></i> Review trade
                 </a>
             {% endif %}
         </div>
@@ -171,14 +171,16 @@
     <!-- Right Column: After Trade -->
     <div class="col-lg-6">
         <div class="card mb-4 shadow-sm">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-clipboard-check"></i> After (Execution + Review)
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div class="flex-grow-1 min-w-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-check"></i> After (Execution + Review)
+                    </h5>
                     <small class="d-block mt-1 opacity-75" style="font-size: 0.85rem;">What actually happened — execution, P&amp;L, and psychology.</small>
-                    {% if plan.status != 'REVIEWED' %}
-                    <span class="badge bg-warning text-dark float-end mt-1">Pending</span>
-                    {% endif %}
-                </h5>
+                </div>
+                {% if plan.status != 'REVIEWED' %}
+                <span class="badge bg-warning text-dark align-self-start">Pending</span>
+                {% endif %}
             </div>
             <div class="card-body">
                 {% if plan.status == 'REVIEWED' %}
@@ -248,14 +250,23 @@
                     </div>
                     {% endif %}
                     
+                {% elif plan.status == 'PLANNING' %}
+                    <div class="text-center py-4 px-2">
+                        <i class="fas fa-play-circle fa-3x text-warning mb-3"></i>
+                        <h5 class="fw-semibold">Execute the plan first</h5>
+                        <p class="text-muted small mb-4">Create the live trade from your planned levels, then you can review results here.</p>
+                        <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#viewPlanExecuteModal">
+                            <i class="fas fa-play"></i> Execute trade
+                        </button>
+                    </div>
                 {% else %}
-                    <!-- Not Reviewed Yet -->
-                    <div class="text-center py-5">
-                        <i class="fas fa-clock fa-4x text-muted mb-3"></i>
-                        <h4>Trade Not Yet Completed</h4>
-                        <p class="text-muted">Complete the trade and review it after execution.</p>
+                    {# EXECUTED — awaiting post-trade review #}
+                    <div class="text-center py-4 px-2">
+                        <i class="fas fa-clipboard-check fa-3x text-info mb-3"></i>
+                        <h5 class="fw-semibold">Review your trade</h5>
+                        <p class="text-muted small mb-4">Record actual fills, grade the execution, and reflect.</p>
                         <a href="{{ url_for('planner.execute_plan', plan_id=plan.id) }}" class="btn btn-success btn-lg">
-                            <i class="fas fa-check"></i> Complete Trade Now
+                            <i class="fas fa-clipboard-check"></i> Open review
                         </a>
                     </div>
                 {% endif %}
@@ -289,6 +300,74 @@
         </button>
     </form>
 </div>
+
+{% if plan.status == 'PLANNING' %}
+<!-- Execute trade (same flow as planner list) — modal at end of page, not inside cards -->
+<div class="modal fade" id="viewPlanExecuteModal" tabindex="-1"
+     aria-labelledby="viewPlanExecuteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('planner.start_execution', plan_id=plan.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="viewPlanExecuteModalLabel">Execute trade &mdash; {{ plan.symbol }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">Confirm or adjust values. Blanks use your planned levels.</p>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Direction</label>
+                            <select name="trade_type" class="form-select form-select-sm">
+                                <option value="BUY" {% if plan.direction == 'BUY' %}selected{% endif %}>BUY</option>
+                                <option value="SELL" {% if plan.direction == 'SELL' %}selected{% endif %}>SELL</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Lot size</label>
+                            <input type="number" step="0.01" name="lot_size" class="form-control form-control-sm"
+                                   value="{{ plan.planned_lot_size }}">
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Entry</label>
+                            <input type="number" step="0.00001" name="entry_price" class="form-control form-control-sm"
+                                   value="{{ plan.planned_entry }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Stop loss</label>
+                            <input type="number" step="0.00001" name="stop_loss" class="form-control form-control-sm"
+                                   value="{{ plan.planned_stop_loss }}">
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">Take profit</label>
+                            <input type="number" step="0.00001" name="take_profit" class="form-control form-control-sm"
+                                   value="{{ plan.planned_take_profit }}">
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <label class="form-label small fw-bold">Strategy</label>
+                        <input type="text" name="strategy" class="form-control form-control-sm" value="{{ plan.strategy or '' }}">
+                    </div>
+                    <div class="mt-2">
+                        <label class="form-label small fw-bold">Pre-trade notes</label>
+                        <textarea name="pre_trade_plan" class="form-control form-control-sm" rows="2">{{ plan.pre_trade_notes or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-play"></i> Execute trade
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Screenshot Lightbox Modal -->
 <div class="modal fade" id="screenshotModal" tabindex="-1" aria-labelledby="screenshotModalLabel" aria-hidden="true">
