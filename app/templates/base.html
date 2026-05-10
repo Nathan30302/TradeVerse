@@ -404,17 +404,21 @@
             font-size: 1.8rem;
         }
         
-        .nav-link {
-            color: rgba(255,255,255,0.9) !important;
+        /* Only top navbar links use light-on-gradient styling — do not target every .nav-link app-wide
+           (tabs, pills, and settings would inherit white text on pale backgrounds). */
+        .navbar .navbar-nav > .nav-item > .nav-link,
+        .navbar .navbar-nav .nav-link.dropdown-toggle {
+            color: rgba(255,255,255,0.92) !important;
             font-weight: 500;
             padding: 0.5rem 1rem !important;
             border-radius: 8px;
             transition: all 0.3s ease;
         }
-        
-        .nav-link:hover {
+
+        .navbar .navbar-nav > .nav-item > .nav-link:hover,
+        .navbar .navbar-nav .nav-link.dropdown-toggle:hover {
             background-color: rgba(255,255,255,0.15);
-            color: white !important;
+            color: #fff !important;
         }
         
         .btn-navbar {
@@ -1730,6 +1734,29 @@
             background: currentColor;
         }
 
+        .theme-segmented.theme-segmented-grid {
+            display: flex;
+            flex-wrap: wrap;
+            width: 100%;
+            justify-content: flex-start;
+            gap: 4px;
+            row-gap: 6px;
+        }
+
+        .dropdown-menu .theme-segmented.theme-segmented-grid .theme-option {
+            flex: 1 1 30%;
+            justify-content: center;
+            min-width: 68px;
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .dropdown-menu .theme-segmented.theme-segmented-grid .theme-option.active {
+            color: var(--text-primary);
+            background-color: rgba(99, 102, 241, 0.18);
+            box-shadow: none;
+        }
+
         /* Premium Dropdown Menu Styling */
         .dropdown-menu {
             border: none !important;
@@ -1924,7 +1951,7 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{{ current_user.theme or 'light' }}{% else %}{% endif %}">
+<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{% set _th = current_user.theme or 'dark' %}{% if _th in ui_theme_choices %}{{ _th }}{% else %}dark{% endif %}{% else %}{% endif %}">
 
     {% if maintenance_mode %}
     <div class="alert alert-warning rounded-0 border-0 mb-0 text-center py-2 small" role="alert">
@@ -1933,8 +1960,13 @@
     {% endif %}
 
     {# Load theme-specific stylesheet to set :root variables server-side and avoid FOUC. #}
-    {% set theme_name = current_user.theme if current_user.is_authenticated else 'light' %}
-    <link id="theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + (theme_name or 'light') + '.css') }}">
+    {% if current_user.is_authenticated %}
+        {% set _raw = current_user.theme or 'dark' %}
+        {% set theme_name = _raw if _raw in ui_theme_choices else 'dark' %}
+    {% else %}
+        {% set theme_name = 'light' %}
+    {% endif %}
+    <link id="theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme_name + '.css') }}">
     <!-- Mobile Navigation CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-nav.css') }}">
 
@@ -2068,11 +2100,14 @@
                                 <li><hr class="dropdown-divider"></li>
                                 <li class="dropdown-item section-label">Appearance</li>
                                 <li class="px-3 py-2">
-                                    <div class="theme-segmented" id="theme-segmented" style="width:100%;justify-content:space-around;">
-                                        <button class="theme-option active" data-theme="light" title="Light theme"><span class="theme-option-dot"></span>Light</button>
-                                        <button class="theme-option" data-theme="dark" title="Dark theme"><span class="theme-option-dot"></span>Dark</button>
-                                        <button class="theme-option" data-theme="blue" title="Blue theme"><span class="theme-option-dot"></span>Blue</button>
+                                    <div class="theme-segmented theme-segmented-grid" id="theme-segmented" title="Appearance">
+                                        <button type="button" class="theme-option" data-theme="light" title="Light"><span class="theme-option-dot"></span>Light</button>
+                                        <button type="button" class="theme-option" data-theme="dark" title="Dark"><span class="theme-option-dot"></span>Dark</button>
+                                        <button type="button" class="theme-option" data-theme="blue" title="Ocean"><span class="theme-option-dot"></span>Ocean</button>
+                                        <button type="button" class="theme-option" data-theme="midnight" title="Midnight"><span class="theme-option-dot"></span>Night</button>
+                                        <button type="button" class="theme-option" data-theme="sand" title="Sand"><span class="theme-option-dot"></span>Sand</button>
                                     </div>
+                                    <small class="text-muted d-block mt-1 px-1">Saved to your account. Use <strong>Settings → Appearance</strong> for more space.</small>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
@@ -2096,7 +2131,7 @@
     <div class="mobile-nav-drawer" id="mobileNavDrawer">
         <div class="mobile-nav-header">
             <h5 class="mb-0"><i class="fas fa-compass"></i> Menu</h5>
-            <button class="btn-close btn-close-white" id="mobileNavClose" aria-label="Close menu"></button>
+            <button type="button" class="btn-close mobile-nav-close" id="mobileNavClose" aria-label="Close menu"></button>
         </div>
         <div class="mobile-nav-section">Core</div>
         <ul class="nav flex-column">
@@ -2355,6 +2390,8 @@
             <p class="mb-0">
                 <small>
                     © 2024 TradeVerse. All rights reserved.
+                    | <a href="{{ url_for('main.contact') }}" class="link-secondary">Contact</a>
+                    | <a href="mailto:{{ support_email }}" class="link-secondary">Support</a>
                     | <a href="{{ url_for('main.terms') }}" class="link-secondary">Terms &amp; Disclaimer</a>
                     | <a href="{{ url_for('main.privacy') }}" class="link-secondary">Privacy Policy</a>
                     | Version {{ app_version }}
@@ -2375,9 +2412,13 @@
     <script>
         // Theme switcher: persists selection and updates CSS variables with instant visual feedback
         (function(){
+            const TV_THEMES = ['light','dark','blue','midnight','sand'];
+
             function applyTheme(name, persist=true, notifyServer=true){
-                // Validate incoming theme
-                if(!['light','dark','blue'].includes(name)) return;
+                // Normalize unknown themes (stale localStorage / DB) so UI never breaks
+                if(!TV_THEMES.includes(name)){
+                    name = 'dark';
+                }
 
                 // Set data-theme attribute on body for CSS variable switching
                 document.body.setAttribute('data-theme', name);
@@ -2462,7 +2503,7 @@
                 // Priority: server theme > saved theme > system preference > light
                 if(serverTheme) {
                     applyTheme(serverTheme, true, false);
-                } else if(saved) {
+                } else if(saved && TV_THEMES.includes(saved)) {
                     applyTheme(saved, true, false);
                 } else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                     applyTheme('dark', true, false);
@@ -2476,7 +2517,7 @@
             const saved = localStorage.getItem('tv_theme');
             if(serverTheme) {
                 applyTheme(serverTheme, true, false);
-            } else if(saved) {
+            } else if(saved && TV_THEMES.includes(saved)) {
                 applyTheme(saved, true, false);
             } else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 applyTheme('dark', true, false);

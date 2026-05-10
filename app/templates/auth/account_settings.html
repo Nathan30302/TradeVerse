@@ -102,7 +102,8 @@
                     <div class="card-body p-4">
                         <form method="POST" action="{{ url_for('auth.profile') }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="theme" id="form-theme" value="{{ current_user.theme or 'light' }}">
+                            {% set _saved_theme = current_user.theme or 'dark' %}
+                            <input type="hidden" name="theme" id="form-theme" value="{{ _saved_theme if _saved_theme in ui_theme_choices else 'dark' }}">
                             <div class="row g-4">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">Full name</label>
@@ -155,36 +156,56 @@
                 <div class="card tv-settings-card">
                     <div class="card-header bg-transparent"><i class="fas fa-palette me-2 text-primary"></i>Theme</div>
                     <div class="card-body p-4">
-                        <p class="text-muted mb-4">Pick a look — it saves to your account and follows you across devices.</p>
-                        <div class="row g-4">
-                            <div class="col-md-4">
-                                <div class="theme-card" data-theme="light" onclick="window.applyTheme('light');">
+                        <p class="text-muted mb-4">Pick a look — it saves to your account and follows you across devices. All themes are checked for readable text and navigation.</p>
+                        <div class="row g-3">
+                            <div class="col-6 col-lg-4">
+                                <div class="theme-card h-100" data-theme="light">
                                     <div class="mb-3">
-                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #6366f1, #8b5cf6);"></div>
+                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #6366f1, #8b5cf6);" role="presentation"></div>
                                     </div>
                                     <h6 class="fw-bold">Light</h6>
                                     <p class="small text-muted mb-3">Bright workspace</p>
-                                    <button type="button" class="btn btn-sm btn-primary theme-select-btn rounded-pill" data-theme="light"><i class="fas fa-check me-1"></i>Select</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="light"><i class="fas fa-check me-1"></i>Select</button>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="theme-card" data-theme="dark" onclick="window.applyTheme('dark');">
+                            <div class="col-6 col-lg-4">
+                                <div class="theme-card h-100" data-theme="dark">
                                     <div class="mb-3">
-                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #1e293b, #334155);"></div>
+                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #1e293b, #334155);" role="presentation"></div>
                                     </div>
                                     <h6 class="fw-bold">Dark</h6>
-                                    <p class="small text-muted mb-3">Low glare</p>
-                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill" data-theme="dark"><i class="fas fa-check me-1"></i>Select</button>
+                                    <p class="small text-muted mb-3">Low glare (default)</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="dark"><i class="fas fa-check me-1"></i>Select</button>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="theme-card" data-theme="blue" onclick="window.applyTheme('blue');">
+                            <div class="col-6 col-lg-4">
+                                <div class="theme-card h-100" data-theme="blue">
                                     <div class="mb-3">
-                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #0ea5e9, #06b6d4);"></div>
+                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #0ea5e9, #06b6d4);" role="presentation"></div>
                                     </div>
-                                    <h6 class="fw-bold">Blue</h6>
-                                    <p class="small text-muted mb-3">Cool accent</p>
-                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill" data-theme="blue"><i class="fas fa-check me-1"></i>Select</button>
+                                    <h6 class="fw-bold">Ocean</h6>
+                                    <p class="small text-muted mb-3">Cool cyan accent</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="blue"><i class="fas fa-check me-1"></i>Select</button>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-4">
+                                <div class="theme-card h-100" data-theme="midnight">
+                                    <div class="mb-3">
+                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #000000, #312e81);" role="presentation"></div>
+                                    </div>
+                                    <h6 class="fw-bold">Midnight</h6>
+                                    <p class="small text-muted mb-3">Deep OLED-style dark</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="midnight"><i class="fas fa-check me-1"></i>Select</button>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-4">
+                                <div class="theme-card h-100" data-theme="sand">
+                                    <div class="mb-3">
+                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #faf8f5, #d6d3d1);" role="presentation"></div>
+                                    </div>
+                                    <h6 class="fw-bold">Sand</h6>
+                                    <p class="small text-muted mb-3">Warm paper tones</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="sand"><i class="fas fa-check me-1"></i>Select</button>
                                 </div>
                             </div>
                         </div>
@@ -344,8 +365,24 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const currentTheme = localStorage.getItem('tv_theme') || document.body.getAttribute('data-server-theme') || 'light';
+        const allowed = ['light','dark','blue','midnight','sand'];
+        let currentTheme = document.body.getAttribute('data-server-theme') || '';
+        if (!allowed.includes(currentTheme)) {
+            currentTheme = localStorage.getItem('tv_theme') || '';
+        }
+        if (!allowed.includes(currentTheme)) currentTheme = 'dark';
         updateThemeUI(currentTheme);
+
+        document.querySelectorAll('.theme-select-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const t = this.getAttribute('data-theme');
+                if (!allowed.includes(t)) return;
+                if (window.applyTheme) window.applyTheme(t, true, true);
+                const fi = document.getElementById('form-theme');
+                if (fi) fi.value = t;
+                updateThemeUI(t);
+            });
+        });
     });
 </script>
 {% endblock %}

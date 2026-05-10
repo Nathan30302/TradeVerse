@@ -1,0 +1,27 @@
+/* Sand — warm light paper, readable browns */
+:root {
+  --primary: #b45309;
+  --secondary: #ca8a04;
+  --success: #15803d;
+  --danger: #b91c1c;
+  --warning: #d97706;
+  --info: #0369a1;
+
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --bg-primary: #faf8f5;
+  --bg-secondary: #f5f0e8;
+  --card-bg: #fffefb;
+  --card-border: #e7e5e4;
+  --form-bg: #ffffff;
+  --form-border: #d6d3d1;
+  --form-text: #1c1917;
+  --form-label: #44403c;
+  --table-hover: #f5f5f4;
+  --tab-text: #57534e;
+  --tab-active: #b45309;
+  --tab-border: #d6d3d1;
+  --sidebar-bg: #292524;
+  --sidebar-hover: #44403c;
+  --sidebar-text: #fafaf9;
+}

@@ -37,7 +37,7 @@ class User(UserMixin, db.Model):
     # ==================== Preferences ====================
     timezone = db.Column(db.String(50), default='UTC')
     preferred_currency = db.Column(db.String(3), default='USD')
-    theme = db.Column(db.String(20), default='light')  # light or dark
+    theme = db.Column(db.String(20), default='dark')  # light|dark|blue|midnight|sand
     
     # ==================== Account Status ====================
     is_active = db.Column(db.Boolean, default=True)

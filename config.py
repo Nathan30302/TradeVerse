@@ -64,6 +64,13 @@ class Config:
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
     APP_VERSION = '2.0.0'
+
+    # UI themes (order preserved for pickers)
+    UI_THEME_CHOICES = ('light', 'dark', 'blue', 'midnight', 'sand')
+    ALLOWED_UI_THEMES = frozenset(UI_THEME_CHOICES)
+
+    # Public support contact — override via SUPPORT_EMAIL in production
+    SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL') or 'support@tradeverse.com'
     
     # Trading Instruments
     INSTRUMENTS = [

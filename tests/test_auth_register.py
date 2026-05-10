@@ -46,6 +46,7 @@ def test_register_creates_user_and_logs_in(app, client):
         assert u is not None
         assert u.email == "newsignup@example.com"
         assert u.subscription_tier == "pro_plus"
+        assert u.theme == "dark"
 
 
 def test_register_duplicate_email_flash(app, client):

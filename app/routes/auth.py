@@ -317,8 +317,11 @@ def profile():
         bio = request.form.get('bio', '').strip()
         timezone = request.form.get('timezone', 'UTC')
         preferred_currency = request.form.get('preferred_currency', 'USD')
-        theme = request.form.get('theme', 'light')
-        
+        allowed = current_app.config.get('ALLOWED_UI_THEMES') or frozenset()
+        theme = (request.form.get('theme') or 'dark').strip().lower()
+        if theme not in allowed:
+            theme = 'dark'
+
         # Update profile
         try:
             current_user.full_name = full_name if full_name else None
@@ -465,13 +468,14 @@ def login_history():
 @login_required
 def set_theme():
     """
-    AJAX endpoint to persist user's theme preference
-    Expects JSON: { "theme": "light|dark|blue" }
+    AJAX endpoint to persist the user's theme preference.
+    Expects JSON: { "theme": "light|dark|blue|midnight|sand" } (see Config.ALLOWED_UI_THEMES).
     """
     try:
         data = request.get_json(force=True)
-        theme = (data.get('theme') or 'light').strip().lower()
-        if theme not in ('light','dark','blue'):
+        allowed = current_app.config.get('ALLOWED_UI_THEMES') or frozenset()
+        theme = (data.get('theme') or 'dark').strip().lower()
+        if theme not in allowed:
             return jsonify(ok=False, error='invalid_theme'), 400
         current_user.theme = theme
         db.session.commit()

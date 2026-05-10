@@ -42,9 +42,19 @@
     justify-content: space-between;
     align-items: center;
     padding: 1.25rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
+    background: var(--bg-secondary, rgba(255,255,255,0.03));
     backdrop-filter: blur(10px);
+}
+
+.mobile-nav-header h5 {
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+/* Default Bootstrap close icon — readable on light sand/paper drawers */
+.mobile-nav-header .mobile-nav-close {
+    opacity: 0.75;
 }
 
 .mobile-nav-drawer .nav {

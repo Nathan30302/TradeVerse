@@ -4,31 +4,6 @@
 
 {% block extra_css %}
 <style>
-    /* Stable accordion: avoid jumpy reflow + fighting shadows during collapse */
-    .tv-pricing-faq.accordion {
-        --bs-accordion-active-bg: transparent;
-        --bs-accordion-btn-focus-box-shadow: none;
-    }
-    .tv-pricing-faq .accordion-button {
-        font-weight: 600;
-        box-shadow: none !important;
-    }
-    .tv-pricing-faq .accordion-button:not(.collapsed) {
-        color: inherit;
-        background: transparent;
-    }
-    .tv-pricing-faq .accordion-body {
-        overflow-anchor: none;
-        padding-top: 0.25rem;
-    }
-    .tv-pricing-faq .accordion-collapse {
-        transition: height 0.2s ease;
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .tv-pricing-faq .accordion-collapse {
-            transition: none;
-        }
-    }
     .tv-pricing-card {
         transition: box-shadow 0.2s ease, transform 0.2s ease;
     }
@@ -116,57 +91,33 @@
     <div class="row mt-5">
         <div class="col-lg-8 mx-auto">
             <h2 class="h4 mb-4 text-center">Frequently asked questions</h2>
-            <div class="accordion accordion-flush tv-pricing-faq border rounded-3 overflow-hidden" id="faqAccordionPricing">
-                <div class="accordion-item border-0 border-bottom">
-                    <h2 class="accordion-header" id="faqHeadingOne">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseOne" aria-expanded="false" aria-controls="faqCollapseOne">
-                            Can I change my plan anytime?
-                        </button>
-                    </h2>
-                    <div id="faqCollapseOne" class="accordion-collapse collapse" data-bs-parent="#faqAccordionPricing" aria-labelledby="faqHeadingOne">
-                        <div class="accordion-body text-body-secondary">
-                            Upgrades start after successful checkout. Downgrades or cancellations depend on your payment provider and what we show under <strong>Settings → Billing</strong>. If anything looks wrong, contact support from the footer.
-                        </div>
-                    </div>
+            <div class="border rounded-3 overflow-hidden bg-body shadow-sm">
+                <div class="border-bottom p-4 p-md-4">
+                    <h3 class="h6 fw-bold mb-2">Can I change my plan anytime?</h3>
+                    <p class="text-body-secondary mb-0">
+                        Upgrades start after successful checkout. Downgrades or cancellations depend on your payment provider and what we show under <strong>Settings → Billing</strong>. If anything looks wrong, email <a href="mailto:{{ support_email }}">{{ support_email }}</a> or use <strong>Contact</strong> in the footer.
+                    </p>
                 </div>
-                <div class="accordion-item border-0 border-bottom">
-                    <h2 class="accordion-header" id="faqHeadingTwo">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseTwo" aria-expanded="false" aria-controls="faqCollapseTwo">
-                            Is there a free trial?
-                        </button>
-                    </h2>
-                    <div id="faqCollapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordionPricing" aria-labelledby="faqHeadingTwo">
-                        <div class="accordion-body text-body-secondary">
-                            New accounts get a <strong>{{ trial_days_new_accounts }}-day Pro Plus trial</strong> (no payment required at signup). Your <strong>Settings → Billing</strong> page shows trial dates and tier.
-                            {% if extended_promo_active %}
-                            <span class="d-block mt-2">We sometimes run a platform-wide access promotion — Billing still shows what applies to your account.</span>
-                            {% endif %}
-                        </div>
-                    </div>
+                <div class="border-bottom p-4 p-md-4">
+                    <h3 class="h6 fw-bold mb-2">Is there a free trial?</h3>
+                    <p class="text-body-secondary mb-0">
+                        New accounts get a <strong>{{ trial_days_new_accounts }}-day Pro Plus trial</strong> (no payment required at signup). Your <strong>Settings → Billing</strong> page shows trial dates and tier.
+                        {% if extended_promo_active %}
+                        <span class="d-block mt-2">We sometimes run a platform-wide access promotion — Billing still shows what applies to your account.</span>
+                        {% endif %}
+                    </p>
                 </div>
-                <div class="accordion-item border-0 border-bottom">
-                    <h2 class="accordion-header" id="faqHeadingThree">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseThree" aria-expanded="false" aria-controls="faqCollapseThree">
-                            What payment methods do you accept?
-                        </button>
-                    </h2>
-                    <div id="faqCollapseThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordionPricing" aria-labelledby="faqHeadingThree">
-                        <div class="accordion-body text-body-secondary">
-                            Major cards and supported local methods through our payment partner at checkout; availability depends on your country and which gateway is enabled for TradeVerse.
-                        </div>
-                    </div>
+                <div class="border-bottom p-4 p-md-4">
+                    <h3 class="h6 fw-bold mb-2">What payment methods do you accept?</h3>
+                    <p class="text-body-secondary mb-0">
+                        Major cards and supported local methods through our payment partner at checkout; availability depends on your country and which gateway is enabled for TradeVerse.
+                    </p>
                 </div>
-                <div class="accordion-item border-0">
-                    <h2 class="accordion-header" id="faqHeadingFour">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseFour" aria-expanded="false" aria-controls="faqCollapseFour">
-                            Can I cancel anytime?
-                        </button>
-                    </h2>
-                    <div id="faqCollapseFour" class="accordion-collapse collapse" data-bs-parent="#faqAccordionPricing" aria-labelledby="faqHeadingFour">
-                        <div class="accordion-body text-body-secondary">
-                            Yes. You can cancel from your billing flow or provider emails when applicable. You keep access through the end of the period you already paid for.
-                        </div>
-                    </div>
+                <div class="p-4 p-md-4">
+                    <h3 class="h6 fw-bold mb-2">Can I cancel anytime?</h3>
+                    <p class="text-body-secondary mb-0">
+                        Yes. You can cancel from your billing flow or provider emails when applicable. You keep access through the end of the period you already paid for.
+                    </p>
                 </div>
             </div>
         </div>

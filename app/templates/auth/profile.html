@@ -100,16 +100,19 @@
 
                         <div class="col-md-6">
                             <label for="theme" class="form-label fw-bold">Theme</label>
-                            <select class="form-select" id="theme" name="theme">
-                                <option value="light" {% if current_user.theme == 'light' %}selected{% endif %}>
-                                    ☀️ Light
+                            <select class="form-select" id="theme" name="theme" aria-label="Color theme">
+                                {% set labels = {
+                                    'light': '☀️ Light',
+                                    'dark': '🌙 Dark',
+                                    'blue': '🌊 Ocean',
+                                    'midnight': '✨ Midnight',
+                                    'sand': '📜 Sand'
+                                } %}
+                                {% for tid in ui_theme_choices %}
+                                <option value="{{ tid }}" {% if current_user.theme == tid %}selected{% endif %}>
+                                    {% if tid in labels %}{{ labels[tid] }}{% else %}{{ tid|replace('_',' ')|title }}{% endif %}
                                 </option>
-                                <option value="dark" {% if current_user.theme == 'dark' %}selected{% endif %}>
-                                    🌙 Dark
-                                </option>
-                                <option value="blue" {% if current_user.theme == 'blue' %}selected{% endif %}>
-                                    💙 Blue
-                                </option>
+                                {% endfor %}
                             </select>
                         </div>
                     </div>
