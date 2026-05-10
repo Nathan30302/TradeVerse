@@ -102,6 +102,7 @@
                     <div class="card-body p-4">
                         <form method="POST" action="{{ url_for('auth.profile') }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="after_save" value="settings">
                             {% set _saved_theme = current_user.theme or 'dark' %}
                             <input type="hidden" name="theme" id="form-theme" value="{{ _saved_theme if _saved_theme in ui_theme_choices else 'dark' }}">
                             <div class="row g-4">
@@ -134,11 +135,15 @@
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">Preferred currency</label>
                                     <select name="preferred_currency" class="form-select form-select-lg">
-                                        <option value="USD" {% if current_user.preferred_currency == 'USD' %}selected{% endif %}>USD ($)</option>
-                                        <option value="EUR" {% if current_user.preferred_currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
-                                        <option value="GBP" {% if current_user.preferred_currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
-                                        <option value="JPY" {% if current_user.preferred_currency == 'JPY' %}selected{% endif %}>JPY (¥)</option>
+                                        {% set pc = (current_user.preferred_currency or 'USD') %}
+                                        {% for code in display_currencies %}
+                                        <option value="{{ code }}" {% if pc == code %}selected{% endif %}>{{ display_currency_labels.get(code, code) }}</option>
+                                        {% endfor %}
                                     </select>
+                                    <p class="text-muted small mt-2 mb-0">
+                                        P/L is calculated in <strong>USD equivalent</strong>; amounts convert at today’s rate for display (ECB-based via Frankfurter).
+                                        Rates refresh about hourly — not live tick-by-tick.
+                                    </p>
                                 </div>
                             </div>
                             <div class="mt-4">

@@ -367,17 +367,10 @@ def register_template_filters(app):
     
     @app.template_filter('currency')
     def format_currency(value, currency='USD'):
-        if value is None:
-            value = 0
-        symbols = {
-            'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
-            'CHF': 'Fr', 'AUD': 'A$', 'CAD': 'C$', 'NZD': 'NZ$'
-        }
-        symbol = symbols.get(currency, '$')
-        if value >= 0:
-            return f"{symbol}{value:,.2f}"
-        else:
-            return f"-{symbol}{abs(value):,.2f}"
+        """Format stored USD-equivalent amounts in the user's display currency."""
+        from app.services.fx_display import format_converted_money
+
+        return format_converted_money(value, currency or 'USD')
     
     @app.template_filter('percentage')
     def format_percentage(value, decimals=2):
@@ -410,6 +403,41 @@ def register_context_processors(app):
             'maintenance_mode': bool(app.config.get('MAINTENANCE_MODE')),
             'support_email': app.config.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com',
             'ui_theme_choices': tuple(app.config.get('UI_THEME_CHOICES') or ()),
+        }
+
+    @app.context_processor
+    def inject_fx_display():
+        """USD→preferred multiplier for charts/JS; currency lists for settings."""
+        from flask_login import current_user
+        from app.services.fx_display import DISPLAY_LABELS, get_usd_rates_map, usd_to_preferred_multiplier
+
+        codes = tuple(app.config.get('DISPLAY_CURRENCIES') or ())
+        if not codes:
+            codes = ('USD', 'ZAR', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD')
+        if not getattr(current_user, 'is_authenticated', False):
+            return {
+                'fx_usd_to_preferred': 1.0,
+                'chart_currency_code': 'USD',
+                'display_currencies': codes,
+                'display_currency_labels': DISPLAY_LABELS,
+            }
+        cur = (getattr(current_user, 'preferred_currency', None) or 'USD').strip().upper()
+        rates = get_usd_rates_map()
+        # Charts: use ISO code that matches numeric scale (avoid ZAR label on USD-scale values)
+        if cur != 'USD' and cur not in rates:
+            chart_ccy = 'USD'
+            mult = 1.0
+        else:
+            chart_ccy = cur
+            try:
+                mult = usd_to_preferred_multiplier(cur)
+            except Exception:
+                mult = 1.0
+        return {
+            'fx_usd_to_preferred': mult,
+            'chart_currency_code': chart_ccy,
+            'display_currencies': codes,
+            'display_currency_labels': DISPLAY_LABELS,
         }
 
     @app.context_processor

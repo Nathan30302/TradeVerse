@@ -38,7 +38,7 @@
             <div class="mt-2">
                 <strong>P/L:</strong> 
                 <span class="{% if trade.profit_loss > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
-                    {{ trade.profit_loss|currency }}
+                    {{ trade.profit_loss|currency(current_user.preferred_currency) }}
                 </span>
             </div>
             {% endif %}

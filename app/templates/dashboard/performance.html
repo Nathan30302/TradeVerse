@@ -152,7 +152,7 @@
     <div class="col-md-3">
         <div class="stat-card {% if current_score.total_pnl >= 0 %}success{% else %}danger{% endif %}">
             <div class="stat-label">Week P/L</div>
-            <div class="stat-value">{{ current_score.total_pnl|currency }}</div>
+            <div class="stat-value">{{ current_score.total_pnl|currency(current_user.preferred_currency) }}</div>
         </div>
     </div>
     <div class="col-md-3">
@@ -211,7 +211,7 @@
                         <td>{{ score.total_trades }}</td>
                         <td>{{ score.win_rate|round(1) }}%</td>
                         <td class="{% if score.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
-                            {{ score.total_pnl|currency }}
+                            {{ score.total_pnl|currency(current_user.preferred_currency) }}
                         </td>
                         <td>{{ score.rule_compliance_score|round(0) }}%</td>
                         <td>{{ score.rr_quality_score|round(0) }}%</td>

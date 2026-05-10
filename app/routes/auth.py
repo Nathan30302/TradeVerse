@@ -316,7 +316,10 @@ def profile():
         full_name = request.form.get('full_name', '').strip()
         bio = request.form.get('bio', '').strip()
         timezone = request.form.get('timezone', 'UTC')
-        preferred_currency = request.form.get('preferred_currency', 'USD')
+        preferred_currency = (request.form.get('preferred_currency') or 'USD').strip().upper()
+        allowed_codes = tuple(current_app.config.get('DISPLAY_CURRENCIES') or ())
+        if allowed_codes and preferred_currency not in allowed_codes:
+            preferred_currency = 'USD'
         allowed = current_app.config.get('ALLOWED_UI_THEMES') or frozenset()
         theme = (request.form.get('theme') or 'dark').strip().lower()
         if theme not in allowed:
@@ -337,7 +340,10 @@ def profile():
             db.session.rollback()
             flash('❌ Error updating profile. Please try again.', 'danger')
             current_app.logger.exception("Profile update error")
-        
+
+        after = (request.form.get('after_save') or '').strip().lower()
+        if after == 'settings':
+            return redirect(url_for('auth.settings'))
         return redirect(url_for('auth.profile'))
     
     return render_template('auth/profile.html')

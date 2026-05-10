@@ -156,8 +156,11 @@ class Config:
         'Australia/Sydney'
     ]
     
-    # Available Currencies
-    CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD']
+    # Available Currencies (profile drop-downs)
+    CURRENCIES = ['USD', 'ZAR', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD']
+
+    # Allowed preferred_currency values (must stay 3-letter ISO for DB column)
+    DISPLAY_CURRENCIES = ('USD', 'ZAR', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD')
     
     # Motivational Trading Quotes
     QUOTES = [
