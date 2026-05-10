@@ -30,7 +30,7 @@ from sqlalchemy import func
 from app import db, mail
 from app.models.user import User
 from app.models.trade import Trade
-from app.services.entitlements import is_owner_user
+from app.services.entitlements import _safe_getattr, is_owner_user
 from app.services.owner_email import (
     apply_email_placeholders,
     audience_users,
@@ -52,7 +52,7 @@ def _safe_internal_path(candidate: str | None) -> str | None:
 
 
 def _rbac_owner_ok() -> bool:
-    role = (getattr(current_user, "role", None) or "user").strip().lower()
+    role = (_safe_getattr(current_user, "role", None) or "user").strip().lower()
     return role == "owner" or is_owner_user(current_user)
 
 

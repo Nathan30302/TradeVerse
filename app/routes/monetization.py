@@ -16,7 +16,7 @@ from importlib import import_module
 from flask_mail import Message
 from app import mail
 from app.services.account_flags import current_user_exports_blocked
-from app.services.entitlements import require_feature
+from app.services.entitlements import _safe_getattr, require_feature
 import secrets
 from sqlalchemy import text
 
@@ -429,7 +429,7 @@ def flutterwave_callback():
         current_user.subscription_tier = plan
         current_user.subscription_status = "active"
         current_user.subscription_expires_at = None
-        if not getattr(current_user, "stripe_customer_id", None):
+        if not _safe_getattr(current_user, "stripe_customer_id", None):
             # Keep this column as a generic "customer id" if present in schema; if missing it will be stripped by orm hooks.
             pass
         db.session.add(current_user)
@@ -587,7 +587,7 @@ def trial_info():
         else created_at
     )
 
-    trial_end = getattr(current_user, 'trial_ends_at', None)
+    trial_end = _safe_getattr(current_user, 'trial_ends_at', None)
     if trial_end is not None:
         if trial_end.tzinfo is None:
             trial_end = trial_end.replace(tzinfo=timezone.utc)

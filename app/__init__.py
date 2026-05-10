@@ -447,7 +447,7 @@ def register_context_processors(app):
         """Owner analytics: RBAC allowlist or /owner/unlock session (SECRET_KEY / OWNER_ADMIN_TOKEN)."""
         from flask import session
         from app.routes.owner_admin import SESSION_OWNER_PLATFORM
-        from app.services.entitlements import is_owner_user
+        from app.services.entitlements import _safe_getattr, is_owner_user
 
         if not getattr(current_user, 'is_authenticated', False):
             return {
@@ -455,7 +455,7 @@ def register_context_processors(app):
                 'owner_platform_session_only': False,
             }
 
-        role = (getattr(current_user, 'role', None) or 'user').strip().lower()
+        role = (_safe_getattr(current_user, 'role', None) or 'user').strip().lower()
         rbac = role == 'owner' or is_owner_user(current_user)
         sess = bool(session.get(SESSION_OWNER_PLATFORM))
 

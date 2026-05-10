@@ -24,7 +24,7 @@ from app.models.ai_coaching_note import AICoachingNote
 from flask import request, flash, redirect, url_for
 from datetime import datetime, timedelta, timezone
 import random
-from app.services.entitlements import require_feature
+from app.services.entitlements import _safe_getattr, require_feature
 from zoneinfo import ZoneInfo
 import os
 
@@ -178,7 +178,7 @@ def index():
 
     wf = ''
     try:
-        wf = (getattr(current_user, 'weekly_focus_rule', None) or '').strip()
+        wf = (_safe_getattr(current_user, 'weekly_focus_rule', None) or '').strip()
     except Exception:
         wf = ''
 
@@ -849,7 +849,7 @@ def ai():
 
     wf = ''
     try:
-        wf = (getattr(current_user, 'weekly_focus_rule', None) or '').strip()
+        wf = (_safe_getattr(current_user, 'weekly_focus_rule', None) or '').strip()
     except Exception:
         wf = ''
 
@@ -969,7 +969,7 @@ def ai_query():
 
         # Compact user context so answers stay consistent with your data.
         try:
-            wf = (getattr(current_user, 'weekly_focus_rule', None) or '').strip()
+            wf = (_safe_getattr(current_user, 'weekly_focus_rule', None) or '').strip()
         except Exception:
             wf = ''
         try:
