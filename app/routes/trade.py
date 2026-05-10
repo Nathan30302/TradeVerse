@@ -368,7 +368,11 @@ def add():
 
 def _duplicate_prefill(user_id):
     """Field dict to pre-fill Add Trade from the user's most recent trade."""
-    last_trade = Trade.query.filter_by(user_id=user_id).order_by(Trade.entry_date.desc()).first()
+    last_trade = (
+        Trade.query.filter_by(user_id=user_id)
+        .order_by(Trade.entry_date.desc().nullslast(), Trade.id.desc())
+        .first()
+    )
     if not last_trade:
         return None
     return {
@@ -514,7 +518,22 @@ def list_export_csv():
         )
         return redirect(url_for('trade.list'))
 
+    def _csv_dt(val):
+        if val is None:
+            return ''
+        if hasattr(val, 'isoformat'):
+            try:
+                return val.isoformat()
+            except Exception:
+                return str(val)
+        return str(val)
+
     try:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
         query = _filtered_trades_query(current_user.id)
         trades = query.all()
 
@@ -531,8 +550,8 @@ def list_export_csv():
                 t.symbol or '',
                 t.trade_type or '',
                 t.status or '',
-                t.entry_date.isoformat() if t.entry_date else '',
-                t.exit_date.isoformat() if t.exit_date else '',
+                _csv_dt(t.entry_date),
+                _csv_dt(t.exit_date),
                 t.entry_price if t.entry_price is not None else '',
                 t.exit_price if t.exit_price is not None else '',
                 t.stop_loss if t.stop_loss is not None else '',
@@ -549,6 +568,10 @@ def list_export_csv():
         resp.headers['Content-Disposition'] = 'attachment; filename="tradeverse-trades.csv"'
         return resp
     except Exception as exc:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         current_app.logger.exception('Trade CSV export failed: %s', exc)
         flash('Could not generate CSV. Please try again or contact support.', 'danger')
         return redirect(url_for('trade.list'))

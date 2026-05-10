@@ -332,7 +332,9 @@ class Trade(db.Model):
         """
         if not self.exit_date:
             return "Still open"
-        
+        if not self.entry_date:
+            return "—"
+
         duration = self.exit_date - self.entry_date
         
         days = duration.days

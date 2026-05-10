@@ -411,13 +411,13 @@
         </div>
         {% endif %}
 
-        <!-- Trade Plan -->
+        <!-- Trade Plan (legacy trade_id link or planner executed_trade_id — use get_plan()) -->
         <div class="card mb-4">
             <div class="card-header bg-info text-white">
                 <h5 class="mb-0"><i class="fas fa-clipboard-list"></i> Trade Plan</h5>
             </div>
             <div class="card-body">
-                {% set trade_plan = trade.plan %}
+                {% set trade_plan = trade.get_plan() %}
                 {% if trade_plan %}
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -443,7 +443,7 @@
                         {% endif %}
                     </div>
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('planner.view_plan', trade_id=trade.id) }}" class="btn btn-info">
+                        <a href="{{ url_for('planner.view_plan', plan_id=trade_plan.id) }}" class="btn btn-info">
                             <i class="fas fa-eye"></i> View Plan
                         </a>
                         {% if not trade_plan.is_complete() %}
