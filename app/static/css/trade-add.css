@@ -104,6 +104,15 @@ body[data-theme="dark"] .tv-inst-chip {
   color: var(--tv-log-danger);
 }
 
+.tv-dir-btn:focus-visible {
+  outline: 2px solid var(--tv-log-accent);
+  outline-offset: 2px;
+}
+
+.tv-instrument-search .form-control:focus-visible {
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+}
+
 .tv-status-seg .btn-check:checked + .btn {
   font-weight: 700;
 }

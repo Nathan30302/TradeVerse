@@ -138,10 +138,28 @@
     };
 
     this.rec.onerror = function (ev) {
-      self.statusEl.textContent = ev && ev.error ? 'Mic: ' + ev.error : 'Mic error';
+      const code = ev && ev.error ? String(ev.error) : '';
+      const friendly = {
+        'not-allowed': 'Microphone blocked — allow access in the browser address bar.',
+        'service-not-allowed': 'Speech recognition disabled — check browser permissions.',
+        'audio-capture': 'No microphone found or it is in use by another app.',
+        'network': 'Network error — try again in a moment.',
+        'aborted': '',
+        'no-speech': 'No speech heard — tap Start recording when you are ready.',
+      };
       self.interimEl.textContent = '';
       self.rec = null;
       self.cleanupUi();
+      if (code === 'aborted') return;
+      const msg = friendly[code] || (code ? 'Voice: ' + code : 'Mic error');
+      if (msg && self.statusEl) {
+        self.statusEl.textContent = msg;
+        if (code === 'no-speech') {
+          setTimeout(function () {
+            if (self.statusEl) self.statusEl.textContent = '';
+          }, 4500);
+        }
+      }
     };
 
     this.rec.onend = function () {
@@ -167,7 +185,7 @@
     try {
       this.rec.start();
     } catch (e) {
-      this.statusEl.textContent = 'Tap Dictate again to start.';
+      this.statusEl.textContent = 'Tap Start recording again.';
       this.cleanupUi();
     }
   };

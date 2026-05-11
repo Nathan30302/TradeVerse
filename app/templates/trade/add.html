@@ -97,6 +97,7 @@
 
                     <div class="mb-3 mb-md-4">
                         <label class="form-label fw-semibold text-uppercase small text-muted mb-2">Instrument</label>
+                        <div id="tv-instrument-err" class="alert alert-danger py-2 px-3 small d-none mb-2" role="alert"></div>
                         <div class="instrument-picker-container">
                             <div class="tv-instrument-search mb-2">
                                 <div class="input-group input-group-lg">
@@ -199,6 +200,7 @@
                     <div class="row g-2 mb-3 d-none" id="tv-exit-wrap">
                         <div class="col-12 col-md-6">
                             <label for="exit_price" class="form-label small fw-semibold">Exit price <span class="text-danger">*</span> <span class="text-muted fw-normal">(realized P&amp;L)</span></label>
+                            <div id="tv-exit-inline-err" class="text-danger small mb-1 d-none" role="status"></div>
                             <input type="number" step="0.00001" class="form-control" id="exit_price" name="exit_price" placeholder="Fill when closed">
                         </div>
                         <div class="col-12 col-md-6">
@@ -307,6 +309,11 @@
                                 <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="2" placeholder="Review (optional)"></textarea>
                             </div>
                             <h6 class="text-muted text-uppercase small fw-bold mb-2">Compliance</h6>
+                            <p class="small text-muted mb-2">Optional honesty checks — use the shortcuts if you have already done this elsewhere.</p>
+                            <div class="d-flex flex-wrap gap-2 align-items-center mb-2 small">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="tv-compliance-both" aria-label="Mark both compliance items done">Mark both done</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="tv-compliance-clear" aria-label="Clear both compliance checkboxes">Clear both</button>
+                            </div>
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <div class="form-check">
@@ -408,8 +415,14 @@
     var els = form.querySelectorAll('input, select, textarea');
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
-      if (!el.name || el.type === 'file' || (el.type === 'hidden' && el.name === 'csrf_token')) continue;
-      if (el.type === 'checkbox' || el.type === 'radio') {
+      if (!el.name || el.type === 'file') continue;
+      if (el.name === 'accountability_confirmed') continue;
+      if (el.type === 'hidden' && el.name === 'csrf_token') continue;
+      if (el.type === 'checkbox') {
+        data[el.name] = el.checked ? '1' : '0';
+        continue;
+      }
+      if (el.type === 'radio') {
         if (el.checked) data[el.name] = el.value;
         continue;
       }
@@ -425,6 +438,10 @@
       if (!el) return;
       var v = d[name];
       if (el.type === 'file') return;
+      if (el.type === 'checkbox') {
+        el.checked = (v === '1' || v === 1 || v === true || v === 'on');
+        return;
+      }
       if (typeof el.length === 'number' && el.length && !el.tagName) {
         for (var j = 0; j < el.length; j++) {
           var node = el[j];
@@ -462,6 +479,43 @@
       } catch (e) { /* quota / private mode */ }
     }, 600);
   }
+  function flushDraftNow() {
+    clearTimeout(saveTimer);
+    try {
+      sessionStorage.setItem(KEY, JSON.stringify(collectDraft()));
+    } catch (e) { /* ignore */ }
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') flushDraftNow();
+  });
+  function tryExpandMore() {
+    var el = document.getElementById('tvMoreFields');
+    if (!el || !window.bootstrap || !window.bootstrap.Collapse) return;
+    try {
+      window.bootstrap.Collapse.getOrCreateInstance(el).show();
+    } catch (e2) { /* ignore */ }
+  }
+  function tvExpandMoreIfNeeded() {
+    var ids = ['strategy', 'session_type', 'timeframe', 'playbook_setup_id', 'emotion', 'confidence_level', 'pre_trade_plan', 'post_trade_notes', 'entry_date', 'commission', 'swap'];
+    var k;
+    for (k = 0; k < ids.length; k++) {
+      var el = document.getElementById(ids[k]);
+      if (el && String(el.value || '').trim()) {
+        tryExpandMore();
+        return;
+      }
+    }
+    var cc = document.getElementById('checklist_completed');
+    if (cc && cc.checked) {
+      tryExpandMore();
+      return;
+    }
+    var pf = document.getElementById('playbook_followed');
+    if (pf && !pf.checked) {
+      tryExpandMore();
+    }
+  }
+  window.tvExpandMoreIfNeeded = tvExpandMoreIfNeeded;
   if (!hasPrefill) {
     try {
       var raw = sessionStorage.getItem(KEY);
@@ -529,6 +583,11 @@ document.addEventListener('DOMContentLoaded', function () {
             var el = document.getElementById(id);
             if (el && v !== undefined && v !== null && v !== '') el.value = v;
         }
+        function setChecked(id, v) {
+            var el = document.getElementById(id);
+            if (!el || el.type !== 'checkbox') return;
+            el.checked = !!(v === true || v === 'on' || v === '1' || v === 1);
+        }
         setVal('symbol', d.symbol);
         setVal('instrument_id', d.instrument_id);
         setVal('trade_type', d.trade_type);
@@ -580,9 +639,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Calculate R:R ratio
 function calculateRR() {
-    const entry = parseFloat(document.getElementById('entry_price').value) || 0;
-    const sl = parseFloat(document.getElementById('stop_loss').value) || 0;
-    const tp = parseFloat(document.getElementById('take_profit').value) || 0;
+    const entryEl = document.getElementById('entry_price');
+    const slEl = document.getElementById('stop_loss');
+    const tpEl = document.getElementById('take_profit');
+    const rrEl = document.getElementById('rr_display');
+    const riskEl = document.getElementById('risk_display');
+    const rewardEl = document.getElementById('reward_display');
+    if (!entryEl || !slEl || !tpEl || !rrEl || !riskEl || !rewardEl) return;
+
+    const entry = parseFloat(entryEl.value) || 0;
+    const sl = parseFloat(slEl.value) || 0;
+    const tp = parseFloat(tpEl.value) || 0;
 
     if (entry && sl && tp) {
         const risk = Math.abs(entry - sl);
@@ -590,25 +657,24 @@ function calculateRR() {
 
         if (risk > 0) {
             const rr = (reward / risk).toFixed(2);
-            document.getElementById('rr_display').textContent = `1:${rr}`;
-            document.getElementById('risk_display').textContent = risk.toFixed(5);
-            document.getElementById('reward_display').textContent = reward.toFixed(5);
+            rrEl.textContent = '1:' + rr;
+            riskEl.textContent = risk.toFixed(5);
+            rewardEl.textContent = reward.toFixed(5);
 
-            // Color code the R:R
-            const rrElement = document.getElementById('rr_display');
-            if (rr >= 2) {
-                rrElement.style.color = '#10b981'; // Green
-            } else if (rr >= 1) {
-                rrElement.style.color = '#f59e0b'; // Orange
+            if (parseFloat(rr) >= 2) {
+                rrEl.style.color = '#10b981';
+            } else if (parseFloat(rr) >= 1) {
+                rrEl.style.color = '#f59e0b';
             } else {
-                rrElement.style.color = '#ef4444'; // Red
+                rrEl.style.color = '#ef4444';
             }
+            return;
         }
-    } else {
-        document.getElementById('rr_display').textContent = '—';
-        document.getElementById('risk_display').textContent = '—';
-        document.getElementById('reward_display').textContent = '—';
     }
+    rrEl.textContent = '—';
+    riskEl.textContent = '—';
+    rewardEl.textContent = '—';
+    rrEl.style.color = '';
 }
 
 // Attach listeners
@@ -640,8 +706,56 @@ function calculateRR() {
     document.querySelectorAll('.tv-lot-preset').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var lot = document.getElementById('lot_size');
-        if (lot) lot.value = btn.getAttribute('data-lot') || '1';
+        if (lot) {
+          lot.value = btn.getAttribute('data-lot') || '1';
+          lot.dispatchEvent(new Event('input', { bubbles: true }));
+          lot.dispatchEvent(new Event('change', { bubbles: true }));
+        }
       });
+    });
+
+    var cbBoth = document.getElementById('tv-compliance-both');
+    var cbClear = document.getElementById('tv-compliance-clear');
+    var chkDone = document.getElementById('checklist_completed');
+    var chkPb = document.getElementById('playbook_followed');
+    function bumpCompliance() {
+      if (chkDone) chkDone.dispatchEvent(new Event('change', { bubbles: true }));
+      if (chkPb) chkPb.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (cbBoth && chkDone && chkPb) {
+      cbBoth.addEventListener('click', function () {
+        chkDone.checked = true;
+        chkPb.checked = true;
+        bumpCompliance();
+      });
+    }
+    if (cbClear && chkDone && chkPb) {
+      cbClear.addEventListener('click', function () {
+        chkDone.checked = false;
+        chkPb.checked = false;
+        bumpCompliance();
+      });
+    }
+
+    var instErr = document.getElementById('tv-instrument-err');
+    var exitInline = document.getElementById('tv-exit-inline-err');
+    function hideInstErr() {
+      if (instErr) {
+        instErr.textContent = '';
+        instErr.classList.add('d-none');
+      }
+    }
+    document.addEventListener('tv-instrument-selected', hideInstErr);
+
+    var form = document.getElementById('trade-add-form');
+    var saveBtn = form ? form.querySelector('button[type="submit"]') : null;
+    function resetSaveButton() {
+      if (!saveBtn || saveBtn.dataset.tvLabel === undefined) return;
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = saveBtn.dataset.tvLabel;
+    }
+    window.addEventListener('pageshow', function (ev) {
+      if (ev.persisted) resetSaveButton();
     });
 
     var hStat = document.getElementById('trade_log_status');
@@ -669,25 +783,52 @@ function calculateRR() {
         if (typeof window.tvSyncDirButtons === 'function') window.tvSyncDirButtons();
         applyLogStatus();
         if (typeof calculateRR === 'function') calculateRR();
+        if (typeof window.tvExpandMoreIfNeeded === 'function') window.tvExpandMoreIfNeeded();
       }).catch(function () {
         if (typeof window.tvSyncDirButtons === 'function') window.tvSyncDirButtons();
         applyLogStatus();
         if (typeof calculateRR === 'function') calculateRR();
+        if (typeof window.tvExpandMoreIfNeeded === 'function') window.tvExpandMoreIfNeeded();
       });
     };
 
-    var form = document.getElementById('trade-add-form');
     if (form) {
       form.addEventListener('submit', function (e) {
+        var iidEl = document.getElementById('instrument_id');
+        var symEl = document.getElementById('symbol');
+        if (!iidEl || !symEl || !String(iidEl.value || '').trim() || !String(symEl.value || '').trim()) {
+          e.preventDefault();
+          if (instErr) {
+            instErr.textContent = 'Choose an instrument from search or a category before saving.';
+            instErr.classList.remove('d-none');
+          }
+          var pick = document.querySelector('.instrument-picker-container');
+          if (pick) pick.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return false;
+        }
+        hideInstErr();
+        if (exitInline) {
+          exitInline.textContent = '';
+          exitInline.classList.add('d-none');
+        }
         if (closedR && closedR.checked) {
           var exv = exitIn && String(exitIn.value || '').trim();
           if (!exv) {
             e.preventDefault();
+            if (exitInline) {
+              exitInline.textContent = 'Exit price is required for a closed trade (or switch to Open).';
+              exitInline.classList.remove('d-none');
+            }
             exitWrap && exitWrap.classList.remove('d-none');
             exitIn && exitIn.focus();
-            if (window.bootstrap && window.bootstrap.Toast) { /* optional */ }
             return false;
           }
+        }
+        if (saveBtn && !saveBtn.disabled) {
+          if (saveBtn.dataset.tvLabel === undefined) saveBtn.dataset.tvLabel = saveBtn.innerHTML;
+          saveBtn.disabled = true;
+          saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving…';
+          setTimeout(resetSaveButton, 12000);
         }
       });
     }
@@ -717,6 +858,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (btn) btn.disabled = !allChecked();
   }
   document.addEventListener("change", function(e){
+    if (e && e.target && e.target.classList && e.target.classList.contains("acc-item")) refresh();
+  });
+  document.addEventListener("input", function(e){
     if (e && e.target && e.target.classList && e.target.classList.contains("acc-item")) refresh();
   });
   document.addEventListener("DOMContentLoaded", function(){

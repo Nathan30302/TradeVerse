@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from app import db
 from app.models.trade import Trade
+from app.models.instrument import Instrument
 from app.models.trade_plan import TradePlan
 from app.models.trade_feedback import TradeFeedback
 from app.models.playbook_setup import PlaybookSetup
@@ -194,10 +195,41 @@ def add():
         try:
             # Get basic trade info
             symbol = request.form.get('symbol', '').strip().upper()
-            instrument_id = request.form.get('instrument_id')
+            instrument_id = (request.form.get('instrument_id') or '').strip()
             trade_type = request.form.get('trade_type', '').upper()
             lot_size = float(request.form.get('lot_size', 1.0))
             entry_price = float(request.form.get('entry_price'))
+
+            if not symbol or not instrument_id:
+                flash('Select an instrument from the list before saving your trade.', 'danger')
+                return render_template(
+                    'trade/add.html',
+                    active_cooldown=active_cooldown,
+                    prefill=None,
+                    accountability_required=accountability_required,
+                    playbook_setups=playbook_setups,
+                )
+            try:
+                inst_row = Instrument.query.filter_by(
+                    id=int(instrument_id), is_active=True
+                ).first()
+            except (TypeError, ValueError):
+                inst_row = None
+            if (
+                not inst_row
+                or (inst_row.symbol or '').strip().upper() != symbol
+            ):
+                flash(
+                    'Instrument choice is out of date or invalid. Re-select the symbol and try again.',
+                    'danger',
+                )
+                return render_template(
+                    'trade/add.html',
+                    active_cooldown=active_cooldown,
+                    prefill=None,
+                    accountability_required=accountability_required,
+                    playbook_setups=playbook_setups,
+                )
             
             # Get optional price levels
             exit_price = request.form.get('exit_price')
@@ -405,18 +437,52 @@ def _duplicate_prefill(user_id):
     )
     if not last_trade:
         return None
+
+    inst_id = last_trade.instrument_id
+    if not inst_id and last_trade.symbol:
+        sym = (last_trade.symbol or '').strip().upper()
+        if sym:
+            alt = Instrument.query.filter_by(symbol=sym, is_active=True).first()
+            if alt:
+                inst_id = alt.id
+
+    def _dt_local(dt):
+        if not dt:
+            return ''
+        try:
+            return dt.strftime('%Y-%m-%dT%H:%M')
+        except Exception:
+            return ''
+
+    pb_id = getattr(last_trade, 'playbook_setup_id', None)
+
     return {
         'symbol': last_trade.symbol,
-        'instrument_id': last_trade.instrument_id,
+        'instrument_id': inst_id or '',
         'trade_type': last_trade.trade_type,
         'lot_size': last_trade.lot_size,
         'entry_price': last_trade.entry_price,
         'stop_loss': last_trade.stop_loss,
         'take_profit': last_trade.take_profit,
+        'exit_price': last_trade.exit_price,
         'strategy': last_trade.strategy or '',
         'session_type': last_trade.session_type or '',
         'timeframe': last_trade.timeframe or '',
         'pre_trade_plan': last_trade.pre_trade_plan or '',
+        'post_trade_notes': last_trade.post_trade_notes or '',
+        'emotion': last_trade.emotion or '',
+        'confidence_level': (
+            last_trade.confidence_level
+            if last_trade.confidence_level is not None
+            else ''
+        ),
+        'playbook_setup_id': pb_id or '',
+        'commission': last_trade.commission if last_trade.commission is not None else '',
+        'swap': last_trade.swap if last_trade.swap is not None else '',
+        'entry_date': _dt_local(last_trade.entry_date),
+        'exit_date': _dt_local(last_trade.exit_date),
+        'checklist_completed': bool(last_trade.checklist_completed),
+        'playbook_followed': bool(last_trade.playbook_followed),
     }
 
 

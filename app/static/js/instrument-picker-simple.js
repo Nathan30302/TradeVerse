@@ -147,6 +147,11 @@ class SimpleInstrumentPicker {
     setupSearch() {
         const el = document.getElementById('instrument-search');
         if (!el) return;
+        el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+            }
+        });
         el.addEventListener('input', () => {
             clearTimeout(this._searchTimer);
             const q = el.value.trim();
@@ -410,6 +415,9 @@ class SimpleInstrumentPicker {
         if (window.tradeCalculator) {
             window.tradeCalculator.calculate();
         }
+        try {
+            document.dispatchEvent(new CustomEvent('tv-instrument-selected', { detail: { id, symbol } }));
+        } catch (err) { /* ignore */ }
     }
 
     async syncFromHiddenInputs() {
