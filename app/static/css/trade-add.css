@@ -1,0 +1,167 @@
+/**
+ * Add / Log Trade — premium quick-log layout
+ */
+
+.tv-add-trade-page {
+  --tv-log-accent: #0d6efd;
+  --tv-log-success: #198754;
+  --tv-log-danger: #dc3545;
+}
+
+.tv-log-card {
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.tv-log-card-header {
+  background: linear-gradient(135deg, rgba(13, 110, 253, 0.12), rgba(25, 135, 84, 0.08));
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body[data-theme="dark"] .tv-log-card-header {
+  background: linear-gradient(135deg, rgba(93, 173, 226, 0.15), rgba(46, 204, 113, 0.08));
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.tv-live-symbol {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 0.9rem;
+  background: rgba(13, 110, 253, 0.12);
+  color: var(--bs-body-color);
+}
+
+body[data-theme="dark"] .tv-live-symbol {
+  background: rgba(93, 173, 226, 0.2);
+}
+
+.tv-instrument-search .form-control {
+  border-radius: 0.5rem;
+}
+
+.tv-inst-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  min-height: 1.75rem;
+}
+
+.tv-inst-chip {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem 0.2rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+body[data-theme="dark"] .tv-inst-chip {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tv-inst-chip:hover {
+  border-color: var(--tv-log-accent);
+  background: rgba(13, 110, 253, 0.08);
+}
+
+.tv-inst-chip .tv-chip-pin {
+  opacity: 0.45;
+  font-size: 0.7rem;
+  padding: 0 0.15rem;
+}
+
+.tv-inst-chip.is-pinned .tv-chip-pin {
+  opacity: 1;
+  color: #f59e0b;
+}
+
+.tv-dir-btn {
+  flex: 1 1 120px;
+  min-height: 3rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-radius: 0.65rem !important;
+  border-width: 2px !important;
+}
+
+.tv-dir-btn[data-dir="BUY"].active {
+  background: rgba(25, 135, 84, 0.18);
+  border-color: var(--tv-log-success) !important;
+  color: var(--tv-log-success);
+}
+
+.tv-dir-btn[data-dir="SELL"].active {
+  background: rgba(220, 53, 69, 0.12);
+  border-color: var(--tv-log-danger) !important;
+  color: var(--tv-log-danger);
+}
+
+.tv-status-seg .btn-check:checked + .btn {
+  font-weight: 700;
+}
+
+.tv-price-grid .form-control {
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-sym-base {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.tv-sym-quote {
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+.instrument-item .inst-pin-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  border: none;
+  background: transparent;
+  padding: 0.1rem 0.2rem;
+  line-height: 1;
+  opacity: 0.35;
+  font-size: 0.65rem;
+}
+
+.instrument-item:hover .inst-pin-btn,
+.instrument-item .inst-pin-btn.is-pinned {
+  opacity: 1;
+}
+
+.instrument-item {
+  position: relative;
+}
+
+.tv-more-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+}
+
+body[data-theme="dark"] .tv-more-section {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 576px) {
+  .tv-log-card .card-body {
+    padding: 1rem !important;
+  }
+  .instrument-categories {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+  }
+}

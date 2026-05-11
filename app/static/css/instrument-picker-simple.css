@@ -125,6 +125,16 @@ body[data-theme="dark"] .category-tab.active {
     margin-bottom: 0.125rem;
 }
 
+.instrument-symbol .tv-sym-base {
+    font-size: 0.92rem;
+    letter-spacing: 0.02em;
+}
+
+.instrument-symbol .tv-sym-quote {
+    font-size: 0.82rem;
+    opacity: 0.8;
+}
+
 .instrument-name {
     font-size: 0.75rem;
     color: #6c757d;

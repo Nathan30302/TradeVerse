@@ -9,7 +9,7 @@ Provides endpoints for:
 from time import time as _monotonic_time
 
 from flask import Blueprint, request, jsonify, current_app
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from flask_login import login_required, current_user
 
 # Simple per-IP rolling window for public quote endpoint (process-local only;
@@ -284,6 +284,51 @@ def db_instrument_categories():
             result[cat['key']] = {'name': cat['name']}
     
     return jsonify({'success': True, 'categories': result})
+
+
+@bp.route('/db/instruments/search', methods=['GET'])
+@login_required
+def db_instruments_search():
+    """Fast symbol/name search for Add Trade instrument picker (debounced client)."""
+    from app.models.instrument import Instrument
+
+    raw = (request.args.get('q') or '').strip()
+    if len(raw) < 1:
+        return jsonify({'success': True, 'results': [], 'total': 0})
+    if len(raw) > 64:
+        raw = raw[:64]
+    safe = raw.replace('%', '').replace('_', '')
+    try:
+        limit = min(int(request.args.get('limit', 40)), 100)
+    except ValueError:
+        limit = 40
+
+    pattern = f'%{safe}%'
+    q = Instrument.query.filter(
+        Instrument.is_active == True,
+        or_(
+            Instrument.symbol.ilike(pattern),
+            Instrument.name.ilike(pattern),
+        ),
+    )
+    total = q.count()
+    instruments = q.order_by(Instrument.symbol).limit(limit).all()
+    out = []
+    for inst in instruments:
+        out.append(
+            {
+                'id': inst.id,
+                'symbol': inst.symbol,
+                'name': inst.name,
+                'type': inst.instrument_type,
+                'category': inst.category,
+                'pip_size': inst.pip_size,
+                'tick_value': inst.tick_value,
+                'contract_size': inst.contract_size,
+                'price_decimals': inst.price_decimals,
+            }
+        )
+    return jsonify({'success': True, 'results': out, 'total': total, 'limit': limit})
 
 
 @bp.route('/db/instruments', methods=['GET'])

@@ -4,11 +4,12 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/instrument-picker-simple.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-add.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-10 mx-auto">
+<div class="row justify-content-center tv-add-trade-page">
+    <div class="col-12 col-lg-11 col-xl-10">
         {% if accountability_required %}
         <div class="alert alert-info d-flex align-items-start justify-content-between gap-3">
             <div>
@@ -79,284 +80,271 @@
             <script type="application/json" id="trade-prefill-json">{{ prefill | tojson }}</script>
             {% endif %}
 
-            <!-- Basic Information -->
-            <div class="card mb-4">
-                <div class="card-header d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Basic Information</h5>
-                    <!-- Instrument code display (updated when user selects an instrument) -->
-                    <div id="header-instrument-code" class="text-white text-opacity-75 small">No instrument selected</div>
+            <!-- Quick log (core trade entry) -->
+            <div class="card tv-log-card border-0 shadow-sm mb-3">
+                <div class="card-header tv-log-card-header py-3 px-3 px-md-4">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                        <div>
+                            <h1 class="h4 mb-1 fw-bold">Log trade</h1>
+                            <p class="small text-muted mb-0">Pick instrument → direction → prices. P&amp;L is computed when you close with an exit.</p>
+                        </div>
+                        <div id="header-instrument-code" class="tv-live-symbol">No symbol</div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Instrument *</label>
-                            <div class="instrument-picker-container">
-                                <!-- Category Tabs -->
-                                <div class="instrument-categories mb-2">
-                                    <button type="button" class="category-tab active" data-category="crypto">
-                                        <i class="fas fa-bitcoin-sign"></i> Crypto
-                                    </button>
-                                    <button type="button" class="category-tab" data-category="crypto_cross">
-                                        <i class="fas fa-link"></i> Crypto Cross
-                                    </button>
-                                    <button type="button" class="category-tab" data-category="energies">
-                                        <i class="fas fa-bolt"></i> Energies
-                                    </button>
-                                    <button type="button" class="category-tab" data-category="forex">
-                                        <i class="fas fa-exchange-alt"></i> Forex
-                                    </button>
-                                    <button type="button" class="category-tab" data-category="forex_indicator">
-                                        <i class="fas fa-chart-line"></i> Forex Indicator
-                                    </button>
-                                    <button type="button" class="category-tab" data-category="idx_large">
-                                        <i class="fas fa-building-columns"></i> IDX Large
-                                    </button>
-                                    <button type="button" class="category-tab" data-category="index">
-                                        <i class="fas fa-chart-bar"></i> Indices
-                                    </button>
-                                    <button type="button" class="category-tab" data-category="stocks">
-                                        <i class="fas fa-stock"></i> Stocks
-                                    </button>
+                <div class="card-body p-3 p-md-4">
+                    <input type="hidden" name="trade_log_status" id="trade_log_status" value="open">
+
+                    <div class="mb-3 mb-md-4">
+                        <label class="form-label fw-semibold text-uppercase small text-muted mb-2">Instrument</label>
+                        <div class="instrument-picker-container">
+                            <div class="tv-instrument-search mb-2">
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text bg-transparent border-end-0"><i class="fas fa-search text-muted"></i></span>
+                                    <input type="search" class="form-control border-start-0 ps-0" id="instrument-search"
+                                           placeholder="Search EURUSD, XAUUSD, US30…" autocomplete="off" aria-label="Search instruments">
                                 </div>
+                                <div id="instrument-search-hint" class="form-text small text-muted d-none">Type 1+ characters — results update as you type.</div>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2 small text-muted">
+                                <span class="fw-semibold"><i class="fas fa-clock me-1"></i>Recent</span>
+                                <div class="tv-inst-chips flex-grow-1" id="tv-inst-recents" aria-label="Recent instruments"></div>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2 small text-muted">
+                                <span class="fw-semibold"><i class="fas fa-star me-1 text-warning"></i>Pinned</span>
+                                <div class="tv-inst-chips flex-grow-1" id="tv-inst-pinned" aria-label="Pinned instruments"></div>
+                            </div>
+                            <div class="instrument-categories mb-2">
+                                <button type="button" class="category-tab active" data-category="forex">
+                                    <i class="fas fa-exchange-alt"></i> Forex
+                                </button>
+                                <button type="button" class="category-tab" data-category="energies">
+                                    <i class="fas fa-gem"></i> Metals &amp; oil
+                                </button>
+                                <button type="button" class="category-tab" data-category="index">
+                                    <i class="fas fa-chart-bar"></i> Indices
+                                </button>
+                                <button type="button" class="category-tab" data-category="idx_large">
+                                    <i class="fas fa-building-columns"></i> IDX Large
+                                </button>
+                                <button type="button" class="category-tab" data-category="crypto">
+                                    <i class="fas fa-bitcoin-sign"></i> Crypto
+                                </button>
+                                <button type="button" class="category-tab" data-category="crypto_cross">
+                                    <i class="fas fa-link"></i> Crypto cross
+                                </button>
+                                <button type="button" class="category-tab" data-category="stocks">
+                                    <i class="fas fa-building"></i> Stocks
+                                </button>
+                                <button type="button" class="category-tab" data-category="forex_indicator">
+                                    <i class="fas fa-wave-square"></i> FX indicators
+                                </button>
+                            </div>
+                            <div class="instrument-list" id="instrument-list"></div>
+                            <div class="selected-instrument mt-2 small" id="selected-instrument">
+                                <span class="text-muted">No instrument selected</span>
+                            </div>
+                            <input type="hidden" id="instrument_id" name="instrument_id">
+                            <input type="hidden" id="symbol" name="symbol">
+                        </div>
+                    </div>
 
-                                <!-- Instrument List -->
-                                <div class="instrument-list" id="instrument-list">
-                                    <!-- Instruments will be loaded here -->
+                    <div class="row g-3 mb-3 align-items-end">
+                        <div class="col-12 col-lg-7">
+                            <label class="form-label fw-semibold text-uppercase small text-muted">Direction</label>
+                            <div class="d-flex flex-wrap gap-2" role="group" aria-label="Trade direction">
+                                <button type="button" class="btn btn-outline-secondary tv-dir-btn flex-grow-1" data-dir="BUY" id="tv-dir-buy">Buy <span class="d-none d-sm-inline">· Long</span></button>
+                                <button type="button" class="btn btn-outline-secondary tv-dir-btn flex-grow-1" data-dir="SELL" id="tv-dir-sell">Sell <span class="d-none d-sm-inline">· Short</span></button>
+                            </div>
+                            <select class="visually-hidden" id="trade_type" name="trade_type" required tabindex="-1" aria-hidden="true">
+                                <option value="BUY" selected>BUY</option>
+                                <option value="SELL">SELL</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-lg-5">
+                            <label for="lot_size" class="form-label fw-semibold text-uppercase small text-muted">Lot size</label>
+                            <input type="number" step="0.01" class="form-control form-control-lg" id="lot_size" name="lot_size" value="1.0" required inputmode="decimal">
+                            <div class="btn-group btn-group-sm w-100 mt-1 tv-lot-presets" role="group" aria-label="Lot presets">
+                                <button type="button" class="btn btn-outline-secondary tv-lot-preset" data-lot="0.01">0.01</button>
+                                <button type="button" class="btn btn-outline-secondary tv-lot-preset" data-lot="0.1">0.1</button>
+                                <button type="button" class="btn btn-outline-secondary tv-lot-preset" data-lot="0.5">0.5</button>
+                                <button type="button" class="btn btn-outline-secondary tv-lot-preset" data-lot="1">1</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 g-md-3 tv-price-grid mb-2">
+                        <div class="col-6 col-md-3">
+                            <label for="entry_price" class="form-label small fw-semibold">Entry <span class="text-danger">*</span></label>
+                            <input type="number" step="0.00001" class="form-control" id="entry_price" name="entry_price" required placeholder="—">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label for="stop_loss" class="form-label small fw-semibold">Stop loss</label>
+                            <input type="number" step="0.00001" class="form-control" id="stop_loss" name="stop_loss" placeholder="—">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label for="take_profit" class="form-label small fw-semibold">Take profit</label>
+                            <input type="number" step="0.00001" class="form-control" id="take_profit" name="take_profit" placeholder="—">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small fw-semibold d-block mb-1">Position</label>
+                            <div class="btn-group w-100 tv-status-seg" role="group" aria-label="Open or closed">
+                                <input type="radio" class="btn-check" name="tv_status_ui" id="tv_status_open" value="open" checked autocomplete="off">
+                                <label class="btn btn-outline-secondary btn-sm" for="tv_status_open">Open</label>
+                                <input type="radio" class="btn-check" name="tv_status_ui" id="tv_status_closed" value="closed" autocomplete="off">
+                                <label class="btn btn-outline-secondary btn-sm" for="tv_status_closed">Closed</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3 d-none" id="tv-exit-wrap">
+                        <div class="col-12 col-md-6">
+                            <label for="exit_price" class="form-label small fw-semibold">Exit price <span class="text-danger">*</span> <span class="text-muted fw-normal">(realized P&amp;L)</span></label>
+                            <input type="number" step="0.00001" class="form-control" id="exit_price" name="exit_price" placeholder="Fill when closed">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="exit_date" class="form-label small fw-semibold">Exit time <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="datetime-local" class="form-control" id="exit_date" name="exit_date">
+                        </div>
+                    </div>
+
+                    <div class="rounded-3 bg-body-secondary p-3 mb-3">
+                        <div class="row text-center g-2">
+                            <div class="col-4">
+                                <small class="text-muted d-block text-uppercase" style="font-size:0.65rem;">R:R</small>
+                                <strong id="rr_display" class="d-block fs-5">—</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block text-uppercase" style="font-size:0.65rem;">Risk</small>
+                                <strong id="risk_display" class="d-block fs-6">—</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block text-uppercase" style="font-size:0.65rem;">Reward</small>
+                                <strong id="reward_display" class="d-block fs-6">—</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-link text-decoration-none px-0 d-flex align-items-center gap-2 fw-semibold" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#tvMoreFields" aria-expanded="false" aria-controls="tvMoreFields">
+                        <i class="fas fa-sliders-h"></i> More fields <span class="small text-muted fw-normal">(strategy, psychology, notes…)</span>
+                    </button>
+                    <div class="collapse mt-2" id="tvMoreFields">
+                        <div class="tv-more-section">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Strategy &amp; session</h6>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
+                                    <label for="strategy" class="form-label small fw-semibold">Strategy</label>
+                                    <select class="form-select" id="strategy" name="strategy">
+                                        <option value="">Optional</option>
+                                        {% for strategy in config.STRATEGIES %}
+                                            <option value="{{ strategy }}">{{ strategy }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
-
-                                <!-- Selected Instrument Display -->
-                                <div class="selected-instrument mt-2" id="selected-instrument">
-                                    <small class="text-muted">No instrument selected</small>
+                                <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
+                                    <label for="session_type" class="form-label small fw-semibold">Session</label>
+                                    <select class="form-select" id="session_type" name="session_type">
+                                        <option value="">Optional</option>
+                                        {% for session in config.SESSION_TYPES %}
+                                            <option value="{{ session }}">{{ session }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
-
-                                <!-- Hidden inputs for form submission -->
-                                <input type="hidden" id="instrument_id" name="instrument_id">
-                                <input type="hidden" id="symbol" name="symbol">
+                                <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
+                                    <label for="timeframe" class="form-label small fw-semibold">Timeframe</label>
+                                    <select class="form-select" id="timeframe" name="timeframe">
+                                        <option value="">Optional</option>
+                                        <option value="1M">1M</option>
+                                        <option value="5M">5M</option>
+                                        <option value="15M">15M</option>
+                                        <option value="30M">30M</option>
+                                        <option value="1H">1H</option>
+                                        <option value="4H">4H</option>
+                                        <option value="1D">1D</option>
+                                        <option value="1W">1W</option>
+                                    </select>
+                                </div>
+                                {% if feature_playbook %}
+                                <div class="col-md-3">
+                                    <label for="playbook_setup_id" class="form-label small fw-semibold">Playbook setup</label>
+                                    <select class="form-select" id="playbook_setup_id" name="playbook_setup_id">
+                                        <option value="">None</option>
+                                        {% for s in (playbook_setups or []) %}
+                                            <option value="{{ s.id }}">{{ s.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% endif %}
                             </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label for="trade_type" class="form-label fw-bold">Trade Type *</label>
-                            <select class="form-select" id="trade_type" name="trade_type" required>
-                                <option value="">Select...</option>
-                                <option value="BUY">BUY (Long) 📈</option>
-                                <option value="SELL">SELL (Short) 📉</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label for="lot_size" class="form-label fw-bold">Lot Size *</label>
-                            <input type="number" step="0.01" class="form-control" id="lot_size"
-                                   name="lot_size" value="1.0" required>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Price Levels -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Price Levels</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label for="entry_price" class="form-label fw-bold">Entry Price *</label>
-                            <input type="number" step="0.00001" class="form-control" id="entry_price"
-                                   name="entry_price" required placeholder="1.20000">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label for="stop_loss" class="form-label fw-bold">Stop Loss</label>
-                            <input type="number" step="0.00001" class="form-control" id="stop_loss"
-                                   name="stop_loss" placeholder="1.19500">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label for="take_profit" class="form-label fw-bold">Take Profit</label>
-                            <input type="number" step="0.00001" class="form-control" id="take_profit"
-                                   name="take_profit" placeholder="1.21000">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label for="exit_price" class="form-label fw-bold">Exit Price (if closed)</label>
-                            <input type="number" step="0.00001" class="form-control" id="exit_price"
-                                   name="exit_price" placeholder="1.20500">
-                        </div>
-                    </div>
-
-                    <div class="mt-3 tv-panel">
-                        <div class="row text-center">
-                            <div class="col-md-4">
-                                <small class="text-muted d-block">Risk:Reward Ratio</small>
-                                <strong id="rr_display" class="h5">—</strong>
+                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Psychology</h6>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label for="emotion" class="form-label small fw-semibold">Emotion</label>
+                                    <select class="form-select" id="emotion" name="emotion">
+                                        <option value="">Optional</option>
+                                        {% for emotion in config.EMOTIONS %}
+                                            <option value="{{ emotion }}">{{ emotion }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="confidence_level" class="form-label small fw-semibold">Confidence</label>
+                                    <select class="form-select" id="confidence_level" name="confidence_level">
+                                        <option value="">Optional</option>
+                                        {% for i in range(10, 0, -1) %}
+                                            <option value="{{ i }}">{{ i }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <small class="text-muted d-block">Risk (pips/points)</small>
-                                <strong id="risk_display" class="h5">—</strong>
+                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Notes</h6>
+                            <div class="mb-3">
+                                <label for="pre_trade_plan" class="form-label small fw-semibold">Pre-trade plan</label>
+                                <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="2" placeholder="Setup thesis (optional)"></textarea>
                             </div>
-                            <div class="col-md-4">
-                                <small class="text-muted d-block">Reward (pips/points)</small>
-                                <strong id="reward_display" class="h5">—</strong>
+                            <div class="mb-3">
+                                <label for="post_trade_notes" class="form-label small fw-semibold">Post-trade notes</label>
+                                <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="2" placeholder="Review (optional)"></textarea>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Strategy & Session -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-chess"></i> Strategy & Session</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
-                            <label for="strategy" class="form-label fw-bold">Strategy</label>
-                            <select class="form-select" id="strategy" name="strategy">
-                                <option value="">Select strategy...</option>
-                                {% for strategy in config.STRATEGIES %}
-                                    <option value="{{ strategy }}">
-                                        {{ strategy }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
-                            <label for="session_type" class="form-label fw-bold">Trading Session</label>
-                            <select class="form-select" id="session_type" name="session_type">
-                                <option value="">Select session...</option>
-                                {% for session in config.SESSION_TYPES %}
-                                    <option value="{{ session }}">
-                                        {{ session }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
-                            <label for="timeframe" class="form-label fw-bold">Timeframe</label>
-                            <select class="form-select" id="timeframe" name="timeframe">
-                                <option value="">Select...</option>
-                                <option value="1M">1 Minute</option>
-                                <option value="5M">5 Minutes</option>
-                                <option value="15M">15 Minutes</option>
-                                <option value="30M">30 Minutes</option>
-                                <option value="1H">1 Hour</option>
-                                <option value="4H">4 Hours</option>
-                                <option value="1D">1 Day</option>
-                                <option value="1W">1 Week</option>
-                            </select>
-                        </div>
-
-                        {% if feature_playbook %}
-                        <div class="col-md-3">
-                            <label for="playbook_setup_id" class="form-label fw-bold">Playbook setup</label>
-                            <select class="form-select" id="playbook_setup_id" name="playbook_setup_id">
-                                <option value="">None</option>
-                                {% for s in (playbook_setups or []) %}
-                                    <option value="{{ s.id }}">{{ s.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text">
-                                Link this trade to a setup so you can track setup stats and build Replay faster.
+                            <h6 class="text-muted text-uppercase small fw-bold mb-2">Compliance</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="checklist_completed" name="checklist_completed">
+                                        <label class="form-check-label small" for="checklist_completed">Pre-trade checklist done</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="playbook_followed" name="playbook_followed" checked>
+                                        <label class="form-check-label small" for="playbook_followed">Followed playbook rules</label>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Psychology -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-brain"></i> Psychology & Quality</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="emotion" class="form-label fw-bold">Emotion</label>
-                            <select class="form-select" id="emotion" name="emotion">
-                                <option value="">Select emotion...</option>
-                                {% for emotion in config.EMOTIONS %}
-                                    <option value="{{ emotion }}">
-                                        {{ emotion }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="confidence_level" class="form-label fw-bold">Confidence Level</label>
-                            <select class="form-select" id="confidence_level" name="confidence_level">
-                                <option value="">Select...</option>
-                                {% for i in range(10, 0, -1) %}
-                                    <option value="{{ i }}">
-                                        {{ i }} - {% if i >= 8 %}Very Confident{% elif i >= 5 %}Neutral{% else %}Unsure{% endif %}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notes -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-sticky-note"></i> Trade Notes</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="pre_trade_plan" class="form-label fw-bold">Pre-Trade Plan</label>
-                        <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" placeholder="Why are you taking this trade? What is your setup? What confirms your entry?"></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="post_trade_notes" class="form-label fw-bold">Post-Trade Notes</label>
-                        <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3" placeholder="What went well? What could improve? Did you follow your plan?"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Compliance -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-clipboard-check"></i> Compliance</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="checklist_completed"
-                                       name="checklist_completed">
-                                <label class="form-check-label fw-bold" for="checklist_completed">
-                                    ✅ Pre-trade checklist completed
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="playbook_followed"
-                                       name="playbook_followed">
-                                <label class="form-check-label fw-bold" for="playbook_followed">
-                                    📖 Playbook rules followed
-                                </label>
+                            <div class="row g-2 mt-3 pt-3 border-top border-secondary-subtle">
+                                <div class="col-md-6">
+                                    <label for="entry_date" class="form-label small fw-semibold">Entry time <span class="text-muted fw-normal">(optional)</span></label>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="entry_date" name="entry_date">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="commission" class="form-label small fw-semibold">Commission</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" id="commission" name="commission" placeholder="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="swap" class="form-label small fw-semibold">Swap</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" id="swap" name="swap" placeholder="0">
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Submit Buttons -->
-            <div class="d-flex gap-3 justify-content-end mb-5">
-                <a href="{{ url_for('trade.list') }}" class="btn btn-secondary btn-lg px-5">
-                    <i class="fas fa-times"></i> Cancel
+            <div class="d-flex flex-column flex-sm-row gap-2 gap-sm-3 justify-content-between align-items-stretch align-items-sm-center mb-5">
+                <a href="{{ url_for('trade.list') }}" class="btn btn-outline-secondary btn-lg order-2 order-sm-1">
+                    <i class="fas fa-times me-1"></i> Cancel
                 </a>
-                <button type="submit" class="btn btn-primary btn-lg px-5">
-                    <i class="fas fa-save"></i> Save Trade
+                <button type="submit" class="btn btn-primary btn-lg px-4 px-sm-5 order-1 order-sm-2 flex-grow-1 flex-sm-grow-0">
+                    <i class="fas fa-check me-1"></i> Save trade
                 </button>
             </div>
         </form>
@@ -504,12 +492,40 @@ document.addEventListener('DOMContentLoaded', function () {
         setVal('entry_price', d.entry_price);
         setVal('stop_loss', d.stop_loss);
         setVal('take_profit', d.take_profit);
+        setVal('exit_price', d.exit_price);
         setVal('strategy', d.strategy);
         setVal('session_type', d.session_type);
         setVal('timeframe', d.timeframe);
         setVal('pre_trade_plan', d.pre_trade_plan);
+        setVal('entry_date', d.entry_date);
+        setVal('exit_date', d.exit_date);
+        setVal('commission', d.commission);
+        setVal('swap', d.swap);
+        var hStat = document.getElementById('trade_log_status');
+        if (hStat) {
+          if (d.exit_price) { hStat.value = 'closed'; }
+          else { hStat.value = 'open'; }
+        }
+        var oR = document.getElementById('tv_status_open');
+        var cR = document.getElementById('tv_status_closed');
+        if (d.exit_price && cR) { cR.checked = true; if (oR) oR.checked = false; }
+        else if (oR) { oR.checked = true; if (cR) cR.checked = false; }
+        var ew = document.getElementById('tv-exit-wrap');
+        var ex = document.getElementById('exit_price');
+        if (ew && ex) {
+          ew.classList.toggle('d-none', !d.exit_price);
+          ex.required = !!d.exit_price;
+        }
         var hdr = document.getElementById('header-instrument-code');
-        if (hdr && d.symbol) hdr.textContent = d.symbol;
+        if (hdr && d.symbol) {
+          hdr.textContent = '';
+          if (window.instrumentPicker && typeof window.instrumentPicker._fillSymbolSpan === 'function') {
+            window.instrumentPicker._fillSymbolSpan(hdr, d.symbol);
+          } else {
+            hdr.textContent = d.symbol;
+          }
+        }
+        if (typeof window.tvSyncDirButtons === 'function') window.tvSyncDirButtons();
         if (typeof calculateRR === 'function') calculateRR();
     } catch (e) { /* ignore */ }
 });
@@ -548,10 +564,71 @@ function calculateRR() {
 }
 
 // Attach listeners
-['entry_price', 'stop_loss', 'take_profit'].forEach(id => {
+['entry_price', 'stop_loss', 'take_profit', 'exit_price'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', calculateRR);
 });
+
+(function () {
+  'use strict';
+  function syncDir() {
+    var sel = document.getElementById('trade_type');
+    var buy = document.getElementById('tv-dir-buy');
+    var sell = document.getElementById('tv-dir-sell');
+    var v = (sel && sel.value) || '';
+    if (buy) { buy.classList.toggle('active', v === 'BUY'); buy.setAttribute('aria-pressed', v === 'BUY' ? 'true' : 'false'); }
+    if (sell) { sell.classList.toggle('active', v === 'SELL'); sell.setAttribute('aria-pressed', v === 'SELL' ? 'true' : 'false'); }
+  }
+  window.tvSyncDirButtons = syncDir;
+  document.addEventListener('DOMContentLoaded', function () {
+    var sel = document.getElementById('trade_type');
+    var buy = document.getElementById('tv-dir-buy');
+    var sell = document.getElementById('tv-dir-sell');
+    if (buy && sel) buy.addEventListener('click', function () { sel.value = 'BUY'; syncDir(); });
+    if (sell && sel) sell.addEventListener('click', function () { sel.value = 'SELL'; syncDir(); });
+    if (sel) sel.addEventListener('change', syncDir);
+    syncDir();
+
+    document.querySelectorAll('.tv-lot-preset').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var lot = document.getElementById('lot_size');
+        if (lot) lot.value = btn.getAttribute('data-lot') || '1';
+      });
+    });
+
+    var hStat = document.getElementById('trade_log_status');
+    var openR = document.getElementById('tv_status_open');
+    var closedR = document.getElementById('tv_status_closed');
+    var exitWrap = document.getElementById('tv-exit-wrap');
+    var exitIn = document.getElementById('exit_price');
+    function applyLogStatus() {
+      var closed = closedR && closedR.checked;
+      if (hStat) hStat.value = closed ? 'closed' : 'open';
+      if (exitWrap) exitWrap.classList.toggle('d-none', !closed);
+      if (exitIn) exitIn.required = !!closed;
+      if (!closed && exitIn) exitIn.value = '';
+    }
+    if (openR) openR.addEventListener('change', applyLogStatus);
+    if (closedR) closedR.addEventListener('change', applyLogStatus);
+    applyLogStatus();
+
+    var form = document.getElementById('trade-add-form');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        if (closedR && closedR.checked) {
+          var exv = exitIn && String(exitIn.value || '').trim();
+          if (!exv) {
+            e.preventDefault();
+            exitWrap && exitWrap.classList.remove('d-none');
+            exitIn && exitIn.focus();
+            if (window.bootstrap && window.bootstrap.Toast) { /* optional */ }
+            return false;
+          }
+        }
+      });
+    }
+  });
+}());
 </script>
 
 {% if accountability_required %}

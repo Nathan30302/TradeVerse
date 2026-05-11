@@ -203,7 +203,15 @@ def add():
             exit_price = request.form.get('exit_price')
             stop_loss = request.form.get('stop_loss')
             take_profit = request.form.get('take_profit')
-            
+            log_status = (request.form.get('trade_log_status') or '').strip().lower()
+            if log_status not in ('open', 'closed', ''):
+                log_status = ''
+            if not log_status:
+                if exit_price and str(exit_price).strip():
+                    log_status = 'closed'
+                else:
+                    log_status = 'open'
+
             # Get dates
             entry_date_str = request.form.get('entry_date')
             exit_date_str = request.form.get('exit_date')
@@ -211,6 +219,19 @@ def add():
             # Parse dates
             entry_date = datetime.fromisoformat(entry_date_str) if entry_date_str else datetime.utcnow()
             exit_date = datetime.fromisoformat(exit_date_str) if exit_date_str else None
+
+            if log_status == 'open':
+                exit_price = None
+                exit_date = None
+            elif log_status == 'closed' and not (exit_price and str(exit_price).strip()):
+                flash('Closed trades need an exit price (or switch to Open).', 'danger')
+                return render_template(
+                    'trade/add.html',
+                    active_cooldown=active_cooldown,
+                    prefill=None,
+                    accountability_required=accountability_required,
+                    playbook_setups=playbook_setups,
+                )
             
             # Get strategy and session info
             strategy = request.form.get('strategy')
@@ -275,7 +296,11 @@ def add():
                     pass
             
             # Set optional fields
-            if exit_price:
+            if log_status == 'open':
+                trade.exit_price = None
+                trade.exit_date = None
+                trade.status = 'OPEN'
+            elif exit_price:
                 trade.exit_price = float(exit_price)
                 trade.exit_date = exit_date or datetime.utcnow()
                 trade.status = 'CLOSED'
