@@ -133,7 +133,7 @@
             const url = base.replace('__PLAN__', encodeURIComponent(planSlug));
             window.location.href = url;
         } else {
-            window.location.href = '{{ url_for("auth.login") }}?next={{ url_for("monetization.pricing") }}';
+            window.location.href = '{{ url_for("auth.login") }}?next={{ url_for("main.pricing") }}';
         }
     }
 </script>

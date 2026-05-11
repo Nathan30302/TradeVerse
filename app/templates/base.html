@@ -20,8 +20,8 @@
     <meta name="application-name" content="TradeVerse">
     <meta name="apple-mobile-web-app-title" content="TradeVerse">
     <meta name="theme-color" content="#0f172a">
-    {# SEO + Social sharing meta #}
-    {% set canonical_url = (('https://' ~ request.host) ~ request.path) if request and request.host else '' %}
+    {# SEO + Social sharing meta (seo_canonical_url uses PUBLIC_SITE_URL when set) #}
+    {% set canonical_url = seo_canonical_url if (seo_canonical_url is defined and seo_canonical_url) else ((('https://' ~ request.host) ~ request.path) if request and request.host else '') %}
     {% if canonical_url %}
     <link rel="canonical" href="{{ canonical_url }}">
     {% endif %}
@@ -29,7 +29,9 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="{% block og_title %}{{ app_name }}{% endblock %}">
     <meta property="og:description" content="{% block og_description %}TradeVerse - Professional Trading Journal for Serious Traders{% endblock %}">
+    {% if canonical_url %}
     <meta property="og:url" content="{{ canonical_url }}">
+    {% endif %}
     <meta property="og:image" content="{{ url_for('static', filename='img/favicon-512.png', _external=True) }}">
     <meta property="og:image:alt" content="{{ app_name }} logo">
     <meta name="twitter:card" content="summary_large_image">
@@ -42,6 +44,7 @@
     <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='img/favicon-192.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    {% block extra_head %}{% endblock %}
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">

@@ -406,6 +406,18 @@ def register_context_processors(app):
         }
 
     @app.context_processor
+    def inject_seo_canonical():
+        from flask import request
+        from app.services.seo import canonical_url_for_request, public_site_origin
+
+        try:
+            cu = canonical_url_for_request(app, request)
+            origin = public_site_origin(app, request)
+        except Exception:
+            cu, origin = "", ""
+        return {'seo_canonical_url': cu, 'seo_site_origin': origin}
+
+    @app.context_processor
     def inject_fx_display():
         """USD→preferred multiplier for charts/JS; currency lists for settings."""
         from flask_login import current_user

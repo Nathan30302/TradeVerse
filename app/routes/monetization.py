@@ -26,12 +26,12 @@ bp = Blueprint('monetization', __name__, url_prefix='/monetization')
 
 # ==================== Pricing ====================
 
-@bp.route('/pricing')
-def pricing():
+def render_pricing_page():
     """
-    Pricing Page
-    
-    Displays available subscription tiers
+    Public pricing page HTML.
+
+    Canonical URL is ``/pricing`` (``main.pricing``). The legacy URL
+    ``/monetization/pricing`` issues a 301 to avoid duplicate URLs in Search Console.
     """
     current_tier = "free"
     if current_user.is_authenticated:
@@ -103,6 +103,12 @@ def pricing():
     )
 
 
+@bp.route('/pricing')
+def pricing():
+    """Legacy path: consolidate on ``/pricing`` for indexing and internal links."""
+    return redirect(url_for('main.pricing'), code=301)
+
+
 # ==================== Subscriptions ====================
 
 @bp.route('/subscribe/<plan>', methods=['GET', 'POST'])
@@ -117,7 +123,7 @@ def subscribe(plan):
     valid_plans = ('pro', 'pro_plus')
     if plan.lower() not in valid_plans:
         flash('❌ Invalid plan selected.', 'danger')
-        return redirect(url_for('monetization.pricing'))
+        return redirect(url_for('main.pricing'))
 
     # Prefer Paytiko if configured (global orchestration like AquaFunded).
     paytiko_secret = current_app.config.get("PAYTIKO_MERCHANT_SECRET_KEY") or os.environ.get("PAYTIKO_MERCHANT_SECRET_KEY")
@@ -128,14 +134,14 @@ def subscribe(plan):
             requests = import_module("requests")
         except Exception:
             flash("⚠️ Payment gateway not available (requests package missing).", "warning")
-            return redirect(url_for("monetization.pricing"))
+            return redirect(url_for("main.pricing"))
 
         # Amounts should match the pricing page.
         amount_map = {"pro": 5, "pro_plus": 15}
         amount = amount_map.get(plan.lower())
         if amount is None:
             flash("❌ Invalid plan selected.", "danger")
-            return redirect(url_for("monetization.pricing"))
+            return redirect(url_for("main.pricing"))
 
         # Paytiko signature: sha256("{email};{timestamp};{merchant_secret}")
         ts = int(datetime.now(timezone.utc).timestamp())
@@ -183,12 +189,12 @@ def subscribe(plan):
             if resp.status_code >= 400 or not redirect_url:
                 current_app.logger.warning("Paytiko init failed: status=%s body=%s", resp.status_code, data)
                 flash("❌ Error initiating payment. Please try again later.", "danger")
-                return redirect(url_for("monetization.pricing"))
+                return redirect(url_for("main.pricing"))
             return redirect(redirect_url, code=303)
         except Exception:
             current_app.logger.exception("Paytiko checkout error")
             flash("❌ Error initiating payment. Please try again later.", "danger")
-            return redirect(url_for("monetization.pricing"))
+            return redirect(url_for("main.pricing"))
 
     # Prefer Flutterwave if configured (works in more African countries).
     flw_secret = current_app.config.get('FLW_SECRET_KEY') or os.environ.get('FLW_SECRET_KEY')
@@ -199,18 +205,18 @@ def subscribe(plan):
             requests = import_module('requests')
         except Exception:
             flash('⚠️ Payment gateway not available (requests package missing).', 'warning')
-            return redirect(url_for('monetization.pricing'))
+            return redirect(url_for('main.pricing'))
 
         # Amounts should match the pricing page.
         amount_map = {'pro': 5, 'pro_plus': 15}
         amount = amount_map.get(plan.lower())
         if amount is None:
             flash('❌ Invalid plan selected.', 'danger')
-            return redirect(url_for('monetization.pricing'))
+            return redirect(url_for('main.pricing'))
 
         tx_ref = f"tv_{current_user.id}_{plan.lower()}_{secrets.token_urlsafe(10)}"
         redirect_url = url_for('monetization.flutterwave_callback', _external=True)
-        cancel_url = current_app.config.get('FLW_CANCEL_URL') or os.environ.get('FLW_CANCEL_URL') or url_for('monetization.pricing', _external=True)
+        cancel_url = current_app.config.get('FLW_CANCEL_URL') or os.environ.get('FLW_CANCEL_URL') or url_for('main.pricing', _external=True)
 
         payload = {
             "tx_ref": tx_ref,
@@ -247,19 +253,19 @@ def subscribe(plan):
         except Exception:
             current_app.logger.exception("Flutterwave checkout error")
             flash('❌ Error initiating payment. Please try again later.', 'danger')
-            return redirect(url_for('monetization.pricing'))
+            return redirect(url_for('main.pricing'))
 
     # Fallback: Stripe (if configured)
     try:
         stripe = import_module('stripe')
     except Exception:
         flash('⚠️ Payment gateway not configured yet. Please contact support.', 'warning')
-        return redirect(url_for('monetization.pricing'))
+        return redirect(url_for('main.pricing'))
 
     stripe_key = current_app.config.get('STRIPE_SECRET_KEY') or os.environ.get('STRIPE_SECRET_KEY')
     if not stripe_key:
         flash('⚠️ Payment gateway not configured yet. Please contact support.', 'warning')
-        return redirect(url_for('monetization.pricing'))
+        return redirect(url_for('main.pricing'))
 
     stripe.api_key = stripe_key
 
@@ -270,11 +276,11 @@ def subscribe(plan):
     price_id = price_map.get(plan.lower())
     if not price_id:
         flash('⚠️ Price for selected plan is not configured.', 'warning')
-        return redirect(url_for('monetization.pricing'))
+        return redirect(url_for('main.pricing'))
 
     try:
         success_url = current_app.config.get('STRIPE_SUCCESS_URL') or url_for('dashboard.index', _external=True)
-        cancel_url = current_app.config.get('STRIPE_CANCEL_URL') or url_for('monetization.pricing', _external=True)
+        cancel_url = current_app.config.get('STRIPE_CANCEL_URL') or url_for('main.pricing', _external=True)
         session = stripe.checkout.Session.create(
             customer_email=current_user.email,
             payment_method_types=['card'],
@@ -287,7 +293,7 @@ def subscribe(plan):
     except Exception:
         current_app.logger.exception("Subscription checkout error")
         flash('❌ Error initiating payment. Please try again later.', 'danger')
-        return redirect(url_for('monetization.pricing'))
+        return redirect(url_for('main.pricing'))
 
 
 @bp.route("/paytiko/success")
@@ -301,7 +307,7 @@ def paytiko_success():
 @login_required
 def paytiko_failed():
     flash("Payment not completed. Please try again.", "warning")
-    return redirect(url_for("monetization.pricing"))
+    return redirect(url_for("main.pricing"))
 
 
 @bp.route("/paytiko/webhook", methods=["POST"])
@@ -385,11 +391,11 @@ def flutterwave_callback():
     # If user cancelled, go back to pricing.
     if status in {"cancelled", "canceled"}:
         flash("Payment cancelled.", "info")
-        return redirect(url_for("monetization.pricing"))
+        return redirect(url_for("main.pricing"))
 
     if not transaction_id:
         flash("Could not verify payment. Please contact support.", "warning")
-        return redirect(url_for("monetization.pricing"))
+        return redirect(url_for("main.pricing"))
 
     try:
         requests = import_module("requests")
@@ -408,11 +414,11 @@ def flutterwave_callback():
     except Exception:
         current_app.logger.exception("Flutterwave verify failed")
         flash("Could not verify payment. Please try again.", "warning")
-        return redirect(url_for("monetization.pricing"))
+        return redirect(url_for("main.pricing"))
 
     if verified_status != "successful":
         flash("Payment not completed.", "warning")
-        return redirect(url_for("monetization.pricing"))
+        return redirect(url_for("main.pricing"))
 
     # Trust meta plan if present; fall back to parsing our tx_ref.
     plan = (meta.get("plan") or "").lower()
@@ -503,7 +509,7 @@ def export_data():
             'Upgrade to download your trades and plans as CSV.',
             'warning',
         )
-        return redirect(url_for('monetization.pricing'))
+        return redirect(url_for('main.pricing'))
 
     if current_user_exports_blocked(current_user):
         flash(

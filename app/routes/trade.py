@@ -509,7 +509,7 @@ def list_export_csv():
             'Upgrade to download your trades.',
             'warning',
         )
-        return redirect(url_for('monetization.pricing'))
+        return redirect(url_for('main.pricing'))
 
     if current_user_exports_blocked(current_user):
         flash(

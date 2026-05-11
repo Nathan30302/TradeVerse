@@ -71,7 +71,9 @@ class Config:
 
     # Public support contact (mailto + footer). Override via SUPPORT_EMAIL if needed.
     SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com'
-    # Optional absolute site URL for transactional emails (trial reminders, etc.).
+    # Optional canonical origin (https://yourdomain.com, no trailing slash).
+    # Set in production for: transactional emails, sitemap/robots, and <link rel="canonical">
+    # so they match your Google Search Console property (reduces redirect / duplicate URL issues).
     PUBLIC_SITE_URL = (os.environ.get('PUBLIC_SITE_URL') or '').strip().rstrip('/')
     
     # Trading Instruments

@@ -15,9 +15,25 @@ bp = Blueprint('main', __name__)
 
 @bp.route('/robots.txt')
 def robots():
-    """Serve robots.txt for Google crawlers"""
-    static_folder = current_app.static_folder
-    return send_from_directory(static_folder, 'robots.txt')
+    """
+    robots.txt with absolute Sitemap URL (Google recommends absolute; avoids property mismatch).
+    """
+    from flask import Response
+    from app.services.seo import public_site_origin
+
+    origin = public_site_origin(current_app, request).rstrip("/")
+    if not origin:
+        origin = (request.url_root or "").rstrip("/")
+    if not origin:
+        static_folder = current_app.static_folder
+        return send_from_directory(static_folder, "robots.txt")
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "\n"
+        f"Sitemap: {origin}/sitemap.xml\n"
+    )
+    return Response(body, mimetype="text/plain; charset=utf-8")
 
 @bp.route('/favicon.ico')
 def favicon():
@@ -37,12 +53,11 @@ def favicon():
 def sitemap():
     """Simple sitemap for public marketing pages."""
     from flask import Response
-    from flask import request as _request
+    from app.services.seo import public_site_origin
 
-    # Force HTTPS URLs in sitemap to avoid Search Console "redirect error" when
-    # the app runs behind a TLS-terminating proxy.
-    host = (_request.host or "").strip()
-    base = f"https://{host}" if host else ""
+    base = public_site_origin(current_app, request).rstrip("/")
+    if not base:
+        base = (request.url_root or "").rstrip("/")
     pages = [
         base + url_for('main.index'),
         base + url_for('main.about'),
@@ -105,11 +120,10 @@ def features():
 
 @bp.route('/pricing')
 def pricing():
-    """Pricing page - Subscription plans"""
-    # Render directly (avoid redirect-only indexing issues in Search Console).
-    from app.routes.monetization import pricing as pricing_view
+    """Pricing page — canonical URL for subscription tiers (matches sitemap)."""
+    from app.routes.monetization import render_pricing_page
 
-    return pricing_view()
+    return render_pricing_page()
 
 @bp.route('/contact')
 def contact():
