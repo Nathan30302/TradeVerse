@@ -266,7 +266,7 @@ def add():
                 )
             
             # Get strategy and session info
-            strategy = request.form.get('strategy')
+            strategy = (request.form.get('strategy') or '').strip()
             session_type = request.form.get('session_type')
             timeframe = request.form.get('timeframe')
             
@@ -282,6 +282,38 @@ def add():
             # Get notes
             pre_trade_plan = request.form.get('pre_trade_plan', '').strip()
             post_trade_notes = request.form.get('post_trade_notes', '').strip()
+
+            allowed_strategies = current_app.config.get('STRATEGIES') or []
+            if not strategy or (allowed_strategies and strategy not in allowed_strategies):
+                flash('Select a valid strategy from the list before saving.', 'danger')
+                return render_template(
+                    'trade/add.html',
+                    active_cooldown=active_cooldown,
+                    prefill=None,
+                    accountability_required=accountability_required,
+                    playbook_setups=playbook_setups,
+                )
+            if len(pre_trade_plan) < 8:
+                flash('Pre-trade plan must be at least 8 characters (one short sentence).', 'danger')
+                return render_template(
+                    'trade/add.html',
+                    active_cooldown=active_cooldown,
+                    prefill=None,
+                    accountability_required=accountability_required,
+                    playbook_setups=playbook_setups,
+                )
+            if log_status == 'closed' and len(post_trade_notes) < 8:
+                flash(
+                    'Post-trade notes must be at least 8 characters when logging a closed trade.',
+                    'danger',
+                )
+                return render_template(
+                    'trade/add.html',
+                    active_cooldown=active_cooldown,
+                    prefill=None,
+                    accountability_required=accountability_required,
+                    playbook_setups=playbook_setups,
+                )
             
             # Get compliance
             checklist_completed = request.form.get('checklist_completed') == 'on'

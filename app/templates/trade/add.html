@@ -226,18 +226,15 @@
                         </div>
                     </div>
 
-                    <button class="btn btn-link text-decoration-none px-0 d-flex align-items-center gap-2 fw-semibold" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#tvMoreFields" aria-expanded="false" aria-controls="tvMoreFields">
-                        <i class="fas fa-sliders-h"></i> More fields <span class="small text-muted fw-normal">(strategy, psychology, notes…)</span>
-                    </button>
-                    <div class="collapse mt-2" id="tvMoreFields">
+                    <div class="mt-4 pt-3 border-top border-secondary-subtle" id="tvMoreFields">
                         <div class="tv-more-section">
-                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Strategy &amp; session</h6>
+                            <h6 class="text-muted text-uppercase small fw-bold mb-2">Strategy &amp; session</h6>
+                            <p class="small text-muted mb-3">Strategy and pre-trade plan are required before you can save. Post-trade notes are required when you mark the trade as <strong>Closed</strong>.</p>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
-                                    <label for="strategy" class="form-label small fw-semibold">Strategy</label>
-                                    <select class="form-select" id="strategy" name="strategy">
-                                        <option value="">Optional</option>
+                                    <label for="strategy" class="form-label small fw-semibold">Strategy <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="strategy" name="strategy" required>
+                                        <option value="" selected disabled>Select strategy…</option>
                                         {% for strategy in config.STRATEGIES %}
                                             <option value="{{ strategy }}">{{ strategy }}</option>
                                         {% endfor %}
@@ -301,12 +298,14 @@
                             </div>
                             <h6 class="text-muted text-uppercase small fw-bold mb-3">Notes</h6>
                             <div class="mb-3">
-                                <label for="pre_trade_plan" class="form-label small fw-semibold">Pre-trade plan</label>
-                                <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="2" placeholder="Setup thesis (optional)"></textarea>
+                                <label for="pre_trade_plan" class="form-label small fw-semibold">Pre-trade plan <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" required minlength="8" maxlength="8000" placeholder="What was the setup and plan? (at least one sentence.)"></textarea>
+                                <div class="form-text">Minimum 8 characters.</div>
                             </div>
                             <div class="mb-3">
-                                <label for="post_trade_notes" class="form-label small fw-semibold">Post-trade notes</label>
-                                <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="2" placeholder="Review (optional)"></textarea>
+                                <label for="post_trade_notes" class="form-label small fw-semibold">Post-trade notes <span id="tv-post-notes-required" class="text-danger d-none">*</span></label>
+                                <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3" maxlength="8000" placeholder="Review, outcome, lessons (required if trade is closed.)"></textarea>
+                                <div id="tv-post-notes-hint" class="form-text">Required when position is <strong>Closed</strong> (min. 8 characters).</div>
                             </div>
                             <h6 class="text-muted text-uppercase small fw-bold mb-2">Compliance</h6>
                             <p class="small text-muted mb-2">Optional honesty checks — use the shortcuts if you have already done this elsewhere.</p>
@@ -347,6 +346,7 @@
                 </div>
             </div>
 
+            <div id="tv-client-validation-err" class="alert alert-warning py-2 px-3 small d-none mb-3" role="alert"></div>
             <div class="d-flex flex-column flex-sm-row gap-2 gap-sm-3 justify-content-between align-items-stretch align-items-sm-center mb-5">
                 <a href="{{ url_for('trade.list') }}" class="btn btn-outline-secondary btn-lg order-2 order-sm-1">
                     <i class="fas fa-times me-1"></i> Cancel
@@ -488,32 +488,8 @@
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') flushDraftNow();
   });
-  function tryExpandMore() {
-    var el = document.getElementById('tvMoreFields');
-    if (!el || !window.bootstrap || !window.bootstrap.Collapse) return;
-    try {
-      window.bootstrap.Collapse.getOrCreateInstance(el).show();
-    } catch (e2) { /* ignore */ }
-  }
   function tvExpandMoreIfNeeded() {
-    var ids = ['strategy', 'session_type', 'timeframe', 'playbook_setup_id', 'emotion', 'confidence_level', 'pre_trade_plan', 'post_trade_notes', 'entry_date', 'commission', 'swap'];
-    var k;
-    for (k = 0; k < ids.length; k++) {
-      var el = document.getElementById(ids[k]);
-      if (el && String(el.value || '').trim()) {
-        tryExpandMore();
-        return;
-      }
-    }
-    var cc = document.getElementById('checklist_completed');
-    if (cc && cc.checked) {
-      tryExpandMore();
-      return;
-    }
-    var pf = document.getElementById('playbook_followed');
-    if (pf && !pf.checked) {
-      tryExpandMore();
-    }
+    /* Strategy & notes are always visible (no collapse). No-op for draft restore. */
   }
   window.tvExpandMoreIfNeeded = tvExpandMoreIfNeeded;
   if (!hasPrefill) {
@@ -763,12 +739,23 @@ function calculateRR() {
     var closedR = document.getElementById('tv_status_closed');
     var exitWrap = document.getElementById('tv-exit-wrap');
     var exitIn = document.getElementById('exit_price');
+    var postTa = document.getElementById('post_trade_notes');
+    var postReqStar = document.getElementById('tv-post-notes-required');
     function applyLogStatus() {
       var closed = closedR && closedR.checked;
       if (hStat) hStat.value = closed ? 'closed' : 'open';
       if (exitWrap) exitWrap.classList.toggle('d-none', !closed);
       if (exitIn) exitIn.required = !!closed;
       if (!closed && exitIn) exitIn.value = '';
+      if (postTa) {
+        postTa.required = !!closed;
+        if (closed) {
+          postTa.setAttribute('minlength', '8');
+        } else {
+          postTa.removeAttribute('minlength');
+        }
+      }
+      if (postReqStar) postReqStar.classList.toggle('d-none', !closed);
     }
     if (openR) openR.addEventListener('change', applyLogStatus);
     if (closedR) closedR.addEventListener('change', applyLogStatus);
@@ -792,8 +779,24 @@ function calculateRR() {
       });
     };
 
+    var valErr = document.getElementById('tv-client-validation-err');
+    function showValErr(msg) {
+      if (valErr) {
+        valErr.textContent = msg;
+        valErr.classList.remove('d-none');
+        valErr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+    function hideValErr() {
+      if (valErr) {
+        valErr.textContent = '';
+        valErr.classList.add('d-none');
+      }
+    }
+
     if (form) {
       form.addEventListener('submit', function (e) {
+        hideValErr();
         var iidEl = document.getElementById('instrument_id');
         var symEl = document.getElementById('symbol');
         if (!iidEl || !symEl || !String(iidEl.value || '').trim() || !String(symEl.value || '').trim()) {
@@ -810,6 +813,29 @@ function calculateRR() {
         if (exitInline) {
           exitInline.textContent = '';
           exitInline.classList.add('d-none');
+        }
+        var stratEl = document.getElementById('strategy');
+        if (!stratEl || !String(stratEl.value || '').trim()) {
+          e.preventDefault();
+          showValErr('Select the strategy you used for this trade.');
+          stratEl && stratEl.focus();
+          return false;
+        }
+        var preEl = document.getElementById('pre_trade_plan');
+        if (!preEl || String(preEl.value || '').trim().length < 8) {
+          e.preventDefault();
+          showValErr('Add a pre-trade plan (at least 8 characters) before saving.');
+          preEl && preEl.focus();
+          return false;
+        }
+        if (closedR && closedR.checked) {
+          var postEl = document.getElementById('post_trade_notes');
+          if (!postEl || String(postEl.value || '').trim().length < 8) {
+            e.preventDefault();
+            showValErr('Closed trades need post-trade notes (at least 8 characters).');
+            postEl && postEl.focus();
+            return false;
+          }
         }
         if (closedR && closedR.checked) {
           var exv = exitIn && String(exitIn.value || '').trim();
