@@ -310,6 +310,30 @@ class SimpleInstrumentPicker {
         }
     }
 
+    /**
+     * After sessionStorage draft restore, align picker UI + selection state
+     * with hidden instrument_id / symbol fields (fetches display name from API).
+     */
+    async syncFromHiddenInputs() {
+        const idInput = document.getElementById('instrument_id');
+        const symbolInput = document.getElementById('symbol');
+        if (!idInput || !symbolInput) return;
+        const id = String(idInput.value || '').trim();
+        const sym = String(symbolInput.value || '').trim();
+        if (!id || !sym) return;
+        let name = sym;
+        try {
+            const r = await fetch(`/api/db/instruments/by-id/${encodeURIComponent(id)}`);
+            if (r.ok) {
+                const j = await r.json();
+                if (j && j.success && j.name) name = String(j.name);
+            }
+        } catch (e) {
+            /* offline / private window */
+        }
+        this.selectInstrument(id, sym, name);
+    }
+
     clearSelection() {
         this.selectedInstrument = null;
 
@@ -347,4 +371,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.TradeCalculator) {
         window.tradeCalculator = new TradeCalculator();
     }
+
+    setTimeout(() => {
+        if (typeof picker.syncFromHiddenInputs === 'function') {
+            picker.syncFromHiddenInputs();
+        }
+    }, 50);
 });

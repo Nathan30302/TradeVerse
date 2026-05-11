@@ -371,10 +371,7 @@ def profile():
         phone_raw = (request.form.get('phone_number') or '').strip()
         country_code, cerr = _parse_signup_country(country_raw)
         phone_number, perr = _parse_signup_phone(phone_raw)
-        if cerr:
-            flash(cerr, 'warning')
-        if perr:
-            flash(perr, 'warning')
+        field_msgs = [m for m in (cerr, perr) if m]
         allowed = current_app.config.get('ALLOWED_UI_THEMES') or frozenset()
         theme = (request.form.get('theme') or 'dark').strip().lower()
         if theme not in allowed:
@@ -399,10 +396,12 @@ def profile():
                     pass
 
             db.session.commit()
-            if cerr or perr:
+            if field_msgs:
                 flash(
-                    'Profile saved; country or phone was not updated — fix the highlighted fields.',
-                    'info',
+                    'Profile saved. '
+                    + ' '.join(field_msgs)
+                    + ' Country and phone were left unchanged.',
+                    'warning',
                 )
             else:
                 flash('✅ Profile updated successfully!', 'success')

@@ -471,6 +471,20 @@
   form.addEventListener('submit', function () {
     try { sessionStorage.removeItem(KEY); } catch (e) { /* ignore */ }
   });
+  window.addEventListener('beforeunload', function (e) {
+    try {
+      var raw = sessionStorage.getItem(KEY);
+      if (!raw || raw.length < 24) return;
+      var o = JSON.parse(raw);
+      var n = 0;
+      for (var k in o) {
+        if (Object.prototype.hasOwnProperty.call(o, k) && String(o[k] || '').trim()) n++;
+      }
+      if (n < 2) return;
+      e.preventDefault();
+      e.returnValue = '';
+    } catch (err) { /* ignore */ }
+  });
 }());
 </script>
 <script>

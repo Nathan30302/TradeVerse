@@ -297,13 +297,32 @@ def advanced_metrics_api():
     grouped performance by emotion/session/strategy.
     """
     from app.services.analytics_engine import equity_curve_points, expectancy_r, max_drawdown, group_pnl
+    from sqlalchemy.orm import load_only
 
-    trades = Trade.query.filter(
-        Trade.user_id == current_user.id,
-        Trade.status == 'CLOSED',
-        Trade.profit_loss.isnot(None),
-        Trade.exit_date.isnot(None),
-    ).order_by(Trade.exit_date).all()
+    trades = (
+        Trade.query.filter(
+            Trade.user_id == current_user.id,
+            Trade.status == 'CLOSED',
+            Trade.profit_loss.isnot(None),
+            Trade.exit_date.isnot(None),
+        )
+        .options(
+            load_only(
+                Trade.id,
+                Trade.profit_loss,
+                Trade.exit_date,
+                Trade.risk_amount,
+                Trade.stop_loss,
+                Trade.entry_price,
+                Trade.lot_size,
+                Trade.emotion,
+                Trade.session_type,
+                Trade.strategy,
+            )
+        )
+        .order_by(Trade.exit_date)
+        .all()
+    )
 
     points = equity_curve_points(trades)
     dd = max_drawdown(points)

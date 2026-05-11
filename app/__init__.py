@@ -143,8 +143,8 @@ def create_app(config_name='default'):
     app.register_blueprint(instruments.bp)
     if tv_schema.get("playbook_ready"):
         app.register_blueprint(playbook.bp)
-    if tv_schema.get("replay_ready"):
-        app.register_blueprint(replay.bp)
+    # Standard feature: register unconditionally so tests work after late create_all().
+    app.register_blueprint(replay.bp)
 
     # Register admin blueprint
     from app.routes import admin

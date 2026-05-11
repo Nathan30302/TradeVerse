@@ -101,13 +101,15 @@ class EmotionAnalyzer:
             
             if trade.profit_loss > 0:
                 stats['wins'] += 1
-            else:
+            elif trade.profit_loss < 0:
                 stats['losses'] += 1
-        
+            # Breakeven (pnl == 0): counted in `count` and avg_pnl, not as a win or loss.
+
         # Calculate averages and win rates
         for emotion, stats in emotion_stats.items():
             if stats['count'] > 0:
-                stats['win_rate'] = (stats['wins'] / stats['count']) * 100
+                decided = stats['wins'] + stats['losses']
+                stats['win_rate'] = (stats['wins'] / decided) * 100 if decided else 0.0
                 stats['avg_pnl'] = stats['total_pnl'] / stats['count']
             
             # Remove trades list to keep response clean

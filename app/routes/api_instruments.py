@@ -342,6 +342,27 @@ def db_instruments():
     })
 
 
+@bp.route('/db/instruments/by-id/<int:instrument_id>', methods=['GET'])
+@login_required
+def db_instrument_by_id(instrument_id: int):
+    """Single instrument row for client draft restore / picker sync."""
+    from app.models.instrument import Instrument
+
+    inst = Instrument.query.filter_by(id=instrument_id, is_active=True).first()
+    if not inst:
+        return jsonify({'success': False, 'error': 'not_found'}), 404
+    return jsonify(
+        {
+            'success': True,
+            'id': inst.id,
+            'symbol': inst.symbol,
+            'name': inst.name,
+            'category': inst.category,
+            'instrument_type': inst.instrument_type,
+        }
+    )
+
+
 @bp.route('/db/instruments/counts', methods=['GET'])
 @login_required
 def db_instrument_counts():

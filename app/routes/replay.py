@@ -95,7 +95,19 @@ def add_event(trade_id: int):
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         stored = f"u{current_user.id}_t{trade.id}_{ts}_{safe}"
         dst_dir = _replay_upload_dir()
-        f.save(os.path.join(dst_dir, stored))
+        dest_path = os.path.join(dst_dir, stored)
+        f.save(dest_path)
+        try:
+            if not os.path.isfile(dest_path) or os.path.getsize(dest_path) == 0:
+                try:
+                    os.remove(dest_path)
+                except OSError:
+                    pass
+                flash("Screenshot upload failed or file was empty.", "warning")
+                return redirect(url_for("replay.trade_replay", trade_id=trade.id))
+        except OSError:
+            flash("Could not verify uploaded file.", "warning")
+            return redirect(url_for("replay.trade_replay", trade_id=trade.id))
         media_filename = stored
         media_mimetype = f.mimetype
 
