@@ -44,3 +44,13 @@ def test_robots_txt_has_sitemap(client):
     assert r.status_code == 200
     assert b"Sitemap:" in r.data
     assert b"sitemap.xml" in r.data
+
+
+def test_about_page_has_substantive_content(client):
+    """Thin 'Coming Soon' pages are often 'Discovered — currently not indexed' in GSC."""
+    r = client.get("/about", follow_redirects=False)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "Coming Soon" not in body
+    assert "trade planner" in body.lower() or "Trade planner" in body
+    assert 'name="description"' in body

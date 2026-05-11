@@ -1,7 +1,51 @@
 {% extends "base.html" %}
+
+{% block title %}About {{ app_name }} — trading journal, planner & analytics{% endblock %}
+
+{% set page_desc = "About TradeVerse: a trading journal and performance workspace for logging trades, using the trade planner, reviewing analytics, and upgrading to Pro for exports and deeper metrics." %}
+{% block meta_description %}{{ page_desc }}{% endblock %}
+{% block og_description %}{{ page_desc }}{% endblock %}
+{% block twitter_description %}{{ page_desc }}{% endblock %}
+{% block og_title %}About {{ app_name }}{% endblock %}
+{% block twitter_title %}About {{ app_name }}{% endblock %}
+
 {% block content %}
 <div class="container py-5">
-    <h1>About TradeVerse</h1>
-    <p>Coming Soon!</p>
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <h1 class="display-6 fw-bold mb-3">About {{ app_name }}</h1>
+      <p class="lead text-muted mb-4">
+        {{ app_name }} is built for traders who want a clear record of what they did in the market — and a repeatable way to improve.
+        You get a structured journal, dashboards that summarize performance, and tools to connect planning with execution.
+      </p>
+
+      <h2 class="h4 fw-bold mt-4 mb-3">What you can do here</h2>
+      <ul class="mb-4">
+        <li class="mb-2"><strong>Log trades</strong> — entries, exits, risk, notes, and screenshots so each setup is documented.</li>
+        <li class="mb-2"><strong>Use the trade planner</strong> — plan before you execute, then review after the trade so lessons stick.</li>
+        <li class="mb-2"><strong>Track performance</strong> — dashboards and analytics help you see win rate, drawdown-style context, and patterns over time.</li>
+        <li class="mb-2"><strong>Import and stay organized</strong> — bring history in from statements or integrations where available, so the journal matches your real account activity.</li>
+      </ul>
+
+      <h2 class="h4 fw-bold mt-4 mb-3">Who it is for</h2>
+      <p class="text-muted mb-4">
+        Whether you trade forex, indices, crypto, or other markets, the same habits matter: preparation, execution, and honest review.
+        {{ app_name }} focuses on those habits instead of noise — so you can see what actually moves your results week to week.
+      </p>
+
+      <h2 class="h4 fw-bold mt-4 mb-3">Plans and support</h2>
+      <p class="text-muted mb-4">
+        Start with core journaling and upgrade when you want advanced analytics, exports, or other Pro capabilities.
+        If you have product feedback or need help, use the contact page — we read real messages from traders.
+      </p>
+
+      <div class="d-flex flex-wrap gap-2 mt-4">
+        <a class="btn btn-primary" href="{{ url_for('main.features') }}">Explore features</a>
+        <a class="btn btn-outline-primary" href="{{ url_for('main.pricing') }}">View pricing</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('main.contact') }}">Contact</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('main.index') }}">Home</a>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

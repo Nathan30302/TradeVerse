@@ -2,6 +2,11 @@
 
 {% block title %}Pricing - {{ app_name }}{% endblock %}
 
+{% set page_desc = "TradeVerse pricing: Free, Pro, and Pro Plus plans with transparent feature access — journaling, analytics, exports on eligible tiers, and optional coach-mode style features on Pro Plus." %}
+{% block meta_description %}{{ page_desc }}{% endblock %}
+{% block og_description %}{{ page_desc }}{% endblock %}
+{% block twitter_description %}{{ page_desc }}{% endblock %}
+
 {% block extra_css %}
 <style>
     .tv-pricing-card {

@@ -16,7 +16,7 @@
             return t ? { 'X-CSRFToken': t, 'X-CSRF-Token': t } : {};
         };
     </script>
-    <meta name="description" content="TradeVerse - Professional Trading Journal for Serious Traders">
+    <meta name="description" content="{% block meta_description %}TradeVerse is a trading journal for logging trades, reviewing performance, and improving discipline — with analytics, trade planning, and optional Pro features.{% endblock %}">
     <meta name="application-name" content="TradeVerse">
     <meta name="apple-mobile-web-app-title" content="TradeVerse">
     <meta name="theme-color" content="#0f172a">
@@ -28,7 +28,7 @@
     <meta property="og:site_name" content="{{ app_name }}">
     <meta property="og:type" content="website">
     <meta property="og:title" content="{% block og_title %}{{ app_name }}{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}TradeVerse - Professional Trading Journal for Serious Traders{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}TradeVerse is a trading journal for logging trades, reviewing performance, and improving discipline — with analytics, trade planning, and optional Pro features.{% endblock %}">
     {% if canonical_url %}
     <meta property="og:url" content="{{ canonical_url }}">
     {% endif %}
@@ -36,7 +36,7 @@
     <meta property="og:image:alt" content="{{ app_name }} logo">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{% block twitter_title %}{{ app_name }}{% endblock %}">
-    <meta name="twitter:description" content="{% block twitter_description %}TradeVerse - Professional Trading Journal for Serious Traders{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}TradeVerse is a trading journal for logging trades, reviewing performance, and improving discipline — with analytics, trade planning, and optional Pro features.{% endblock %}">
     <meta name="twitter:image" content="{{ url_for('static', filename='img/favicon-512.png', _external=True) }}">
     <link rel="icon" href="{{ url_for('main.favicon') }}">
     <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='img/favicon-48.png') }}">
@@ -2393,6 +2393,9 @@
             <p class="mb-0">
                 <small>
                     © 2024 TradeVerse. All rights reserved.
+                    | <a href="{{ url_for('main.about') }}" class="link-secondary">About</a>
+                    | <a href="{{ url_for('main.features') }}" class="link-secondary">Features</a>
+                    | <a href="{{ url_for('main.pricing') }}" class="link-secondary">Pricing</a>
                     | <a href="{{ url_for('main.contact') }}" class="link-secondary">Contact</a>
                     | <a href="mailto:{{ support_email }}" class="link-secondary">Support</a>
                     | <a href="{{ url_for('main.terms') }}" class="link-secondary">Terms &amp; Disclaimer</a>

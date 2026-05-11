@@ -2,6 +2,11 @@
 
 {% block title %}{{ app_name }} - Professional Trading Journal{% endblock %}
 
+{% set page_desc = "TradeVerse is a professional trading journal: log trades, use the trade planner, see analytics and dashboards, and improve discipline — with Free and Pro plans." %}
+{% block meta_description %}{{ page_desc }}{% endblock %}
+{% block og_description %}{{ page_desc }}{% endblock %}
+{% block twitter_description %}{{ page_desc }}{% endblock %}
+
 {% block extra_head %}
 {% if seo_site_origin %}
 <script type="application/ld+json">
