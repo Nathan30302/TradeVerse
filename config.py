@@ -163,6 +163,31 @@ class Config:
 
     # Allowed preferred_currency values (must stay 3-letter ISO for DB column)
     DISPLAY_CURRENCIES = ('USD', 'ZAR', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD')
+
+    # Registration / profile: ISO 3166-1 alpha-2 (first element '' = prefer not to say)
+    REGISTER_COUNTRY_CHOICES = (
+        ('', 'Prefer not to say'),
+        ('ZM', 'Zambia'),
+        ('ZA', 'South Africa'),
+        ('US', 'United States'),
+        ('GB', 'United Kingdom'),
+        ('DE', 'Germany'),
+        ('FR', 'France'),
+        ('NG', 'Nigeria'),
+        ('KE', 'Kenya'),
+        ('IN', 'India'),
+        ('AU', 'Australia'),
+        ('CA', 'Canada'),
+        ('BR', 'Brazil'),
+        ('AE', 'United Arab Emirates'),
+        ('SG', 'Singapore'),
+        ('JP', 'Japan'),
+        ('CN', 'China'),
+        ('NL', 'Netherlands'),
+        ('ES', 'Spain'),
+        ('IT', 'Italy'),
+        ('PT', 'Portugal'),
+    )
     
     # Motivational Trading Quotes
     QUOTES = [

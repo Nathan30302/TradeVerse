@@ -20,6 +20,39 @@ from sqlalchemy.orm import load_only
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
+_PHONE_CHARS = re.compile(r"^\+?[0-9()\s.\-]{8,32}$")
+
+
+def _signup_country_codes() -> set:
+    ch = current_app.config.get("REGISTER_COUNTRY_CHOICES") or ()
+    return {str(c[0]).strip().upper() for c in ch if c and len(c) > 0}
+
+
+def _parse_signup_country(raw: str) -> tuple:
+    """Return (code_or_None, error_message_or_None)."""
+    c = (raw or "").strip().upper()
+    if not c:
+        return None, None
+    if c not in _signup_country_codes():
+        return None, "Invalid country selection."
+    return c, None
+
+
+def _parse_signup_phone(raw: str) -> tuple:
+    """Return (stored_value_or_None, error_message_or_None)."""
+    s = (raw or "").strip()
+    if not s:
+        return None, None
+    if not _PHONE_CHARS.match(s):
+        return None, "Phone number may only include digits, spaces, and + ( ) . - (8–32 characters)."
+    compact = re.sub(r"[\s().\-]", "", s)
+    if len(compact) < 8 or len(compact) > 22:
+        return None, "Phone number should be 8–22 digits."
+    if not re.match(r"^\+?\d+$", compact):
+        return None, "Phone number format is invalid."
+    return compact[:32], None
+
+
 def _safe_trial_days_pro_plus() -> int:
     """Parse TV_TRIAL_DAYS_PRO_PLUS; invalid values must not break registration."""
     default = 60
@@ -58,7 +91,9 @@ def register():
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
         full_name = request.form.get('full_name', '').strip()
-        
+        country_raw = (request.form.get('country_code') or '').strip()
+        phone_raw = (request.form.get('phone_number') or '').strip()
+
         # Validation
         errors = []
         
@@ -91,6 +126,13 @@ def register():
         # Check if email already exists
         if User.query.filter_by(email=email).first():
             errors.append('Email already registered. Please log in or use another email.')
+
+        country_code, cerr = _parse_signup_country(country_raw)
+        if cerr:
+            errors.append(cerr)
+        phone_number, perr = _parse_signup_phone(phone_raw)
+        if perr:
+            errors.append(perr)
         
         # If there are errors, show them
         if errors:
@@ -121,6 +163,11 @@ def register():
                     new_user.signup_utm_source = utm_src
                 except Exception:
                     pass
+            try:
+                new_user.country_code = country_code
+                new_user.phone_number = phone_number
+            except Exception:
+                pass
             new_user.set_password(password)
 
             db.session.add(new_user)
@@ -320,6 +367,14 @@ def profile():
         allowed_codes = tuple(current_app.config.get('DISPLAY_CURRENCIES') or ())
         if allowed_codes and preferred_currency not in allowed_codes:
             preferred_currency = 'USD'
+        country_raw = (request.form.get('country_code') or '').strip()
+        phone_raw = (request.form.get('phone_number') or '').strip()
+        country_code, cerr = _parse_signup_country(country_raw)
+        phone_number, perr = _parse_signup_phone(phone_raw)
+        if cerr:
+            flash(cerr, 'warning')
+        if perr:
+            flash(perr, 'warning')
         allowed = current_app.config.get('ALLOWED_UI_THEMES') or frozenset()
         theme = (request.form.get('theme') or 'dark').strip().lower()
         if theme not in allowed:
@@ -332,9 +387,25 @@ def profile():
             current_user.timezone = timezone
             current_user.preferred_currency = preferred_currency
             current_user.theme = theme
-            
+            if not cerr:
+                try:
+                    current_user.country_code = country_code
+                except Exception:
+                    pass
+            if not perr:
+                try:
+                    current_user.phone_number = phone_number
+                except Exception:
+                    pass
+
             db.session.commit()
-            flash('✅ Profile updated successfully!', 'success')
+            if cerr or perr:
+                flash(
+                    'Profile saved; country or phone was not updated — fix the highlighted fields.',
+                    'info',
+                )
+            else:
+                flash('✅ Profile updated successfully!', 'success')
             
         except Exception as e:
             db.session.rollback()

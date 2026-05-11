@@ -25,6 +25,8 @@ USER_OPTIONAL_COLUMNS: FrozenSet[str] = frozenset(
         "weekly_focus_rule",
         "signup_utm_source",
         "exports_blocked",
+        "country_code",
+        "phone_number",
     }
 )
 

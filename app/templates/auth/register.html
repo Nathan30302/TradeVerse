@@ -348,6 +348,22 @@
                            placeholder="john@example.com"
                            required>
                 </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Country <span class="text-muted small">(optional)</span></label>
+                        <select class="form-control" name="country_code" aria-label="Country">
+                            {% for code, label in config.REGISTER_COUNTRY_CHOICES %}
+                            <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone <span class="text-muted small">(optional)</span></label>
+                        <input type="tel" class="form-control" name="phone_number" placeholder="+260 … or local number" autocomplete="tel">
+                        <div class="form-hint">Digits and + only after stripping spaces; used for support if needed.</div>
+                    </div>
+                </div>
                 
                 <div class="form-row">
                     <div class="form-group">

@@ -72,7 +72,7 @@
         </div>
         {% endif %}
 
-        <form method="POST" action="{{ url_for('trade.add') }}" enctype="multipart/form-data">
+        <form id="trade-add-form" method="POST" action="{{ url_for('trade.add') }}" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="accountability_confirmed" id="accountability_confirmed" value="false">
             {% if prefill %}
@@ -406,6 +406,73 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/instrument-picker-simple.js') }}"></script>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'tradev_add_trade_draft_v1';
+  var form = document.getElementById('trade-add-form');
+  if (!form) return;
+  var hasPrefill = !!document.getElementById('trade-prefill-json');
+  function collectDraft() {
+    var data = {};
+    var els = form.querySelectorAll('input, select, textarea');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (!el.name || el.type === 'file' || (el.type === 'hidden' && el.name === 'csrf_token')) continue;
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        if (el.checked) data[el.name] = el.value;
+        continue;
+      }
+      if (el.type === 'hidden') data[el.name] = el.value;
+      else data[el.name] = el.value;
+    }
+    return data;
+  }
+  function applyDraft(d) {
+    if (!d || typeof d !== 'object') return;
+    Object.keys(d).forEach(function (name) {
+      var el = form.elements[name];
+      if (!el) return;
+      var v = d[name];
+      if (el.type === 'file') return;
+      if (typeof el.length === 'number' && el.length && !el.tagName) {
+        for (var j = 0; j < el.length; j++) {
+          var node = el[j];
+          if (node.type === 'radio') node.checked = String(node.value) === String(v);
+        }
+        return;
+      }
+      if (el.tagName === 'SELECT' || el.tagName === 'TEXTAREA' ||
+          (el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio')) {
+        el.value = v;
+      }
+    });
+    var hdr = document.getElementById('header-instrument-code');
+    if (hdr && d.symbol) hdr.textContent = d.symbol;
+    if (typeof calculateRR === 'function') calculateRR();
+  }
+  var saveTimer;
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      try {
+        sessionStorage.setItem(KEY, JSON.stringify(collectDraft()));
+      } catch (e) { /* quota / private mode */ }
+    }, 600);
+  }
+  if (!hasPrefill) {
+    try {
+      var raw = sessionStorage.getItem(KEY);
+      if (raw) applyDraft(JSON.parse(raw));
+    } catch (e) { /* ignore */ }
+  }
+  form.addEventListener('input', scheduleSave);
+  form.addEventListener('change', scheduleSave);
+  form.addEventListener('submit', function () {
+    try { sessionStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+  });
+}());
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var raw = document.getElementById('trade-prefill-json');

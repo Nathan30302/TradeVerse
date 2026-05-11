@@ -55,6 +55,8 @@ class User(UserMixin, db.Model):
     weekly_focus_rule = deferred(db.Column(db.Text))  # AI Buddy weekly focus (persist via dashboard.save_weekly_focus Core UPDATE)
     exports_blocked = deferred(db.Column(db.Boolean, default=False))  # Admin-toggle: block data exports for account
     signup_utm_source = deferred(db.Column(db.String(255)))  # Optional acquisition tag (?utm_source= on signup)
+    country_code = deferred(db.Column(db.String(2), nullable=True))  # ISO 3166-1 alpha-2, optional at signup
+    phone_number = deferred(db.Column(db.String(32), nullable=True))  # E.164-ish stored digits/+ only
 
     # ==================== Timestamps ====================
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -120,8 +122,7 @@ class User(UserMixin, db.Model):
                 - expectancy: Expected value per trade
         """
         from app.models.trade import Trade
-        from sqlalchemy.orm import load_only
-        
+
         # IMPORTANT: When DB migrations lag behind the ORM, count() on an ORM
         # entity query can select missing columns (e.g. trades.playbook_setup_id).
         # Use id-only aggregates.
@@ -169,80 +170,87 @@ class User(UserMixin, db.Model):
 
         stats['open_trades'] = open_trades
         stats['closed_trades'] = closed_trades
-        
-        # Get closed trades with P/L
-        closed_trades_list = (
-            Trade.query.options(
-                load_only(
-                    Trade.id,
-                    Trade.user_id,
-                    Trade.status,
-                    Trade.profit_loss,
-                    Trade.risk_reward,
-                    Trade.exit_date,
-                )
-            )
-            .filter(
-                Trade.user_id == self.id,
-                Trade.status == 'CLOSED',
-                Trade.profit_loss.isnot(None),
-            )
-            .all()
+
+        base_closed = (
+            Trade.user_id == self.id,
+            Trade.status == 'CLOSED',
+            Trade.profit_loss.isnot(None),
         )
-        
-        # If there are no closed trades with P/L data, still return counts but keep numerical stats at defaults
-        if not closed_trades_list:
-            # Ensure win_rate and total_pnl are explicitly zero
+
+        closed_with_pnl_count = (
+            db.session.query(func.count(Trade.id)).filter(*base_closed).scalar() or 0
+        )
+        if closed_with_pnl_count == 0:
             stats['win_rate'] = 0.0
             stats['total_pnl'] = 0.0
             return stats
-        
-        # Calculate P/L statistics
-        winning_trades = [t for t in closed_trades_list if t.profit_loss > 0]
-        losing_trades = [t for t in closed_trades_list if t.profit_loss < 0]
-        
-        stats['winning_trades'] = len(winning_trades)
-        stats['losing_trades'] = len(losing_trades)
-        
-        # Use number of closed trades that have P/L values as the denominator for win rate and expectancy
-        closed_with_pnl_count = len(closed_trades_list)
 
-        # Win rate
-        if closed_with_pnl_count > 0:
-            stats['win_rate'] = (len(winning_trades) / closed_with_pnl_count) * 100
-        else:
-            stats['win_rate'] = 0.0
+        win_c = (
+            db.session.query(func.count(Trade.id))
+            .filter(*base_closed, Trade.profit_loss > 0)
+            .scalar()
+            or 0
+        )
+        loss_c = (
+            db.session.query(func.count(Trade.id))
+            .filter(*base_closed, Trade.profit_loss < 0)
+            .scalar()
+            or 0
+        )
+        stats['winning_trades'] = int(win_c)
+        stats['losing_trades'] = int(loss_c)
+        stats['win_rate'] = (float(win_c) / float(closed_with_pnl_count)) * 100.0 if closed_with_pnl_count else 0.0
 
-        # Total P/L - sum safely treating None as 0
-        stats['total_pnl'] = sum((t.profit_loss or 0) for t in closed_trades_list)
-        
-        # Average win/loss
-        if winning_trades:
-            wins = [t.profit_loss for t in winning_trades]
-            stats['avg_win'] = sum(wins) / len(wins)
-            stats['largest_win'] = max(wins)
-        
-        if losing_trades:
-            losses = [abs(t.profit_loss) for t in losing_trades]
-            stats['avg_loss'] = sum(losses) / len(losses)
-            stats['largest_loss'] = max(losses)
-        
-        # Average R:R
-        rr_values = [t.risk_reward for t in closed_trades_list if t.risk_reward]
-        if rr_values:
-            stats['avg_rr'] = sum(rr_values) / len(rr_values)
-        
-        # Profit Factor (Gross Profit / Gross Loss)
-        gross_profit = sum(t.profit_loss for t in winning_trades) if winning_trades else 0
-        gross_loss = abs(sum(t.profit_loss for t in losing_trades)) if losing_trades else 0
-        
-        if gross_loss > 0:
-            stats['profit_factor'] = gross_profit / gross_loss
-        
-        # Expectancy (Average P/L per trade) - use closed_with_pnl_count
-        if closed_with_pnl_count > 0:
-            stats['expectancy'] = stats['total_pnl'] / closed_with_pnl_count
-        
+        total_pnl = (
+            db.session.query(func.coalesce(func.sum(Trade.profit_loss), 0.0)).filter(*base_closed).scalar()
+        )
+        stats['total_pnl'] = float(total_pnl or 0.0)
+
+        avg_win = (
+            db.session.query(func.avg(Trade.profit_loss)).filter(*base_closed, Trade.profit_loss > 0).scalar()
+        )
+        if avg_win is not None:
+            stats['avg_win'] = float(avg_win)
+
+        avg_loss_row = (
+            db.session.query(func.avg(-Trade.profit_loss)).filter(*base_closed, Trade.profit_loss < 0).scalar()
+        )
+        if avg_loss_row is not None:
+            stats['avg_loss'] = float(avg_loss_row)
+
+        lw = db.session.query(func.max(Trade.profit_loss)).filter(*base_closed, Trade.profit_loss > 0).scalar()
+        if lw is not None:
+            stats['largest_win'] = float(lw)
+
+        ll = db.session.query(func.max(-Trade.profit_loss)).filter(*base_closed, Trade.profit_loss < 0).scalar()
+        if ll is not None:
+            stats['largest_loss'] = float(ll)
+
+        avg_rr = (
+            db.session.query(func.avg(Trade.risk_reward))
+            .filter(*base_closed, Trade.risk_reward.isnot(None))
+            .scalar()
+        )
+        if avg_rr is not None:
+            stats['avg_rr'] = float(avg_rr)
+
+        gross_profit = (
+            db.session.query(func.coalesce(func.sum(Trade.profit_loss), 0.0))
+            .filter(*base_closed, Trade.profit_loss > 0)
+            .scalar()
+            or 0.0
+        )
+        gross_loss = (
+            db.session.query(func.coalesce(func.sum(-Trade.profit_loss), 0.0))
+            .filter(*base_closed, Trade.profit_loss < 0)
+            .scalar()
+            or 0.0
+        )
+        if gross_loss and float(gross_loss) > 0:
+            stats['profit_factor'] = float(gross_profit) / float(gross_loss)
+
+        stats['expectancy'] = stats['total_pnl'] / float(closed_with_pnl_count)
+
         return stats
 
     def safe_trade_count(self) -> int:

@@ -56,6 +56,21 @@
                             <small class="text-muted">Email cannot be changed</small>
                         </div>
 
+                        <div class="col-md-6">
+                            <label for="country_code" class="form-label fw-bold">Country</label>
+                            <select class="form-select" id="country_code" name="country_code" aria-label="Country">
+                                {% for code, label in config.REGISTER_COUNTRY_CHOICES %}
+                                <option value="{{ code }}" {% if (current_user.country_code or '') == code %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="phone_number" class="form-label fw-bold">Phone</label>
+                            <input type="tel" class="form-control" id="phone_number" name="phone_number"
+                                   value="{{ current_user.phone_number or '' }}" placeholder="+260 …" autocomplete="tel">
+                            <small class="text-muted">Optional — support and account security</small>
+                        </div>
+
                         <div class="col-12">
                             <label for="full_name" class="form-label fw-bold">Full Name</label>
                             <input type="text" class="form-control" id="full_name" name="full_name" 
@@ -89,7 +104,7 @@
                         <div class="col-md-6">
                             <label for="preferred_currency" class="form-label fw-bold">Preferred Currency</label>
                             <select class="form-select" id="preferred_currency" name="preferred_currency">
-                                {% for currency in config.CURRENCIES %}
+                                {% for currency in (config.DISPLAY_CURRENCIES or config.CURRENCIES) %}
                                     <option value="{{ currency }}" 
                                             {% if currency == current_user.preferred_currency %}selected{% endif %}>
                                         {{ currency }}
