@@ -417,17 +417,41 @@ class SimpleInstrumentPicker {
         const symbolInput = document.getElementById('symbol');
         if (!idInput || !symbolInput) return;
         const id = String(idInput.value || '').trim();
-        const sym = String(symbolInput.value || '').trim();
-        if (!id || !sym) return;
-        let name = sym;
+        let sym = String(symbolInput.value || '').trim();
+        if (!id) return;
+
+        let name = sym || '';
+        let frontendCat = null;
+        let apiSymbol = null;
         try {
             const r = await fetch(`/api/db/instruments/by-id/${encodeURIComponent(id)}`);
             if (r.ok) {
                 const j = await r.json();
-                if (j && j.success && j.name) name = String(j.name);
+                if (j && j.success) {
+                    if (j.name) name = String(j.name);
+                    if (j.frontend_category) frontendCat = String(j.frontend_category);
+                    if (j.symbol) apiSymbol = String(j.symbol).trim();
+                }
             }
         } catch (e) { /* ignore */ }
-        this.selectInstrument(id, sym, name);
+
+        if (apiSymbol) {
+            if (!sym || sym.toUpperCase() !== apiSymbol.toUpperCase()) {
+                symbolInput.value = apiSymbol;
+                sym = apiSymbol;
+            }
+        }
+
+        if (!sym) return;
+
+        const targetCat = frontendCat || this.currentCategory;
+        if (targetCat && targetCat !== this.currentCategory) {
+            await this.switchCategory(targetCat);
+        } else {
+            await this.loadInstrumentsForCategory(this.currentCategory);
+        }
+
+        this.selectInstrument(id, sym, name || sym);
     }
 
     clearSelection() {

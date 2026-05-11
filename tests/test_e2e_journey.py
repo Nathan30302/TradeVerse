@@ -167,3 +167,4 @@ def test_signup_profile_trade_replay_analytics_ai_pricing(app, tmp_path):
     assert r.status_code == 200
     js = r.get_json()
     assert js.get("success") and js.get("symbol") == "EURUSD"
+    assert js.get("frontend_category") == "forex"

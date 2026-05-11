@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/instrument-picker-simple.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-voice-notes.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/trade-add.css') }}">
 {% endblock %}
 
@@ -394,6 +395,7 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/instrument-picker-simple.js') }}"></script>
+<script src="{{ url_for('static', filename='js/trade-voice-notes.js') }}"></script>
 <script>
 (function () {
   'use strict';
@@ -436,8 +438,20 @@
       }
     });
     var hdr = document.getElementById('header-instrument-code');
-    if (hdr && d.symbol) hdr.textContent = d.symbol;
+    if (hdr && d.symbol) {
+      hdr.textContent = '';
+      if (window.instrumentPicker && typeof window.instrumentPicker._fillSymbolSpan === 'function') {
+        window.instrumentPicker._fillSymbolSpan(hdr, d.symbol);
+      } else {
+        hdr.textContent = d.symbol;
+      }
+    }
     if (typeof calculateRR === 'function') calculateRR();
+  }
+  function queueAfterDraftRestore() {
+    setTimeout(function () {
+      if (typeof window.tvAfterDraftRestore === 'function') window.tvAfterDraftRestore();
+    }, 220);
   }
   var saveTimer;
   function scheduleSave() {
@@ -451,7 +465,10 @@
   if (!hasPrefill) {
     try {
       var raw = sessionStorage.getItem(KEY);
-      if (raw) applyDraft(JSON.parse(raw));
+      if (raw) {
+        applyDraft(JSON.parse(raw));
+        queueAfterDraftRestore();
+      }
     } catch (e) { /* ignore */ }
   }
   form.addEventListener('input', scheduleSave);
@@ -459,7 +476,34 @@
   form.addEventListener('submit', function () {
     try { sessionStorage.removeItem(KEY); } catch (e) { /* ignore */ }
   });
+  function tvFormLooksUnsaved() {
+    var sig = ['instrument_id', 'symbol', 'entry_price', 'lot_size', 'pre_trade_plan', 'post_trade_notes', 'stop_loss', 'take_profit', 'exit_price'];
+    var n = 0;
+    for (var i = 0; i < sig.length; i++) {
+      var el = form.elements[sig[i]];
+      if (el && String(el.value || '').trim()) n++;
+    }
+    return n >= 2;
+  }
   window.addEventListener('beforeunload', function (e) {
+    if (window.tvVoiceRecordingActive) {
+      e.preventDefault();
+      e.returnValue = '';
+      return;
+    }
+    var fileInputs = form.querySelectorAll('input[type="file"]');
+    for (var fi = 0; fi < fileInputs.length; fi++) {
+      if (fileInputs[fi].files && fileInputs[fi].files.length) {
+        e.preventDefault();
+        e.returnValue = '';
+        return;
+      }
+    }
+    if (tvFormLooksUnsaved()) {
+      e.preventDefault();
+      e.returnValue = '';
+      return;
+    }
     try {
       var raw = sessionStorage.getItem(KEY);
       if (!raw || raw.length < 24) return;
@@ -497,6 +541,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setVal('session_type', d.session_type);
         setVal('timeframe', d.timeframe);
         setVal('pre_trade_plan', d.pre_trade_plan);
+        setVal('post_trade_notes', d.post_trade_notes);
         setVal('entry_date', d.entry_date);
         setVal('exit_date', d.exit_date);
         setVal('commission', d.commission);
@@ -527,6 +572,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (typeof window.tvSyncDirButtons === 'function') window.tvSyncDirButtons();
         if (typeof calculateRR === 'function') calculateRR();
+        setTimeout(function () {
+          if (typeof window.tvAfterDraftRestore === 'function') window.tvAfterDraftRestore();
+        }, 220);
     } catch (e) { /* ignore */ }
 });
 
@@ -611,6 +659,22 @@ function calculateRR() {
     if (openR) openR.addEventListener('change', applyLogStatus);
     if (closedR) closedR.addEventListener('change', applyLogStatus);
     applyLogStatus();
+    window.tvApplyLogStatus = applyLogStatus;
+    window.tvAfterDraftRestore = function () {
+      var p = Promise.resolve();
+      if (window.instrumentPicker && typeof window.instrumentPicker.syncFromHiddenInputs === 'function') {
+        p = Promise.resolve(window.instrumentPicker.syncFromHiddenInputs());
+      }
+      return p.then(function () {
+        if (typeof window.tvSyncDirButtons === 'function') window.tvSyncDirButtons();
+        applyLogStatus();
+        if (typeof calculateRR === 'function') calculateRR();
+      }).catch(function () {
+        if (typeof window.tvSyncDirButtons === 'function') window.tvSyncDirButtons();
+        applyLogStatus();
+        if (typeof calculateRR === 'function') calculateRR();
+      });
+    };
 
     var form = document.getElementById('trade-add-form');
     if (form) {
@@ -629,6 +693,13 @@ function calculateRR() {
     }
   });
 }());
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.TradeVoiceNotes && typeof window.TradeVoiceNotes.mount === 'function') {
+    window.TradeVoiceNotes.mount('pre_trade_plan', 'post_trade_notes');
+  }
+});
 </script>
 
 {% if accountability_required %}

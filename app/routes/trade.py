@@ -344,7 +344,8 @@ def add():
             if session.get("tv_accountability_required"):
                 session.pop("tv_accountability_required", None)
 
-            # Trigger cooldowns (emotion-based and/or loss-streak)
+            # Trigger cooldowns (emotion-based and/or loss-streak); one success flash with optional note.
+            cooldown_note = None
             try:
                 manager = CooldownManager(current_user.id)
                 if emotion and should_trigger_cooldown(emotion):
@@ -354,17 +355,21 @@ def add():
                         f"Triggered after trading with emotion: {emotion}"
                     )
                     if cooldown:
-                        flash(f'⏳ Cooldown activated ({cooldown.duration_minutes}min) due to {emotion}. Take a break!', 'warning')
+                        cooldown_note = (
+                            f'⏳ Cooldown active ({cooldown.duration_minutes} min) after {emotion}. Take a break.'
+                        )
                 else:
-                    # If the trade was closed and ended as a loss, check for loss-streak cooldown.
                     if (trade.status or '').upper() == 'CLOSED' and (trade.profit_loss or 0) < 0:
                         ls = manager.trigger_loss_streak_cooldown(losses=2, duration_minutes=45)
                         if ls:
-                            flash('⏳ Cooldown activated due to a loss streak. Step away and review before the next trade.', 'warning')
+                            cooldown_note = (
+                                '⏳ Cooldown active after a loss streak. Step away and review before the next trade.'
+                            )
             except Exception:
                 current_app.logger.debug("Cooldown trigger check failed", exc_info=True)
-            
-            flash(f'✅ Trade {symbol} {trade_type} added successfully!', 'success')
+
+            ok_msg = f'✅ Trade {symbol} {trade_type} added successfully!'
+            flash(f'{ok_msg} {cooldown_note}'.strip() if cooldown_note else ok_msg, 'success')
             return redirect(url_for('trade.view', trade_id=trade.id))
             
         except ValueError as e:

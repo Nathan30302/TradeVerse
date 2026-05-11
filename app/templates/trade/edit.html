@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/instrument-picker.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-voice-notes.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -286,6 +287,7 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/instrument-picker.js') }}"></script>
+<script src="{{ url_for('static', filename='js/trade-voice-notes.js') }}"></script>
 <script>
 // If instrument id exists, trigger a change to calculate P&L when user edits prices
 document.addEventListener('DOMContentLoaded', function() {
@@ -298,6 +300,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // dispatch custom event to trigger calculator
         const ev = new Event('instrumentChanged', { bubbles: true });
         document.getElementById('symbol')?.dispatchEvent(ev);
+    }
+    if (window.TradeVoiceNotes && typeof window.TradeVoiceNotes.mount === 'function') {
+        window.TradeVoiceNotes.mount('pre_trade_plan', 'post_trade_notes');
     }
 });
 </script>

@@ -396,6 +396,7 @@ def db_instrument_by_id(instrument_id: int):
     inst = Instrument.query.filter_by(id=instrument_id, is_active=True).first()
     if not inst:
         return jsonify({'success': False, 'error': 'not_found'}), 404
+    frontend_category = DB_TO_FRONTEND_CATEGORY.get((inst.category or '').strip()) or 'forex'
     return jsonify(
         {
             'success': True,
@@ -403,6 +404,7 @@ def db_instrument_by_id(instrument_id: int):
             'symbol': inst.symbol,
             'name': inst.name,
             'category': inst.category,
+            'frontend_category': frontend_category,
             'instrument_type': inst.instrument_type,
         }
     )

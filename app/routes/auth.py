@@ -134,10 +134,15 @@ def register():
         if perr:
             errors.append(perr)
         
-        # If there are errors, show them
+        # If there are errors, show one clear message (avoid stacked flashes).
         if errors:
-            for error in errors:
-                flash(error, 'danger')
+            if len(errors) == 1:
+                flash(errors[0], 'danger')
+            else:
+                flash(
+                    'Please fix the following before signing up: ' + '; '.join(errors),
+                    'danger',
+                )
             utm_keep = (
                 (request.form.get('signup_utm_source') or request.args.get('utm_source') or "").strip()
             )[:255]
