@@ -171,6 +171,15 @@ def cooldown_emotions_exempt():
     return frozenset(Config.COOLDOWN_EMOTIONS_EXEMPT)
 
 
+def _emotion_aliases():
+    cfg = _config()
+    if cfg and isinstance(cfg.get('COOLDOWN_EMOTION_ALIASES'), dict):
+        return {str(k).strip().lower(): v for k, v in cfg['COOLDOWN_EMOTION_ALIASES'].items()}
+    from config import Config
+
+    return {str(k).strip().lower(): v for k, v in Config.COOLDOWN_EMOTION_ALIASES.items()}
+
+
 def normalize_emotion_for_cooldown(emotion):
     """
     Return canonical dict key for this emotion, or None if empty / only whitespace.
@@ -181,6 +190,11 @@ def normalize_emotion_for_cooldown(emotion):
     raw = str(emotion).strip()
     if not raw:
         return None
+
+    low = raw.lower()
+    aliases = _emotion_aliases()
+    if low in aliases:
+        raw = aliases[low]
 
     rules = cooldown_emotion_rules()
     if raw in rules:

@@ -478,8 +478,36 @@
       sessionStorage.removeItem(KEY);
     } catch (e) { /* ignore */ }
   };
+  function tvHardResetAddForm() {
+    window.tvClearAddTradeDraft();
+    try {
+      form.reset();
+    } catch (e) { /* ignore */ }
+    var hdr = document.getElementById('header-instrument-code');
+    if (hdr) hdr.textContent = 'No symbol';
+    var tt = document.getElementById('trade_type');
+    if (tt) tt.value = 'BUY';
+    if (typeof window.tvSyncDirButtons === 'function') window.tvSyncDirButtons();
+    var iid = document.getElementById('instrument_id');
+    if (iid) iid.value = '';
+    var symIn = document.getElementById('symbol');
+    if (symIn) symIn.value = '';
+    if (window.instrumentPicker && typeof window.instrumentPicker.clearSelection === 'function') {
+      try {
+        window.instrumentPicker.clearSelection();
+      } catch (e) { /* ignore */ }
+    }
+    if (typeof calculateRR === 'function') calculateRR();
+  }
   var serverClearDraft = {{ clear_add_trade_draft | default(false) | tojson }};
-  if (serverClearDraft) window.tvClearAddTradeDraft();
+  try {
+    var sp = new URLSearchParams(window.location.search);
+    if (sp.get('fresh') === '1') {
+      tvHardResetAddForm();
+      history.replaceState({}, '', window.location.pathname + window.location.hash);
+    }
+  } catch (e) { /* ignore */ }
+  if (serverClearDraft) tvHardResetAddForm();
   function scheduleSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {

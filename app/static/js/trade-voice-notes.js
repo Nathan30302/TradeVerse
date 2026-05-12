@@ -1,6 +1,6 @@
 /**
  * Browser speech-to-text for trade note fields (Web Speech API).
- * Appends recognized text at the caret; user can edit freely before save.
+ * Small mic control sits inside the textarea corner (not a large toolbar above).
  */
 (function (global) {
   'use strict';
@@ -36,71 +36,63 @@
     this.ta = null;
     this.rec = null;
     this.active = false;
-    this.toolbar = null;
-    this.statusEl = null;
+    this.shell = null;
+    this.statusText = null;
     this.interimEl = null;
-    this.btnStart = null;
-    this.btnStop = null;
+    this.btnToggle = null;
   }
 
   VoiceField.prototype.mount = function () {
     this.ta = document.getElementById(this.textareaId);
     if (!this.ta || !this.ta.parentNode) return;
 
-    const wrap = document.createElement('div');
-    wrap.className = 'tv-voice-wrap mb-2';
+    const shell = document.createElement('div');
+    shell.className = 'tv-voice-field-shell position-relative';
+    const parent = this.ta.parentNode;
+    parent.insertBefore(shell, this.ta);
+    shell.appendChild(this.ta);
 
-    this.toolbar = document.createElement('div');
-    this.toolbar.className = 'd-flex flex-wrap align-items-center gap-2';
+    const dock = document.createElement('div');
+    dock.className = 'tv-voice-dock';
+    shell.appendChild(dock);
+
+    this.shell = shell;
 
     if (!SR) {
       const warn = document.createElement('span');
       warn.className = 'small text-muted';
-      warn.textContent = 'Voice dictation needs Chrome, Edge, or Safari (HTTPS).';
-      this.toolbar.appendChild(warn);
-      wrap.appendChild(this.toolbar);
-      this.ta.parentNode.insertBefore(wrap, this.ta);
+      warn.textContent = 'Voice needs Chrome, Edge, or Safari (HTTPS).';
+      dock.appendChild(warn);
       return;
     }
 
-    this.wrapEl = wrap;
+    this.btnToggle = document.createElement('button');
+    this.btnToggle.type = 'button';
+    this.btnToggle.className = 'btn btn-link p-1 tv-voice-fab';
+    this.btnToggle.setAttribute('aria-pressed', 'false');
+    this.btnToggle.setAttribute('title', 'Speak to type');
+    this.btnToggle.setAttribute('aria-label', 'Start voice dictation');
+    this.btnToggle.innerHTML =
+      '<i class="fas fa-microphone tv-voice-fab-icon" aria-hidden="true"></i>';
+    dock.appendChild(this.btnToggle);
 
-    this.btnStart = document.createElement('button');
-    this.btnStart.type = 'button';
-    this.btnStart.className = 'btn btn-sm btn-outline-primary tv-voice-start';
-    this.btnStart.innerHTML = '<span class="tv-voice-mic-emoji" aria-hidden="true">🎤</span><span class="ms-1">Start recording</span>';
-    this.btnStart.setAttribute('aria-pressed', 'false');
-    this.btnStart.setAttribute('aria-label', 'Start voice dictation');
+    const statusRow = document.createElement('div');
+    statusRow.className = 'tv-voice-status-row small mt-1 px-1';
+    shell.appendChild(statusRow);
 
-    this.btnStop = document.createElement('button');
-    this.btnStop.type = 'button';
-    this.btnStop.className = 'btn btn-sm btn-outline-danger tv-voice-stop d-none';
-    this.btnStop.innerHTML = '<i class="fas fa-stop me-1" aria-hidden="true"></i>Stop recording';
-    this.btnStop.setAttribute('aria-label', 'Stop voice dictation');
-    this.btnStop.disabled = true;
-
-    this.statusEl = document.createElement('span');
-    this.statusEl.className = 'small text-muted tv-voice-status';
-    this.statusEl.textContent = '';
+    this.statusText = document.createElement('span');
+    this.statusText.className = 'text-muted tv-voice-status-text';
+    statusRow.appendChild(this.statusText);
 
     this.interimEl = document.createElement('span');
-    this.interimEl.className = 'small text-info tv-voice-interim ms-1 fst-italic';
+    this.interimEl.className = 'text-info fst-italic ms-1 tv-voice-interim';
     this.interimEl.setAttribute('aria-live', 'polite');
-    this.interimEl.textContent = '';
-
-    this.toolbar.appendChild(this.btnStart);
-    this.toolbar.appendChild(this.btnStop);
-    this.toolbar.appendChild(this.statusEl);
-    this.toolbar.appendChild(this.interimEl);
-    wrap.appendChild(this.toolbar);
-    this.ta.parentNode.insertBefore(wrap, this.ta);
+    statusRow.appendChild(this.interimEl);
 
     const self = this;
-    this.btnStart.addEventListener('click', function () {
-      self.start();
-    });
-    this.btnStop.addEventListener('click', function () {
-      self.stop();
+    this.btnToggle.addEventListener('click', function () {
+      if (self.active) self.stop();
+      else self.start();
     });
 
     const form = this.ta.closest('form');
@@ -116,7 +108,7 @@
     try {
       this.rec = new SR();
     } catch (e) {
-      this.statusEl.textContent = 'Could not start microphone.';
+      if (this.statusText) this.statusText.textContent = 'Could not start microphone.';
       return;
     }
     this.rec.lang = document.documentElement.lang || 'en-US';
@@ -128,35 +120,37 @@
     this.rec.onstart = function () {
       self.active = true;
       setGlobalRecording(true);
-      if (self.wrapEl) self.wrapEl.classList.add('tv-voice-recording');
-      self.btnStart.classList.add('active');
-      self.btnStart.setAttribute('aria-pressed', 'true');
-      self.btnStop.classList.remove('d-none');
-      self.btnStop.disabled = false;
-      self.statusEl.textContent = 'Listening… speak naturally; pauses are OK.';
-      self.interimEl.textContent = '';
+      if (self.shell) self.shell.classList.add('tv-voice-recording');
+      if (self.btnToggle) {
+        self.btnToggle.setAttribute('aria-pressed', 'true');
+        self.btnToggle.setAttribute('aria-label', 'Stop voice dictation');
+        self.btnToggle.innerHTML =
+          '<i class="fas fa-stop tv-voice-fab-icon tv-voice-fab-icon--on" aria-hidden="true"></i>';
+      }
+      if (self.statusText) self.statusText.textContent = 'Listening… speak naturally.';
+      if (self.interimEl) self.interimEl.textContent = '';
     };
 
     this.rec.onerror = function (ev) {
       const code = ev && ev.error ? String(ev.error) : '';
       const friendly = {
-        'not-allowed': 'Microphone blocked — allow access in the browser address bar.',
-        'service-not-allowed': 'Speech recognition disabled — check browser permissions.',
-        'audio-capture': 'No microphone found or it is in use by another app.',
-        'network': 'Network error — try again in a moment.',
+        'not-allowed': 'Mic blocked — allow in the browser bar.',
+        'service-not-allowed': 'Speech recognition disabled.',
+        'audio-capture': 'No microphone found.',
+        'network': 'Network error — try again.',
         'aborted': '',
-        'no-speech': 'No speech heard — tap Start recording when you are ready.',
+        'no-speech': 'No speech heard — tap again when ready.',
       };
-      self.interimEl.textContent = '';
+      if (self.interimEl) self.interimEl.textContent = '';
       self.rec = null;
       self.cleanupUi();
       if (code === 'aborted') return;
       const msg = friendly[code] || (code ? 'Voice: ' + code : 'Mic error');
-      if (msg && self.statusEl) {
-        self.statusEl.textContent = msg;
+      if (msg && self.statusText) {
+        self.statusText.textContent = msg;
         if (code === 'no-speech') {
           setTimeout(function () {
-            if (self.statusEl) self.statusEl.textContent = '';
+            if (self.statusText) self.statusText.textContent = '';
           }, 4500);
         }
       }
@@ -174,19 +168,19 @@
         const text = (res[0] && res[0].transcript) ? res[0].transcript : '';
         if (res.isFinal) {
           insertAtCursor(self.ta, text);
-          self.interimEl.textContent = '';
+          if (self.interimEl) self.interimEl.textContent = '';
         } else {
           interim += text;
         }
       }
-      if (interim) self.interimEl.textContent = interim;
+      if (self.interimEl) self.interimEl.textContent = interim;
     };
 
     try {
       this.rec.start();
     } catch (e) {
-      this.statusEl.textContent = 'Tap Start recording again.';
-      this.cleanupUi();
+      if (self.statusText) self.statusText.textContent = 'Tap again to start.';
+      self.cleanupUi();
     }
   };
 
@@ -206,16 +200,14 @@
   VoiceField.prototype.cleanupUi = function () {
     if (this.active) setGlobalRecording(false);
     this.active = false;
-    if (this.wrapEl) this.wrapEl.classList.remove('tv-voice-recording');
-    if (this.btnStart) {
-      this.btnStart.classList.remove('active');
-      this.btnStart.setAttribute('aria-pressed', 'false');
+    if (this.shell) this.shell.classList.remove('tv-voice-recording');
+    if (this.btnToggle) {
+      this.btnToggle.setAttribute('aria-pressed', 'false');
+      this.btnToggle.setAttribute('aria-label', 'Start voice dictation');
+      this.btnToggle.innerHTML =
+        '<i class="fas fa-microphone tv-voice-fab-icon" aria-hidden="true"></i>';
     }
-    if (this.btnStop) {
-      this.btnStop.classList.add('d-none');
-      this.btnStop.disabled = true;
-    }
-    if (this.statusEl) this.statusEl.textContent = '';
+    if (this.statusText) this.statusText.textContent = '';
     if (this.interimEl) this.interimEl.textContent = '';
   };
 

@@ -163,7 +163,24 @@ class Config:
     COOLDOWN_OVERRIDE_MAX_PER_DAY = 1
     COOLDOWN_OVERRIDE_MAX_PER_WEEK = 3
     COOLDOWN_OVERRIDE_WINDOW_DAYS = 7
-    
+    # If discipline_score (1–10) is at or below this after save/edit, trigger impulse cooldown (rule-breaking).
+    COOLDOWN_LOW_DISCIPLINE_THRESHOLD = 3
+
+    # Map shorthand / legacy labels → canonical EMOTIONS / cooldown keys (lowercase keys).
+    COOLDOWN_EMOTION_ALIASES = {
+        'revenge': 'Revenge Trading',
+        'revenge trading': 'Revenge Trading',
+        'calm': 'Calm & Focused',
+        'focused': 'Calm & Focused',
+        'calm focused': 'Calm & Focused',
+        'fomo': 'FOMO',
+        'over trading': 'Impulsive',
+        'overtrading': 'Impulsive',
+        'chasing': 'Impulsive',
+        'broke rules': 'Impulsive',
+        'break rules': 'Impulsive',
+    }
+
     # Session Types
     SESSION_TYPES = [
         'London Session',

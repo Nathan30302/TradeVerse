@@ -136,6 +136,53 @@ def _filtered_trades_query(user_id):
         query = query.filter_by(strategy=strategy_filter)
     return query.order_by(Trade.entry_date.desc())
 
+
+def _apply_post_trade_cooldowns(user_id, emotion, trade):
+    """
+    After a trade is committed (add, edit, or close), start emotion and/or loss-streak cooldowns.
+
+    Returns a short user-facing note for flash messages, or None.
+    """
+    cooldown_note = None
+    try:
+        manager = CooldownManager(user_id)
+        if emotion and should_trigger_cooldown(emotion):
+            cooldown = trigger_emotional_cooldown(
+                user_id,
+                emotion,
+                f"Triggered after trading with emotion: {emotion}",
+            )
+            if cooldown:
+                cooldown_note = (
+                    f'⏳ Cooldown active ({cooldown.duration_minutes} min) after {emotion}. Take a break.'
+                )
+        if not cooldown_note:
+            # Very low discipline score = broke rules / impulse risk (same cooldown axis as Impulsive).
+            thresh = int(current_app.config.get('COOLDOWN_LOW_DISCIPLINE_THRESHOLD', 3) or 3)
+            ds = getattr(trade, 'discipline_score', None)
+            if ds is not None and int(ds) <= thresh:
+                cooldown = trigger_emotional_cooldown(
+                    user_id,
+                    'Impulsive',
+                    f'Low rule adherence score ({ds}/10). Step away before the next trade.',
+                )
+                if cooldown:
+                    cooldown_note = (
+                        f'⏳ Cooldown active ({cooldown.duration_minutes} min) — '
+                        f'rule adherence was rated {ds}/10. Reset before trading again.'
+                    )
+        if not cooldown_note:
+            if (trade.status or '').upper() == 'CLOSED' and (trade.profit_loss or 0) < 0:
+                ls = manager.trigger_loss_streak_cooldown()
+                if ls:
+                    cooldown_note = (
+                        '⏳ Cooldown active after a loss streak. Step away and review before the next trade.'
+                    )
+    except Exception:
+        current_app.logger.warning("Cooldown trigger check failed", exc_info=True)
+    return cooldown_note
+
+
 # ==================== Add Trade ====================
 
 @bp.route('/add', methods=['GET', 'POST'])
@@ -413,31 +460,12 @@ def add():
                 session.pop("tv_accountability_required", None)
 
             # Trigger cooldowns (emotion-based and/or loss-streak); one success flash with optional note.
-            cooldown_note = None
-            try:
-                manager = CooldownManager(current_user.id)
-                if emotion and should_trigger_cooldown(emotion):
-                    cooldown = trigger_emotional_cooldown(
-                        current_user.id,
-                        emotion,
-                        f"Triggered after trading with emotion: {emotion}"
-                    )
-                    if cooldown:
-                        cooldown_note = (
-                            f'⏳ Cooldown active ({cooldown.duration_minutes} min) after {emotion}. Take a break.'
-                        )
-                else:
-                    if (trade.status or '').upper() == 'CLOSED' and (trade.profit_loss or 0) < 0:
-                        ls = manager.trigger_loss_streak_cooldown()
-                        if ls:
-                            cooldown_note = (
-                                '⏳ Cooldown active after a loss streak. Step away and review before the next trade.'
-                            )
-            except Exception:
-                current_app.logger.warning("Cooldown trigger check failed", exc_info=True)
+            cooldown_note = _apply_post_trade_cooldowns(current_user.id, emotion, trade)
 
             ok_msg = f'✅ Trade {symbol} {trade_type} added successfully!'
-            flash(f'{ok_msg} {cooldown_note}'.strip() if cooldown_note else ok_msg, 'success')
+            flash(ok_msg, 'success')
+            if cooldown_note:
+                flash(cooldown_note, 'warning')
             return redirect(url_for('trade.view', trade_id=trade.id))
             
         except ValueError as e:
@@ -806,6 +834,26 @@ def edit(trade_id):
     
     if request.method == 'POST':
         try:
+            # Quick review card on trade view (only emotion + discipline + lesson) — do not wipe the trade
+            if (request.form.get('tv_quick_review') or '').strip() == '1':
+                trade.emotion = (request.form.get('emotion') or '').strip() or None
+                ds = (request.form.get('discipline_score') or '').strip()
+                if ds:
+                    try:
+                        trade.discipline_score = int(ds)
+                    except ValueError:
+                        pass
+                ll = request.form.get('lessons_learned')
+                if ll is not None:
+                    v = (ll or '').strip()
+                    trade.lessons_learned = v or None
+                db.session.commit()
+                cooldown_note = _apply_post_trade_cooldowns(current_user.id, trade.emotion, trade)
+                flash('✅ Review saved.', 'success')
+                if cooldown_note:
+                    flash(cooldown_note, 'warning')
+                return redirect(url_for('trade.view', trade_id=trade.id))
+
             # Update basic info
             trade.symbol = request.form.get('symbol', '').strip().upper()
             # Update instrument_id if provided
@@ -875,8 +923,12 @@ def edit(trade_id):
                 trade.calculate_risk_reward()
             
             db.session.commit()
-            
+
+            cooldown_note = _apply_post_trade_cooldowns(current_user.id, trade.emotion, trade)
+
             flash('✅ Trade updated successfully!', 'success')
+            if cooldown_note:
+                flash(cooldown_note, 'warning')
             return redirect(url_for('trade.view', trade_id=trade.id))
             
         except ValueError as e:
@@ -932,8 +984,13 @@ def close(trade_id):
         
         trade.close_trade(exit_price, exit_date)
         
+        cooldown_note = _apply_post_trade_cooldowns(current_user.id, trade.emotion, trade)
+
         result_emoji = trade.get_result_emoji()
-        flash(f'{result_emoji} Trade closed! P/L: {trade.profit_loss:+.2f}', 'success')
+        base = f'{result_emoji} Trade closed! P/L: {trade.profit_loss:+.2f}'
+        flash(base, 'success')
+        if cooldown_note:
+            flash(cooldown_note, 'warning')
         
     except Exception as e:
         db.session.rollback()
