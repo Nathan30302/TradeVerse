@@ -425,7 +425,7 @@ def register_context_processors(app):
 
         codes = tuple(app.config.get('DISPLAY_CURRENCIES') or ())
         if not codes:
-            codes = ('USD', 'ZAR', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD')
+            codes = ('USD', 'ZAR', 'ZMW', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD')
         if not getattr(current_user, 'is_authenticated', False):
             return {
                 'fx_usd_to_preferred': 1.0,

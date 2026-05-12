@@ -159,10 +159,10 @@ class Config:
     ]
     
     # Available Currencies (profile drop-downs)
-    CURRENCIES = ['USD', 'ZAR', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD']
+    CURRENCIES = ['USD', 'ZAR', 'ZMW', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD']
 
-    # Allowed preferred_currency values (must stay 3-letter ISO for DB column)
-    DISPLAY_CURRENCIES = ('USD', 'ZAR', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD')
+    # Allowed preferred_currency values (3-letter ISO for DB column)
+    DISPLAY_CURRENCIES = ('USD', 'ZAR', 'ZMW', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD')
 
     # Registration / profile: ISO 3166-1 alpha-2 (first element '' = prefer not to say)
     REGISTER_COUNTRY_CHOICES = (

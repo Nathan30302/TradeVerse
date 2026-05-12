@@ -374,9 +374,21 @@ def profile():
             preferred_currency = 'USD'
         country_raw = (request.form.get('country_code') or '').strip()
         phone_raw = (request.form.get('phone_number') or '').strip()
-        country_code, cerr = _parse_signup_country(country_raw)
-        phone_number, perr = _parse_signup_phone(phone_raw)
-        field_msgs = [m for m in (cerr, perr) if m]
+        field_msgs = []
+        cerr = None
+        perr = None
+        if 'country_code' in request.form:
+            country_code, cerr = _parse_signup_country(country_raw)
+            if cerr:
+                field_msgs.append(cerr)
+        else:
+            country_code = None
+        if 'phone_number' in request.form:
+            phone_number, perr = _parse_signup_phone(phone_raw)
+            if perr:
+                field_msgs.append(perr)
+        else:
+            phone_number = None
         allowed = current_app.config.get('ALLOWED_UI_THEMES') or frozenset()
         theme = (request.form.get('theme') or 'dark').strip().lower()
         if theme not in allowed:
@@ -389,12 +401,12 @@ def profile():
             current_user.timezone = timezone
             current_user.preferred_currency = preferred_currency
             current_user.theme = theme
-            if not cerr:
+            if 'country_code' in request.form and not cerr:
                 try:
                     current_user.country_code = country_code
                 except Exception:
                     pass
-            if not perr:
+            if 'phone_number' in request.form and not perr:
                 try:
                     current_user.phone_number = phone_number
                 except Exception:
@@ -411,10 +423,18 @@ def profile():
             else:
                 flash('✅ Profile updated successfully!', 'success')
             
+        except IntegrityError as e:
+            db.session.rollback()
+            flash('Could not save profile due to a data conflict. Please try again.', 'danger')
+            current_app.logger.warning('Profile update IntegrityError: %s', e)
+        except (OperationalError, ProgrammingError, InternalError) as e:
+            db.session.rollback()
+            flash('Could not save profile (database error). Please try again or contact support.', 'danger')
+            current_app.logger.exception('Profile update database error')
         except Exception as e:
             db.session.rollback()
             flash('❌ Error updating profile. Please try again.', 'danger')
-            current_app.logger.exception("Profile update error")
+            current_app.logger.exception('Profile update error')
 
         after = (request.form.get('after_save') or '').strip().lower()
         if after == 'settings':

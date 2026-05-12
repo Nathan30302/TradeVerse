@@ -20,8 +20,23 @@ _CACHE_TTL_SEC = 3600
 
 FRANKFURTER_LATEST = "https://api.frankfurter.app/latest"
 
-# ISO codes we allow in settings / filters (3 letters)
-TARGET_CCYS = "EUR,GBP,JPY,CHF,AUD,CAD,NZD,ZAR"
+# ISO codes we allow in settings / filters (3 letters). Frankfurter may omit some; see FALLBACK_RATES_PER_USD.
+TARGET_CCYS = "EUR,GBP,JPY,CHF,AUD,CAD,NZD,ZAR,ZMW"
+
+# Units of local currency per 1 USD when the live feed has no series (approximate display only).
+FALLBACK_RATES_PER_USD = {
+    "ZMW": 27.0,
+}
+
+
+def _merge_fallback_rates(base: Dict[str, float]) -> Dict[str, float]:
+    out = dict(base)
+    out.setdefault("USD", 1.0)
+    for code, rate in FALLBACK_RATES_PER_USD.items():
+        c = str(code).upper()
+        if c not in out and rate and float(rate) > 0:
+            out[c] = float(rate)
+    return out
 
 
 def _fetch_usd_rates() -> Optional[Dict[str, float]]:
@@ -38,8 +53,9 @@ def _fetch_usd_rates() -> Optional[Dict[str, float]]:
                 out[str(k).upper()] = float(v)
             except (TypeError, ValueError):
                 continue
-        out["USD"] = 1.0
-        return out if out else None
+        if not out:
+            return None
+        return _merge_fallback_rates(out)
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError, ValueError):
         return None
 
@@ -51,17 +67,18 @@ def get_usd_rates_map() -> Dict[str, float]:
         cached = _CACHE.get("rates")
         ts = float(_CACHE.get("ts") or 0)
         if isinstance(cached, dict) and cached and now - ts < _CACHE_TTL_SEC:
-            return dict(cached)
+            return _merge_fallback_rates(dict(cached))
 
     fresh = _fetch_usd_rates()
     with _LOCK:
         if fresh:
-            _CACHE["rates"] = fresh
+            merged = _merge_fallback_rates(fresh)
+            _CACHE["rates"] = merged
             _CACHE["ts"] = time.time()
-            return dict(fresh)
+            return dict(merged)
         if isinstance(_CACHE.get("rates"), dict) and _CACHE["rates"]:
-            return dict(_CACHE["rates"])
-        return {"USD": 1.0}
+            return _merge_fallback_rates(dict(_CACHE["rates"]))
+        return _merge_fallback_rates({"USD": 1.0})
 
 
 def usd_to_preferred_multiplier(target_currency: str) -> float:
@@ -95,12 +112,14 @@ CURRENCY_SYMBOLS = {
     "CAD": "C$",
     "NZD": "NZ$",
     "ZAR": "R",
+    "ZMW": "ZK",
 }
 
 # Settings dropdown labels (must match config DISPLAY_CURRENCIES)
 DISPLAY_LABELS = {
     "USD": "USD ($)",
     "ZAR": "ZAR — South African Rand (R)",
+    "ZMW": "ZMW — Zambian Kwacha (ZK)",
     "EUR": "EUR (€)",
     "GBP": "GBP (£)",
     "JPY": "JPY (¥)",
