@@ -407,6 +407,7 @@
 (function () {
   'use strict';
   var KEY = 'tradev_add_trade_draft_v1';
+  window.TV_ADD_TRADE_DRAFT_KEY = KEY;
   var form = document.getElementById('trade-add-form');
   if (!form) return;
   var hasPrefill = !!document.getElementById('trade-prefill-json');
@@ -471,6 +472,14 @@
     }, 220);
   }
   var saveTimer;
+  window.tvClearAddTradeDraft = function () {
+    clearTimeout(saveTimer);
+    try {
+      sessionStorage.removeItem(KEY);
+    } catch (e) { /* ignore */ }
+  };
+  var serverClearDraft = {{ clear_add_trade_draft | default(false) | tojson }};
+  if (serverClearDraft) window.tvClearAddTradeDraft();
   function scheduleSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
@@ -503,9 +512,6 @@
   }
   form.addEventListener('input', scheduleSave);
   form.addEventListener('change', scheduleSave);
-  form.addEventListener('submit', function () {
-    try { sessionStorage.removeItem(KEY); } catch (e) { /* ignore */ }
-  });
   function tvFormLooksUnsaved() {
     var sig = ['instrument_id', 'symbol', 'entry_price', 'lot_size', 'pre_trade_plan', 'post_trade_notes', 'stop_loss', 'take_profit', 'exit_price'];
     var n = 0;
@@ -613,11 +619,12 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (e) { /* ignore */ }
 });
 
-// Calculate R:R ratio
+// Calculate R:R ratio (direction-aware: SL/TP must be on the correct side of entry)
 function calculateRR() {
     const entryEl = document.getElementById('entry_price');
     const slEl = document.getElementById('stop_loss');
     const tpEl = document.getElementById('take_profit');
+    const dirEl = document.getElementById('trade_type');
     const rrEl = document.getElementById('rr_display');
     const riskEl = document.getElementById('risk_display');
     const rewardEl = document.getElementById('reward_display');
@@ -626,16 +633,25 @@ function calculateRR() {
     const entry = parseFloat(entryEl.value) || 0;
     const sl = parseFloat(slEl.value) || 0;
     const tp = parseFloat(tpEl.value) || 0;
+    const dir = (dirEl && dirEl.value) ? String(dirEl.value).toUpperCase() : 'BUY';
 
     if (entry && sl && tp) {
-        const risk = Math.abs(entry - sl);
-        const reward = Math.abs(tp - entry);
+        var risk;
+        var reward;
+        if (dir === 'SELL') {
+            risk = sl - entry;
+            reward = entry - tp;
+        } else {
+            risk = entry - sl;
+            reward = tp - entry;
+        }
 
-        if (risk > 0) {
+        if (risk > 0 && reward > 0) {
             const rr = (reward / risk).toFixed(2);
             rrEl.textContent = '1:' + rr;
             riskEl.textContent = risk.toFixed(5);
             rewardEl.textContent = reward.toFixed(5);
+            rrEl.removeAttribute('title');
 
             if (parseFloat(rr) >= 2) {
                 rrEl.style.color = '#10b981';
@@ -646,6 +662,7 @@ function calculateRR() {
             }
             return;
         }
+        rrEl.title = 'For ' + (dir === 'SELL' ? 'sell' : 'buy') + ', stop must be beyond entry and target on the profit side.';
     }
     rrEl.textContent = '—';
     riskEl.textContent = '—';
@@ -674,10 +691,11 @@ function calculateRR() {
     var sel = document.getElementById('trade_type');
     var buy = document.getElementById('tv-dir-buy');
     var sell = document.getElementById('tv-dir-sell');
-    if (buy && sel) buy.addEventListener('click', function () { sel.value = 'BUY'; syncDir(); });
-    if (sell && sel) sell.addEventListener('click', function () { sel.value = 'SELL'; syncDir(); });
-    if (sel) sel.addEventListener('change', syncDir);
+    if (buy && sel) buy.addEventListener('click', function () { sel.value = 'BUY'; syncDir(); if (typeof calculateRR === 'function') calculateRR(); });
+    if (sell && sel) sell.addEventListener('click', function () { sel.value = 'SELL'; syncDir(); if (typeof calculateRR === 'function') calculateRR(); });
+    if (sel) sel.addEventListener('change', function () { syncDir(); if (typeof calculateRR === 'function') calculateRR(); });
     syncDir();
+    if (typeof calculateRR === 'function') calculateRR();
 
     document.querySelectorAll('.tv-lot-preset').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -731,7 +749,17 @@ function calculateRR() {
       saveBtn.innerHTML = saveBtn.dataset.tvLabel;
     }
     window.addEventListener('pageshow', function (ev) {
-      if (ev.persisted) resetSaveButton();
+      if (ev.persisted) {
+        resetSaveButton();
+        try {
+          var k = window.TV_ADD_TRADE_DRAFT_KEY || 'tradev_add_trade_draft_v1';
+          if (document.getElementById('trade-add-form') && !sessionStorage.getItem(k)) {
+            window.location.reload();
+          }
+        } catch (err) {
+          window.location.reload();
+        }
+      }
     });
 
     var hStat = document.getElementById('trade_log_status');

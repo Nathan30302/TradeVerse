@@ -150,6 +150,10 @@ DANGEROUS_EMOTIONS = {
     'Tired': {'duration': 45, 'severity': 'high'},
     'Bored': {'duration': 20, 'severity': 'medium'},
     'Impulsive': {'duration': 30, 'severity': 'high'},
+    # Align with config.EMOTIONS — high-arousal / tilt-prone states
+    'Excited': {'duration': 25, 'severity': 'high'},
+    'Nervous': {'duration': 20, 'severity': 'medium'},
+    'Overconfident': {'duration': 35, 'severity': 'high'},
 }
 
 

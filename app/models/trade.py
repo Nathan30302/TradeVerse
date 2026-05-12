@@ -191,17 +191,22 @@ class Trade(db.Model):
         """
         if not self.stop_loss or not self.take_profit:
             return None
-        
-        # Calculate risk (distance to SL)
-        risk = abs(self.entry_price - self.stop_loss)
-        
-        # Calculate reward (distance to TP)
-        reward = abs(self.take_profit - self.entry_price)
-        
-        # Calculate ratio
-        if risk == 0:
+
+        entry = float(self.entry_price)
+        sl = float(self.stop_loss)
+        tp = float(self.take_profit)
+        direction = (self.trade_type or 'BUY').upper()
+
+        if direction == 'SELL':
+            risk = sl - entry
+            reward = entry - tp
+        else:
+            risk = entry - sl
+            reward = tp - entry
+
+        if risk <= 0 or reward <= 0:
             return None
-        
+
         self.risk_reward = round(reward / risk, 2)
         return self.risk_reward
     

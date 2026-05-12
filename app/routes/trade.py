@@ -151,12 +151,14 @@ def add():
     accountability_required = bool(session.get("tv_accountability_required"))
     playbook_setups = _playbook_setups_for_trade_form()
     if request.method == 'GET':
+        clear_add_trade_draft = bool(session.pop('tv_clear_add_trade_draft', None))
         return render_template(
             'trade/add.html',
             active_cooldown=active_cooldown,
             prefill=None,
             accountability_required=accountability_required,
             playbook_setups=playbook_setups,
+            clear_add_trade_draft=clear_add_trade_draft,
         )
     
     if request.method == 'POST':
@@ -270,8 +272,8 @@ def add():
             session_type = request.form.get('session_type')
             timeframe = request.form.get('timeframe')
             
-            # Get psychology
-            emotion = request.form.get('emotion')
+            # Get psychology (strip so cooldown config matches select values)
+            emotion = (request.form.get('emotion') or '').strip() or None
             confidence_level = request.form.get('confidence_level')
             
             # Get quality scores
@@ -404,6 +406,8 @@ def add():
             db.session.add(trade)
             db.session.commit()
 
+            session['tv_clear_add_trade_draft'] = True
+
             # Clear one-time accountability gate after successful log
             if session.get("tv_accountability_required"):
                 session.pop("tv_accountability_required", None)
@@ -457,6 +461,7 @@ def add():
         prefill=prefill,
         playbook_setups=playbook_setups,
         accountability_required=accountability_required,
+        clear_add_trade_draft=False,
     )
 
 
@@ -828,7 +833,7 @@ def edit(trade_id):
             trade.timeframe = request.form.get('timeframe')
             
             # Update psychology
-            trade.emotion = request.form.get('emotion')
+            trade.emotion = (request.form.get('emotion') or '').strip() or None
             confidence_level = request.form.get('confidence_level')
             trade.confidence_level = int(confidence_level) if confidence_level else None
             
