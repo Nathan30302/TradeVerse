@@ -460,7 +460,7 @@ def calendar():
 
     Visual calendar showing trading activity
     """
-    from calendar import monthrange
+    from calendar import monthrange, Calendar, SUNDAY
 
     year = request.args.get('year', datetime.now().year, type=int)
     month = request.args.get('month', datetime.now().month, type=int)
@@ -479,8 +479,14 @@ def calendar():
         month = 12
         year -= 1
 
-    # Get number of days in month
-    days_in_month = monthrange(year, month)[1]
+    # Sunday-first weeks (matches UI); 0 = padding cell outside this month
+    _cal = Calendar(firstweekday=SUNDAY)
+    calendar_weeks = [
+        [d.day if d.month == month else 0 for d in week]
+        for week in _cal.monthdatescalendar(year, month)
+    ]
+    today = datetime.now()
+    today_day = today.day if (today.year == year and today.month == month) else None
 
     # Get trades for the month
     trades = Trade.query.filter(
@@ -503,12 +509,16 @@ def calendar():
         pnl = sum(t.profit_loss for t in day_trades if t.profit_loss)
         daily_pnl[day] = pnl
 
-    return render_template('dashboard/calendar.html',
-                           year=year,
-                           month=month,
-                           days_in_month=days_in_month,
-                           trades_by_day=trades_by_day,
-                           daily_pnl=daily_pnl)
+    return render_template(
+        'dashboard/calendar.html',
+        year=year,
+        month=month,
+        days_in_month=days_in_month,
+        calendar_weeks=calendar_weeks,
+        today_day=today_day,
+        trades_by_day=trades_by_day,
+        daily_pnl=daily_pnl,
+    )
 
 # ==================== API Endpoints for Charts ====================
 

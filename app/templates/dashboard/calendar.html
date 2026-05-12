@@ -3,146 +3,131 @@
 {% block title %}Calendar - {{ app_name }}{% endblock %}
 
 {% block content %}
-<!-- Page Header -->
 <div class="page-header mb-4">
-    <div class="row align-items-center">
+    <div class="row align-items-center g-3">
         <div class="col">
-            <h1 class="page-title">
-                <i class="fas fa-calendar"></i> Trading Calendar
+            <h1 class="page-title mb-1">
+                <i class="fas fa-calendar-alt text-primary"></i> Trading calendar
             </h1>
-            <p class="page-subtitle">Visualize your trading activity and performance</p>
+            <p class="page-subtitle mb-0">Month view aligned to weekdays — tap a day for full trade detail.</p>
         </div>
         <div class="col-auto">
-            <a href="{{ url_for('trade.add') }}" class="btn btn-primary">
-                <i class="fas fa-plus-circle"></i> Add Trade
+            <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg px-4 rounded-3 shadow-sm">
+                <i class="fas fa-plus-circle me-1"></i> Add trade
             </a>
         </div>
     </div>
 </div>
 
-<!-- Month Navigation -->
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="row align-items-center">
-            <div class="col-md-4">
-                {% if month > 1 %}
-                    {% set prev_month = month - 1 %}
-                    {% set prev_year = year %}
-                {% else %}
-                    {% set prev_month = 12 %}
-                    {% set prev_year = year - 1 %}
-                {% endif %}
-                <a href="{{ url_for('dashboard.calendar', year=prev_year, month=prev_month) }}" 
-                   class="btn btn-outline-primary">
-                    <i class="fas fa-chevron-left"></i> Previous Month
+{% set month_names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
+{% if month > 1 %}
+    {% set prev_month = month - 1 %}
+    {% set prev_year = year %}
+{% else %}
+    {% set prev_month = 12 %}
+    {% set prev_year = year - 1 %}
+{% endif %}
+{% if month < 12 %}
+    {% set next_month = month + 1 %}
+    {% set next_year = year %}
+{% else %}
+    {% set next_month = 1 %}
+    {% set next_year = year + 1 %}
+{% endif %}
+
+<!-- Month navigation -->
+<div class="tv-cal-toolbar card border-0 mb-4">
+    <div class="tv-cal-toolbar__bg"></div>
+    <div class="card-body position-relative p-3 p-lg-4">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4 order-md-1">
+                <a href="{{ url_for('dashboard.calendar', year=prev_year, month=prev_month) }}"
+                   class="tv-cal-nav-btn btn w-100 w-md-auto">
+                    <i class="fas fa-chevron-left me-1"></i><span class="d-none d-sm-inline">Previous</span>
                 </a>
             </div>
-            <div class="col-md-4 text-center">
-                <h3 class="mb-0">
-                    {{ ['January', 'February', 'March', 'April', 'May', 'June', 
-                        'July', 'August', 'September', 'October', 'November', 'December'][month-1] }} 
-                    {{ year }}
-                </h3>
-                <!-- Year & Month Selection -->
-                <div class="mt-2">
-                    <select id="yearSelect" class="form-select form-select-sm d-inline-block" style="width: auto;">
-                        {% for y in range(2020, 2031) %}
+            <div class="col-md-4 order-md-0 text-center">
+                <p class="tv-cal-kicker text-uppercase small mb-1">Trading calendar</p>
+                <h2 class="tv-cal-month-title mb-2">{{ month_names[month - 1] }} <span class="tv-cal-year">{{ year }}</span></h2>
+                <div class="tv-cal-selects d-flex flex-wrap justify-content-center gap-2">
+                    <label class="visually-hidden" for="yearSelect">Year</label>
+                    <select id="yearSelect" class="form-select form-select-sm tv-cal-select" aria-label="Year">
+                        {% for y in range(2018, 2037) %}
                             <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
                         {% endfor %}
                     </select>
-                    <select id="monthSelect" class="form-select form-select-sm d-inline-block ms-2" style="width: auto;">
+                    <label class="visually-hidden" for="monthSelect">Month</label>
+                    <select id="monthSelect" class="form-select form-select-sm tv-cal-select" aria-label="Month">
                         {% for m in range(1, 13) %}
-                            <option value="{{ m }}" {% if m == month %}selected{% endif %}>
-                                {{ ['January', 'February', 'March', 'April', 'May', 'June', 
-                                    'July', 'August', 'September', 'October', 'November', 'December'][m-1] }}
-                            </option>
+                            <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ month_names[m - 1] }}</option>
                         {% endfor %}
                     </select>
                 </div>
             </div>
-            <div class="col-md-4 text-end">
-                {% if month < 12 %}
-                    {% set next_month = month + 1 %}
-                    {% set next_year = year %}
-                {% else %}
-                    {% set next_month = 1 %}
-                    {% set next_year = year + 1 %}
-                {% endif %}
-                <a href="{{ url_for('dashboard.calendar', year=next_year, month=next_month) }}" 
-                   class="btn btn-outline-primary">
-                    Next Month <i class="fas fa-chevron-right"></i>
+            <div class="col-md-4 order-md-2 text-md-end">
+                <a href="{{ url_for('dashboard.calendar', year=next_year, month=next_month) }}"
+                   class="tv-cal-nav-btn btn w-100 w-md-auto">
+                    <span class="d-none d-sm-inline">Next</span><i class="fas fa-chevron-right ms-1"></i>
                 </a>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Calendar Grid -->
-<div class="card">
-    <div class="card-body p-0">
-        <div class="calendar-grid">
-            <!-- Day Headers -->
-            <div class="calendar-header">
-                <div class="calendar-day-header">Sunday</div>
-                <div class="calendar-day-header">Monday</div>
-                <div class="calendar-day-header">Tuesday</div>
-                <div class="calendar-day-header">Wednesday</div>
-                <div class="calendar-day-header">Thursday</div>
-                <div class="calendar-day-header">Friday</div>
-                <div class="calendar-day-header">Saturday</div>
+<!-- Calendar grid (weekday-aligned) -->
+<div class="tv-cal-shell card border-0 mb-4">
+    <div class="tv-cal-shell__inner">
+        <div class="tv-cal-grid" role="grid" aria-label="Calendar for {{ month_names[month - 1] }} {{ year }}">
+            <div class="tv-cal-weekdays" role="row">
+                {% for label in ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                <div class="tv-cal-weekday" role="columnheader" title="{{ label }}">
+                    <span class="d-md-none">{{ label[:3] }}</span>
+                    <span class="d-none d-md-inline">{{ label }}</span>
+                </div>
+                {% endfor %}
             </div>
-
-            <!-- Calendar Days -->
-            <div class="calendar-body">
-                {% set start_day = (trades_by_day.keys()|list|first if trades_by_day else 1) %}
-                {% for day in range(1, days_in_month + 1) %}
-                    <div class="calendar-day {% if day in trades_by_day %}has-trades{% endif %} 
-                         {% if daily_pnl.get(day, 0) > 0 %}profit-day{% elif daily_pnl.get(day, 0) < 0 %}loss-day{% endif %}">
-                        
-                        <div class="day-number">{{ day }}</div>
-                        
-                        {% if day in trades_by_day %}
-                            <div class="day-content">
-                                <div class="trade-count">
-                                    <i class="fas fa-chart-line"></i> {{ trades_by_day[day]|length }} trades
-                                </div>
-                                
-                                {% if daily_pnl.get(day) %}
-                                    <div class="day-pnl {% if daily_pnl[day] >= 0 %}profit{% else %}loss{% endif %}">
-                                        {{ daily_pnl[day]|currency(current_user.preferred_currency) }}
-                                    </div>
-                                {% endif %}
-
-                                <!-- Trade symbols -->
-                                <div class="trade-symbols">
-                                    {% for trade in trades_by_day[day][:3] %}
-                                        <span class="badge badge-sm bg-{% if trade.trade_type == 'BUY' %}success{% else %}danger{% endif %}">
-                                            {{ trade.symbol }}
-                                        </span>
-                                    {% endfor %}
-                                    {% if trades_by_day[day]|length > 3 %}
-                                        <span class="badge badge-sm bg-secondary">
-                                            +{{ trades_by_day[day]|length - 3 }} more
-                                        </span>
-                                    {% endif %}
-                                </div>
-
-                                <!-- View details button -->
-                                <button class="btn btn-sm btn-outline-primary mt-2 w-100" 
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#dayModal{{ day }}"
-                                        data-day="{{ day }}"
-                                        data-month="{{ month }}"
-                                        data-year="{{ year }}">
-                                    View Details
-                                </button>
-                            </div>
+            <div class="tv-cal-cells">
+                {% for week in calendar_weeks %}
+                    {% for d in week %}
+                        {% set wd = loop.index0 %}
+                        {% if d == 0 %}
+                <div class="tv-cal-cell tv-cal-cell--empty" aria-hidden="true"></div>
                         {% else %}
-                            <div class="day-content text-center text-muted">
-                                <small>No trades</small>
-                            </div>
-                        {% endif %}
+                            {% set pnl = daily_pnl.get(d, 0) %}
+                <div class="tv-cal-cell tv-cal-day{% if d in trades_by_day %} tv-cal-day--trades{% endif %}{% if pnl > 0 %} tv-cal-day--profit{% elif pnl < 0 %} tv-cal-day--loss{% endif %}{% if today_day is not none and d == today_day %} tv-cal-day--today{% endif %}{% if wd == 0 or wd == 6 %} tv-cal-day--weekend{% endif %}">
+                    <div class="tv-cal-day__top">
+                        <span class="tv-cal-daynum">{{ d }}</span>
                     </div>
+                            {% if d in trades_by_day %}
+                    <div class="tv-cal-day__body">
+                        <div class="tv-cal-meta">
+                            <span class="tv-cal-count"><i class="fas fa-chart-line"></i> {{ trades_by_day[d]|length }}</span>
+                                    {% if daily_pnl.get(d) %}
+                            <span class="tv-cal-pnl {% if daily_pnl[d] >= 0 %}tv-cal-pnl--up{% else %}tv-cal-pnl--down{% endif %}">{{ daily_pnl[d]|currency(current_user.preferred_currency) }}</span>
+                                    {% endif %}
+                        </div>
+                        <div class="tv-cal-badges">
+                                        {% for trade in trades_by_day[d][:3] %}
+                            <span class="tv-cal-chip tv-cal-chip--{% if trade.trade_type == 'BUY' %}buy{% else %}sell{% endif %}">{{ trade.symbol }}</span>
+                                        {% endfor %}
+                                        {% if trades_by_day[d]|length > 3 %}
+                            <span class="tv-cal-chip tv-cal-chip--more">+{{ trades_by_day[d]|length - 3 }}</span>
+                                        {% endif %}
+                        </div>
+                        <button type="button" class="tv-cal-detail-btn"
+                                data-bs-toggle="modal" data-bs-target="#dayModal{{ d }}"
+                                data-day="{{ d }}" data-month="{{ month }}" data-year="{{ year }}">
+                            Details
+                        </button>
+                    </div>
+                            {% else %}
+                    <div class="tv-cal-day__empty">
+                        <span>No trades</span>
+                    </div>
+                            {% endif %}
+                </div>
+                        {% endif %}
+                    {% endfor %}
                 {% endfor %}
             </div>
         </div>
@@ -155,11 +140,10 @@
     <div class="modal fade" id="dayModal{{ day }}" tabindex="-1" aria-labelledby="dayModalLabel{{ day }}" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="dayModalLabel{{ day }}">
-                        <i class="fas fa-calendar-day"></i> Trades on {{ ['January', 'February', 'March', 'April', 'May', 'June', 
-                        'July', 'August', 'September', 'October', 'November', 'December'][month-1] }} 
-                        {{ day }}, {{ year }}
+                <div class="modal-header tv-cal-modal__head border-0">
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="dayModalLabel{{ day }}">
+                        <span class="tv-cal-modal__icon"><i class="fas fa-calendar-day"></i></span>
+                        <span>Trades on {{ month_names[month - 1] }} {{ day }}, {{ year }}</span>
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -205,7 +189,7 @@
                     <!-- Trade Details -->
                     <div class="table-responsive">
                         <table class="table table-hover table-striped">
-                            <thead class="table-light">
+                            <thead class="tv-cal-modal__thead">
                                 <tr>
                                     <th>Time</th>
                                     <th>Symbol</th>
@@ -269,8 +253,8 @@
                                     </td>
                                     <td>{{ trade.lot_size }}</td>
                                     <td>
-                                        {% if trade.risk_reward_ratio %}
-                                            <span class="badge bg-info">1:{{ "%.2f"|format(trade.risk_reward_ratio) }}</span>
+                                        {% if trade.risk_reward %}
+                                            <span class="badge bg-info text-dark">1:{{ "%.2f"|format(trade.risk_reward) }}</span>
                                         {% else %}
                                             <span class="text-muted">—</span>
                                         {% endif %}
@@ -305,7 +289,7 @@
                                 </tr>
                                 {% endfor %}
                             </tbody>
-                            <tfoot class="table-light">
+                            <tfoot class="tv-cal-modal__tfoot">
                                 <tr>
                                     <td colspan="9"><strong>Daily Total</strong></td>
                                     <td>
@@ -354,32 +338,47 @@
 {% endfor %}
 
 <!-- Calendar Legend -->
-<div class="card mt-4">
-    <div class="card-body">
-        <h6 class="mb-3"><i class="fas fa-info-circle"></i> Legend</h6>
-        <div class="row text-center">
-            <div class="col-md-3">
-                <div class="p-3 border rounded" style="background-color: #d1fae5;">
-                    <strong class="text-success">Green</strong>
-                    <p class="mb-0 small">Profitable Day</p>
+<div class="tv-cal-legend card border-0">
+    <div class="card-body p-3 p-md-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="tv-cal-legend__dot"></span>
+            <h6 class="mb-0 fw-semibold">Legend</h6>
+        </div>
+        <div class="row g-3">
+            <div class="col-6 col-lg-3">
+                <div class="tv-cal-legend__item tv-cal-legend__item--profit">
+                    <span class="tv-cal-legend__swatch"></span>
+                    <div>
+                        <strong>Win day</strong>
+                        <p class="mb-0 small text-secondary">Closed-day P/L net positive</p>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="p-3 border rounded" style="background-color: #fee2e2;">
-                    <strong class="text-danger">Red</strong>
-                    <p class="mb-0 small">Loss Day</p>
+            <div class="col-6 col-lg-3">
+                <div class="tv-cal-legend__item tv-cal-legend__item--loss">
+                    <span class="tv-cal-legend__swatch"></span>
+                    <div>
+                        <strong>Loss day</strong>
+                        <p class="mb-0 small text-secondary">Closed-day P/L net negative</p>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="p-3 border rounded" style="background-color: #e0e7ff;">
-                    <strong class="text-primary">Blue</strong>
-                    <p class="mb-0 small">Break Even</p>
+            <div class="col-6 col-lg-3">
+                <div class="tv-cal-legend__item tv-cal-legend__item--today">
+                    <span class="tv-cal-legend__swatch"></span>
+                    <div>
+                        <strong>Today</strong>
+                        <p class="mb-0 small text-secondary">Ring on the current date</p>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="p-3 border rounded" style="background-color: #f3f4f6;">
-                    <strong class="text-muted">Gray</strong>
-                    <p class="mb-0 small">No Trades</p>
+            <div class="col-6 col-lg-3">
+                <div class="tv-cal-legend__item tv-cal-legend__item--empty">
+                    <span class="tv-cal-legend__swatch"></span>
+                    <div>
+                        <strong>No trades</strong>
+                        <p class="mb-0 small text-secondary">No entries that day</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -387,107 +386,345 @@
 </div>
 
 <style>
-.calendar-grid {
+/* Trading calendar — scoped, theme-aware */
+.tv-cal-toolbar {
+    position: relative;
+    overflow: hidden;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border) !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+.tv-cal-toolbar__bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(91, 33, 182, 0.22) 0%, rgba(15, 118, 110, 0.12) 50%, transparent 70%);
+    pointer-events: none;
+}
+.tv-cal-kicker {
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+.tv-cal-month-title {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+.tv-cal-year {
+    color: var(--primary-light);
+    font-weight: 700;
+}
+.tv-cal-nav-btn {
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-radius: 0.65rem;
+    padding: 0.55rem 1rem;
+    font-weight: 600;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+.tv-cal-nav-btn:hover {
+    background: var(--table-hover);
+    border-color: var(--primary-light);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+.tv-cal-select {
+    min-width: 7.5rem;
+    border-radius: 0.5rem;
+    border-color: var(--form-border);
+    background: var(--form-bg);
+    color: var(--form-text);
+    font-weight: 500;
+}
+.tv-cal-select:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25);
+}
+
+.tv-cal-shell {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+.tv-cal-shell__inner {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.tv-cal-grid {
+    min-width: 640px;
+}
+.tv-cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(22, 27, 34, 0.92) 100%);
+    border-bottom: 1px solid var(--card-border);
+}
+.tv-cal-weekday {
+    padding: 0.65rem 0.35rem;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--tab-text);
+}
+@media (min-width: 768px) {
+    .tv-cal-weekday {
+        font-size: 0.8rem;
+        padding: 0.85rem 0.5rem;
+    }
+}
+.tv-cal-cells {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--card-border);
+}
+.tv-cal-cell {
+    min-height: 118px;
+    background: var(--card-bg);
+    padding: 0.5rem 0.45rem 0.55rem;
     display: flex;
     flex-direction: column;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 }
-
-.calendar-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    background-color: var(--bg-secondary);
-    border-bottom: 2px solid var(--card-border);
+@media (min-width: 992px) {
+    .tv-cal-cell {
+        min-height: 132px;
+        padding: 0.6rem 0.55rem 0.65rem;
+    }
 }
-
-.calendar-day-header {
-    padding: 1rem;
-    text-align: center;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    font-size: 0.875rem;
-    letter-spacing: 0.5px;
+.tv-cal-cell--empty {
+    min-height: 118px;
+    background: rgba(22, 27, 34, 0.35);
+    pointer-events: none;
 }
-
-.calendar-body {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
-    background-color: var(--card-border);
+@media (min-width: 992px) {
+    .tv-cal-cell--empty {
+        min-height: 132px;
+    }
 }
-
-.calendar-day {
-    background-color: var(--card-bg);
-    min-height: 120px;
-    padding: 0.75rem;
-    position: relative;
-    transition: all 0.3s ease;
+.tv-cal-day:hover:not(.tv-cal-cell--empty) {
+    background: var(--table-hover);
+    box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.35);
+    z-index: 1;
 }
-
-.calendar-day:hover {
-    background-color: var(--table-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+.tv-cal-day--weekend:not(.tv-cal-day--profit):not(.tv-cal-day--loss) {
+    background: rgba(30, 41, 59, 0.45);
 }
-
-.calendar-day.profit-day {
-    background-color: #d1fae5;
+.tv-cal-day--profit {
+    background: linear-gradient(160deg, rgba(16, 185, 129, 0.18) 0%, rgba(16, 185, 129, 0.05) 100%);
+    box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.28);
 }
-
-.calendar-day.loss-day {
-    background-color: #fee2e2;
+.tv-cal-day--loss {
+    background: linear-gradient(160deg, rgba(239, 68, 68, 0.16) 0%, rgba(239, 68, 68, 0.05) 100%);
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.28);
 }
-
-.day-number {
-    font-weight: 700;
-    font-size: 1.25rem;
-    color: #1e293b;
-    margin-bottom: 0.5rem;
+.tv-cal-day--today .tv-cal-daynum {
+    box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 4px rgba(124, 58, 237, 0.85);
 }
-
-.day-content {
-    font-size: 0.875rem;
+.tv-cal-day__top {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.25rem;
 }
-
-.trade-count {
-    color: #6366f1;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
+.tv-cal-daynum {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.65rem;
+    height: 1.65rem;
+    padding: 0 0.35rem;
+    border-radius: 0.45rem;
+    font-weight: 800;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    background: rgba(148, 163, 184, 0.12);
 }
-
-.day-pnl {
-    font-weight: 700;
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
+.tv-cal-day__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 0;
 }
-
-.trade-symbols {
+.tv-cal-meta {
     display: flex;
     flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 0.25rem;
-    margin-bottom: 0.5rem;
+}
+.tv-cal-count {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--primary-light);
+    white-space: nowrap;
+}
+.tv-cal-count i {
+    opacity: 0.85;
+    margin-right: 0.15rem;
+}
+.tv-cal-pnl {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+.tv-cal-pnl--up {
+    color: var(--success);
+}
+.tv-cal-pnl--down {
+    color: var(--danger);
+}
+.tv-cal-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+}
+.tv-cal-chip {
+    font-size: 0.58rem;
+    font-weight: 700;
+    padding: 0.12rem 0.35rem;
+    border-radius: 0.3rem;
+    letter-spacing: 0.02em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.tv-cal-chip--buy {
+    background: rgba(16, 185, 129, 0.22);
+    color: var(--success-glow);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.tv-cal-chip--sell {
+    background: rgba(239, 68, 68, 0.18);
+    color: #fecaca;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+.tv-cal-chip--more {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-secondary);
+    border: 1px solid var(--card-border);
+}
+.tv-cal-detail-btn {
+    margin-top: auto;
+    width: 100%;
+    border: 1px solid rgba(124, 58, 237, 0.45);
+    background: rgba(124, 58, 237, 0.12);
+    color: var(--text-primary);
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 0.4rem;
+    padding: 0.28rem 0.35rem;
+    transition: background 0.2s, border-color 0.2s;
+}
+.tv-cal-detail-btn:hover {
+    background: rgba(124, 58, 237, 0.28);
+    border-color: var(--primary-light);
+    color: #fff;
+}
+.tv-cal-day__empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.62rem;
+    color: var(--tab-text);
+    font-weight: 500;
+    opacity: 0.75;
 }
 
-.badge-sm {
-    font-size: 0.7rem;
-    padding: 0.25rem 0.5rem;
+/* Legend */
+.tv-cal-legend {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border) !important;
+}
+.tv-cal-legend__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+}
+.tv-cal-legend__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 0.65rem;
+    border: 1px solid var(--card-border);
+    background: var(--bg-secondary);
+    height: 100%;
+}
+.tv-cal-legend__swatch {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 0.35rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+.tv-cal-legend__item--profit .tv-cal-legend__swatch {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.5), rgba(16, 185, 129, 0.15));
+    border: 1px solid rgba(16, 185, 129, 0.45);
+}
+.tv-cal-legend__item--loss .tv-cal-legend__swatch {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.45), rgba(239, 68, 68, 0.12));
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+.tv-cal-legend__item--today .tv-cal-legend__swatch {
+    background: var(--card-bg);
+    border: 2px solid rgba(124, 58, 237, 0.9);
+    box-shadow: inset 0 0 0 2px rgba(124, 58, 237, 0.35);
+}
+.tv-cal-legend__item--empty .tv-cal-legend__swatch {
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px dashed var(--card-border);
 }
 
-@media (max-width: 768px) {
-    .calendar-day {
-        min-height: 80px;
-        padding: 0.5rem;
-    }
-    
-    .day-number {
-        font-size: 1rem;
-    }
-    
-    .calendar-day-header {
-        padding: 0.5rem;
-        font-size: 0.75rem;
-    }
-    }
+/* Day modal */
+.tv-cal-modal__head {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, #312e81 40%, var(--secondary) 120%);
+    color: #fff;
+    padding: 1rem 1.25rem;
+}
+.tv-cal-modal__icon {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.12);
+}
+.tv-cal-modal__thead {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary);
+    border-color: var(--card-border);
+}
+.tv-cal-modal__thead th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    color: var(--text-secondary);
+    border-color: var(--card-border);
+}
+.tv-cal-modal__tfoot {
+    background: var(--bg-secondary) !important;
+    border-color: var(--card-border);
+    color: var(--text-primary);
+}
+body[data-theme="light"] .tv-cal-day--weekend:not(.tv-cal-day--profit):not(.tv-cal-day--loss) {
+    background: rgba(15, 23, 42, 0.04);
+}
+body[data-theme="light"] .tv-cal-cell--empty {
+    background: rgba(15, 23, 42, 0.06);
+}
 </style>
 {% endblock %}
 
