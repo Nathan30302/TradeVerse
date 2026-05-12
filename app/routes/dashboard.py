@@ -462,8 +462,23 @@ def calendar():
     """
     from calendar import monthrange, Calendar, SUNDAY
 
-    year = request.args.get('year', datetime.now().year, type=int)
-    month = request.args.get('month', datetime.now().month, type=int)
+    def _safe_int_arg(name, default, *, lo=None, hi=None):
+        raw = request.args.get(name, default=None, type=str)
+        if raw is None or str(raw).strip() == "":
+            v = default
+        else:
+            try:
+                v = int(str(raw).strip(), 10)
+            except ValueError:
+                v = default
+        if lo is not None and v < lo:
+            v = default
+        if hi is not None and v > hi:
+            v = default
+        return v
+
+    year = _safe_int_arg("year", datetime.now().year, lo=1990, hi=2200)
+    month = _safe_int_arg("month", datetime.now().month, lo=1, hi=12)
 
     # Validate year range (reasonable bounds)
     if year < 2000:
@@ -478,6 +493,8 @@ def calendar():
     elif month < 1:
         month = 12
         year -= 1
+
+    days_in_month = monthrange(year, month)[1]
 
     # Sunday-first weeks (matches UI); 0 = padding cell outside this month
     _cal = Calendar(firstweekday=SUNDAY)
