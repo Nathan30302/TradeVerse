@@ -66,11 +66,18 @@
                         Only use this if you're absolutely sure you're in control.
                         <strong>Overrides are logged.</strong>
                     </p>
-                    <form action="{{ url_for('trade.override_cooldown') }}" method="POST" 
+                    <form action="{{ url_for('trade.override_cooldown') }}" method="POST"
                           onsubmit="return confirm('Are you SURE you want to override? This will be logged.');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="text" name="reason" class="form-control form-control-sm mb-2" 
-                               placeholder="Reason for override (optional)">
+                        <label class="form-label fw-bold" for="cdOverrideReason">Reason (required, min 8 characters)</label>
+                        <textarea name="reason" id="cdOverrideReason" class="form-control mb-2" rows="3"
+                                  required minlength="8" maxlength="2000"
+                                  placeholder="Why is it safe to trade now? (e.g. plan reviewed, risk halved, session rules clear…)"></textarea>
+                        <p class="small text-muted mb-2">
+                            Limits: {{ config.COOLDOWN_OVERRIDE_MAX_PER_DAY }} override per 24h,
+                            {{ config.COOLDOWN_OVERRIDE_MAX_PER_WEEK }} per {{ config.COOLDOWN_OVERRIDE_WINDOW_DAYS }}-day window.
+                            After a successful override you must complete the accountability checklist once on Add Trade.
+                        </p>
                         <button type="submit" class="btn btn-outline-danger btn-sm">
                             <i class="fas fa-unlock"></i> Override Cooldown
                         </button>
@@ -178,19 +185,42 @@
 </div>
 {% endif %}
 
-<!-- Tips -->
+<!-- Tips + rules from config -->
 <div class="card mt-4 border-info">
     <div class="card-body">
-        <h6 class="text-info"><i class="fas fa-lightbulb"></i> About Impulse Protection</h6>
+        <h6 class="text-info"><i class="fas fa-lightbulb"></i> Impulse protection rules</h6>
         <p class="small mb-2">
-            The cooldown system helps you avoid emotional trading by enforcing a pause after 
-            detecting dangerous emotional states. Different emotions have different cooldown durations:
+            Logging a trade with a high-risk emotion starts a cooldown before your next log.
+            <strong>Never cool down:</strong>
+            {% for name in config.COOLDOWN_EMOTIONS_EXEMPT|sort %}
+                        <span class="badge bg-success bg-opacity-25 text-success">{{ name }}</span>
+            {% endfor %}
         </p>
-        <ul class="small mb-0">
-            <li><strong>Revenge Trading, Angry:</strong> 45-60 minutes (most dangerous)</li>
-            <li><strong>FOMO, Greedy, Frustrated, Tired:</strong> 30-45 minutes</li>
-            <li><strong>Anxious, Fearful, Bored:</strong> 20 minutes</li>
-        </ul>
+        <p class="small mb-2">
+            <strong>Loss streak:</strong> last <strong>{{ config.COOLDOWN_LOSS_STREAK_TRADES }}</strong> closed trades all negative
+            (within {{ config.COOLDOWN_LOSS_STREAK_LOOKBACK_DAYS }} days, by exit time) →
+            <strong>{{ config.COOLDOWN_LOSS_STREAK_MINUTES }} min</strong> cooldown (unless an emotion cooldown already fired for that save).
+        </p>
+        <div class="table-responsive small">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Emotion</th>
+                        <th class="text-end">Minutes</th>
+                        <th>Severity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in cooldown_rule_rows %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td class="text-end">{{ row.minutes }}</td>
+                        <td><span class="badge bg-secondary">{{ row.severity }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

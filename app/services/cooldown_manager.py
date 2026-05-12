@@ -4,7 +4,12 @@ Manages impulse protection cooldowns
 """
 
 from app import db
-from app.models.cooldown import Cooldown, DANGEROUS_EMOTIONS, should_trigger_cooldown, get_cooldown_duration
+from app.models.cooldown import (
+    Cooldown,
+    should_trigger_cooldown,
+    get_cooldown_duration,
+    normalize_emotion_for_cooldown,
+)
 from datetime import datetime
 from datetime import timedelta
 from app.models.trade import Trade
@@ -45,14 +50,15 @@ class CooldownManager:
         """
         if not should_trigger_cooldown(emotion):
             return None
-        
+
+        canonical = normalize_emotion_for_cooldown(emotion) or str(emotion).strip()
         duration = get_cooldown_duration(emotion)
-        
+
         return Cooldown.create_cooldown(
             user_id=self.user_id,
-            emotion=emotion,
+            emotion=canonical,
             duration_minutes=duration,
-            reason=reason or f"Detected dangerous emotion: {emotion}"
+            reason=reason or f"Detected dangerous emotion: {canonical}",
         )
     
     def check_and_trigger(self, emotion, trade_plan=None):
@@ -90,9 +96,9 @@ class CooldownManager:
     def can_override_now(
         self,
         *,
-        max_per_day: int = 1,
-        max_per_week: int = 3,
-        window_days: int = 7,
+        max_per_day: int | None = None,
+        max_per_week: int | None = None,
+        window_days: int | None = None,
     ) -> bool:
         """
         Limit override frequency so users can't spam bypasses.
@@ -101,6 +107,26 @@ class CooldownManager:
         - max_per_day: max overrides in the last 24 hours
         - max_per_week: max overrides in the last `window_days` days (default 7)
         """
+        try:
+            from flask import has_request_context, current_app
+
+            if has_request_context():
+                cfg = current_app.config
+                if max_per_day is None:
+                    max_per_day = int(cfg.get('COOLDOWN_OVERRIDE_MAX_PER_DAY', 1))
+                if max_per_week is None:
+                    max_per_week = int(cfg.get('COOLDOWN_OVERRIDE_MAX_PER_WEEK', 3))
+                if window_days is None:
+                    window_days = int(cfg.get('COOLDOWN_OVERRIDE_WINDOW_DAYS', 7))
+        except RuntimeError:
+            pass
+        if max_per_day is None:
+            max_per_day = 1
+        if max_per_week is None:
+            max_per_week = 3
+        if window_days is None:
+            window_days = 7
+
         now = datetime.utcnow()
         cutoff_day = now - timedelta(hours=24)
         cutoff_week = now - timedelta(days=window_days)
@@ -121,11 +147,29 @@ class CooldownManager:
 
         return True
 
-    def should_trigger_loss_streak(self, *, losses: int = 2, lookback_days: int = 14) -> bool:
+    def should_trigger_loss_streak(
+        self, *, losses: int | None = None, lookback_days: int | None = None
+    ) -> bool:
         """
         Trigger cooldown if the most recent N CLOSED trades are all losses.
         Uses exit_date for ordering and requires profit_loss values.
         """
+        try:
+            from flask import has_request_context, current_app
+
+            if has_request_context():
+                cfg = current_app.config
+                if losses is None:
+                    losses = int(cfg.get('COOLDOWN_LOSS_STREAK_TRADES', 2))
+                if lookback_days is None:
+                    lookback_days = int(cfg.get('COOLDOWN_LOSS_STREAK_LOOKBACK_DAYS', 14))
+        except RuntimeError:
+            pass
+        if losses is None:
+            losses = 2
+        if lookback_days is None:
+            lookback_days = 14
+
         cutoff = datetime.utcnow() - timedelta(days=lookback_days)
         recent = (
             Trade.query.filter(
@@ -143,10 +187,28 @@ class CooldownManager:
             return False
         return all((t.profit_loss or 0) < 0 for t in recent[:losses])
 
-    def trigger_loss_streak_cooldown(self, *, losses: int = 2, duration_minutes: int = 45) -> Cooldown | None:
+    def trigger_loss_streak_cooldown(
+        self, *, losses: int | None = None, duration_minutes: int | None = None
+    ) -> Cooldown | None:
         """
         Create a cooldown due to a loss streak (even if no 'emotion' was set).
         """
+        try:
+            from flask import has_request_context, current_app
+
+            if has_request_context():
+                cfg = current_app.config
+                if losses is None:
+                    losses = int(cfg.get('COOLDOWN_LOSS_STREAK_TRADES', 2))
+                if duration_minutes is None:
+                    duration_minutes = int(cfg.get('COOLDOWN_LOSS_STREAK_MINUTES', 45))
+        except RuntimeError:
+            pass
+        if losses is None:
+            losses = 2
+        if duration_minutes is None:
+            duration_minutes = 45
+
         if self.get_active_cooldown():
             return None
         if not self.should_trigger_loss_streak(losses=losses):

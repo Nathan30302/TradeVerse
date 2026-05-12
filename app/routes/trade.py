@@ -11,7 +11,7 @@ from app.models.instrument import Instrument
 from app.models.trade_plan import TradePlan
 from app.models.trade_feedback import TradeFeedback
 from app.models.playbook_setup import PlaybookSetup
-from app.models.cooldown import Cooldown, should_trigger_cooldown, get_cooldown_duration
+from app.models.cooldown import should_trigger_cooldown, cooldown_rule_rows_for_template
 from app.services.feedback_analyzer import generate_trade_feedback
 from app.services.cooldown_manager import CooldownManager, get_active_cooldown, trigger_emotional_cooldown
 from app.services.account_flags import current_user_exports_blocked
@@ -428,13 +428,13 @@ def add():
                         )
                 else:
                     if (trade.status or '').upper() == 'CLOSED' and (trade.profit_loss or 0) < 0:
-                        ls = manager.trigger_loss_streak_cooldown(losses=2, duration_minutes=45)
+                        ls = manager.trigger_loss_streak_cooldown()
                         if ls:
                             cooldown_note = (
                                 '⏳ Cooldown active after a loss streak. Step away and review before the next trade.'
                             )
             except Exception:
-                current_app.logger.debug("Cooldown trigger check failed", exc_info=True)
+                current_app.logger.warning("Cooldown trigger check failed", exc_info=True)
 
             ok_msg = f'✅ Trade {symbol} {trade_type} added successfully!'
             flash(f'{ok_msg} {cooldown_note}'.strip() if cooldown_note else ok_msg, 'success')
@@ -537,11 +537,15 @@ def cooldown_status():
     active_cooldown = manager.get_active_cooldown()
     cooldown_history = manager.get_cooldown_history(limit=10)
     stats = manager.get_cooldown_stats()
-    
-    return render_template('trade/cooldown.html',
-                         active_cooldown=active_cooldown,
-                         cooldown_history=cooldown_history,
-                         stats=stats)
+    cooldown_rule_rows = cooldown_rule_rows_for_template()
+
+    return render_template(
+        'trade/cooldown.html',
+        active_cooldown=active_cooldown,
+        cooldown_history=cooldown_history,
+        stats=stats,
+        cooldown_rule_rows=cooldown_rule_rows,
+    )
 
 
 @bp.route('/cooldown/override', methods=['POST'])
@@ -552,11 +556,17 @@ def override_cooldown():
     reason = (request.form.get('reason') or '').strip()
     if not reason or len(reason) < 8:
         flash('Please enter a short reason (at least 8 characters) to override.', 'warning')
-        return redirect(url_for('trade.add'))
+        return redirect(request.referrer or url_for('trade.cooldown_status'))
 
-    if not manager.can_override_now(max_per_day=1, max_per_week=3):
-        flash('Override limit reached. Max 1 per day and 3 per week.', 'warning')
-        return redirect(url_for('trade.add'))
+    if not manager.can_override_now():
+        mx_d = int(current_app.config.get('COOLDOWN_OVERRIDE_MAX_PER_DAY', 1))
+        mx_w = int(current_app.config.get('COOLDOWN_OVERRIDE_MAX_PER_WEEK', 3))
+        wnd = int(current_app.config.get('COOLDOWN_OVERRIDE_WINDOW_DAYS', 7))
+        flash(
+            f'Override limit reached: max {mx_d} per 24 hours and {mx_w} per {wnd}-day rolling window.',
+            'warning',
+        )
+        return redirect(request.referrer or url_for('trade.cooldown_status'))
 
     if manager.override_cooldown(reason):
         # Premium: accountability mode — require a pre-trade checklist once after override
@@ -564,7 +574,7 @@ def override_cooldown():
         flash('⚠️ Cooldown overridden. Please trade responsibly!', 'warning')
     else:
         flash('No active cooldown to override.', 'info')
-    
+
     return redirect(url_for('trade.add'))
 
 

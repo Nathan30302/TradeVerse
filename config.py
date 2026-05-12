@@ -131,6 +131,38 @@ class Config:
         'Tired',
         'Bored',
     ]
+
+    # --- Impulse protection (cooldown) — single source of truth for rules ---
+    # Emotions listed here never start a cooldown (aligned with EMOTIONS pick-list).
+    COOLDOWN_EMOTIONS_EXEMPT = frozenset(
+        {'Confident', 'Calm & Focused', 'Disciplined', 'Patient'}
+    )
+    # Map emotion label → minutes (and severity for UI). Keys must match EMOTIONS strings exactly.
+    COOLDOWN_EMOTION_RULES = {
+        'Revenge Trading': {'duration': 60, 'severity': 'critical'},
+        'Angry': {'duration': 45, 'severity': 'critical'},
+        'Tired': {'duration': 45, 'severity': 'high'},
+        'Overconfident': {'duration': 35, 'severity': 'high'},
+        'FOMO': {'duration': 30, 'severity': 'high'},
+        'FOMO (Fear of Missing Out)': {'duration': 30, 'severity': 'high'},
+        'Greedy': {'duration': 30, 'severity': 'high'},
+        'Frustrated': {'duration': 30, 'severity': 'high'},
+        'Impulsive': {'duration': 30, 'severity': 'high'},
+        'Excited': {'duration': 25, 'severity': 'high'},
+        'Anxious': {'duration': 20, 'severity': 'medium'},
+        'Fearful': {'duration': 20, 'severity': 'medium'},
+        'Nervous': {'duration': 20, 'severity': 'medium'},
+        'Bored': {'duration': 20, 'severity': 'medium'},
+    }
+    COOLDOWN_DEFAULT_DURATION_MINUTES = 15
+    # Consecutive CLOSED losses (by exit_date) required to trigger loss-streak cooldown.
+    COOLDOWN_LOSS_STREAK_TRADES = 2
+    COOLDOWN_LOSS_STREAK_MINUTES = 45
+    COOLDOWN_LOSS_STREAK_LOOKBACK_DAYS = 14
+    # Override abuse limits (rolling windows).
+    COOLDOWN_OVERRIDE_MAX_PER_DAY = 1
+    COOLDOWN_OVERRIDE_MAX_PER_WEEK = 3
+    COOLDOWN_OVERRIDE_WINDOW_DAYS = 7
     
     # Session Types
     SESSION_TYPES = [
