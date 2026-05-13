@@ -5,6 +5,7 @@ Stores pre-trade planning and post-trade review
 
 from app import db
 from datetime import datetime, timezone
+from app.utils.timeutil import utc_now
 from app.utils.pnl_calculator import detect_asset_type
 
 class TradePlan(db.Model):
@@ -98,11 +99,11 @@ class TradePlan(db.Model):
     execution_quality_score = db.Column(db.Integer)
     
     # ==================== Timestamps ====================
-    planned_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    planned_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     executed_at = db.Column(db.DateTime)
     reviewed_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     # ==================== Execution Link (new) ====================
     # Flag to indicate this plan was executed into a Trade record

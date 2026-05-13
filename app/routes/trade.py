@@ -17,6 +17,7 @@ from app.services.cooldown_manager import CooldownManager, get_active_cooldown, 
 from app.services.account_flags import current_user_exports_blocked
 from app.services.entitlements import user_has_feature
 from datetime import datetime
+from app.utils.timeutil import utc_now, parse_datetime_optional
 import csv
 from io import StringIO
 from sqlalchemy import or_
@@ -297,9 +298,9 @@ def add():
             entry_date_str = request.form.get('entry_date')
             exit_date_str = request.form.get('exit_date')
             
-            # Parse dates
-            entry_date = datetime.fromisoformat(entry_date_str) if entry_date_str else datetime.utcnow()
-            exit_date = datetime.fromisoformat(exit_date_str) if exit_date_str else None
+            # Parse dates (naive UTC; optional Z / offset from clients)
+            entry_date = parse_datetime_optional(entry_date_str) or utc_now()
+            exit_date = parse_datetime_optional(exit_date_str)
 
             if log_status == 'open':
                 exit_price = None
@@ -415,7 +416,7 @@ def add():
                 trade.status = 'OPEN'
             elif exit_price:
                 trade.exit_price = float(exit_price)
-                trade.exit_date = exit_date or datetime.utcnow()
+                trade.exit_date = exit_date or utc_now()
                 trade.status = 'CLOSED'
             
             if stop_loss:
@@ -873,7 +874,7 @@ def edit(trade_id):
                 trade.exit_price = float(exit_price)
                 trade.status = 'CLOSED'
                 if not trade.exit_date:
-                    trade.exit_date = datetime.utcnow()
+                    trade.exit_date = utc_now()
             else:
                 trade.exit_price = None
                 trade.exit_date = None
@@ -980,7 +981,7 @@ def close(trade_id):
         exit_price = float(request.form.get('exit_price'))
         exit_date_str = request.form.get('exit_date')
         
-        exit_date = datetime.fromisoformat(exit_date_str) if exit_date_str else datetime.utcnow()
+        exit_date = parse_datetime_optional(exit_date_str) or utc_now()
         
         trade.close_trade(exit_price, exit_date)
         
@@ -1018,7 +1019,7 @@ def quick_add():
             trade_type=data['trade_type'].upper(),
             entry_price=float(data['entry_price']),
             lot_size=float(data.get('lot_size', 1.0)),
-            entry_date=datetime.utcnow()
+            entry_date=utc_now()
         )
         
         db.session.add(trade)

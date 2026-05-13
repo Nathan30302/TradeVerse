@@ -7,9 +7,8 @@ duplicate subscription transitions.
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from app import db
+from app.utils.timeutil import utc_now
 
 
 class StripeWebhookEvent(db.Model):
@@ -18,5 +17,5 @@ class StripeWebhookEvent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     stripe_event_id = db.Column(db.String(255), nullable=False, unique=True, index=True)
     event_type = db.Column(db.String(100), nullable=True)
-    processed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    processed_at = db.Column(db.DateTime, default=utc_now, nullable=False)
 

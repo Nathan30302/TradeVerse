@@ -4,7 +4,8 @@ Stores weekly performance scores based on trading metrics
 """
 
 from app import db
-from datetime import datetime, timedelta
+from datetime import timedelta
+from app.utils.timeutil import utc_now
 
 
 class PerformanceScore(db.Model):
@@ -47,7 +48,7 @@ class PerformanceScore(db.Model):
     avg_rr = db.Column(db.Float, default=0.0)
     
     # ==================== Timestamps ====================
-    calculated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    calculated_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     
     # ==================== Unique Constraint ====================
     __table_args__ = (

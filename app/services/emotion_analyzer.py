@@ -6,7 +6,8 @@ Analyzes emotional patterns in trading and their impact on performance
 from app.models.trade import Trade
 from app.models.trade_plan import TradePlan
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import timedelta
+from app.utils.timeutil import utc_now
 
 
 class EmotionAnalyzer:
@@ -53,7 +54,7 @@ class EmotionAnalyzer:
     
     def _load_data(self, days=90):
         """Load trades and plans for analysis"""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = utc_now() - timedelta(days=days)
         
         self.trades = Trade.query.filter(
             Trade.user_id == self.user_id,

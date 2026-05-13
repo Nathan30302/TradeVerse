@@ -8,6 +8,7 @@ from app.models.trade import Trade
 from app.models.trade_plan import TradePlan
 from app.models.performance_score import PerformanceScore
 from datetime import datetime, timedelta
+from app.utils.timeutil import utc_now
 from sqlalchemy import func
 
 
@@ -48,7 +49,7 @@ class PerformanceCalculator:
         
         if week_start is None:
             # Get current week's Monday
-            today = datetime.utcnow().date()
+            today = utc_now().date()
             self.week_start = today - timedelta(days=today.weekday())
         else:
             self.week_start = week_start
@@ -149,7 +150,7 @@ class PerformanceCalculator:
             score.win_rate = win_rate
             score.total_pnl = total_pnl
             score.avg_rr = avg_rr
-            score.calculated_at = datetime.utcnow()
+            score.calculated_at = utc_now()
             
             return score
             

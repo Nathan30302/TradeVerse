@@ -4,7 +4,7 @@ Stores AI-generated feedback for trades based on rule compliance and patterns
 """
 
 from app import db
-from datetime import datetime
+from app.utils.timeutil import utc_now
 
 
 class TradeFeedback(db.Model):
@@ -32,7 +32,7 @@ class TradeFeedback(db.Model):
     impact_score = db.Column(db.Integer, default=0)  # -10 to +10 impact on performance
     
     # ==================== Timestamps ====================
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     
     # ==================== Relationships ====================
     trade = db.relationship('Trade', backref=db.backref('feedbacks', lazy='dynamic', cascade='all, delete-orphan'))

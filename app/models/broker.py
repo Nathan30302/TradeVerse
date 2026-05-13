@@ -6,8 +6,8 @@ Includes:
 - UserBrokerCredential: Encrypted API credentials
 - ImportedTradeSource: Record of imported trade batches
 """
-from datetime import datetime
 from app import db
+from app.utils.timeutil import utc_now
 
 
 class BrokerProfile(db.Model):
@@ -43,8 +43,8 @@ class BrokerProfile(db.Model):
     website = db.Column(db.String(255))
     
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     credentials = db.relationship('UserBrokerCredential', backref='broker', lazy='dynamic')
     
@@ -97,8 +97,8 @@ class UserBrokerCredential(db.Model):
     consent_given_at = db.Column(db.DateTime)
     consent_ip = db.Column(db.String(50))
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     user = db.relationship('User', backref=db.backref('broker_credentials', lazy='dynamic'))
     
@@ -147,7 +147,7 @@ class ImportedTradeSource(db.Model):
     file_hash = db.Column(db.String(64))
     file_size = db.Column(db.Integer)
     
-    import_date = db.Column(db.DateTime, default=datetime.utcnow)
+    import_date = db.Column(db.DateTime, default=utc_now)
     date_range_start = db.Column(db.DateTime)
     date_range_end = db.Column(db.DateTime)
     
@@ -160,8 +160,8 @@ class ImportedTradeSource(db.Model):
     
     status = db.Column(db.String(20), default='pending')
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+    created_at = db.Column(db.DateTime, default=utc_now)
+
     user = db.relationship('User', backref=db.backref('import_sources', lazy='dynamic'))
     trades = db.relationship('Trade', backref='import_source', lazy='dynamic')
     

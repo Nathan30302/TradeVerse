@@ -10,6 +10,7 @@ import hashlib
 from datetime import datetime
 
 from app import db
+from app.utils.timeutil import utc_now
 from app.models.broker import ImportedTradeSource, UserBrokerCredential
 from app.models.trade import Trade
 from app.importers.csv_importer import CSVImporter
@@ -159,7 +160,7 @@ def upload_file():
         upload_folder = os.path.join(current_app.root_path, UPLOAD_FOLDER)
         os.makedirs(upload_folder, exist_ok=True)
         
-        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        timestamp = utc_now().strftime('%Y%m%d_%H%M%S')
         saved_filename = f'{current_user.id}_{timestamp}_{filename}'
         filepath = os.path.join(upload_folder, saved_filename)
         
@@ -391,7 +392,7 @@ def api_import(credential_id):
         import_source.trades_skipped = skipped_count
         import_source.status = 'completed'
         
-        cred.last_sync_at = datetime.utcnow()
+        cred.last_sync_at = utc_now()
         cred.last_sync_status = 'success'
         
         db.session.commit()

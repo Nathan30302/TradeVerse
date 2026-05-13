@@ -6,7 +6,7 @@ A playbook is a user's curated set of setups/rules/checklists they aim to execut
 
 from __future__ import annotations
 
-from datetime import datetime
+from app.utils.timeutil import utc_now
 
 from app import db
 
@@ -30,8 +30,8 @@ class PlaybookSetup(db.Model):
     tags = db.Column(db.String(180), nullable=False, default="")  # comma-separated
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     def checklist_items(self) -> list[str]:
         return [x.strip() for x in (self.checklist_text or "").splitlines() if x.strip()]

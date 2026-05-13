@@ -5,6 +5,7 @@ Core trading journal entry with comprehensive trade tracking
 
 from app import db
 from datetime import datetime
+from app.utils.timeutil import utc_now
 from sqlalchemy import CheckConstraint
 from sqlalchemy.orm import deferred, relationship
 from app.utils.pnl_calculator import detect_asset_type, AssetType
@@ -40,10 +41,10 @@ class Trade(db.Model):
     take_profit = db.Column(db.Float)
     
     # ==================== Timestamps ====================
-    entry_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    entry_date = db.Column(db.DateTime, nullable=False, default=utc_now, index=True)
     exit_date = db.Column(db.DateTime, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     # ==================== P/L & Risk ====================
     profit_loss = db.Column(db.Float)
@@ -245,7 +246,7 @@ class Trade(db.Model):
             exit_date (datetime, optional): Exit date/time
         """
         self.exit_price = exit_price
-        self.exit_date = exit_date or datetime.utcnow()
+        self.exit_date = exit_date or utc_now()
         self.status = 'CLOSED'
         self.calculate_pnl()
         db.session.commit()

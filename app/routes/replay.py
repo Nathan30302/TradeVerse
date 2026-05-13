@@ -7,7 +7,6 @@ Replay is a timeline for a single trade: notes + screenshots across key moments.
 from __future__ import annotations
 
 import os
-from datetime import datetime
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, send_from_directory, url_for
 from flask_login import current_user, login_required
@@ -16,6 +15,7 @@ from werkzeug.utils import secure_filename
 from app import db
 from app.models.trade import Trade
 from app.models.trade_replay_event import TradeReplayEvent
+from app.utils.timeutil import utc_now, parse_datetime_optional
 
 
 bp = Blueprint("replay", __name__, url_prefix="/replay")
@@ -76,13 +76,8 @@ def add_event(trade_id: int):
         event_type = "note"
 
     note = (request.form.get("note") or "").strip()
-    occurred_at = None
     occurred_at_str = (request.form.get("occurred_at") or "").strip()
-    if occurred_at_str:
-        try:
-            occurred_at = datetime.fromisoformat(occurred_at_str)
-        except Exception:
-            occurred_at = None
+    occurred_at = parse_datetime_optional(occurred_at_str)
 
     media_filename = None
     media_mimetype = None
@@ -92,7 +87,7 @@ def add_event(trade_id: int):
             flash("Unsupported file type.", "warning")
             return redirect(url_for("replay.trade_replay", trade_id=trade.id))
         safe = secure_filename(f.filename)
-        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        ts = utc_now().strftime("%Y%m%d_%H%M%S")
         stored = f"u{current_user.id}_t{trade.id}_{ts}_{safe}"
         dst_dir = _replay_upload_dir()
         dest_path = os.path.join(dst_dir, stored)

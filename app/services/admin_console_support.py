@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timedelta, timezone
+from app.utils.timeutil import utc_now
 from typing import Any
 
 from itsdangerous import URLSafeTimedSerializer
@@ -45,7 +46,7 @@ def log_admin_event(db, event_type: str, meta: dict | None = None, ip: str | Non
             event_type=event_type[:40],
             meta_json=json.dumps(meta, default=str)[:65000] if meta else None,
             ip_address=(ip or "")[:45] or None,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         db.session.add(row)
         db.session.commit()
@@ -60,7 +61,7 @@ def count_admin_emails_today(db) -> int:
     """Rough SMTP sends initiated from admin email UI today (UTC date boundary)."""
     from app.models.admin_console import AdminConsoleEvent
 
-    start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
     et = AdminConsoleEvent.__table__
     try:
         return int(
@@ -226,7 +227,7 @@ def gather_admin_dashboard_metrics(db, User, Trade) -> dict[str, Any]:
     try:
         activity = func.coalesce(ut.c.last_login, ut.c.created_at)
         for label, days in (("7d", 7), ("14d", 14), ("30d", 30)):
-            cutoff = datetime.utcnow() - timedelta(days=days)
+            cutoff = utc_now() - timedelta(days=days)
             n = _safe_scalar(
                 db,
                 select(func.count())

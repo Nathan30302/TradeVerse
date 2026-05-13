@@ -5,9 +5,8 @@ Stores pinned coaching rules + checklists for premium AI Buddy workflows.
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from app import db
+from app.utils.timeutil import utc_now
 
 
 class AICoachingNote(db.Model):
@@ -26,8 +25,8 @@ class AICoachingNote(db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
     # ==================== Timestamps ====================
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     def checklist_items(self) -> list[str]:
         return [x.strip() for x in (self.checklist_text or "").splitlines() if x.strip()]

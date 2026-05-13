@@ -55,18 +55,9 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- IMPORTANT: Disable Tailwind preflight BEFORE loading Tailwind CDN.
-         Tailwind's preflight resets font-family on all elements including ::before
-         pseudo-elements, which breaks Font Awesome icon rendering.
-         Setting preflight: false preserves Font Awesome's font-family inheritance. -->
-    <script>
-        window.tailwind = window.tailwind || {};
-        tailwind.config = { corePlugins: { preflight: false } };
-    </script>
+    <!-- Styling: Bootstrap 5 + custom CSS below. (Tailwind CDN removed — unused utilities;
+         avoids console warnings and duplicate overlap with Bootstrap in production.) -->
 
-    <!-- Tailwind CSS CDN (optional utility classes for polish) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
     <!-- Custom CSS -->
     <style>
         :root {

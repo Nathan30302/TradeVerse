@@ -23,6 +23,7 @@ from app.models.user import User
 from app.models.ai_coaching_note import AICoachingNote
 from flask import request, flash, redirect, url_for
 from datetime import datetime, timedelta, timezone
+from app.utils.timeutil import utc_now
 import random
 from app.services.entitlements import _safe_getattr, require_feature
 from zoneinfo import ZoneInfo
@@ -601,7 +602,7 @@ def monthly_performance_api():
         Trade.user_id == current_user.id,
         Trade.status == 'CLOSED',
         Trade.profit_loss.isnot(None),
-        Trade.exit_date >= datetime.utcnow() - timedelta(days=365)
+        Trade.exit_date >= utc_now() - timedelta(days=365)
     ).all()
 
     # Group by month (user timezone)
@@ -737,7 +738,7 @@ def performance():
     Weekly performance scores with progress charts
     """
     # Get current week's score
-    today = datetime.utcnow().date()
+    today = utc_now().date()
     week_start = today - timedelta(days=today.weekday())
 
     current_score = PerformanceScore.query.filter_by(
@@ -1115,7 +1116,7 @@ def patterns():
     trade_count = Trade.query.filter(
         Trade.user_id == current_user.id,
         Trade.status == 'CLOSED',
-        Trade.entry_date >= datetime.utcnow() - timedelta(days=days)
+        Trade.entry_date >= utc_now() - timedelta(days=days)
     ).with_entities(Trade.id).count()
 
     return render_template('dashboard/patterns.html',

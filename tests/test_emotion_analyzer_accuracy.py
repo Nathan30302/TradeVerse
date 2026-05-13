@@ -1,10 +1,11 @@
 """EmotionAnalyzer aggregates match hand-checked expectations."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 
 from app import create_app, db, schema_compat
+from app.utils.timeutil import utc_now
 from app.models.trade import Trade
 from app.models.user import User
 from app.services.emotion_analyzer import EmotionAnalyzer
@@ -22,7 +23,7 @@ def app():
         db.session.add(u)
         db.session.commit()
         uid = u.id
-        now = datetime.utcnow()
+        now = utc_now()
         trades = [
             Trade(
                 user_id=uid,

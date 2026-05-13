@@ -4,7 +4,8 @@ Owner console: plain-text email helpers (placeholders + audience lists).
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta
+from app.utils.timeutil import utc_now
 from typing import List
 
 from sqlalchemy import func
@@ -61,7 +62,7 @@ def audience_users(*, audience: str, inactive_days: int) -> List[User]:
         return base.order_by(User.id.asc()).all()
 
     if audience == "inactive":
-        cutoff = datetime.utcnow() - timedelta(days=max(1, int(inactive_days)))
+        cutoff = utc_now() - timedelta(days=max(1, int(inactive_days)))
         activity = func.coalesce(User.last_login, User.created_at)
         return (
             base.filter(activity.isnot(None), activity < cutoff)

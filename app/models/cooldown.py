@@ -7,6 +7,8 @@ Rules (durations, exempt emotions, defaults) live in config.Config — see COOLD
 from app import db
 from datetime import datetime, timedelta
 
+from app.utils.timeutil import utc_now
+
 
 class Cooldown(db.Model):
     """
@@ -29,7 +31,7 @@ class Cooldown(db.Model):
     trigger_reason = db.Column(db.Text)
 
     # ==================== Timing ====================
-    started_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    started_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     duration_minutes = db.Column(db.Integer, default=30)
 
@@ -46,13 +48,13 @@ class Cooldown(db.Model):
 
     def is_expired(self):
         """Check if cooldown has expired"""
-        return datetime.utcnow() >= self.expires_at
+        return utc_now() >= self.expires_at
 
     def time_remaining(self):
         """Get remaining time in cooldown"""
         if self.is_expired():
             return timedelta(0)
-        return self.expires_at - datetime.utcnow()
+        return self.expires_at - utc_now()
 
     def time_remaining_str(self):
         """Get human-readable remaining time"""
@@ -71,7 +73,7 @@ class Cooldown(db.Model):
     def progress_percent(self):
         """Get progress percentage (for progress bar)"""
         total_seconds = self.duration_minutes * 60
-        elapsed = (datetime.utcnow() - self.started_at).total_seconds()
+        elapsed = (utc_now() - self.started_at).total_seconds()
 
         if elapsed >= total_seconds:
             return 100
@@ -115,7 +117,7 @@ class Cooldown(db.Model):
             trigger_emotion=emotion,
             trigger_reason=reason,
             duration_minutes=duration_minutes,
-            expires_at=datetime.utcnow() + timedelta(minutes=duration_minutes)
+            expires_at=utc_now() + timedelta(minutes=duration_minutes)
         )
 
         db.session.add(cooldown)

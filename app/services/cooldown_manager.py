@@ -10,8 +10,9 @@ from app.models.cooldown import (
     get_cooldown_duration,
     normalize_emotion_for_cooldown,
 )
-from datetime import datetime
 from datetime import timedelta
+
+from app.utils.timeutil import utc_now
 from app.models.trade import Trade
 
 
@@ -127,7 +128,7 @@ class CooldownManager:
         if window_days is None:
             window_days = 7
 
-        now = datetime.utcnow()
+        now = utc_now()
         cutoff_day = now - timedelta(hours=24)
         cutoff_week = now - timedelta(days=window_days)
 
@@ -170,7 +171,7 @@ class CooldownManager:
         if lookback_days is None:
             lookback_days = 14
 
-        cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+        cutoff = utc_now() - timedelta(days=lookback_days)
         recent = (
             Trade.query.filter(
                 Trade.user_id == self.user_id,

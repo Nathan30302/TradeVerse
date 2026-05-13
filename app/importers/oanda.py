@@ -8,6 +8,7 @@ API Documentation: https://developer.oanda.com/rest-live-v20/introduction/
 """
 import os
 from datetime import datetime, timedelta
+from app.utils.timeutil import utc_now
 from typing import Optional, List, Dict, Any
 import json
 
@@ -138,7 +139,7 @@ class OANDAImporter(BaseImporter):
             count = source.get('count', count)
         
         if to_date is None:
-            to_date = datetime.utcnow()
+            to_date = utc_now()
         if from_date is None:
             from_date = to_date - timedelta(days=90)
         

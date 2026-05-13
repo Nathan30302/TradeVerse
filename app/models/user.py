@@ -6,6 +6,7 @@ Handles user authentication, profile, and trading statistics
 from app import db, bcrypt
 from flask_login import UserMixin
 from datetime import datetime
+from app.utils.timeutil import utc_now
 from sqlalchemy import func
 from sqlalchemy.orm import deferred
 from app.services.entitlements import get_effective_subscription_state, user_has_feature
@@ -59,8 +60,8 @@ class User(UserMixin, db.Model):
     phone_number = deferred(db.Column(db.String(32), nullable=True))  # E.164-ish stored digits/+ only
 
     # ==================== Timestamps ====================
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     last_login = db.Column(db.DateTime)
     
     # ==================== Relationships ====================
@@ -96,7 +97,7 @@ class User(UserMixin, db.Model):
     # ==================== Login Tracking ====================
     def update_last_login(self):
         """Update the last login timestamp"""
-        self.last_login = datetime.utcnow()
+        self.last_login = utc_now()
         db.session.commit()
     
     # ==================== Trading Statistics ====================

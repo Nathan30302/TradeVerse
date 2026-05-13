@@ -9,6 +9,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, jsonif
 from flask_login import login_required, current_user
 from app.models.instrument import Instrument
 from datetime import datetime, date
+from app.utils.timeutil import utc_now
 
 # Create Blueprint
 bp = Blueprint('main', __name__)
@@ -67,7 +68,7 @@ def sitemap():
         base + url_for('main.terms'),
         base + url_for('main.privacy'),
     ]
-    now = datetime.utcnow().strftime('%Y-%m-%d')
+    now = utc_now().strftime('%Y-%m-%d')
     body = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for p in pages:
         body.append('<url>')

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import secrets as secrets_stdlib
 from datetime import datetime, timedelta
+from app.utils.timeutil import utc_now
 
 from flask import (
     Blueprint,
@@ -227,8 +228,8 @@ def platform_stats():
         return gate
 
     # Naive UTC matches typical TIMESTAMP columns and avoids aware/naive compare issues on Postgres.
-    week_ago_naive = datetime.utcnow() - timedelta(days=7)
-    days_30_naive = datetime.utcnow() - timedelta(days=30)
+    week_ago_naive = utc_now() - timedelta(days=7)
+    days_30_naive = utc_now() - timedelta(days=30)
 
     total_users = _safe_scalar(db.session.query(func.count(User.id)))
     users_new_30d = _safe_scalar(
@@ -443,7 +444,7 @@ def email_outreach():
         return redirect(url_for("owner_admin.email_outreach"))
 
     activity = func.coalesce(User.last_login, User.created_at)
-    cutoff = datetime.utcnow() - timedelta(days=inactive_default)
+    cutoff = utc_now() - timedelta(days=inactive_default)
     n_all = _safe_scalar(
         db.session.query(func.count(User.id)).filter(
             User.is_active.is_(True),

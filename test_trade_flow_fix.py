@@ -9,6 +9,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app, db
+from app.utils.timeutil import utc_now
 from app.models.user import User
 from app.models.trade_plan import TradePlan
 from app.models.trade import Trade
@@ -77,7 +78,7 @@ def test_trade_flow():
                 entry_price=float(form_data['entry_price']),
                 stop_loss=float(form_data['stop_loss']),
                 take_profit=float(form_data['take_profit']),
-                entry_date=plan.executed_at or datetime.utcnow(),
+                entry_date=plan.executed_at or utc_now(),
                 pre_trade_plan=form_data['pre_trade_plan'],
                 strategy=form_data['strategy']
             )
@@ -85,7 +86,7 @@ def test_trade_flow():
             # Since exit price is provided, immediately close the trade
             exit_price = float(form_data['exit_price'])
             trade.exit_price = exit_price
-            trade.exit_date = datetime.utcnow()
+            trade.exit_date = utc_now()
             trade.status = 'CLOSED'
             
             # Calculate P&L
@@ -141,7 +142,7 @@ def test_trade_flow():
                 entry_price=1.2500,
                 stop_loss=1.2550,
                 take_profit=1.2400,
-                entry_date=datetime.utcnow(),
+                entry_date=utc_now(),
                 strategy='Breakout'
             )
             
@@ -175,7 +176,7 @@ def test_trade_flow():
             
             # Close the open trade and sync
             trade2.exit_price = 1.2450
-            trade2.exit_date = datetime.utcnow()
+            trade2.exit_date = utc_now()
             trade2.status = 'CLOSED'
             trade2.calculate_pnl()
             
@@ -223,6 +224,5 @@ def test_trade_flow():
         return True
 
 if __name__ == '__main__':
-    from datetime import datetime
     success = test_trade_flow()
     sys.exit(0 if success else 1)

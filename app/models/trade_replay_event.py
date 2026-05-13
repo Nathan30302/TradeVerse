@@ -6,9 +6,8 @@ Replay turns each trade into a step-by-step timeline: screenshots + notes + key 
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from app import db
+from app.utils.timeutil import utc_now
 
 
 class TradeReplayEvent(db.Model):
@@ -26,6 +25,6 @@ class TradeReplayEvent(db.Model):
     media_filename = db.Column(db.String(255), nullable=True)  # stored on disk
     media_mimetype = db.Column(db.String(80), nullable=True)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 

@@ -8,6 +8,7 @@ from app.models.trade_plan import TradePlan
 from sqlalchemy import func
 from collections import defaultdict
 from datetime import datetime, timedelta
+from app.utils.timeutil import utc_now
 
 
 class PatternDetector:
@@ -44,7 +45,7 @@ class PatternDetector:
     
     def _load_trades(self, days=90):
         """Load trades for analysis"""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = utc_now() - timedelta(days=days)
         self.trades = Trade.query.filter(
             Trade.user_id == self.user_id,
             Trade.status == 'CLOSED',

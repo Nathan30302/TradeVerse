@@ -74,7 +74,7 @@ def test_admin_lock_clears_session(app, client):
 def test_admin_stats_200_with_rows(app, client):
     from app.models.user import User
     from app.models.trade import Trade
-    from datetime import datetime
+    from app.utils.timeutil import utc_now
 
     u = User(username='adm_u1', email='a1@example.com')
     u.set_password('x')
@@ -89,7 +89,7 @@ def test_admin_stats_200_with_rows(app, client):
         lot_size=0.1,
         entry_price=1.1,
         exit_price=1.11,
-        entry_date=datetime.utcnow(),
+        entry_date=utc_now(),
         profit_loss=100.0,
     )
     db.session.add(t)

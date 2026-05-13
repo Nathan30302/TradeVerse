@@ -7,7 +7,7 @@ from app.models.broker import ImportJob, ImportedTradeSource
 from app.importers.csv_importer import parse_csv
 from app.importers.mt5_parser import parse_mt5
 from app.services.import_service import persist_parsed_trades
-from datetime import datetime
+from app.utils.timeutil import utc_now
 import os
 import time
 from app import metrics as metrics
@@ -25,7 +25,7 @@ def process_import_job(job_id):
         return {'error': 'job not found'}
     # Mark running
     job.status = 'running'
-    job.started_at = datetime.utcnow()
+    job.started_at = utc_now()
     db.session.commit()
 
     try:
@@ -52,7 +52,7 @@ def process_import_job(job_id):
 
         # Update ImportJob with saved count and errors
         job.status = 'done'
-        job.finished_at = datetime.utcnow()
+        job.finished_at = utc_now()
         # store a summary in the payload for quick access
         job.payload = (job.payload or {})
         job.payload['saved_count'] = len(saved)
@@ -77,7 +77,7 @@ def process_import_job(job_id):
     except Exception as e:
         job.status = 'failed'
         job.error = str(e)
-        job.finished_at = datetime.utcnow()
+        job.finished_at = utc_now()
         db.session.commit()
         rq_job = get_current_job()
         if rq_job:

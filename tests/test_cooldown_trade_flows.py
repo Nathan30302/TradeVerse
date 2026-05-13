@@ -1,10 +1,11 @@
 """Cooldown triggers after trade add, edit, and close (emotion + loss streak)."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 
 from app import create_app, db, schema_compat
+from app.utils.timeutil import utc_now
 from app.models.cooldown import Cooldown
 from app.models.instrument import Instrument
 from app.models.trade import Trade
@@ -71,10 +72,10 @@ def test_apply_post_trade_cooldowns_dangerous_emotion(app):
             trade_type="BUY",
             lot_size=1.0,
             entry_price=1.1,
-            entry_date=datetime.utcnow(),
+            entry_date=utc_now(),
             status="CLOSED",
             exit_price=1.09,
-            exit_date=datetime.utcnow(),
+            exit_date=utc_now(),
             profit_loss=-5.0,
             strategy="Other",
         )
@@ -98,10 +99,10 @@ def test_apply_post_trade_cooldowns_exempt_emotion_no_cooldown(app):
             trade_type="BUY",
             lot_size=1.0,
             entry_price=1.1,
-            entry_date=datetime.utcnow(),
+            entry_date=utc_now(),
             status="CLOSED",
             exit_price=1.12,
-            exit_date=datetime.utcnow(),
+            exit_date=utc_now(),
             profit_loss=10.0,
             strategy="Other",
         )
@@ -116,7 +117,7 @@ def test_apply_post_trade_cooldowns_loss_streak(app):
     _clear_cooldowns(app)
     with app.app_context():
         u = User.query.filter_by(username="cduser").first()
-        now = datetime.utcnow()
+        now = utc_now()
         for i in range(2):
             tr = Trade(
                 user_id=u.id,
@@ -171,10 +172,10 @@ def test_edit_trade_POST_sets_emotion_cooldown(logged_client, app):
             trade_type="BUY",
             lot_size=1.0,
             entry_price=1.1,
-            entry_date=datetime.utcnow(),
+            entry_date=utc_now(),
             status="CLOSED",
             exit_price=1.09,
-            exit_date=datetime.utcnow(),
+            exit_date=utc_now(),
             profit_loss=-3.0,
             strategy="Other",
             emotion="Calm & Focused",
@@ -225,10 +226,10 @@ def test_quick_review_preserves_symbol_and_triggers_cooldown(logged_client, app)
             trade_type="BUY",
             lot_size=1.0,
             entry_price=1.1,
-            entry_date=datetime.utcnow(),
+            entry_date=utc_now(),
             status="CLOSED",
             exit_price=1.09,
-            exit_date=datetime.utcnow(),
+            exit_date=utc_now(),
             profit_loss=-1.0,
             strategy="Other",
             emotion="Disciplined",

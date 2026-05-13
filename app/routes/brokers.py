@@ -6,8 +6,8 @@ from flask import Blueprint, jsonify, request, current_app, render_template
 from flask_login import login_required, current_user
 import os
 import json
-from datetime import datetime
 from app import db
+from app.utils.timeutil import utc_now
 from app.models.broker import BrokerProfile, UserBrokerCredential, ImportedTradeSource
 from app.utils.credential_manager import encrypt_credentials, decrypt_credentials, mask_sensitive_data
 from app.mappers.instrument_mapper import list_available_brokers, get_broker_profile
@@ -193,7 +193,7 @@ def api_connect_broker():
             encrypted_api_key=encrypted_api_key,
             encrypted_api_secret=encrypted_api_secret,
             encrypted_access_token=encrypted_access_token,
-            consent_given_at=datetime.utcnow(),
+            consent_given_at=utc_now(),
             consent_ip=request.remote_addr
         )
         db.session.add(user_cred)
@@ -324,7 +324,7 @@ def api_test_connection(credential_id):
                 'error': f'API testing not implemented for {broker_id}'
             }), 400
         
-        cred.last_sync_at = datetime.utcnow()
+        cred.last_sync_at = utc_now()
         cred.last_sync_status = 'success' if result.get('success') else 'failed'
         cred.last_sync_error = result.get('error') if not result.get('success') else None
         db.session.commit()
