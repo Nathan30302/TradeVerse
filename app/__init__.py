@@ -395,6 +395,8 @@ def register_context_processors(app):
     
     @app.context_processor
     def inject_globals():
+        from datetime import datetime, timezone
+
         return {
             'app_name': app.config.get('APP_NAME'),
             'app_tagline': app.config.get('APP_TAGLINE'),
@@ -403,6 +405,7 @@ def register_context_processors(app):
             'maintenance_mode': bool(app.config.get('MAINTENANCE_MODE')),
             'support_email': app.config.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com',
             'ui_theme_choices': tuple(app.config.get('UI_THEME_CHOICES') or ()),
+            'current_year': datetime.now(timezone.utc).year,
         }
 
     @app.context_processor

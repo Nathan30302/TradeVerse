@@ -423,15 +423,22 @@ class AIAnalyzer:
             if total_trades and win_rate >= 50
             else 'needs review'
         )
+        if direction == 'improving':
+            summary = (
+                f"Your last 30-day performance is improving, with "
+                f"{win_rate:.0f}% wins and ${total_pnl:.2f} P/L."
+            )
+        else:
+            summary = (
+                f"Your last 30-day performance needs review: "
+                f"{win_rate:.0f}% wins and ${total_pnl:.2f} P/L."
+            )
         return {
             'label': 'AI Buddy Monthly Review',
             'period': 'Last 30 days',
             'stats': stats,
             'direction': direction,
-            'summary': (
-                f"Your last 30-day performance is {direction} with "
-                f"{win_rate:.0f}% wins and ${total_pnl:.2f} P/L."
-            ),
+            'summary': summary,
         }
  
     def get_behavioral_insights(self) -> Dict[str, Any]:

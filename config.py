@@ -324,7 +324,8 @@ class Config:
 class DevelopmentConfig(Config):
     """Development environment configuration"""
     DEBUG = True
-    SQLALCHEMY_ECHO = True  # Show SQL queries in development
+    # Off by default: SQL echo floods logs and slows every request. Set SQLALCHEMY_ECHO=1 to debug SQL.
+    SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO', '').lower() in ('1', 'true', 'yes')
     PROMETHEUS_METRICS_ENABLED = True
 
 class ProductionConfig(Config):

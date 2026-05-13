@@ -1,7 +1,7 @@
 # AGENTS.md - TradeVerse
 
 ## Commands
-- **Run app**: `python run.py` (serves at http://localhost:5000)
+- **Run app**: `python run.py` (listens on `PORT` or **5001** by default: http://localhost:5001)
 - **Initialize DB**: `flask init_db`
 - **Reset DB**: `flask reset_db`
 - **Run migrations**: `flask db upgrade`

@@ -60,9 +60,11 @@ if __name__ == '__main__':
                 exc,
             )
 
+    port = int(os.environ.get('PORT', '5001'))
+
     print('Starting TradeVerse...')
     print('Professional Trading Journal')
-    print('Open your browser to: http://localhost:5000')
+    print(f'Open your browser to: http://localhost:{port}')
     print('Press CTRL+C to stop\n')
     
     # Respect the configured DEBUG flag so running locally in production mode
@@ -70,6 +72,6 @@ if __name__ == '__main__':
     # via the Procfile which loads `app.wsgi:app`.
     app.run(
         host='0.0.0.0',
-        port=5001,
+        port=port,
         debug=app.config.get('DEBUG', False)
     )
