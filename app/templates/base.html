@@ -1861,7 +1861,7 @@
             .navbar { padding: 0.5rem 0; }
             .navbar-brand { font-size: 1.1rem; }
             .navbar-brand i { font-size: 1.3rem; }
-            .navbar .d-flex.align-items-center.ms-4 { display: none !important; }
+            .navbar .tv-navbar-market-strip { display: none !important; }
             .main-content { padding: 0.75rem; }
             .card { border-radius: 12px; margin-bottom: 1rem; }
             .card-header { padding: 1rem; font-size: 0.95rem; border-radius: 11px 11px 0 0; }
@@ -1977,9 +1977,9 @@
                 <i class="fas fa-chart-line"></i>
                 <span>{{ app_name }}</span>
             </a>
-            
-            <!-- Instrument display (single-slot rotator) + Dynamic Island -->
-            <div class="d-flex align-items-center ms-4" style="gap:1rem;">
+            {% if current_user.is_authenticated %}
+            <!-- Instrument rotator + stats: signed-in only (keeps marketing header clean) -->
+            <div class="tv-navbar-market-strip d-flex align-items-center ms-2 ms-lg-4 flex-shrink-0" style="gap:1rem;">
                 <div id="instrument-rotator" class="instrument-rotator d-none d-md-flex align-items-center" aria-label="Market movers ticker">
                     <span class="live-indicator" id="rot-feed-badge" title="Market movers snapshot">
                         <span class="live-dot" aria-hidden="true"></span>
@@ -2017,58 +2017,37 @@
                     </div>
                 </div>
             </div>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <!-- Mobile Navigation Menu Button -->
-            <button class="btn btn-outline-light d-lg-none me-2" type="button" id="mobileMenuBtn" aria-label="Open navigation menu" style="padding: 0.4rem 0.75rem;">
+            {% endif %}
+
+            <div class="d-flex align-items-center justify-content-end flex-grow-1 flex-lg-grow-0 ms-auto" style="min-width:0;">
+            <!-- Single mobile control (no duplicate Bootstrap toggler + drawer button) -->
+            <button class="btn btn-outline-light d-lg-none me-2 flex-shrink-0" type="button" id="mobileMenuBtn" aria-label="Open navigation menu" style="padding: 0.4rem 0.75rem;">
                 <i class="fas fa-bars"></i>
             </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
+
+            <div class="collapse navbar-collapse flex-grow-1 flex-lg-grow-0 justify-content-lg-end" id="navbarNav">
+                <ul class="navbar-nav ms-lg-auto align-items-lg-center flex-wrap justify-content-end">
                     {% if current_user.is_authenticated %}
                         {% set sub = current_user.effective_subscription() %}
-                        <li class="nav-item d-none d-lg-block">
-                            <a class="nav-link" href="{{ url_for('dashboard.index') }}">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                        <li class="nav-item dropdown d-none d-lg-block">
+                            <a class="nav-link dropdown-toggle" href="#" id="appMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-th-large me-1"></i> App
                             </a>
-                        </li>
-                        <li class="nav-item d-none d-lg-block">
-                            <a class="nav-link" href="{{ url_for('trade.list') }}">
-                                <i class="fas fa-list"></i> Trades
-                            </a>
-                        </li>
-                        <li class="nav-item d-none d-lg-block">
-                            <a class="nav-link" href="{{ url_for('planner.index') }}">
-                                <i class="fas fa-clipboard-list"></i> Planner
-                            </a>
-                        </li>
-                        {% if feature_playbook %}
-                        <li class="nav-item d-none d-lg-block">
-                            <a class="nav-link" href="{{ url_for('playbook.index') }}">
-                                <i class="fas fa-book-open"></i> Playbook
-                            </a>
-                        </li>
-                        {% endif %}
-                        {% if feature_replay %}
-                        <li class="nav-item d-none d-lg-block">
-                            <a class="nav-link" href="{{ url_for('replay.index') }}">
-                                <i class="fas fa-film"></i> Replay
-                            </a>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item d-none d-lg-block">
-                            <a class="nav-link" href="{{ url_for('dashboard.analytics') }}">
-                                <i class="fas fa-chart-bar"></i> Analytics
-                            </a>
-                        </li>
-                        <li class="nav-item d-none d-lg-block">
-                            <a class="nav-link" href="{{ url_for('dashboard.ai') }}">
-                                <i class="fas fa-robot"></i> AI Buddy
-                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="appMenuDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('dashboard.index') }}"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('trade.list') }}"><i class="fas fa-list me-2"></i>My trades</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('trade.add') }}"><i class="fas fa-plus-circle me-2"></i>Add trade</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('planner.index') }}"><i class="fas fa-clipboard-list me-2"></i>Trade planner</a></li>
+                                {% if feature_playbook %}
+                                <li><a class="dropdown-item" href="{{ url_for('playbook.index') }}"><i class="fas fa-book-open me-2"></i>Playbook</a></li>
+                                {% endif %}
+                                {% if feature_replay %}
+                                <li><a class="dropdown-item" href="{{ url_for('replay.index') }}"><i class="fas fa-film me-2"></i>Replay</a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('dashboard.analytics') }}"><i class="fas fa-chart-bar me-2"></i>Analytics</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('dashboard.ai') }}"><i class="fas fa-robot me-2"></i>AI Buddy</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -2108,14 +2087,36 @@
                             </ul>
                         </li>
                     {% else %}
+                        {% set on_landing = (request.endpoint == 'main.index') %}
+                        <li class="nav-item d-none d-lg-block">
+                            <a class="nav-link" href="{{ url_for('main.features') }}"><i class="fas fa-star me-1"></i>Features</a>
+                        </li>
+                        <li class="nav-item d-none d-lg-block">
+                            <a class="nav-link" href="{{ url_for('main.pricing') }}"><i class="fas fa-tags me-1"></i>Pricing</a>
+                        </li>
+                        <li class="nav-item d-none d-lg-block">
+                            <a class="nav-link" href="{{ url_for('main.contact') }}"><i class="fas fa-envelope me-1"></i>Contact</a>
+                        </li>
+                        {% if discord_community_url %}
+                        <li class="nav-item d-none d-lg-block">
+                            <a class="nav-link" href="{{ discord_community_url }}" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord me-1"></i>Community</a>
+                        </li>
+                        {% endif %}
+                        {% if not on_landing %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Login</a>
                         </li>
-                        <li class="nav-item ms-2">
+                        <li class="nav-item ms-lg-2">
                             <a href="{{ url_for('auth.register') }}" class="btn btn-navbar">Sign Up</a>
                         </li>
+                        {% else %}
+                        <li class="nav-item d-none d-lg-block">
+                            <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt me-1"></i>Sign in</a>
+                        </li>
+                        {% endif %}
                     {% endif %}
                 </ul>
+            </div>
             </div>
         </div>
     </nav>
@@ -2127,64 +2128,65 @@
             <h5 class="mb-0"><i class="fas fa-compass"></i> Menu</h5>
             <button type="button" class="btn-close mobile-nav-close" id="mobileNavClose" aria-label="Close menu"></button>
         </div>
+        {% if current_user.is_authenticated %}
         <div class="mobile-nav-section">Core</div>
         <ul class="nav flex-column">
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
                    href="{{ url_for('dashboard.index') }}">
                     <i class="fas fa-home"></i> Dashboard
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint and 'trade.list' in request.endpoint %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'trade.list' %}active{% endif %}"
                    href="{{ url_for('trade.list') }}">
                     <i class="fas fa-list"></i> My Trades
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}"
                    href="{{ url_for('trade.add') }}">
                     <i class="fas fa-plus-circle"></i> Add Trade
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'dashboard.calendar' %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'dashboard.calendar' %}active{% endif %}"
                    href="{{ url_for('dashboard.calendar') }}">
                     <i class="fas fa-calendar"></i> Calendar
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'dashboard.analytics' %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'dashboard.analytics' %}active{% endif %}"
                    href="{{ url_for('dashboard.analytics') }}">
                     <i class="fas fa-chart-bar"></i> Analytics
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'dashboard.performance' %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'dashboard.performance' %}active{% endif %}"
                    href="{{ url_for('dashboard.performance') }}">
                     <i class="fas fa-trophy"></i> Performance
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}"
                    href="{{ url_for('dashboard.ai') }}">
                     <i class="fas fa-robot"></i> TradeVerse AI
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'dashboard.patterns' %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'dashboard.patterns' %}active{% endif %}"
                    href="{{ url_for('dashboard.patterns') }}">
                     <i class="fas fa-brain"></i> Patterns
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'dashboard.emotions' %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'dashboard.emotions' %}active{% endif %}"
                    href="{{ url_for('dashboard.emotions') }}">
                     <i class="fas fa-heart"></i> Emotions
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'auth.settings' %}active{% endif %}" 
+                <a class="nav-link {% if request.endpoint == 'auth.settings' %}active{% endif %}"
                    href="{{ url_for('auth.settings') }}">
                     <i class="fas fa-cog"></i> Settings
                 </a>
@@ -2214,6 +2216,13 @@
                 </a>
             </li>
             {% endif %}
+            {% if discord_community_url %}
+            <li class="nav-item mt-2 border-top border-secondary pt-2">
+                <a class="nav-link" href="{{ discord_community_url }}" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-discord"></i> Traders community (Discord)
+                </a>
+            </li>
+            {% endif %}
             <li class="nav-item mt-3 border-top border-secondary pt-2">
                 <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}">
                     <i class="fas fa-sign-out-alt"></i> Logout
@@ -2223,6 +2232,47 @@
         <div class="tv-sidebar-account-wrap">
             {% include 'partials/sidebar_account_panel.html' %}
         </div>
+        {% else %}
+        <div class="mobile-nav-section">Explore</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}" href="{{ url_for('main.index') }}">
+                    <i class="fas fa-home"></i> Home
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'main.features' %}active{% endif %}" href="{{ url_for('main.features') }}">
+                    <i class="fas fa-star"></i> Features
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'main.pricing' %}active{% endif %}" href="{{ url_for('main.pricing') }}">
+                    <i class="fas fa-tags"></i> Pricing
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'main.contact' %}active{% endif %}" href="{{ url_for('main.contact') }}">
+                    <i class="fas fa-envelope"></i> Contact
+                </a>
+            </li>
+            {% if discord_community_url %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ discord_community_url }}" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-discord"></i> Join community (Discord)
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+        <div class="mobile-nav-section">Account</div>
+        <ul class="nav flex-column mb-3">
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Sign in</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link fw-semibold" href="{{ url_for('auth.register') }}"><i class="fas fa-user-plus"></i> Create account</a>
+            </li>
+        </ul>
+        {% endif %}
     </div>
 
     <div class="container-fluid">
@@ -2808,6 +2858,9 @@
             }
 
             async function init(){
+                if (!rotator && !island) {
+                    return;
+                }
                 // try fetching live instruments, otherwise use fallback
                 await fetchInstruments();
                 // ensure rotator and island visible on md+ only
