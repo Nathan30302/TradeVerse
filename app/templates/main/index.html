@@ -253,24 +253,11 @@
                 </div>
 
                 {% if discord_community_url %}
-                <div class="mb-4 p-4 rounded-4 border shadow-sm" style="background: linear-gradient(135deg, rgba(88, 101, 242, 0.2) 0%, rgba(15, 23, 42, 0.55) 100%); border-color: rgba(129, 140, 248, 0.45) !important;">
-                    <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-3">
-                        <div class="flex-grow-1">
-                            <div class="fw-bold text-white mb-1" style="font-size: 1.05rem;">
-                                <i class="fab fa-discord me-2" style="color:#5865F2;"></i>Join our trader community
-                            </div>
-                            <p class="mb-0 small" style="color: rgba(248,250,252,0.92);">
-                                Meet other traders on Discord — weekly plans, recaps, and process talk. Educational only; not financial advice.
-                            </p>
-                        </div>
-                        <div class="flex-shrink-0 d-flex align-items-center">
-                            <a href="{{ discord_community_url }}" class="btn btn-lg text-white fw-semibold px-4 py-3 w-100" target="_blank" rel="noopener noreferrer"
-                               style="background:#5865F2;border:none;border-radius:12px;min-width:min(100%,220px);">
-                                <i class="fab fa-discord me-2"></i>Open Discord invite
-                            </a>
-                        </div>
-                    </div>
-                </div>
+                <p class="mb-3 small" style="color: rgba(248,250,252,0.85);">
+                    <a href="{{ discord_community_url }}" class="link-light text-decoration-none" target="_blank" rel="noopener noreferrer">
+                        <i class="fab fa-discord me-1" style="color:#5865F2;" aria-hidden="true"></i><span class="fw-semibold">Join our community</span>
+                    </a>
+                </p>
                 {% endif %}
 
                 <div class="mt-3 mb-2 p-3 rounded-4" style="background: rgba(15,23,42,0.55); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(8px);">
@@ -351,6 +338,26 @@
       </div>
     </div>
 </div>
+
+{% if not current_user.is_authenticated %}
+<nav id="landing-explore" class="container my-3" aria-label="Explore TradeVerse">
+    <div class="rounded-3 border bg-body-tertiary px-3 py-2 d-flex flex-wrap align-items-center justify-content-center gap-2 gap-md-3 small">
+        <span class="text-muted d-none d-sm-inline me-sm-1">Explore</span>
+        <a class="link-body-emphasis text-decoration-none" href="{{ url_for('main.features') }}"><i class="fas fa-star me-1 text-primary"></i>Features</a>
+        <span class="text-muted opacity-50 d-none d-sm-inline">·</span>
+        <a class="link-body-emphasis text-decoration-none" href="{{ url_for('main.pricing') }}"><i class="fas fa-tags me-1 text-primary"></i>Pricing</a>
+        <span class="text-muted opacity-50 d-none d-sm-inline">·</span>
+        <a class="link-body-emphasis text-decoration-none" href="{{ url_for('main.contact') }}"><i class="fas fa-envelope me-1 text-primary"></i>Contact</a>
+        {% if discord_community_url %}
+        <span class="text-muted opacity-50 d-none d-sm-inline">·</span>
+        <a class="link-body-emphasis text-decoration-none" href="{{ discord_community_url }}" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord me-1" style="color:#5865F2;"></i>Community</a>
+        {% endif %}
+        <span class="text-muted opacity-50 d-none d-sm-inline">·</span>
+        <a class="link-body-emphasis text-decoration-none" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt me-1"></i>Sign in</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-sm btn-primary ms-1">Sign up</a>
+    </div>
+</nav>
+{% endif %}
 
 <!-- Features Section -->
 <div class="container my-6">
@@ -531,7 +538,7 @@
             {% if discord_community_url %}
             <p class="mb-4 small opacity-90">
                 <a href="{{ discord_community_url }}" class="text-white text-decoration-underline fw-semibold" target="_blank" rel="noopener noreferrer">
-                    <i class="fab fa-discord me-1"></i>Trader community on Discord
+                    <i class="fab fa-discord me-1"></i>Join our community
                 </a>
                 <span class="opacity-75"> — same invite as above; jump in anytime.</span>
             </p>
