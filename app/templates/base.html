@@ -2388,6 +2388,9 @@
                     | <a href="{{ url_for('main.features') }}" class="link-secondary">Features</a>
                     | <a href="{{ url_for('main.pricing') }}" class="link-secondary">Pricing</a>
                     | <a href="{{ url_for('main.contact') }}" class="link-secondary">Contact</a>
+                    {% if discord_community_url %}
+                    | <a href="{{ discord_community_url }}" class="link-secondary" target="_blank" rel="noopener noreferrer">Community</a>
+                    {% endif %}
                     | <a href="mailto:{{ support_email }}" class="link-secondary">Support</a>
                     | <a href="{{ url_for('main.terms') }}" class="link-secondary">Terms &amp; Disclaimer</a>
                     | <a href="{{ url_for('main.privacy') }}" class="link-secondary">Privacy Policy</a>

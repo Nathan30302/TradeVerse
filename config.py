@@ -71,6 +71,12 @@ class Config:
 
     # Public support contact (mailto + footer). Override via SUPPORT_EMAIL if needed.
     SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com'
+    # Traders Discord community (footer + landing). Unset = default invite; DISCORD_COMMUNITY_URL= hides links.
+    _discord_env = os.environ.get('DISCORD_COMMUNITY_URL')
+    if _discord_env is None:
+        DISCORD_COMMUNITY_URL = 'https://discord.gg/avZdspg2H'
+    else:
+        DISCORD_COMMUNITY_URL = _discord_env.strip()
     # Optional canonical origin (https://yourdomain.com, no trailing slash).
     # Set in production for: transactional emails, sitemap/robots, and <link rel="canonical">
     # so they match your Google Search Console property (reduces redirect / duplicate URL issues).

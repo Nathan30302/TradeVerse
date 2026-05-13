@@ -404,6 +404,7 @@ def register_context_processors(app):
             'random_quote': random.choice(app.config.get('QUOTES', [])),
             'maintenance_mode': bool(app.config.get('MAINTENANCE_MODE')),
             'support_email': app.config.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com',
+            'discord_community_url': (app.config.get('DISCORD_COMMUNITY_URL') or '').strip(),
             'ui_theme_choices': tuple(app.config.get('UI_THEME_CHOICES') or ()),
             'current_year': datetime.now(timezone.utc).year,
         }

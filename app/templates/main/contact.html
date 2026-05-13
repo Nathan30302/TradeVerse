@@ -18,6 +18,13 @@
         for anything related to TradeVerse: questions, bugs, feature ideas, how you’d like the product to evolve, or a short success story if we’ve helped your process (similar to community feedback on TradingView).
         We typically reply within one to two business days.
       </p>
+      {% if discord_community_url %}
+      <p class="text-muted mb-3">
+        For peer discussion with other traders (setups, process, accountability), join our
+        <a href="{{ discord_community_url }}" target="_blank" rel="noopener noreferrer">Discord community</a>.
+        It’s independent chat—not a substitute for email support above.
+      </p>
+      {% endif %}
       <div class="alert alert-info mb-0" role="alert">
         For bugs, include your username and when the issue happened. For suggestions or wins, a sentence or two is enough — we read everything.
       </div>
