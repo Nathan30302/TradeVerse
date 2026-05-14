@@ -1,10 +1,13 @@
 """
 ORM integration for partially migrated databases.
 
-SQLAlchemy 2.x ``_collect_update_commands`` reads omitted attribute keys from the
-instance state dict; popping those keys in ``before_flush`` causes KeyError during
-flush. We only strip absent columns from collected INSERT/UPDATE *params* and
-temporarily clear Python :class:`Column` defaults for INSERT compilation.
+SQLAlchemy 2.x ``_collect_update_commands`` intersects ``mapper._propkey_to_col`` with
+``state.committed_state``, then reads ``state_dict[propkey]``. If ``committed_state`` still
+tracks a key (e.g. after a change) while ``state_dict`` no longer has it — possible after
+legacy instance-dict stripping or unusual deferred hydration — flush raises KeyError.
+We reconcile missing keys before flush (prefer ``getattr`` so pending values win), strip
+absent columns from collected INSERT/UPDATE *params*, and temporarily clear Python
+:class:`Column` defaults for INSERT compilation.
 
 Restores defaults on after_flush_postexec and after_rollback.
 
@@ -16,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect as sa_inspect
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import persistence as _persistence
 
@@ -52,6 +55,33 @@ def _omit_sets_for_mapper(mapper) -> frozenset[str] | set[str]:
     if cls is Trade:
         return tv.get("omit_trade_cols") or frozenset()
     return frozenset()
+
+
+def _reconcile_committed_keys_into_dict(session: Session) -> None:
+    """Ensure state.dict has every key SQLAlchemy may read during UPDATE collection."""
+    try:
+        from app.models.trade import Trade
+        from app.models.user import User
+    except Exception:
+        return
+
+    for obj in set(session.dirty):
+        if not isinstance(obj, (User, Trade)):
+            continue
+        st = sa_inspect(obj)
+        if not st.committed_state:
+            continue
+        d = st.dict
+        for propkey in list(st.committed_state.keys()):
+            if propkey in d:
+                continue
+            try:
+                d[propkey] = getattr(obj, propkey)
+            except Exception:
+                try:
+                    d[propkey] = st.committed_state[propkey]
+                except Exception:
+                    pass
 
 
 def _strip_params_keys(params: dict, omit: frozenset | set) -> None:
@@ -163,6 +193,8 @@ def install_once() -> None:
             backup = _backup_and_clear_python_defaults(set(), omit_t)
             if backup:
                 session.info.setdefault(_SESSION_STACK_KEY, []).append(backup)
+
+        _reconcile_committed_keys_into_dict(session)
 
     @event.listens_for(Session, "after_flush_postexec", propagate=True)
     def _after_flush_restore_defaults(session: Session, flush_context) -> None:
