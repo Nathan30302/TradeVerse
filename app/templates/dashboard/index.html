@@ -108,6 +108,41 @@
         35%  { opacity: 0.75; }
         100% { transform: translateX(140%); opacity: 0.30; }
     }
+
+    .quote-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+    .quote-hint {
+        font-size: 0.72rem;
+        color: rgba(255,255,255,0.55);
+        flex: 1;
+        min-width: 0;
+    }
+    .quote-next-btn {
+        border: none;
+        background: rgba(255,255,255,0.1);
+        color: rgba(255,255,255,0.9);
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        line-height: 1;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .quote-next-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .quote-card::before { animation: none !important; opacity: 0; }
+        .quote-progress-bar::before,
+        .quote-progress-bar::after { animation: none !important; opacity: 0.25; }
+        .quote-text { transition: none !important; }
+        .quote-progress-bar { transition: none !important; }
+    }
 </style>
 {% endblock %}
 
@@ -218,15 +253,19 @@
     </div>
 </div>
 {% else %}
-<div class="quote-container mb-4" id="quoteContainer">
+<div class="quote-container mb-4" id="quoteContainer" role="region" aria-label="Trading wisdom">
     <div class="quote-card">
         <div class="quote-icon">
-            <i class="fas fa-lightbulb"></i>
+            <i class="fas fa-lightbulb" aria-hidden="true"></i>
         </div>
         <div class="quote-content">
-            <p class="quote-text" id="quoteText">{{ quote }}</p>
+            <p class="quote-text" id="quoteText" aria-live="polite">{{ quote }}</p>
             <div class="quote-progress">
                 <div class="quote-progress-bar" id="quoteProgressBar"></div>
+            </div>
+            <div class="quote-footer">
+                <span class="quote-hint">Tap the card or next for another line · Mix of mindset and practical tips</span>
+                <button type="button" class="quote-next-btn" id="quoteNextBtn" aria-label="Show next tip">›</button>
             </div>
         </div>
     </div>
@@ -671,7 +710,7 @@
      data-equity-url="{{ url_for('dashboard.equity_curve_api') }}"
      data-winloss-url="{{ url_for('dashboard.win_rate_chart_api') }}"
      data-stats-url="{{ url_for('dashboard.api/stats') if false else url_for('dashboard.stats_api') }}"
-     data-quotes="{{ config.QUOTES | tojson | e }}"
+     data-quotes="{{ (config.QUOTES + (config.TRADING_TIPS or [])) | tojson | e }}"
      data-rotation="{{ config.QUOTE_ROTATION_INTERVAL | default(10000) }}"
      style="display:none;"></div>
 
@@ -887,19 +926,28 @@
     }
 
     /* ----------------------------------------------------------------
-       Rotating motivational quotes
+       Rotating quotes + trading tips (variable cadence, reduced motion)
     ---------------------------------------------------------------- */
     function initQuoteRotator() {
         var textEl       = document.getElementById("quoteText");
         var progressEl   = document.getElementById("quoteProgressBar");
         var containerEl  = document.getElementById("quoteContainer");
+        var nextBtn      = document.getElementById("quoteNextBtn");
         if (!textEl || !progressEl || !QUOTES || QUOTES.length === 0) { return; }
 
+        var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         var currentIdx  = Math.floor(Math.random() * QUOTES.length);
         var startTs     = null;
         var rafId       = null;
+        var cycleMs     = ROTATION_MS;
+
+        function pickCycleMs() {
+            var base = reduced ? ROTATION_MS * 1.65 : ROTATION_MS;
+            return Math.round(base * (0.82 + Math.random() * 0.36));
+        }
 
         function changeQuote() {
+            var fadeMs = reduced ? 120 : 420;
             textEl.classList.add("fade-out");
             setTimeout(function () {
                 currentIdx = (currentIdx + 1) % QUOTES.length;
@@ -907,12 +955,13 @@
                 textEl.classList.remove("fade-out");
                 progressEl.style.width = "0%";
                 startTs = null;
-            }, 500);
+                cycleMs = pickCycleMs();
+            }, fadeMs);
         }
 
         function tick(ts) {
             if (!startTs) startTs = ts;
-            var p = Math.min((ts - startTs) / ROTATION_MS, 1);
+            var p = Math.min((ts - startTs) / cycleMs, 1);
             progressEl.style.width = Math.round(p * 1000) / 10 + "%";
             if (p >= 1) {
                 changeQuote();
@@ -920,15 +969,26 @@
             rafId = window.requestAnimationFrame(tick);
         }
 
-        // Premium interaction: tap/click to skip to next quote instantly
-        if (containerEl) {
-            containerEl.style.cursor = "pointer";
-            containerEl.title = "Click to show next quote";
-            containerEl.addEventListener("click", function () {
-                changeQuote();
-            });
+        function bindSkip(handler) {
+            if (containerEl) {
+                containerEl.style.cursor = "pointer";
+                containerEl.title = "Click for the next tip";
+                containerEl.addEventListener("click", function (ev) {
+                    if (nextBtn && (ev.target === nextBtn || nextBtn.contains(ev.target))) return;
+                    handler();
+                });
+            }
+            if (nextBtn) {
+                nextBtn.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handler();
+                });
+            }
         }
 
+        bindSkip(changeQuote);
+        cycleMs = pickCycleMs();
         if (rafId) window.cancelAnimationFrame(rafId);
         rafId = window.requestAnimationFrame(tick);
     }

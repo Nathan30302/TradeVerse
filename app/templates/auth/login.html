@@ -265,22 +265,65 @@
         margin-right: 0.25rem;
     }
     
-    /* Quote */
+    /* Quote rotator (login) */
     .auth-quote {
         text-align: center;
         margin-top: 2rem;
-        padding: 1rem;
+        padding: 1rem 1.1rem 1.15rem;
         background: rgba(99, 102, 241, 0.1);
-        border-radius: 12px;
+        border-radius: 14px;
         border-left: 3px solid #667eea;
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+        cursor: pointer;
     }
-    
-    .auth-quote p {
-        color: #94a3b8;
+    .auth-quote-line {
+        color: #cbd5e1;
         font-style: italic;
-        font-size: 0.875rem;
-        margin: 0;
-        line-height: 1.5;
+        font-size: 0.9rem;
+        margin: 0 0 0.65rem 0;
+        line-height: 1.55;
+    }
+    .auth-quote-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .auth-quote-progress {
+        flex: 1;
+        height: 3px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .auth-quote-bar {
+        height: 100%;
+        width: 0%;
+        border-radius: 3px;
+        background: linear-gradient(90deg, #667eea, #a855f7);
+        transition: width 0.12s linear;
+    }
+    .auth-quote-next {
+        border: none;
+        background: rgba(255,255,255,0.08);
+        color: #e2e8f0;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        font-size: 1.25rem;
+        line-height: 1;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .auth-quote-next:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .auth-quote-hint {
+        font-size: 0.72rem;
+        color: #64748b;
+        margin-top: 0.5rem;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .auth-quote-bar { transition: none; }
     }
     
     /* Tooltip styling */
@@ -314,6 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+<script src="{{ url_for('static', filename='js/tv-auth-wisdom.js') }}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -396,10 +440,23 @@ document.addEventListener('DOMContentLoaded', function() {
             </a>
         </div>
         
-        <!-- Quote -->
-        {% if random_quote %}
+        <!-- Trading wisdom rotator -->
+        {% if config.QUOTES or config.TRADING_TIPS %}
+        <div id="auth-wisdom-data"
+             data-lines="{{ (config.QUOTES + (config.TRADING_TIPS or [])) | tojson | e }}"
+             data-interval="16000"
+             style="display:none" aria-hidden="true"></div>
+        <div class="auth-quote" id="authQuoteRotator" role="region" aria-label="Trading wisdom">
+            <p class="auth-quote-line" id="authQuoteText" aria-live="polite">{% if random_quote %}{{ random_quote }}{% else %}Plan your trade, trade your plan.{% endif %}</p>
+            <div class="auth-quote-toolbar">
+                <div class="auth-quote-progress"><div class="auth-quote-bar" id="authQuoteBar"></div></div>
+                <button type="button" class="auth-quote-next" id="authQuoteNext" aria-label="Next tip">›</button>
+            </div>
+            <div class="auth-quote-hint">Tap the card or › for the next tip</div>
+        </div>
+        {% elif random_quote %}
         <div class="auth-quote">
-            <p>{{ random_quote }}</p>
+            <p class="auth-quote-line">{{ random_quote }}</p>
         </div>
         {% endif %}
         
