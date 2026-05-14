@@ -49,6 +49,29 @@ def test_register_creates_user_and_logs_in(app, client):
         assert u.theme == "dark"
 
 
+def test_login_succeeds_for_existing_user(app, client):
+    with app.app_context():
+        u = User(username="signintest", email="signintest@example.com", full_name="Sign In Test")
+        u.set_password("SecurePass1!")
+        db.session.add(u)
+        db.session.commit()
+
+    resp = client.post(
+        "/auth/login",
+        data={
+            "username": "signintest",
+            "password": "SecurePass1!",
+            "remember": "1",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+    assert "/dashboard" in (resp.headers.get("Location") or "")
+
+    with client.session_transaction() as sess:
+        assert sess.get("_user_id") is not None
+
+
 def test_register_duplicate_email_flash(app, client):
     client.post(
         "/auth/register",

@@ -153,19 +153,22 @@
     }
     
     .form-check-input {
-        width: 18px;
-        height: 18px;
+        width: 1.125rem;
+        height: 1.125rem;
+        min-width: 1.125rem;
+        min-height: 1.125rem;
         margin-top: 2px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
         cursor: pointer;
         flex-shrink: 0;
+        /* Native control so the real checkmark appears when selected (Safari/Chrome). */
+        appearance: auto;
+        -webkit-appearance: checkbox;
+        accent-color: #667eea;
+        vertical-align: middle;
     }
-    
+
     .form-check-input:checked {
-        background: #667eea;
-        border-color: #667eea;
+        accent-color: #667eea;
     }
     
     .form-check-label {
@@ -395,7 +398,7 @@
                 </div>
                 
                 <div class="form-check">
-                    <input type="checkbox" class="form-check-input" id="terms" required>
+                    <input type="checkbox" class="form-check-input" id="terms" name="terms_agreed" value="1" required aria-required="true">
                     <label class="form-check-label" for="terms">
                         I agree to the
                         <a href="{{ url_for('main.terms') }}" target="_blank" rel="noopener noreferrer">Terms &amp; Disclaimer</a>
