@@ -96,6 +96,45 @@ def test_profile_preserves_phone_when_settings_form_omits_country_fields(app, cl
         assert u.preferred_currency == "USD"
 
 
+def test_profile_saves_tiny_png_avatar(app, client):
+    """Multipart streams often lie about size; avatar must save small real PNGs."""
+    from io import BytesIO
+
+    # 1×1 transparent PNG (well under 3 MB)
+    png = bytes.fromhex(
+        '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489'
+        '0000000a49444154789c63000100000500001d0d2db40000000049454e44ae426082'
+    )
+    user = User(username="avuser", email="av@example.com")
+    user.set_password("password123")
+    db.session.add(user)
+    db.session.commit()
+
+    with client.session_transaction() as sess:
+        sess["_user_id"] = str(user.id)
+
+    resp = client.post(
+        "/auth/profile",
+        data={
+            "full_name": "A",
+            "bio": "",
+            "timezone": "UTC",
+            "preferred_currency": "USD",
+            "theme": "dark",
+            "avatar": (BytesIO(png), "face.png"),
+        },
+        content_type="multipart/form-data",
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+
+    with app.app_context():
+        u = db.session.get(User, user.id)
+        assert u.avatar_url
+        assert u.avatar_url.startswith("uploads/avatars/")
+        assert u.avatar_url.endswith(".png")
+
+
 def test_profile_get_renders(app, client):
     user = User(username="getprof", email="get@example.com")
     user.set_password("password123")

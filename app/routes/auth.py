@@ -8,6 +8,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models.user import User
 from datetime import datetime, timedelta, timezone
+import io
 import os
 import re
 import uuid
@@ -480,6 +481,41 @@ def _unlink_user_avatar_file(avatar_url):
             current_app.logger.debug('avatar unlink failed', exc_info=True)
 
 
+def _read_avatar_upload_bytes(storage) -> tuple[bytes | None, str | None]:
+    """
+    Read upload body with a hard 3 MB cap.
+
+    ``content_length`` and ``seek``/``tell`` are unreliable on multipart streams
+    (often 0 or wrong), which falsely failed the old size check. Size is always
+    determined by reading the stream.
+    """
+    try:
+        storage.seek(0)
+    except Exception:
+        pass
+    stream = getattr(storage, 'stream', None) or storage
+    buf = io.BytesIO()
+    chunk_sz = 256 * 1024
+    total = 0
+    try:
+        while True:
+            piece = stream.read(chunk_sz)
+            if not piece:
+                break
+            total += len(piece)
+            if total > _MAX_AVATAR_BYTES:
+                return None, 'That photo is larger than 3 MB. Compress it or pick a smaller image.'
+            buf.write(piece)
+    except OSError as e:
+        current_app.logger.warning('avatar read failed: %s', e)
+        return None, 'Could not read that file. Try another photo (PNG, JPG, GIF, or WebP).'
+
+    data = buf.getvalue()
+    if len(data) < 1:
+        return None, 'That file looks empty. Try another photo or export as JPEG/PNG.'
+    return data, None
+
+
 def _save_avatar_for_user(user, storage):
     """
     Validate and store an avatar image under static/uploads/avatars/.
@@ -494,23 +530,11 @@ def _save_avatar_for_user(user, storage):
     raw = storage.filename
     ext = raw.rsplit('.', 1)[-1].lower() if '.' in raw else ''
     if ext not in _AVATAR_EXTS:
-        return ('Please upload a PNG, JPG, GIF, or WebP image (max 3 MB).', None, None)
-    size = -1
-    try:
-        cl = getattr(storage, 'content_length', None)
-        if cl is not None:
-            size = int(cl)
-    except (TypeError, ValueError):
-        size = -1
-    if size < 0:
-        try:
-            storage.seek(0, os.SEEK_END)
-            size = int(storage.tell() or 0)
-            storage.seek(0)
-        except Exception:
-            size = -1
-    if size > _MAX_AVATAR_BYTES or size < 1:
-        return ('Image must be between 1 byte and 3 MB.', None, None)
+        return ('Use a PNG, JPG, GIF, or WebP file (max 3 MB).', None, None)
+
+    data, read_err = _read_avatar_upload_bytes(storage)
+    if read_err:
+        return (read_err, None, None)
 
     out_name = f'u{user.id}_{uuid.uuid4().hex[:16]}.{ext}'
     safe = secure_filename(out_name)
@@ -521,7 +545,8 @@ def _save_avatar_for_user(user, storage):
     full_path = os.path.join(dest_dir, safe)
     try:
         os.makedirs(dest_dir, exist_ok=True)
-        storage.save(full_path)
+        with open(full_path, 'wb') as out_f:
+            out_f.write(data)
     except OSError as e:
         current_app.logger.warning('avatar save failed: %s', e)
         return ('Could not save the image. Please try again.', None, None)
@@ -620,12 +645,7 @@ def profile():
             if pending_avatar[0] in ('clear', 'set'):
                 _unlink_user_avatar_file(old_avatar_url)
             if field_msgs:
-                flash(
-                    'Profile saved. '
-                    + ' '.join(field_msgs)
-                    + ' Country and phone were left unchanged.',
-                    'warning',
-                )
+                flash('✅ Profile saved. ' + ' '.join(field_msgs), 'warning')
             else:
                 flash('✅ Profile updated successfully!', 'success')
 
