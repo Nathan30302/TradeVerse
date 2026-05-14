@@ -38,6 +38,15 @@ class Config:
     SESSION_COOKIE_SECURE = False  # Set True in production with HTTPS
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+
+    # Flask-Login: "Keep me signed in" cookie lifetime
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+
+    # Signup: max accounts that may share the same normalized full name (abuse guard).
+    try:
+        MAX_ACCOUNTS_PER_DISPLAY_NAME = max(1, int(os.environ.get('TV_MAX_ACCOUNTS_PER_DISPLAY_NAME', '2')))
+    except ValueError:
+        MAX_ACCOUNTS_PER_DISPLAY_NAME = 2
     
     # WTForms Configuration
     WTF_CSRF_ENABLED = True

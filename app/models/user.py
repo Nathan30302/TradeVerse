@@ -8,6 +8,7 @@ from flask_login import UserMixin
 from datetime import datetime
 from app.utils.timeutil import utc_now
 from sqlalchemy import func
+from sqlalchemy import update
 from sqlalchemy.orm import deferred
 from app.services.entitlements import get_effective_subscription_state, user_has_feature
 
@@ -96,9 +97,21 @@ class User(UserMixin, db.Model):
     
     # ==================== Login Tracking ====================
     def update_last_login(self):
-        """Update the last login timestamp"""
-        self.last_login = utc_now()
-        db.session.commit()
+        """Persist last login by user id (works for detached / compat-loaded users)."""
+        ts = utc_now()
+        try:
+            db.session.execute(update(User).where(User.id == self.id).values(last_login=ts))
+            db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            raise
+        try:
+            self.last_login = ts
+        except Exception:
+            pass
     
     # ==================== Trading Statistics ====================
     def get_stats(self):

@@ -125,4 +125,4 @@ def test_login_history_get(app, client):
     )
     resp = client.get("/auth/login-history")
     assert resp.status_code == 200
-    assert b"Login History" in resp.data
+    assert b"Login history" in resp.data

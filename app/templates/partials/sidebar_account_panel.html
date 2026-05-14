@@ -35,9 +35,9 @@
                 <i class="far fa-clock me-1"></i>
                 {% if trial_days_remaining is not none %}
                     <strong>{{ trial_days_remaining }}</strong> day{% if trial_days_remaining != 1 %}s{% endif %} left
-                    <span class="opacity-75">· ends {{ sub.trial_ends_at.strftime('%b %d, %Y') }}</span>
+                    <span class="opacity-75">· ends {{ sub.trial_ends_at|datetime('%b %d, %Y') }}</span>
                 {% else %}
-                    Until {{ sub.trial_ends_at.strftime('%b %d, %Y') }}
+                    Until {{ sub.trial_ends_at|datetime('%b %d, %Y') }}
                 {% endif %}
             </div>
             {% endif %}

@@ -13,7 +13,6 @@ import re
 import uuid
 from flask_mail import Message
 from app import mail
-from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, ProgrammingError, InternalError, IntegrityError
 from sqlalchemy.orm import load_only
 from app.services.entitlements import _safe_getattr as _safe_user_col
@@ -73,6 +72,56 @@ def _safe_trial_days_pro_plus() -> int:
         return default
 
 
+def _normalize_display_name(name: str | None) -> str:
+    """Lowercase single-spaced form for duplicate-name checks."""
+    return ' '.join((name or '').strip().lower().split())
+
+
+def _count_accounts_matching_display_name(norm: str) -> int:
+    """How many users share this normalized display name (full_name)."""
+    if not norm:
+        return 0
+    rows = db.session.query(User.full_name).filter(User.full_name.isnot(None)).all()
+    return sum(1 for (fn,) in rows if _normalize_display_name(fn) == norm)
+
+
+def _password_policy_errors(password: str) -> list:
+    """Return human-readable password requirement violations (empty if OK)."""
+    errs = []
+    if not password:
+        errs.append('Password is required.')
+        return errs
+    if len(password) < 10:
+        errs.append('Password must be at least 10 characters.')
+    if not re.search(r'[A-Z]', password):
+        errs.append('Use at least one uppercase letter (A–Z).')
+    if not re.search(r'[a-z]', password):
+        errs.append('Use at least one lowercase letter (a–z).')
+    if not re.search(r'[0-9]', password):
+        errs.append('Use at least one number (0–9).')
+    if not re.search(r'[^A-Za-z0-9]', password):
+        errs.append('Use at least one symbol (for example ! @ # $ % ^ & *).')
+    return errs
+
+
+def _record_login_event(user_id: int) -> None:
+    """Append a login audit row (best-effort; never raises)."""
+    try:
+        from app.models.user_login_event import UserLoginEvent
+
+        raw_ip = request.headers.get('X-Forwarded-For') or request.remote_addr or ''
+        ip = (raw_ip.split(',')[0].strip() if raw_ip else '')[:45] or None
+        ua = (request.headers.get('User-Agent') or '')[:512] or None
+        db.session.add(UserLoginEvent(user_id=user_id, ip_address=ip, user_agent=ua))
+        db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        current_app.logger.debug('login event recording skipped', exc_info=True)
+
+
 # ==================== Registration ====================
 
 @bp.route('/register', methods=['GET', 'POST'])
@@ -113,15 +162,26 @@ def register():
         elif not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
             errors.append('Please provide a valid email address.')
         
+        # Full name (required; used for duplicate-person cap)
+        if not full_name or len(full_name.strip()) < 2:
+            errors.append('Full name is required (at least 2 characters). Use the same name you use in real life.')
+
         # Password validation
         if not password:
             errors.append('Password is required.')
-        elif len(password) < 8:
-            errors.append('Password must be at least 8 characters long.')
         elif password != confirm_password:
             errors.append('Passwords do not match.')
-        
-        # Check if username already exists
+        else:
+            errors.extend(_password_policy_errors(password))
+
+        max_accounts = int(current_app.config.get('MAX_ACCOUNTS_PER_DISPLAY_NAME', 2) or 2)
+        norm_name = _normalize_display_name(full_name)
+        if norm_name and _count_accounts_matching_display_name(norm_name) >= max_accounts:
+            errors.append(
+                f'At most {max_accounts} TradeVerse accounts may use this full name. '
+                'Contact support if you need an exception.'
+            )
+
         if User.query.filter_by(username=username).first():
             errors.append('Username already taken. Please choose another.')
         
@@ -199,6 +259,11 @@ def register():
                 pass
 
             login_user(new_user, remember=False)
+            try:
+                new_user.update_last_login()
+            except Exception:
+                current_app.logger.debug('new user last_login skipped', exc_info=True)
+            _record_login_event(new_user.id)
             flash(
                 f'🎉 Welcome to TradeVerse, {username}! Your account is ready — you are signed in.',
                 'success',
@@ -244,7 +309,7 @@ def login():
             # Get form data
             username = request.form.get('username', '').strip()
             password = request.form.get('password', '')
-            remember = request.form.get('remember', False)
+            remember = request.form.get('remember') in ('1', 'on', 'true', 'yes')
         except Exception:
             current_app.logger.exception("Login request parsing failed")
             flash('❌ Login failed. Please try again.', 'danger')
@@ -285,21 +350,11 @@ def login():
             except Exception:
                 user = None
 
-            # Last resort: minimal raw SQL mapping
+            # Last resort: raw SQL hydration (wide row when possible)
             if not user:
-                row = db.session.execute(
-                    text(
-                        "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
-                        "timezone, preferred_currency, theme "
-                        "FROM users WHERE username = :u LIMIT 1"
-                    ),
-                    {"u": username},
-                ).mappings().first()
-                if row:
-                    u = User()
-                    for k, v in row.items():
-                        setattr(u, k, v)
-                    user = u
+                from app.services.user_db_compat import hydrate_user_from_db
+
+                user = hydrate_user_from_db(db.session, User, username=username)
         except InternalError:
             current_app.logger.exception("Login query failed due to aborted transaction; rolling back")
             try:
@@ -326,7 +381,8 @@ def login():
             except Exception:
                 # Never allow ancillary tracking to break login.
                 current_app.logger.debug("update_last_login failed; continuing", exc_info=True)
-            
+            _record_login_event(user.id)
+
             flash(f'👋 Welcome back, {user.username}!', 'success')
             
             # Redirect to next page or dashboard
@@ -585,20 +641,25 @@ def change_password():
         # Validation
         if not current_user.check_password(current_password):
             flash('❌ Current password is incorrect.', 'danger')
-        elif len(new_password) < 8:
-            flash('❌ New password must be at least 8 characters long.', 'danger')
         elif new_password != confirm_password:
             flash('❌ New passwords do not match.', 'danger')
         else:
-            try:
-                current_user.set_password(new_password)
-                db.session.commit()
-                flash('✅ Password changed successfully!', 'success')
-                return redirect(url_for('auth.profile'))
-            except Exception as e:
-                db.session.rollback()
-                flash('❌ Error changing password. Please try again.', 'danger')
-                current_app.logger.exception("Password change error")
+            pw_errs = _password_policy_errors(new_password)
+            if pw_errs:
+                flash(
+                    'New password does not meet security rules: ' + ' '.join(pw_errs),
+                    'danger',
+                )
+            else:
+                try:
+                    current_user.set_password(new_password)
+                    db.session.commit()
+                    flash('✅ Password changed successfully!', 'success')
+                    return redirect(url_for('auth.profile'))
+                except Exception:
+                    db.session.rollback()
+                    flash('❌ Error changing password. Please try again.', 'danger')
+                    current_app.logger.exception("Password change error")
     
     return render_template('auth/change_password.html')
 
@@ -680,14 +741,60 @@ def delete_account():
 @login_required
 def login_history():
     """
-    Login History
-
-    Simple view showing recent login activity. Currently displays last login timestamp
-    and a friendly note. This can be extended to a full audit trail later.
+    Login History: last successful logins and users.last_login (shown in your timezone).
     """
-    last_login = current_user.last_login
-    # Placeholder: in future, query a LoginHistory model if available
-    return render_template('auth/login_history.html', last_login=last_login)
+    from zoneinfo import ZoneInfo
+
+    tz_name = (_safe_user_col(current_user, 'timezone', None) or 'UTC').strip()
+    try:
+        user_tz = ZoneInfo(tz_name)
+    except Exception:
+        tz_name = 'UTC'
+        user_tz = ZoneInfo('UTC')
+
+    events = []
+    try:
+        from app.models.user_login_event import UserLoginEvent
+
+        events = (
+            UserLoginEvent.query.filter_by(user_id=current_user.id)
+            .order_by(UserLoginEvent.occurred_at.desc())
+            .limit(30)
+            .all()
+        )
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        current_app.logger.debug('login history query skipped', exc_info=True)
+
+    last_login = _safe_user_col(current_user, 'last_login', None)
+
+    def _to_user_tz(dt):
+        if not dt:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(user_tz)
+
+    last_login_local = _to_user_tz(last_login)
+    event_rows = []
+    for e in events:
+        event_rows.append(
+            {
+                'at': _to_user_tz(e.occurred_at),
+                'ip': e.ip_address,
+                'ua': e.user_agent,
+            }
+        )
+
+    return render_template(
+        'auth/login_history.html',
+        event_rows=event_rows,
+        user_timezone_label=tz_name,
+        last_login_local=last_login_local,
+    )
 
 @bp.route('/set-theme', methods=['POST'])
 @login_required

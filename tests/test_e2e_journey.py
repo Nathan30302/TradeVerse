@@ -46,8 +46,8 @@ def test_signup_profile_trade_replay_analytics_ai_pricing(app, tmp_path):
         data={
             "username": username,
             "email": email,
-            "password": "password12345",
-            "confirm_password": "password12345",
+            "password": "Password12345!",
+            "confirm_password": "Password12345!",
             "full_name": "Journey User",
             "country_code": "US",
             "phone_number": "+15551234567",

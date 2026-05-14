@@ -15,6 +15,7 @@ from app.models.ai_coaching_note import AICoachingNote
 from app.models.playbook_setup import PlaybookSetup
 from app.models.trade_replay_event import TradeReplayEvent
 from app.models.admin_console import AdminConsoleEvent, AdminEmailDraft
+from app.models.user_login_event import UserLoginEvent
 
 __all__ = [
     'User',
@@ -34,4 +35,5 @@ __all__ = [
     'TradeReplayEvent',
     'AdminConsoleEvent',
     'AdminEmailDraft',
+    'UserLoginEvent',
 ]

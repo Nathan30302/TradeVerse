@@ -1,22 +1,52 @@
 {% extends 'base.html' %}
 
+{% block title %}Login history - {{ app_name }}{% endblock %}
+
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">Login History</h1>
-    <p class="page-subtitle">Recent login activity for your account.</p>
+    <h1 class="page-title">Login history</h1>
+    <p class="page-subtitle">Successful sign-ins for your account (shown in <strong>{{ user_timezone_label }}</strong>).</p>
+</div>
+
+<div class="card p-4 mb-4">
+    <h5 class="mb-2">Last session update</h5>
+    {% if last_login_local %}
+        <p class="mb-0">{{ last_login_local|datetime('%Y-%m-%d %I:%M %p') }} ({{ user_timezone_label }})</p>
+        <small class="text-muted">Updated each time you sign in with your password.</small>
+    {% else %}
+        <p class="text-muted mb-0">No login timestamp stored yet — sign in once to populate it.</p>
+    {% endif %}
 </div>
 
 <div class="card p-4">
-    <h5 class="mb-3">Last login</h5>
-    {% if last_login %}
-        <p>{{ last_login|datetime('%Y-%m-%d %H:%M') }} UTC</p>
+    <h5 class="mb-3">Recent sign-ins</h5>
+    {% if event_rows %}
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">When ({{ user_timezone_label }})</th>
+                    <th scope="col">IP</th>
+                    <th scope="col" class="d-none d-md-table-cell">Device</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in event_rows %}
+                <tr>
+                    <td class="text-nowrap">{{ row.at|datetime('%Y-%m-%d %I:%M %p') }}</td>
+                    <td class="small text-muted">{{ row.ip or '—' }}</td>
+                    <td class="small text-muted d-none d-md-table-cell text-truncate" style="max-width:18rem;" title="{{ row.ua or '' }}">{{ row.ua or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
-        <p class="text-muted">No login activity recorded yet.</p>
+    <p class="text-muted mb-0">No detailed history rows yet — they appear after your next successful login.</p>
     {% endif %}
 
-    <hr>
-    <p class="text-muted">Detailed login history is not yet available. If you'd like to see IP addresses or device info, we can add an audit log in a future update.</p>
-    <a href="{{ url_for('auth.profile') }}" class="btn btn-primary mt-3">View Profile</a>
+    <hr class="my-4">
+    <a href="{{ url_for('auth.profile') }}" class="btn btn-primary">Back to profile</a>
 </div>
 
 {% endblock %}

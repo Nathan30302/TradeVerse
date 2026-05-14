@@ -81,6 +81,7 @@ def create_app(config_name='default'):
         schema_compat.refresh(app)
 
         from app.models import user, trade
+        from app.models.user_login_event import UserLoginEvent  # noqa: F401 — register table
         from app.models.trade_plan import TradePlan
         from app.models.performance_score import PerformanceScore
         from app.models.trade_feedback import TradeFeedback
@@ -100,19 +101,10 @@ def create_app(config_name='default'):
                 except Exception:
                     pass
                 try:
-                    row = db.session.execute(
-                        db.text(
-                            "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
-                            "timezone, preferred_currency, theme "
-                            "FROM users WHERE id = :id LIMIT 1"
-                        ),
-                        {"id": int(user_id)},
-                    ).mappings().first()
-                    if not row:
-                        return None
-                    u = user.User()
-                    for k, v in row.items():
-                        setattr(u, k, v)
+                    from app.models.user import User as UserModel
+                    from app.services.user_db_compat import hydrate_user_from_db
+
+                    u = hydrate_user_from_db(db.session, UserModel, user_id=int(user_id))
                     return u
                 except Exception:
                     app.logger.exception("load_user compat fallback failed")
