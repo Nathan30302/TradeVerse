@@ -17,6 +17,31 @@ def fix_database_url(url):
         return url.replace('postgres://', 'postgresql://', 1)
     return url
 
+
+def sqlalchemy_engine_options_for_uri(uri: str) -> dict:
+    """
+    Engine options for hosted Postgres (Render, RDS, etc.).
+
+    ``SSL SYSCALL error: EOF detected`` often means the server closed an idle pooled
+    connection; ``pool_pre_ping`` validates before checkout and ``pool_recycle`` drops
+    old connections before the server does.
+    """
+    u = (uri or '').strip().lower()
+    if u.startswith('sqlite'):
+        return {}
+    if not (u.startswith('postgres') or u.startswith('postgresql')):
+        return {}
+    try:
+        recycle = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', '280'))
+    except ValueError:
+        recycle = 280
+    recycle = max(60, min(recycle, 3600))
+    return {
+        'pool_pre_ping': True,
+        'pool_recycle': recycle,
+    }
+
+
 class Config:
     """Base configuration - shared across all environments"""
     
@@ -32,6 +57,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = fix_database_url(_raw_db_url)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False  # Set to True to see SQL queries
+    SQLALCHEMY_ENGINE_OPTIONS = sqlalchemy_engine_options_for_uri(SQLALCHEMY_DATABASE_URI)
     
     # Session Configuration
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
@@ -356,6 +382,7 @@ class ProductionConfig(Config):
     
     # Database MUST be provided via environment variable in production.
     SQLALCHEMY_DATABASE_URI = fix_database_url(os.environ.get('DATABASE_URL'))
+    SQLALCHEMY_ENGINE_OPTIONS = sqlalchemy_engine_options_for_uri(SQLALCHEMY_DATABASE_URI)
 
     # Cookie hardening (HTTPS-only in production)
     SESSION_COOKIE_HTTPONLY = True
@@ -384,6 +411,7 @@ class TestingConfig(Config):
     """Testing environment configuration"""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # Use in-memory database for tests
+    SQLALCHEMY_ENGINE_OPTIONS = sqlalchemy_engine_options_for_uri('sqlite:///:memory:')
     WTF_CSRF_ENABLED = False  # Disable CSRF for testing
     PROMETHEUS_METRICS_ENABLED = False
     MAINTENANCE_MODE = False
