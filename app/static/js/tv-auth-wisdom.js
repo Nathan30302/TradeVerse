@@ -1,5 +1,6 @@
 /**
  * Rotating trading wisdom on login / register (reads #auth-wisdom-data).
+ * Auto-advances on a fixed timer; progress bar fills left → right (no tap/skip).
  */
 (function () {
     'use strict';
@@ -17,23 +18,21 @@
         var dataEl = document.getElementById('auth-wisdom-data');
         var textEl = document.getElementById('authQuoteText');
         var bar = document.getElementById('authQuoteBar');
-        var nextBtn = document.getElementById('authQuoteNext');
         var wrap = document.getElementById('authQuoteRotator');
         if (!dataEl || !textEl || !bar) return;
 
         var lines = parseLines(dataEl.getAttribute('data-lines'));
         if (!lines.length) return;
 
-        var baseMs = parseInt(dataEl.getAttribute('data-interval') || '16000', 10) || 16000;
+        var baseMs = parseInt(dataEl.getAttribute('data-interval') || '12000', 10) || 12000;
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var cycleMs = reduced ? Math.round(baseMs * 1.25) : baseMs;
         var idx = Math.floor(Math.random() * lines.length);
-        var cycleMs = baseMs;
         var startTs = null;
         var raf = null;
 
-        function pickCycle() {
-            var b = reduced ? baseMs * 1.75 : baseMs;
-            return Math.round(b * (0.82 + Math.random() * 0.36));
+        if (wrap) {
+            wrap.style.cursor = 'default';
         }
 
         function show(i) {
@@ -43,7 +42,6 @@
         function advance() {
             idx = (idx + 1) % lines.length;
             show(idx);
-            cycleMs = pickCycle();
             startTs = null;
             bar.style.width = '0%';
         }
@@ -56,21 +54,7 @@
             raf = window.requestAnimationFrame(tick);
         }
 
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                advance();
-            });
-        }
-        if (wrap) {
-            wrap.addEventListener('click', function (e) {
-                if (e.target === nextBtn || (nextBtn && nextBtn.contains(e.target))) return;
-                advance();
-            });
-        }
-
         show(idx);
-        cycleMs = pickCycle();
         raf = window.requestAnimationFrame(tick);
     });
 })();

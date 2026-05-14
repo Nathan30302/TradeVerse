@@ -339,8 +339,8 @@ class Config:
         "Consistency beats hero trades.",
     ]
 
-    # Quote rotation interval in milliseconds (30 seconds)
-    QUOTE_ROTATION_INTERVAL = 30000
+    # Dashboard quote card: auto-rotate interval (milliseconds)
+    QUOTE_ROTATION_INTERVAL = 12000
 
     # Feature flags (set to 0/false to disable surfaces quickly)
     FEATURE_AI_BUDDY = os.environ.get('FEATURE_AI_BUDDY', 'true').lower() in ('1', 'true', 'yes')

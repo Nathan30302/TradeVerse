@@ -276,7 +276,6 @@
         max-width: 480px;
         margin-left: auto;
         margin-right: auto;
-        cursor: pointer;
     }
     .auth-quote-line {
         color: #cbd5e1;
@@ -286,37 +285,23 @@
         line-height: 1.55;
     }
     .auth-quote-toolbar {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        display: block;
+        margin-top: 0.5rem;
     }
     .auth-quote-progress {
-        flex: 1;
-        height: 3px;
+        width: 100%;
+        height: 5px;
         background: rgba(255,255,255,0.1);
-        border-radius: 3px;
+        border-radius: 4px;
         overflow: hidden;
     }
     .auth-quote-bar {
         height: 100%;
         width: 0%;
-        border-radius: 3px;
+        border-radius: 4px;
         background: linear-gradient(90deg, #667eea, #a855f7);
-        transition: width 0.12s linear;
+        transition: none;
     }
-    .auth-quote-next {
-        border: none;
-        background: rgba(255,255,255,0.08);
-        color: #e2e8f0;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        font-size: 1.25rem;
-        line-height: 1;
-        cursor: pointer;
-        flex-shrink: 0;
-    }
-    .auth-quote-next:hover { background: rgba(255,255,255,0.15); color: #fff; }
     .auth-quote-hint {
         font-size: 0.72rem;
         color: #64748b;
@@ -444,15 +429,14 @@ document.addEventListener('DOMContentLoaded', function() {
         {% if config.QUOTES or config.TRADING_TIPS %}
         <div id="auth-wisdom-data"
              data-lines="{{ (config.QUOTES + (config.TRADING_TIPS or [])) | tojson | e }}"
-             data-interval="16000"
+             data-interval="12000"
              style="display:none" aria-hidden="true"></div>
         <div class="auth-quote" id="authQuoteRotator" role="region" aria-label="Trading wisdom">
             <p class="auth-quote-line" id="authQuoteText" aria-live="polite">{% if random_quote %}{{ random_quote }}{% else %}Plan your trade, trade your plan.{% endif %}</p>
             <div class="auth-quote-toolbar">
-                <div class="auth-quote-progress"><div class="auth-quote-bar" id="authQuoteBar"></div></div>
-                <button type="button" class="auth-quote-next" id="authQuoteNext" aria-label="Next tip">›</button>
+                <div class="auth-quote-progress" aria-hidden="true"><div class="auth-quote-bar" id="authQuoteBar"></div></div>
             </div>
-            <div class="auth-quote-hint">Tap the card or › for the next tip</div>
+            <div class="auth-quote-hint">Tip changes automatically when the bar reaches the end (~12s).</div>
         </div>
         {% elif random_quote %}
         <div class="auth-quote">
