@@ -472,6 +472,22 @@
     }, 220);
   }
   var saveTimer;
+  /* Same-origin link clicks / form submit: do not show Safari "Leave Page?" when navigating in-app. */
+  var tvAllowPageHide = false;
+  document.addEventListener('click', function (ev) {
+    var a = ev.target && ev.target.closest && ev.target.closest('a[href]');
+    if (!a || a.getAttribute('download')) return;
+    var href = a.getAttribute('href');
+    if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
+    try {
+      var abs = new URL(a.href, window.location.href);
+      if (abs.origin === window.location.origin) {
+        tvAllowPageHide = true;
+        window.setTimeout(function () { tvAllowPageHide = false; }, 2000);
+      }
+    } catch (e2) { /* ignore */ }
+  }, true);
+  form.addEventListener('submit', function () { tvAllowPageHide = true; });
   window.tvClearAddTradeDraft = function () {
     clearTimeout(saveTimer);
     try {
@@ -550,6 +566,7 @@
     return n >= 2;
   }
   window.addEventListener('beforeunload', function (e) {
+    if (tvAllowPageHide) return;
     if (window.tvVoiceRecordingActive) {
       e.preventDefault();
       e.returnValue = '';

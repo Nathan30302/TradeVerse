@@ -16,6 +16,7 @@ from app import mail
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, ProgrammingError, InternalError, IntegrityError
 from sqlalchemy.orm import load_only
+from app.services.entitlements import _safe_getattr as _safe_user_col
 
 # Create Blueprint
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -558,10 +559,12 @@ def profile():
         if after == 'settings':
             return redirect(url_for('auth.settings'))
         return redirect(url_for('auth.profile'))
-    
+
     return render_template(
         'auth/profile.html',
         profile_stats=_profile_stats_for_user(current_user),
+        profile_country_code=(_safe_user_col(current_user, 'country_code', None) or ''),
+        profile_phone_number=(_safe_user_col(current_user, 'phone_number', None) or ''),
     )
 
 # ==================== Change Password ====================

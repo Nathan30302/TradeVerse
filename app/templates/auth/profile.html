@@ -22,7 +22,7 @@
                         <p class="text-muted mb-0">Total Trades</p>
                     </div>
                     <div class="col-md-4">
-                        <h3 class="text-success">{{ profile_stats.win_rate|percentage(1) }}</h3>
+                        <h3 class="text-success">{{ profile_stats.win_rate|default(0)|percentage(1) }}</h3>
                         <p class="text-muted mb-0">Win Rate</p>
                     </div>
                     <div class="col-md-4">
@@ -87,7 +87,7 @@
                         <div class="col-md-6">
                             <label for="phone_number" class="form-label fw-bold">Phone</label>
                             <input type="tel" class="form-control" id="phone_number" name="phone_number"
-                                   value="{{ current_user.phone_number or '' }}" placeholder="+260 …" autocomplete="tel">
+                                   value="{{ profile_phone_number }}" placeholder="+260 …" autocomplete="tel">
                             <small class="text-muted">Optional — support and account security</small>
                         </div>
 
@@ -113,7 +113,7 @@
                         <div class="col-md-6">
                             <label for="timezone" class="form-label fw-bold">Timezone</label>
                             <select class="form-select" id="timezone" name="timezone">
-                                {% for tz in config.TIMEZONES %}
+                                {% for tz in (config.TIMEZONES or ['UTC']) %}
                                     <option value="{{ tz }}" {% if tz == current_user.timezone %}selected{% endif %}>
                                         {{ tz }}
                                     </option>
@@ -124,7 +124,7 @@
                         <div class="col-md-6">
                             <label for="preferred_currency" class="form-label fw-bold">Preferred Currency</label>
                             <select class="form-select" id="preferred_currency" name="preferred_currency">
-                                {% for currency in (config.DISPLAY_CURRENCIES or config.CURRENCIES) %}
+                                {% for currency in (config.DISPLAY_CURRENCIES or config.CURRENCIES or ['USD']) %}
                                     <option value="{{ currency }}" 
                                             {% if currency == current_user.preferred_currency %}selected{% endif %}>
                                         {{ currency }}
@@ -167,9 +167,14 @@
                 <h5 class="mb-0"><i class="fas fa-lock"></i> Change Password</h5>
             </div>
             <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
                 <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary">
                     <i class="fas fa-key"></i> Change Password
                 </a>
+                <a href="{{ url_for('auth.login_history') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-history"></i> Login activity
+                </a>
+                </div>
                 <p class="text-muted mt-2 mb-0">
                     <small>Last changed: Never</small>
                 </p>

@@ -363,8 +363,11 @@ def register_template_filters(app):
                 value = datetime.fromisoformat(value)
             except:
                 return value
-        return value.strftime(format)
-    
+        try:
+            return value.strftime(format)
+        except Exception:
+            return ""
+
     @app.template_filter('currency')
     def format_currency(value, currency='USD'):
         """Format stored USD-equivalent amounts in the user's display currency."""
@@ -376,7 +379,15 @@ def register_template_filters(app):
     def format_percentage(value, decimals=2):
         if value is None:
             return "0%"
-        return f"{value:.{decimals}f}%"
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return "0%"
+        import math
+
+        if not math.isfinite(v):
+            return "0%"
+        return f"{v:.{decimals}f}%"
     
     @app.template_filter('rr_ratio')
     def format_rr_ratio(value):
