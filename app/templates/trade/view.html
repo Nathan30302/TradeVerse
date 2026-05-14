@@ -106,8 +106,10 @@
 <!-- Key Metrics -->
 <div class="row g-4 mb-4">
     <div class="col-md-3">
-        <div class="stat-card {% if trade.profit_loss %}{% if trade.profit_loss >= 0 %}success{% else %}danger{% endif %}{% endif %}">
-            <div class="stat-label">Profit/Loss</div>
+        <div class="stat-card {% if trade.profit_loss %}{% if trade.profit_loss >= 0 %}success{% else %}danger{% endif %}{% endif %} tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-sack-dollar"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label"><abbr class="tv-abbr-metric" title="Realized profit or loss">P/L</abbr></div>
             <div class="stat-value {% if trade.profit_loss %}{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}{% endif %}">
                 {% if trade.profit_loss %}
                     {{ trade.profit_loss|currency(current_user.preferred_currency) }}
@@ -117,15 +119,18 @@
             </div>
             {% if trade.profit_loss_pips %}
                 <div class="stat-change text-muted">
-                    {{ trade.profit_loss_pips }} pips
+                    <i class="fas fa-ruler me-1" aria-hidden="true"></i>{{ trade.profit_loss_pips }} pips
                 </div>
             {% endif %}
+            </div>
         </div>
     </div>
 
     <div class="col-md-3">
-        <div class="stat-card warning">
-            <div class="stat-label">Risk:Reward</div>
+        <div class="stat-card warning tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-scale-balanced"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label"><abbr class="tv-abbr-metric" title="Risk to reward">R:R</abbr></div>
             <div class="stat-value">
                 {% if trade.risk_reward %}
                     {{ trade.risk_reward|rr_ratio }}
@@ -136,36 +141,43 @@
             <div class="stat-change text-muted">
                 {% if trade.risk_reward %}
                     {% if trade.risk_reward >= 2 %}
-                        Excellent 🎯
+                        <i class="fas fa-bullseye text-success me-1" aria-hidden="true"></i>Strong setup
                     {% elif trade.risk_reward >= 1 %}
-                        Good ✓
+                        <i class="fas fa-check text-success me-1" aria-hidden="true"></i>Solid
                     {% else %}
-                        Poor ⚠️
+                        <i class="fas fa-triangle-exclamation text-warning me-1" aria-hidden="true"></i>Tight R:R
                     {% endif %}
                 {% endif %}
+            </div>
             </div>
         </div>
     </div>
 
     <div class="col-md-3">
-        <div class="stat-card info">
+        <div class="stat-card info tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-stopwatch"></i></div>
+            <div class="tv-stat-kpi-body">
             <div class="stat-label">Duration</div>
             <div class="stat-value">{{ trade.get_duration() }}</div>
             <div class="stat-change text-muted">
                 {% if trade.exit_date %}
-                    Closed {{ trade.exit_date|datetime('%m/%d/%y') }}
+                    <i class="fas fa-flag-checkered me-1" aria-hidden="true"></i>Closed {{ trade.exit_date|datetime('%m/%d/%y') }}
                 {% else %}
-                    Still open
+                    <i class="fas fa-hourglass-half me-1" aria-hidden="true"></i>Still open
                 {% endif %}
+            </div>
             </div>
         </div>
     </div>
 
     <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-label">Lot Size</div>
+        <div class="stat-card tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-cubes"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label">Lot size</div>
             <div class="stat-value">{{ trade.lot_size }}</div>
-            <div class="stat-change text-muted">Position size</div>
+            <div class="stat-change text-muted"><i class="fas fa-weight-hanging me-1" aria-hidden="true"></i>Position size</div>
+            </div>
         </div>
     </div>
 </div>

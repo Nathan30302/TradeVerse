@@ -19,22 +19,31 @@
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-4">
-                <div class="stat-card info">
-                    <div class="stat-label">Expectancy (R)</div>
+                <div class="stat-card info tv-stat-kpi">
+                    <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-bullseye"></i></div>
+                    <div class="tv-stat-kpi-body">
+                    <div class="stat-label"><abbr class="tv-abbr-metric" title="Expectancy in R-multiples">Expectancy (R)</abbr></div>
                     <div class="stat-value" id="metric-expectancy">—</div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="stat-card warning">
-                    <div class="stat-label">Max Drawdown</div>
+                <div class="stat-card warning tv-stat-kpi">
+                    <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-chart-line"></i></div>
+                    <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Max drawdown</div>
                     <div class="stat-value" id="metric-dd-abs">—</div>
                     <div class="stat-change text-muted" id="metric-dd-rel">—</div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="stat-card success">
-                    <div class="stat-label">Win Rate (R)</div>
+                <div class="stat-card success tv-stat-kpi">
+                    <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-percent"></i></div>
+                    <div class="tv-stat-kpi-body">
+                    <div class="stat-label"><abbr class="tv-abbr-metric" title="Win rate measured in R-multiples">Win rate (R)</abbr></div>
                     <div class="stat-value" id="metric-winrate">—</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -70,8 +79,8 @@
                         <tr>
                             <th>Instrument</th>
                             <th class="text-center">Trades</th>
-                            <th class="text-end">Total P/L</th>
-                            <th class="text-end">Avg P/L</th>
+                            <th class="text-end"><abbr class="tv-abbr-metric" title="Total profit and loss">P/L</abbr></th>
+                            <th class="text-end">Avg <abbr class="tv-abbr-metric" title="Average profit and loss per trade">P/L</abbr></th>
                             <th class="text-center">Performance</th>
                         </tr>
                     </thead>
@@ -216,13 +225,16 @@
             <div class="row">
                 {% for stat in session_stats %}
                 <div class="col-md-4 mb-3">
-                    <div class="stat-card {% if stat.total_pnl >= 0 %}success{% else %}danger{% endif %}">
+                    <div class="stat-card {% if stat.total_pnl >= 0 %}success{% else %}danger{% endif %} tv-stat-kpi">
+                        <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-earth-americas"></i></div>
+                        <div class="tv-stat-kpi-body">
                         <div class="stat-label">{{ stat.session_type }}</div>
                         <div class="stat-value {% if stat.total_pnl >= 0 %}profit{% else %}loss{% endif %}">
                             {{ stat.total_pnl|currency(current_user.preferred_currency) }}
                         </div>
                         <div class="stat-change text-muted">
-                            {{ stat.count }} trades
+                            <i class="fas fa-list-check me-1" aria-hidden="true"></i>{{ stat.count }} trades
+                        </div>
                         </div>
                     </div>
                 </div>

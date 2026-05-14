@@ -653,6 +653,66 @@
             font-size: 0.875rem;
             font-weight: 500;
         }
+
+        /* KPI cards — icon well + clearer P/L & performance hierarchy */
+        .stat-card.tv-stat-kpi {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.35rem 1.5rem;
+        }
+        .tv-stat-kpi-icon {
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1.1rem;
+            line-height: 1;
+            background: linear-gradient(145deg, rgba(99, 102, 241, 0.22), rgba(99, 102, 241, 0.06));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #a5b4fc;
+        }
+        .stat-card.success .tv-stat-kpi-icon {
+            background: linear-gradient(145deg, rgba(16, 185, 129, 0.24), rgba(16, 185, 129, 0.07));
+            border-color: rgba(16, 185, 129, 0.38);
+            color: #6ee7b7;
+        }
+        .stat-card.danger .tv-stat-kpi-icon {
+            background: linear-gradient(145deg, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0.07));
+            border-color: rgba(239, 68, 68, 0.34);
+            color: #fca5a5;
+        }
+        .stat-card.warning .tv-stat-kpi-icon {
+            background: linear-gradient(145deg, rgba(245, 158, 11, 0.24), rgba(245, 158, 11, 0.08));
+            border-color: rgba(245, 158, 11, 0.36);
+            color: #fcd34d;
+        }
+        .stat-card.info .tv-stat-kpi-icon {
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.22), rgba(59, 130, 246, 0.07));
+            border-color: rgba(59, 130, 246, 0.34);
+            color: #93c5fd;
+        }
+        .tv-stat-kpi-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .tv-stat-kpi-body .stat-value {
+            margin-top: 0.2rem;
+            margin-bottom: 0;
+        }
+        .tv-stat-kpi-body .stat-change {
+            margin-top: 0.35rem;
+            margin-bottom: 0;
+        }
+        abbr.tv-abbr-metric {
+            text-decoration: none;
+            cursor: help;
+            letter-spacing: 0.06em;
+            border-bottom: 1px dotted rgba(148, 163, 184, 0.55);
+        }
         
         /* Buttons */
         .btn {
@@ -1866,6 +1926,8 @@
             .card-header { padding: 1rem; font-size: 0.95rem; border-radius: 11px 11px 0 0; }
             .card-body { padding: 1rem; }
             .stat-card { padding: 1rem; border-radius: 12px; margin-bottom: 0.75rem; }
+            .stat-card.tv-stat-kpi { padding: 1rem; gap: 0.75rem; }
+            .tv-stat-kpi-icon { width: 2.4rem; height: 2.4rem; font-size: 0.95rem; border-radius: 12px; }
             .stat-label { font-size: 0.7rem; }
             .stat-value { font-size: 1.25rem; }
             .stat-change { font-size: 0.75rem; }

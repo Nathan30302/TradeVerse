@@ -137,28 +137,40 @@
 {% if current_score %}
 <div class="row mb-4">
     <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-label">Total Trades</div>
+        <div class="stat-card tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-hashtag"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label">Total trades</div>
             <div class="stat-value">{{ current_score.total_trades }}</div>
+            </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card success">
-            <div class="stat-label">Win Rate</div>
+        <div class="stat-card success tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-percent"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label">Win rate</div>
             <div class="stat-value">{{ current_score.win_rate|round(1) }}%</div>
             <div class="stat-change">{{ current_score.winning_trades }}W / {{ current_score.losing_trades }}L</div>
+            </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card {% if current_score.total_pnl >= 0 %}success{% else %}danger{% endif %}">
-            <div class="stat-label">Week P/L</div>
+        <div class="stat-card {% if current_score.total_pnl >= 0 %}success{% else %}danger{% endif %} tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-sack-dollar"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label"><abbr class="tv-abbr-metric" title="Profit and loss this week (closed)">Week P/L</abbr></div>
             <div class="stat-value">{{ current_score.total_pnl|currency(current_user.preferred_currency) }}</div>
+            </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card info">
-            <div class="stat-label">Avg R:R</div>
+        <div class="stat-card info tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-scale-balanced"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label"><abbr class="tv-abbr-metric" title="Average risk-to-reward">Avg R:R</abbr></div>
             <div class="stat-value">1:{{ current_score.avg_rr|round(2) }}</div>
+            </div>
         </div>
     </div>
 </div>
@@ -189,7 +201,7 @@
                         <th>Score</th>
                         <th>Trades</th>
                         <th>Win Rate</th>
-                        <th>P/L</th>
+                        <th><abbr class="tv-abbr-metric" title="Profit and loss">P/L</abbr></th>
                         <th>Rule</th>
                         <th>R:R</th>
                         <th>Emotion</th>

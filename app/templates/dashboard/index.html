@@ -310,38 +310,50 @@
 {# ------------------------------------------------------------------ #}
 <div class="row g-4 mb-5">
     <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-label">Total Trades</div>
+        <div class="stat-card tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-layer-group"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label">Total trades</div>
             <div class="stat-value">{{ stats.total_trades }}</div>
             <div class="stat-change text-muted">
-                <i class="fas fa-chart-line"></i> All time
+                <i class="fas fa-clock-rotate-left me-1" aria-hidden="true"></i> All time
+            </div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card success">
-            <div class="stat-label">Win Rate (7D)</div>
+        <div class="stat-card success tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-percent"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label">Win rate <span class="fw-normal opacity-75">· 7d</span></div>
             <div class="stat-value" id="stat-winrate-7d">—</div>
             <div class="stat-change text-success" id="stat-wl-7d">
-                <i class="fas fa-arrow-up"></i> —
+                <i class="fas fa-scale-balanced me-1" aria-hidden="true"></i> —
+            </div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card" id="stat-pnl-7d-card">
-            <div class="stat-label">P/L (7D)</div>
+        <div class="stat-card tv-stat-kpi" id="stat-pnl-7d-card">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-arrow-trend-up"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label"><abbr class="tv-abbr-metric" title="Profit and loss — closed trades, last 7 days">P/L</abbr> <span class="fw-normal opacity-75">· 7d</span></div>
             <div class="stat-value" id="stat-pnl-7d">—</div>
-            <div class="stat-change" id="stat-pnl-7d-sub">
-                <i class="fas fa-clock"></i> Last 7 days
+            <div class="stat-change text-muted" id="stat-pnl-7d-sub">
+                <i class="fas fa-calendar-week me-1" aria-hidden="true"></i> Rolling week
+            </div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card warning">
-            <div class="stat-label">Avg R:R (7D)</div>
+        <div class="stat-card warning tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-scale-balanced"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label"><abbr class="tv-abbr-metric" title="Average risk-to-reward (planned or realized)">Avg R:R</abbr> <span class="fw-normal opacity-75">· 7d</span></div>
             <div class="stat-value" id="stat-avg-rr-7d">—</div>
             <div class="stat-change text-warning">
-                <i class="fas fa-balance-scale"></i> Last 7 days
+                <i class="fas fa-crosshairs me-1" aria-hidden="true"></i> Risk vs reward
+            </div>
             </div>
         </div>
     </div>
@@ -411,27 +423,39 @@
 {# ------------------------------------------------------------------ #}
 <div class="row g-4 mb-4">
     <div class="col-md-3">
-        <div class="stat-card info">
-            <div class="stat-label">Open Trades</div>
+        <div class="stat-card info tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-door-open"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label">Open positions</div>
             <div class="stat-value">{{ stats.open_trades }}</div>
+            </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card success">
-            <div class="stat-label">Average Win</div>
+        <div class="stat-card success tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-arrow-trend-up"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label">Avg winning trade</div>
             <div class="stat-value profit">{{ stats.avg_win | currency(current_user.preferred_currency) }}</div>
+            </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card danger">
-            <div class="stat-label">Average Loss</div>
+        <div class="stat-card danger tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-arrow-trend-down"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label">Avg losing trade</div>
             <div class="stat-value loss">{{ stats.avg_loss | currency(current_user.preferred_currency) }}</div>
+            </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card warning">
-            <div class="stat-label">Max Drawdown</div>
+        <div class="stat-card warning tv-stat-kpi">
+            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-chart-area"></i></div>
+            <div class="tv-stat-kpi-body">
+            <div class="stat-label">Max drawdown</div>
             <div class="stat-value text-danger">{{ max_drawdown | currency(current_user.preferred_currency) }}</div>
+            </div>
         </div>
     </div>
 </div>
@@ -834,7 +858,7 @@
             var rr7 = parseFloat(data.avg_rr_7d || 0);
 
             if (win7El) { win7El.textContent = (isFinite(win7) ? win7.toFixed(1) : "0.0") + "%"; }
-            if (wl7El)  { wl7El.innerHTML = '<i class="fas fa-arrow-up"></i> ' + wins7 + 'W / ' + losses7 + 'L'; }
+            if (wl7El)  { wl7El.innerHTML = '<i class="fas fa-chart-pie me-1" aria-hidden="true"></i> ' + wins7 + 'W / ' + losses7 + 'L'; }
             if (pnl7El) { pnl7El.textContent = (pnl7 >= 0 ? '+' : '') + pnl7.toFixed(2); }
             if (rr7El)  { rr7El.textContent = '1:' + (isFinite(rr7) ? rr7.toFixed(2) : '0.00'); }
             if (pnl7Card) {
