@@ -1861,23 +1861,6 @@
             .navbar { padding: 0.5rem 0; }
             .navbar-brand { font-size: 1.1rem; }
             .navbar-brand i { font-size: 1.3rem; }
-            body:not(.tv-landing-guest) .navbar .tv-navbar-market-strip { display: none !important; }
-            body.tv-landing-guest .navbar > .container-fluid {
-                flex-wrap: wrap;
-                row-gap: 0.35rem;
-            }
-            body.tv-landing-guest .navbar .tv-navbar-market-strip {
-                flex: 1 1 100%;
-                justify-content: center;
-                margin-left: 0 !important;
-                margin-top: 0.25rem;
-                padding-top: 0.35rem;
-                border-top: 1px solid rgba(255, 255, 255, 0.12);
-            }
-            body.tv-landing-guest #instrument-rotator,
-            body.tv-landing-guest #dynamic-island {
-                display: flex !important;
-            }
             .main-content { padding: 0.75rem; }
             .card { border-radius: 12px; margin-bottom: 1rem; }
             .card-header { padding: 1rem; font-size: 0.95rem; border-radius: 11px 11px 0 0; }
@@ -1961,7 +1944,7 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body class="{% if not current_user.is_authenticated and request.endpoint == 'main.index' %}tv-landing-guest{% endif %}" data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{% set _th = current_user.theme or 'dark' %}{% if _th in ui_theme_choices %}{{ _th }}{% else %}dark{% endif %}{% else %}{% endif %}">
+<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{% set _th = current_user.theme or 'dark' %}{% if _th in ui_theme_choices %}{{ _th }}{% else %}dark{% endif %}{% else %}{% endif %}">
 
     {% if maintenance_mode %}
     <div class="alert alert-warning rounded-0 border-0 mb-0 text-center py-2 small" role="alert">
@@ -1993,9 +1976,9 @@
                 <i class="fas fa-chart-line"></i>
                 <span>{{ app_name }}</span>
             </a>
-            <!-- Instrument rotator + stats (visible to everyone, including landing) -->
-            <div class="tv-navbar-market-strip d-flex align-items-center ms-2 ms-lg-4 flex-shrink-0" style="gap:1rem;">
-                <div id="instrument-rotator" class="instrument-rotator d-none d-md-flex align-items-center" aria-label="Market movers ticker">
+            <!-- Instrument rotator + stats: hidden below md (phones); tablet+ only (Bootstrap utilities, not JS-toggled). -->
+            <div class="tv-navbar-market-strip d-none d-md-flex align-items-center ms-2 ms-lg-4 flex-shrink-0" style="gap:1rem;">
+                <div id="instrument-rotator" class="instrument-rotator d-flex align-items-center" aria-label="Market movers ticker">
                     <span class="live-indicator" id="rot-feed-badge" title="Market movers snapshot">
                         <span class="live-dot" aria-hidden="true"></span>
                         <span id="rot-feed-label">—</span>
@@ -2010,7 +1993,7 @@
                     </div>
                 </div>
 
-                <div id="dynamic-island" class="dynamic-island d-none d-md-flex align-items-center" title="Trading stats">
+                <div id="dynamic-island" class="dynamic-island d-none d-lg-flex align-items-center" title="Trading stats">
                     <div class="di-item">
                         <div class="di-label">P/L Today</div>
                         <div class="di-value" id="di-pl">—</div>
@@ -2043,30 +2026,12 @@
                 <ul class="navbar-nav ms-lg-auto align-items-lg-center flex-wrap justify-content-end">
                     {% if current_user.is_authenticated %}
                         {% set sub = current_user.effective_subscription() %}
-                        <li class="nav-item dropdown d-none d-lg-block">
-                            <a class="nav-link dropdown-toggle" href="#" id="appMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-th-large me-1"></i> App
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="appMenuDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('dashboard.index') }}"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('trade.list') }}"><i class="fas fa-list me-2"></i>My trades</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('trade.add') }}"><i class="fas fa-plus-circle me-2"></i>Add trade</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('planner.index') }}"><i class="fas fa-clipboard-list me-2"></i>Trade planner</a></li>
-                                {% if feature_playbook %}
-                                <li><a class="dropdown-item" href="{{ url_for('playbook.index') }}"><i class="fas fa-book-open me-2"></i>Playbook</a></li>
-                                {% endif %}
-                                {% if feature_replay %}
-                                <li><a class="dropdown-item" href="{{ url_for('replay.index') }}"><i class="fas fa-film me-2"></i>Replay</a></li>
-                                {% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('dashboard.analytics') }}"><i class="fas fa-chart-bar me-2"></i>Analytics</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('dashboard.ai') }}"><i class="fas fa-robot me-2"></i>AI Buddy</a></li>
-                            </ul>
-                        </li>
+                        {# Core app links live in the sidebar (md+) and mobile drawer; no duplicate "App" menu here. #}
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <img src="{{ current_user.avatar_url or url_for('static', filename='img/default-avatar.png') }}" alt="avatar" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;margin-right:8px;">
-                                <span>{{ current_user.username }}</span>
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu for {{ current_user.username }}">
+                                <img src="{{ current_user.avatar_url or url_for('static', filename='img/default-avatar.png') }}" alt="" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;margin-right:8px;">
+                                {# Username in navbar only below md; from md up the sidebar account chip shows it (avoids duplicate clutter). #}
+                                <span class="d-inline d-md-none text-truncate" style="max-width: 10rem;">{{ current_user.username }}</span>
                                 <span class="badge bg-secondary ms-2" style="font-weight:700;">
                                     {% if sub.tier == 'owner' %}Owner{% elif owner_platform_session_only %}Admin{% elif sub.status == 'trialing' %}Trial{% if trial_days_remaining is not none %} · {{ trial_days_remaining }}d{% endif %}{% elif sub.tier == 'pro_plus' %}Pro Plus{% elif sub.tier == 'pro' %}Pro{% else %}Free{% endif %}
                                 </span>
@@ -2855,9 +2820,7 @@
             async function init(){
                 // try fetching live instruments, otherwise use fallback
                 await fetchInstruments();
-                // ensure rotator and island visible on md+ only
-                if(rotator) rotator.classList.remove('d-none');
-                if(island) island.classList.remove('d-none');
+                // Visibility: strip uses d-none d-md-flex; island uses d-none d-lg-flex (do not remove — avoids showing on phones).
                 startRotation();
                 // Refresh “daily movement” snapshot hourly (premium, predictable cadence)
                 setInterval(fetchInstruments, 60 * 60 * 1000);

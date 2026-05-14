@@ -184,6 +184,15 @@ def _apply_post_trade_cooldowns(user_id, emotion, trade):
     return cooldown_note
 
 
+# ==================== Trade blueprint root ====================
+
+@bp.route('/')
+@login_required
+def index():
+    """Bare ``/trade/`` redirects to the trade list (bookmark / manual URL cleanup)."""
+    return redirect(url_for('trade.list'))
+
+
 # ==================== Add Trade ====================
 
 @bp.route('/add', methods=['GET', 'POST'])
