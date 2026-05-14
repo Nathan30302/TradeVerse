@@ -100,15 +100,47 @@
                 <div class="card tv-settings-card">
                     <div class="card-header bg-transparent"><i class="fas fa-id-card me-2 text-primary"></i>Profile</div>
                     <div class="card-body p-4">
-                        <form method="POST" action="{{ url_for('auth.profile') }}">
+                        <form method="POST" action="{{ url_for('auth.profile') }}" enctype="multipart/form-data">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="after_save" value="settings">
                             {% set _saved_theme = current_user.theme or 'dark' %}
                             <input type="hidden" name="theme" id="form-theme" value="{{ _saved_theme if _saved_theme in ui_theme_choices else 'dark' }}">
+                            <div class="row g-4 align-items-center mb-2 pb-3 border-bottom border-secondary border-opacity-25">
+                                <div class="col-auto">
+                                    {% set av = current_user.avatar_url %}
+                                    <img src="{% if av %}{% if av.startswith('http://') or av.startswith('https://') or av.startswith('/static/') %}{{ av }}{% else %}{{ url_for('static', filename=av) }}{% endif %}{% else %}{{ url_for('static', filename='img/default-avatar.png') }}{% endif %}"
+                                         alt="" class="rounded-circle border border-secondary border-opacity-50" style="width:72px;height:72px;object-fit:cover;">
+                                </div>
+                                <div class="col">
+                                    <label class="form-label fw-semibold" for="settings-avatar">Profile photo</label>
+                                    <input type="file" class="form-control" id="settings-avatar" name="avatar" accept="image/png,image/jpeg,image/gif,image/webp">
+                                    <small class="text-muted">Optional — PNG, JPG, GIF, or WebP, up to 3 MB.</small>
+                                    {% if current_user.avatar_url %}
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" value="1" id="settings-remove-avatar" name="remove_avatar">
+                                        <label class="form-check-label text-muted" for="settings-remove-avatar">Remove current photo</label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
                             <div class="row g-4">
                                 <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Country</label>
+                                    <select class="form-select form-select-lg" name="country_code" id="settings-country" aria-label="Country">
+                                        {% for code, label in config.REGISTER_COUNTRY_CHOICES %}
+                                        <option value="{{ code }}" {% if profile_country_code == code %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" for="settings-phone">Phone</label>
+                                    <input type="tel" class="form-control form-control-lg" id="settings-phone" name="phone_number"
+                                           value="{{ profile_phone_number }}" placeholder="+1 …" autocomplete="tel">
+                                    <small class="text-muted">Optional</small>
+                                </div>
+                                <div class="col-md-6">
                                     <label class="form-label fw-semibold">Full name</label>
-                                    <input type="text" name="full_name" class="form-control form-control-lg" value="{{ current_user.full_name or '' }}" autocomplete="name">
+                                    <input type="text" name="full_name" class="form-control form-control-lg" value="{{ current_user.full_name or '' }}" autocomplete="name" maxlength="100">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">Username</label>

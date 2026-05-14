@@ -13,7 +13,13 @@ import re
 import uuid
 from flask_mail import Message
 from app import mail
-from sqlalchemy.exc import OperationalError, ProgrammingError, InternalError, IntegrityError
+from sqlalchemy.exc import (
+    DataError,
+    InternalError,
+    IntegrityError,
+    OperationalError,
+    ProgrammingError,
+)
 from sqlalchemy.orm import load_only
 from app.services.entitlements import _safe_getattr as _safe_user_col
 
@@ -415,6 +421,26 @@ def logout():
 
 _AVATAR_EXTS = frozenset({'png', 'jpg', 'jpeg', 'gif', 'webp'})
 _MAX_AVATAR_BYTES = 3 * 1024 * 1024
+_MAX_BIO_CHARS = 100_000  # TEXT column; cap avoids pathological payloads
+
+
+def _strip_nulls(s: str) -> str:
+    """PostgreSQL rejects NUL in text/varchar; strip defensively."""
+    if not s or '\x00' not in s:
+        return s
+    return s.replace('\x00', '')
+
+
+def _clip_profile_str(s: str | None, max_len: int) -> str | None:
+    """Normalize optional profile text to DB-safe length (no NUL)."""
+    if s is None:
+        return None
+    t = _strip_nulls(str(s).strip())
+    if not t:
+        return None
+    if len(t) <= max_len:
+        return t
+    return t[:max_len]
 
 
 def _profile_stats_for_user(user):
@@ -469,12 +495,20 @@ def _save_avatar_for_user(user, storage):
     ext = raw.rsplit('.', 1)[-1].lower() if '.' in raw else ''
     if ext not in _AVATAR_EXTS:
         return ('Please upload a PNG, JPG, GIF, or WebP image (max 3 MB).', None, None)
+    size = -1
     try:
-        storage.seek(0, os.SEEK_END)
-        size = int(storage.tell() or 0)
-        storage.seek(0)
-    except Exception:
+        cl = getattr(storage, 'content_length', None)
+        if cl is not None:
+            size = int(cl)
+    except (TypeError, ValueError):
         size = -1
+    if size < 0:
+        try:
+            storage.seek(0, os.SEEK_END)
+            size = int(storage.tell() or 0)
+            storage.seek(0)
+        except Exception:
+            size = -1
     if size > _MAX_AVATAR_BYTES or size < 1:
         return ('Image must be between 1 byte and 3 MB.', None, None)
 
@@ -484,9 +518,9 @@ def _save_avatar_for_user(user, storage):
         return ('Invalid file name.', None, None)
 
     dest_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'avatars')
-    os.makedirs(dest_dir, exist_ok=True)
     full_path = os.path.join(dest_dir, safe)
     try:
+        os.makedirs(dest_dir, exist_ok=True)
         storage.save(full_path)
     except OSError as e:
         current_app.logger.warning('avatar save failed: %s', e)
@@ -507,10 +541,10 @@ def profile():
     Allows user to view and edit their profile
     """
     if request.method == 'POST':
-        # Get form data
-        full_name = request.form.get('full_name', '').strip()
-        bio = request.form.get('bio', '').strip()
-        timezone = request.form.get('timezone', 'UTC')
+        # Get form data (clip + strip NUL so VARCHAR/TEXT never trips DB DataError)
+        full_name = _clip_profile_str(request.form.get('full_name'), 100)
+        bio = _clip_profile_str(request.form.get('bio'), _MAX_BIO_CHARS)
+        timezone = (_strip_nulls((request.form.get('timezone') or 'UTC').strip()) or 'UTC')[:50]
         preferred_currency = (request.form.get('preferred_currency') or 'USD').strip().upper()
         allowed_codes = tuple(current_app.config.get('DISPLAY_CURRENCIES') or ())
         if allowed_codes and preferred_currency not in allowed_codes:
@@ -605,6 +639,15 @@ def profile():
             _rollback_new_avatar_file()
             flash('Could not save profile (database error). Please try again or contact support.', 'danger')
             current_app.logger.exception('Profile update database error')
+        except DataError:
+            db.session.rollback()
+            _rollback_new_avatar_file()
+            flash(
+                'Could not save profile: one field was too long or contained invalid characters. '
+                'Try a shorter name or bio.',
+                'danger',
+            )
+            current_app.logger.warning('Profile update DataError', exc_info=True)
         except Exception:
             db.session.rollback()
             _rollback_new_avatar_file()
@@ -673,8 +716,11 @@ def settings():
     
     Advanced account configuration
     """
-    # Render the consolidated account settings page
-    return render_template('auth/account_settings.html')
+    return render_template(
+        'auth/account_settings.html',
+        profile_country_code=(_safe_user_col(current_user, 'country_code', None) or ''),
+        profile_phone_number=(_safe_user_col(current_user, 'phone_number', None) or ''),
+    )
 
 
 def _purge_user_data(user_id: int) -> None:
