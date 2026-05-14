@@ -80,7 +80,7 @@
                             <label for="country_code" class="form-label fw-bold">Country</label>
                             <select class="form-select" id="country_code" name="country_code" aria-label="Country">
                                 {% for code, label in config.REGISTER_COUNTRY_CHOICES %}
-                                <option value="{{ code }}" {% if (current_user.country_code or '') == code %}selected{% endif %}>{{ label }}</option>
+                                <option value="{{ code }}" {% if profile_country_code == code %}selected{% endif %}>{{ label }}</option>
                                 {% endfor %}
                             </select>
                         </div>
