@@ -1,12 +1,12 @@
 """
 ORM integration for partially migrated databases.
 
-Instance __dict__ stripping in before_flush is not enough: SQLAlchemy still
-injects Python :class:`Column` defaults into INSERT during compilation when the
-primary key is server-generated. We (1) strip collected INSERT/UPDATE param
-keys for columns that are absent in the live DB, and (2) temporarily null out
-those columns' ``.default`` for the duration of a flush so compiled INSERTs omit
-them. Restores on after_flush_postexec and after_rollback.
+SQLAlchemy 2.x ``_collect_update_commands`` reads omitted attribute keys from the
+instance state dict; popping those keys in ``before_flush`` causes KeyError during
+flush. We only strip absent columns from collected INSERT/UPDATE *params* and
+temporarily clear Python :class:`Column` defaults for INSERT compilation.
+
+Restores defaults on after_flush_postexec and after_rollback.
 
 Note: mutating Table metadata defaults assumes a typical sync Flask request
 model; highly concurrent same-process overlapping flushes are not supported.
@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import event, inspect as sa_inspect
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import persistence as _persistence
 
@@ -163,27 +163,6 @@ def install_once() -> None:
             backup = _backup_and_clear_python_defaults(set(), omit_t)
             if backup:
                 session.info.setdefault(_SESSION_STACK_KEY, []).append(backup)
-
-        if not omit_u and not omit_t:
-            return
-
-        try:
-            from app.models.trade import Trade
-            from app.models.user import User
-        except Exception:
-            return
-
-        for obj in set(session.new) | set(session.dirty):
-            if isinstance(obj, User) and omit_u:
-                bucket = getattr(sa_inspect(obj), "dict", None)
-                if isinstance(bucket, dict):
-                    for col in omit_u:
-                        bucket.pop(col, None)
-            elif isinstance(obj, Trade) and omit_t:
-                bucket = getattr(sa_inspect(obj), "dict", None)
-                if isinstance(bucket, dict):
-                    for col in omit_t:
-                        bucket.pop(col, None)
 
     @event.listens_for(Session, "after_flush_postexec", propagate=True)
     def _after_flush_restore_defaults(session: Session, flush_context) -> None:
