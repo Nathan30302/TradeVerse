@@ -496,6 +496,12 @@
             align-items: center;
             justify-content: center;
             font-size: 0.95rem;
+            overflow: hidden;
+        }
+        .tv-account-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         .mobile-nav-drawer .tv-sidebar-account-wrap {
             border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -2091,7 +2097,7 @@
                         {# Core app links live in the sidebar (md+) and mobile drawer; no duplicate "App" menu here. #}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu for {{ current_user.username }}">
-                                <img src="{{ current_user.avatar_url or url_for('static', filename='img/default-avatar.png') }}" alt="" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;margin-right:8px;">
+                                <img src="{% if current_user.avatar_url %}{% if current_user.avatar_url.startswith('http://') or current_user.avatar_url.startswith('https://') or current_user.avatar_url.startswith('/static/') %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename=current_user.avatar_url) }}{% endif %}{% else %}{{ url_for('static', filename='img/default-avatar.png') }}{% endif %}" alt="" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;margin-right:8px;">
                                 {# Username in navbar only below md; from md up the sidebar account chip shows it (avoids duplicate clutter). #}
                                 <span class="d-inline d-md-none text-truncate" style="max-width: 10rem;">{{ current_user.username }}</span>
                                 <span class="badge bg-secondary ms-2" style="font-weight:700;">

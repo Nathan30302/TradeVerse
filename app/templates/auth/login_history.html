@@ -9,7 +9,7 @@
 <div class="card p-4">
     <h5 class="mb-3">Last login</h5>
     {% if last_login %}
-        <p>{{ last_login.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+        <p>{{ last_login|datetime('%Y-%m-%d %H:%M') }} UTC</p>
     {% else %}
         <p class="text-muted">No login activity recorded yet.</p>
     {% endif %}

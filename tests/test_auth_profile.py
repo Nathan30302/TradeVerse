@@ -94,3 +94,35 @@ def test_profile_preserves_phone_when_settings_form_omits_country_fields(app, cl
         assert u.phone_number == "+260971234567"
         assert u.country_code == "ZM"
         assert u.preferred_currency == "USD"
+
+
+def test_profile_get_renders(app, client):
+    user = User(username="getprof", email="get@example.com")
+    user.set_password("password123")
+    db.session.add(user)
+    db.session.commit()
+
+    client.post(
+        "/auth/login",
+        data={"username": "getprof", "password": "password123"},
+        follow_redirects=False,
+    )
+    resp = client.get("/auth/profile")
+    assert resp.status_code == 200
+    assert b"My Profile" in resp.data
+
+
+def test_login_history_get(app, client):
+    user = User(username="histuser", email="hist@example.com")
+    user.set_password("password123")
+    db.session.add(user)
+    db.session.commit()
+
+    client.post(
+        "/auth/login",
+        data={"username": "histuser", "password": "password123"},
+        follow_redirects=False,
+    )
+    resp = client.get("/auth/login-history")
+    assert resp.status_code == 200
+    assert b"Login History" in resp.data

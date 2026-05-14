@@ -10,6 +10,7 @@ from app.models.user import User
 from datetime import datetime, timedelta, timezone
 import os
 import re
+import uuid
 from flask_mail import Message
 from app import mail
 from sqlalchemy import text
@@ -353,6 +354,91 @@ def logout():
     flash(f'👋 Goodbye, {username}! You have been logged out successfully.', 'info')
     return redirect(url_for('main.index'))
 
+# --- Profile helpers (stats + avatar) -----------------------------------------
+
+_AVATAR_EXTS = frozenset({'png', 'jpg', 'jpeg', 'gif', 'webp'})
+_MAX_AVATAR_BYTES = 3 * 1024 * 1024
+
+
+def _profile_stats_for_user(user):
+    """Trading stats for profile header; never raises (avoids 500 on schema drift)."""
+    try:
+        return user.get_stats()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        current_app.logger.exception('profile: get_stats failed')
+        return {'win_rate': 0.0, 'total_trades': 0}
+
+
+def _unlink_user_avatar_file(avatar_url):
+    """Remove a previously stored avatar file from disk (best-effort)."""
+    if not avatar_url or not isinstance(avatar_url, str):
+        return
+    s = avatar_url.strip()
+    if s.startswith(('http://', 'https://')):
+        return
+    s = s.lstrip('/')
+    rel_name = None
+    if s.startswith('static/uploads/avatars/'):
+        rel_name = s[len('static/uploads/avatars/') :]
+    elif s.startswith('uploads/avatars/'):
+        rel_name = s[len('uploads/avatars/') :]
+    if not rel_name or '..' in rel_name or '/' in rel_name or '\\' in rel_name:
+        return
+    folder = os.path.join(current_app.root_path, 'static', 'uploads', 'avatars')
+    full = os.path.join(folder, rel_name)
+    if os.path.isfile(full):
+        try:
+            os.remove(full)
+        except OSError:
+            current_app.logger.debug('avatar unlink failed', exc_info=True)
+
+
+def _save_avatar_for_user(user, storage):
+    """
+    Validate and store an avatar image under static/uploads/avatars/.
+
+    Returns:
+        tuple[str | None, str | None, str | None]: (error, static_relative_path, full_disk_path)
+    """
+    from werkzeug.utils import secure_filename
+
+    if not storage or not storage.filename:
+        return (None, None, None)
+    raw = storage.filename
+    ext = raw.rsplit('.', 1)[-1].lower() if '.' in raw else ''
+    if ext not in _AVATAR_EXTS:
+        return ('Please upload a PNG, JPG, GIF, or WebP image (max 3 MB).', None, None)
+    try:
+        storage.seek(0, os.SEEK_END)
+        size = int(storage.tell() or 0)
+        storage.seek(0)
+    except Exception:
+        size = -1
+    if size > _MAX_AVATAR_BYTES or size < 1:
+        return ('Image must be between 1 byte and 3 MB.', None, None)
+
+    out_name = f'u{user.id}_{uuid.uuid4().hex[:16]}.{ext}'
+    safe = secure_filename(out_name)
+    if not safe or safe != out_name:
+        return ('Invalid file name.', None, None)
+
+    dest_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'avatars')
+    os.makedirs(dest_dir, exist_ok=True)
+    full_path = os.path.join(dest_dir, safe)
+    try:
+        storage.save(full_path)
+    except OSError as e:
+        current_app.logger.warning('avatar save failed: %s', e)
+        return ('Could not save the image. Please try again.', None, None)
+
+    rel = f'uploads/avatars/{safe}'
+    return (None, rel, full_path)
+
+
 # ==================== Profile ====================
 
 @bp.route('/profile', methods=['GET', 'POST'])
@@ -394,6 +480,28 @@ def profile():
         if theme not in allowed:
             theme = 'dark'
 
+        old_avatar_url = current_user.avatar_url
+        uploaded_disk_path = None
+        pending_avatar = ('noop', None)  # ('clear', None) | ('set', rel_path) | noop
+        if request.form.get('remove_avatar'):
+            pending_avatar = ('clear', None)
+        else:
+            avatar_storage = request.files.get('avatar')
+            if avatar_storage and avatar_storage.filename:
+                aerr, rel_path, full_disk = _save_avatar_for_user(current_user, avatar_storage)
+                if aerr:
+                    field_msgs.append(aerr)
+                elif rel_path:
+                    pending_avatar = ('set', rel_path)
+                    uploaded_disk_path = full_disk
+
+        def _rollback_new_avatar_file():
+            if uploaded_disk_path and os.path.isfile(uploaded_disk_path):
+                try:
+                    os.remove(uploaded_disk_path)
+                except OSError:
+                    current_app.logger.debug('rollback avatar file failed', exc_info=True)
+
         # Update profile
         try:
             current_user.full_name = full_name if full_name else None
@@ -412,7 +520,14 @@ def profile():
                 except Exception:
                     pass
 
+            if pending_avatar[0] == 'clear':
+                current_user.avatar_url = None
+            elif pending_avatar[0] == 'set':
+                current_user.avatar_url = pending_avatar[1]
+
             db.session.commit()
+            if pending_avatar[0] in ('clear', 'set'):
+                _unlink_user_avatar_file(old_avatar_url)
             if field_msgs:
                 flash(
                     'Profile saved. '
@@ -422,17 +537,20 @@ def profile():
                 )
             else:
                 flash('✅ Profile updated successfully!', 'success')
-            
+
         except IntegrityError as e:
             db.session.rollback()
+            _rollback_new_avatar_file()
             flash('Could not save profile due to a data conflict. Please try again.', 'danger')
             current_app.logger.warning('Profile update IntegrityError: %s', e)
-        except (OperationalError, ProgrammingError, InternalError) as e:
+        except (OperationalError, ProgrammingError, InternalError):
             db.session.rollback()
+            _rollback_new_avatar_file()
             flash('Could not save profile (database error). Please try again or contact support.', 'danger')
             current_app.logger.exception('Profile update database error')
-        except Exception as e:
+        except Exception:
             db.session.rollback()
+            _rollback_new_avatar_file()
             flash('❌ Error updating profile. Please try again.', 'danger')
             current_app.logger.exception('Profile update error')
 
@@ -441,7 +559,10 @@ def profile():
             return redirect(url_for('auth.settings'))
         return redirect(url_for('auth.profile'))
     
-    return render_template('auth/profile.html')
+    return render_template(
+        'auth/profile.html',
+        profile_stats=_profile_stats_for_user(current_user),
+    )
 
 # ==================== Change Password ====================
 
