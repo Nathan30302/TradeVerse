@@ -31,12 +31,32 @@
 
 {% block extra_css %}
 <style>
+  /* Page shell — consistent vertical rhythm */
+  .landing-page {
+    --landing-section-y: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .landing-section {
+    padding-top: var(--landing-section-y);
+    padding-bottom: var(--landing-section-y);
+  }
+
+  .landing-section-head {
+    max-width: 38rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .landing-section-head .lead {
+    font-size: clamp(1rem, 2.2vw, 1.2rem);
+  }
+
   /* Cinematic space hero */
   .landing-hero {
     position: relative;
-    border-radius: 28px;
+    border-radius: clamp(18px, 3vw, 28px);
     overflow: hidden;
-    padding: 4.5rem 0;
+    padding: clamp(2.25rem, 6vw, 4.5rem) 0;
     background:
       radial-gradient(1200px 600px at 20% 20%, rgba(99,102,241,0.14), transparent 62%),
       radial-gradient(900px 500px at 85% 25%, rgba(16,185,129,0.10), transparent 58%);
@@ -112,15 +132,120 @@
 
   .landing-hero .hero-title {
     text-shadow: 0 18px 48px rgba(0,0,0,0.55), 0 2px 0 rgba(0,0,0,0.25);
+    font-size: clamp(1.85rem, 4.5vw, 2.75rem);
+    line-height: 1.12;
+    letter-spacing: -0.02em;
   }
 
-  .landing-hero .hero-subtitle {
-    text-shadow: 0 12px 36px rgba(0,0,0,0.55);
+  .landing-hero-cta .btn {
+    border-radius: 12px;
+    min-height: 48px;
+    padding-left: 1.35rem;
+    padding-right: 1.35rem;
   }
 
-  .landing-hero .hero-subtitle {
-    color: rgba(226,232,240,0.80) !important;
-    max-width: 42rem;
+  .landing-hero-connect {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.65rem;
+    margin-top: 1.25rem;
+  }
+
+  .landing-connect-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: rgba(248,250,252,0.95);
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255,255,255,0.14);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .landing-connect-item:hover {
+    color: #fff;
+    background: rgba(30, 41, 59, 0.65);
+    border-color: rgba(255,255,255,0.22);
+    transform: translateY(-1px);
+  }
+
+  .landing-hero-trust {
+    margin-top: 1.35rem;
+  }
+
+  .landing-trust-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(255,255,255,0.10);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgba(226,232,240,0.92);
+  }
+
+  .landing-explore {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .landing-explore-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem 0.75rem;
+    padding: 0.65rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(248,250,252,0.92) 100%);
+    box-shadow: 0 8px 28px rgba(2, 6, 23, 0.06);
+  }
+
+  body[data-theme="dark"] .landing-explore-inner {
+    border-color: rgba(255,255,255,0.10);
+    background: linear-gradient(180deg, rgba(30,41,59,0.55) 0%, rgba(15,23,42,0.75) 100%);
+    box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+  }
+
+  .landing-explore-inner a {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 8px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .landing-explore-inner a:hover {
+    background: rgba(99, 102, 241, 0.12);
+  }
+
+  .landing-explore-inner .landing-explore-sep {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(100,116,139,0.45);
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 575.98px) {
+    .landing-explore-inner {
+      border-radius: 16px;
+      justify-content: flex-start;
+    }
+  }
+
+  .landing-stat-mini .card-body {
+    padding: 1rem 1.1rem;
   }
 
   .landing-hero .badge {
@@ -137,15 +262,6 @@
     box-shadow: 0 16px 50px rgba(0,0,0,0.35);
   }
 
-  .landing-hero .trust-row {
-    color: rgba(226,232,240,0.90);
-  }
-
-  .landing-hero .trust-row .muted {
-    color: rgba(226,232,240,0.70);
-  }
-
-  /* Landing page premium polish */
   .feature-card {
     border-radius: 16px;
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
@@ -183,12 +299,19 @@
     box-shadow: 0 12px 32px rgba(0,0,0,0.28);
   }
 
+  .landing-cta-headline {
+    font-size: clamp(1.65rem, 4.25vw, 2.45rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
   .landing-gradient-panel {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 24px;
+    border-radius: clamp(18px, 2.5vw, 24px);
     color: white;
     box-shadow: 0 18px 55px rgba(2,6,23,0.20);
     border: 1px solid rgba(255,255,255,0.14);
+    padding: clamp(2rem, 4vw, 3.25rem) clamp(1.25rem, 4vw, 2.75rem);
   }
 
   .landing-quote-card {
@@ -213,101 +336,98 @@
 {% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<div class="container mb-5">
-    <div class="landing-hero px-3 px-md-4">
+<div class="landing-page">
+<!-- Hero -->
+<div class="container pb-3 pb-lg-4 mb-3 mb-lg-4">
+    <div class="landing-hero px-3 px-md-4 px-lg-5">
       <div class="hero-bg" aria-hidden="true"></div>
       <div class="hero-vfx" aria-hidden="true"></div>
-      <div class="row align-items-center position-relative" style="z-index: 1;">
-        <div class="col-lg-7">
-            <div class="hero-content">
-                <div class="d-flex align-items-center mb-3">
+      <div class="row align-items-center g-4 g-xl-5 position-relative" style="z-index: 1;">
+        <div class="col-lg-7 order-2 order-lg-1">
+            <div class="hero-content pe-lg-2">
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                     <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2">
                         <i class="fas fa-rocket me-2"></i> Professional Trading Platform
                     </span>
                 </div>
-                <h1 class="display-4 fw-bold mb-4 hero-title">
+                <h1 class="fw-bold mb-3 mb-lg-4 hero-title">
                     Journal. Execute. <span class="text-primary">Improve.</span>
                 </h1>
                 <p class="lead text-muted mb-4 hero-subtitle">
-                    Capture trade plans, execute seamlessly, and review performance with AI-assisted insights — 
+                    Capture trade plans, execute seamlessly, and review performance with AI-assisted insights —
                     all in one streamlined trading journal designed for serious traders.
                 </p>
-                
-                <div class="d-flex flex-wrap gap-3 mb-4">
+
+                <div class="landing-hero-cta d-flex flex-wrap gap-3 mb-1">
                     {% if not current_user.is_authenticated %}
-                        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-5 py-3 shadow-lg" style="font-weight: 700; border-radius: 12px;">
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg shadow-lg fw-bold">
                             <i class="fas fa-rocket me-2"></i> Start Free Trial
                         </a>
-                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg px-5 py-3" style="font-weight: 600; border-radius: 12px;">
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg fw-semibold border-2">
                             <i class="fas fa-sign-in-alt me-2"></i> Sign In
                         </a>
                     {% else %}
-                        <a href="{{ url_for('trade.list') }}" class="btn btn-primary btn-lg px-5 py-3 shadow-lg" style="font-weight: 700; border-radius: 12px;">
+                        <a href="{{ url_for('trade.list') }}" class="btn btn-primary btn-lg shadow-lg fw-bold">
                             <i class="fas fa-list me-2"></i> View My Trades
                         </a>
-                        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary btn-lg px-5 py-3" style="font-weight: 600; border-radius: 12px;">
+                        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-light btn-lg fw-semibold border-2">
                             <i class="fas fa-chart-bar me-2"></i> Dashboard
                         </a>
                     {% endif %}
                 </div>
 
-                {% if discord_community_url %}
-                <p class="mb-3 small" style="color: rgba(248,250,252,0.85);">
-                    <a href="{{ discord_community_url }}" class="link-light text-decoration-none" target="_blank" rel="noopener noreferrer">
-                        <i class="fab fa-discord me-1" style="color:#5865F2;" aria-hidden="true"></i><span class="fw-semibold">Join our community</span>
+                <div class="landing-hero-connect">
+                    {% if discord_community_url %}
+                    <a href="{{ discord_community_url }}" class="landing-connect-item" target="_blank" rel="noopener noreferrer">
+                        <i class="fab fa-discord" style="color:#5865F2;" aria-hidden="true"></i>
+                        <span>Join our community</span>
                     </a>
-                </p>
-                {% endif %}
-
-                <div class="mt-3 mb-2 p-3 rounded-4" style="background: rgba(15,23,42,0.55); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(8px);">
-                    <p class="mb-1 small" style="color: rgba(248,250,252,0.95);">
-                        <i class="fas fa-headset me-2 text-info"></i>
-                        <strong>Ideas, wins &amp; support:</strong>
-                        <a href="mailto:{{ support_email }}?subject={{ ('TradeVerse — feedback, ideas, or success story')|urlencode }}&amp;body={{ ('Hi TradeVerse team,%0D%0A%0D%0A') }}" class="fw-semibold" style="color: #93c5fd;">{{ support_email }}</a>
-                        <span class="opacity-75 mx-1">·</span>
-                        <a href="{{ url_for('main.contact') }}" class="text-decoration-underline" style="color: #e2e8f0;">Contact page</a>
-                    </p>
-                    <p class="mb-0 small opacity-75" style="color: rgba(248,250,252,0.88);">
-                        Opens your mail app on iPhone and Android — bugs, product suggestions, or how TradeVerse helped your trading.
-                    </p>
+                    {% endif %}
+                    <a href="mailto:{{ support_email }}?subject={{ ('TradeVerse — feedback, ideas, or success story')|urlencode }}&amp;body={{ ('Hi TradeVerse team,%0D%0A%0D%0A') }}" class="landing-connect-item">
+                        <i class="fas fa-envelope text-info" aria-hidden="true"></i>
+                        <span class="text-truncate" style="max-width: 14rem;">{{ support_email }}</span>
+                    </a>
+                    <a href="{{ url_for('main.contact') }}" class="landing-connect-item">
+                        <i class="fas fa-comment-dots text-primary" aria-hidden="true"></i>
+                        <span>Contact</span>
+                    </a>
                 </div>
-                
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center trust-row">
-                            <i class="fas fa-check-circle me-2"></i>
-                            <span class="fw-semibold">One-click plan execution</span>
+
+                <div class="landing-hero-trust row g-2 g-sm-3">
+                    <div class="col-12 col-sm-6">
+                        <div class="landing-trust-chip h-100">
+                            <i class="fas fa-check-circle text-success flex-shrink-0" aria-hidden="true"></i>
+                            <span>One-click plan execution</span>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center trust-row">
-                            <i class="fas fa-robot me-2"></i>
-                            <span class="fw-semibold">AI-powered performance insights</span>
+                    <div class="col-12 col-sm-6">
+                        <div class="landing-trust-chip h-100">
+                            <i class="fas fa-robot text-primary flex-shrink-0" aria-hidden="true"></i>
+                            <span>AI-assisted reviews &amp; insights</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-5">
-            <div class="hero-glass p-4 mt-4 mt-lg-0">
+        <div class="col-lg-5 order-1 order-lg-2">
+            <div class="hero-glass p-4 p-md-4 mx-auto" style="max-width: 420px;">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
                             <span class="badge bg-success-subtle text-success fw-semibold">Live</span>
                             <span class="muted ms-2 small">Today's Performance</span>
                         </div>
                         <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-chart-line me-1"></i> View Chart
                             </button>
-                            <ul class="dropdown-menu">
+                            <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-chart-line me-2"></i> Equity Curve</a></li>
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-chart-bar me-2"></i> Daily P/L</a></li>
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-chart-pie me-2"></i> Win Rate</a></li>
                             </ul>
                         </div>
                     </div>
-                    
+
                     <div class="row text-center mb-3">
                         <div class="col-4">
                             <div class="h4 mb-0 text-success">+2.1%</div>
@@ -322,11 +442,11 @@
                             <small class="text-muted">Avg R:R</small>
                         </div>
                     </div>
-                    
+
                     <div class="chart-container" style="height: 160px; position: relative;">
                         <canvas id="miniChart" width="400" height="160"></canvas>
                     </div>
-                    
+
                     <div class="mt-3">
                         <div class="progress" style="height: 8px;">
                             <div class="progress-bar bg-success" style="width: 65%"></div>
@@ -340,31 +460,32 @@
 </div>
 
 {% if not current_user.is_authenticated %}
-<nav id="landing-explore" class="container my-3" aria-label="Explore TradeVerse">
-    <div class="rounded-3 border bg-body-tertiary px-3 py-2 d-flex flex-wrap align-items-center justify-content-center gap-2 gap-md-3 small">
-        <span class="text-muted d-none d-sm-inline me-sm-1">Explore</span>
+<nav id="landing-explore" class="container landing-explore mb-4 mb-lg-5" aria-label="Explore TradeVerse">
+    <div class="landing-explore-inner">
+        <span class="text-secondary small fw-bold text-uppercase d-none d-md-inline me-1" style="letter-spacing: 0.08em;">Explore</span>
+        <span class="landing-explore-sep d-none d-md-inline" aria-hidden="true"></span>
         <a class="link-body-emphasis text-decoration-none" href="{{ url_for('main.features') }}"><i class="fas fa-star me-1 text-primary"></i>Features</a>
-        <span class="text-muted opacity-50 d-none d-sm-inline">·</span>
+        <span class="landing-explore-sep d-none d-sm-inline" aria-hidden="true"></span>
         <a class="link-body-emphasis text-decoration-none" href="{{ url_for('main.pricing') }}"><i class="fas fa-tags me-1 text-primary"></i>Pricing</a>
-        <span class="text-muted opacity-50 d-none d-sm-inline">·</span>
+        <span class="landing-explore-sep d-none d-sm-inline" aria-hidden="true"></span>
         <a class="link-body-emphasis text-decoration-none" href="{{ url_for('main.contact') }}"><i class="fas fa-envelope me-1 text-primary"></i>Contact</a>
         {% if discord_community_url %}
-        <span class="text-muted opacity-50 d-none d-sm-inline">·</span>
+        <span class="landing-explore-sep d-none d-sm-inline" aria-hidden="true"></span>
         <a class="link-body-emphasis text-decoration-none" href="{{ discord_community_url }}" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord me-1" style="color:#5865F2;"></i>Community</a>
         {% endif %}
-        <span class="text-muted opacity-50 d-none d-sm-inline">·</span>
+        <span class="landing-explore-sep d-none d-sm-inline" aria-hidden="true"></span>
         <a class="link-body-emphasis text-decoration-none" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt me-1"></i>Sign in</a>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-sm btn-primary ms-1">Sign up</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-sm btn-primary ms-md-2">Sign up</a>
     </div>
 </nav>
 {% endif %}
 
 <!-- Features Section -->
-<div class="container my-6">
-    <div class="text-center mb-6">
+<div class="container landing-section">
+    <div class="landing-section-head text-center mb-4 mb-lg-5">
         <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Features</span>
         <h2 class="display-5 fw-bold mb-3">Why Traders Choose TradeVerse</h2>
-        <p class="lead text-muted">Everything you need to improve your trading performance</p>
+        <p class="lead text-muted mb-0">Everything you need to improve your trading performance</p>
     </div>
     
     <div class="row g-4">
@@ -527,12 +648,13 @@
 </div>
 
 <!-- Trust & Positioning Section -->
-<div class="container my-6 py-6 landing-gradient-panel">
-    <div class="row align-items-center">
+<div class="container landing-section">
+<div class="landing-gradient-panel">
+    <div class="row align-items-center g-4">
         <div class="col-lg-6">
             <h2 class="display-5 fw-bold mb-3">Built for Serious Traders</h2>
-            <p class="lead mb-4">
-                Designed for disciplined traders who want clarity, repeatability, and measurable improvement. 
+            <p class="lead mb-4 opacity-95">
+                Designed for disciplined traders who want clarity, repeatability, and measurable improvement.
                 Join our growing community of professional traders who trust TradeVerse for their trading success.
             </p>
             {% if discord_community_url %}
@@ -567,7 +689,7 @@
         <div class="col-lg-6">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <div class="card bg-white text-dark shadow-sm landing-quote-card">
+                    <div class="card bg-white text-dark shadow-sm landing-quote-card landing-stat-mini h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
@@ -580,7 +702,7 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card bg-white text-dark shadow-sm landing-quote-card">
+                    <div class="card bg-white text-dark shadow-sm landing-quote-card landing-stat-mini h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
@@ -593,7 +715,7 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card bg-white text-dark shadow-sm landing-quote-card">
+                    <div class="card bg-white text-dark shadow-sm landing-quote-card landing-stat-mini h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
@@ -606,7 +728,7 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card bg-white text-dark shadow-sm landing-quote-card">
+                    <div class="card bg-white text-dark shadow-sm landing-quote-card landing-stat-mini h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
@@ -621,26 +743,33 @@
             </div>
         </div>
     </div>
-    <div class="row mt-4">
+    <div class="row mt-4 pt-2 border-top border-white border-opacity-10">
         <div class="col-12 text-center">
+            {% if not current_user.is_authenticated %}
             <div class="d-flex flex-wrap gap-3 justify-content-center">
-                <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-5 py-3 shadow-lg" style="font-weight: 700; border-radius: 12px;">
+                <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-4 px-md-5 shadow-lg fw-bold rounded-3">
                     <i class="fas fa-rocket me-2"></i> Join Early Access
                 </a>
-                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-5 py-3" style="font-weight: 600; border-radius: 12px;">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-4 px-md-5 fw-semibold rounded-3">
                     <i class="fas fa-sign-in-alt me-2"></i> Sign In
                 </a>
             </div>
+            {% else %}
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-light btn-lg px-5 fw-bold rounded-3 shadow">
+                <i class="fas fa-tachometer-alt me-2"></i> Open dashboard
+            </a>
+            {% endif %}
         </div>
     </div>
 </div>
+</div>
 
 <!-- Testimonials -->
-<div class="container my-6">
-    <div class="text-center mb-6">
+<div class="container landing-section">
+    <div class="landing-section-head text-center mb-4 mb-lg-5">
         <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Success Stories</span>
         <h2 class="display-5 fw-bold mb-3">What Traders Say</h2>
-        <p class="lead text-muted">Join thousands of successful traders</p>
+        <p class="lead text-muted mb-0">Join thousands of successful traders</p>
     </div>
     
     <div class="row g-4">
@@ -737,41 +866,48 @@
 </div>
 
 <!-- CTA Section -->
-<div class="container my-6 py-6 text-center landing-gradient-panel">
+<div class="container landing-section pb-lg-5">
+<div class="landing-gradient-panel text-center">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <h2 class="display-4 fw-bold mb-4">Ready to Level Up Your Trading?</h2>
-            <p class="lead mb-5">
-                Join thousands of traders using TradeVerse to improve their performance. 
-                Start your journey today with our free trial - no credit card required.
+        <div class="col-lg-9 col-xl-8">
+            <h2 class="landing-cta-headline fw-bold mb-3 mb-lg-4">Ready to Level Up Your Trading?</h2>
+            <p class="lead mb-4 mb-lg-5 opacity-95">
+                Join thousands of traders using TradeVerse to improve their performance.
+                Start your journey today with our free trial — no credit card required.
             </p>
-            <div class="row g-3 justify-content-center">
-                <div class="col-md-4">
-                    <div class="d-flex align-items-center justify-content-center text-white opacity-75">
-                        <i class="fas fa-check-circle me-2"></i>
+            <div class="row g-3 justify-content-center mb-4 mb-lg-5">
+                <div class="col-12 col-sm-4">
+                    <div class="d-flex align-items-center justify-content-center text-white opacity-90 small">
+                        <i class="fas fa-check-circle me-2 flex-shrink-0"></i>
                         <span>2-month free trial</span>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="d-flex align-items-center justify-content-center text-white opacity-75">
-                        <i class="fas fa-check-circle me-2"></i>
+                <div class="col-12 col-sm-4">
+                    <div class="d-flex align-items-center justify-content-center text-white opacity-90 small">
+                        <i class="fas fa-check-circle me-2 flex-shrink-0"></i>
                         <span>No credit card required</span>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="d-flex align-items-center justify-content-center text-white opacity-75">
-                        <i class="fas fa-check-circle me-2"></i>
+                <div class="col-12 col-sm-4">
+                    <div class="d-flex align-items-center justify-content-center text-white opacity-90 small">
+                        <i class="fas fa-check-circle me-2 flex-shrink-0"></i>
                         <span>Cancel anytime</span>
                     </div>
                 </div>
             </div>
-            <div class="mt-4">
-                <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-5 py-3 shadow-lg" style="font-weight: 700; border-radius: 12px; font-size: 1.1rem;">
-                    <i class="fas fa-rocket me-3"></i> Start Your Journey Today - It's Free!
-                </a>
-            </div>
+            {% if not current_user.is_authenticated %}
+            <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-4 px-md-5 py-3 shadow-lg fw-bold rounded-3">
+                <i class="fas fa-rocket me-2"></i> Start free — no card required
+            </a>
+            {% else %}
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-light btn-lg px-5 py-3 shadow-lg fw-bold rounded-3">
+                <i class="fas fa-tachometer-alt me-2"></i> Go to your dashboard
+            </a>
+            {% endif %}
         </div>
     </div>
+</div>
+</div>
 </div>
 {% endblock %}
 
