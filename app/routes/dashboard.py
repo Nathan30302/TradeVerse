@@ -16,7 +16,7 @@ from app.services.performance_calculator import calculate_weekly_score, get_perf
 from app.services.pattern_detector import detect_patterns
 from app.services.emotion_analyzer import EmotionAnalyzer, analyze_emotions
 from app.services.ai_insights import AIAnalyzer
-from app.services.web_ai import answer_with_web
+from app.services.web_ai import answer_with_web, OpenAIRateLimited
 from sqlalchemy import case, extract, func, or_, update
 from app import db
 from app.models.user import User
@@ -1051,8 +1051,14 @@ def ai_query():
                 web = answer_with_web(question=question, user_context=ctx, history=history[-12:])
                 answer = web.answer
                 follow_ups = [str(x) for x in (web.follow_ups or []) if x]
+            except OpenAIRateLimited:
+                current_app.logger.info(
+                    "Web AI: OpenAI rate limited after retries; using local coach."
+                )
             except Exception:
-                current_app.logger.warning("Web AI failed; falling back to local coach", exc_info=True)
+                current_app.logger.warning(
+                    "Web AI failed; falling back to local coach", exc_info=True
+                )
 
         if not answer:
             result = AIAnalyzer(current_user.id).answer_question(

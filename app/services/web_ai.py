@@ -10,7 +10,14 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import os
+import random
+import time
+
 import requests
+
+
+class OpenAIRateLimited(Exception):
+    """Raised when OpenAI returns 429 after retries (callers should fall back quietly)."""
 
 
 @dataclass(frozen=True)
@@ -31,8 +38,11 @@ def _tavily_search(query: str, *, max_results: int = 5, timeout_s: int = 10) -> 
         "include_answer": False,
         "include_raw_content": False,
     }
-    resp = requests.post(url, json=payload, timeout=timeout_s)
-    resp.raise_for_status()
+    try:
+        resp = requests.post(url, json=payload, timeout=timeout_s)
+        resp.raise_for_status()
+    except requests.RequestException:
+        return []
     data = resp.json() or {}
     results = data.get("results") or []
     if not isinstance(results, list):
@@ -51,7 +61,27 @@ def _tavily_search(query: str, *, max_results: int = 5, timeout_s: int = 10) -> 
     return out
 
 
-def _openai_chat(system: str, user: str, *, model: str = "gpt-4o-mini", timeout_s: int = 20) -> str:
+def _retry_after_seconds(resp: requests.Response, attempt: int) -> float:
+    """Parse Retry-After or use bounded exponential backoff (seconds)."""
+    raw = (resp.headers.get("Retry-After") or "").strip()
+    if raw:
+        try:
+            return min(max(float(raw), 0.5), 25.0)
+        except ValueError:
+            pass
+    # jitter reduces thundering herd when many workers hit 429 together
+    base = min(2.0**attempt, 12.0)
+    return base + random.uniform(0.0, 0.75)
+
+
+def _openai_chat(
+    system: str,
+    user: str,
+    *,
+    model: str = "gpt-4o-mini",
+    timeout_s: int = 20,
+    max_retries: int = 4,
+) -> str:
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY missing")
@@ -65,14 +95,34 @@ def _openai_chat(system: str, user: str, *, model: str = "gpt-4o-mini", timeout_
             {"role": "user", "content": user},
         ],
     }
-    resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
-    resp.raise_for_status()
-    data = resp.json() or {}
-    choices = data.get("choices") or []
-    if not choices:
-        return ""
-    msg = (choices[0].get("message") or {}) if isinstance(choices[0], dict) else {}
-    return str(msg.get("content") or "")
+    last_resp: requests.Response | None = None
+    for attempt in range(max_retries):
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
+        last_resp = resp
+        if resp.status_code == 429:
+            if attempt + 1 >= max_retries:
+                break
+            delay = _retry_after_seconds(resp, attempt)
+            time.sleep(delay)
+            continue
+        if resp.status_code in (500, 502, 503, 504):
+            if attempt + 1 >= max_retries:
+                break
+            time.sleep(_retry_after_seconds(resp, attempt))
+            continue
+        resp.raise_for_status()
+        data = resp.json() or {}
+        choices = data.get("choices") or []
+        if not choices:
+            return ""
+        msg = (choices[0].get("message") or {}) if isinstance(choices[0], dict) else {}
+        return str(msg.get("content") or "")
+
+    if last_resp is not None and last_resp.status_code == 429:
+        raise OpenAIRateLimited("OpenAI rate limit (429) after retries")
+    if last_resp is not None:
+        last_resp.raise_for_status()
+    return ""
 
 
 def answer_with_web(
