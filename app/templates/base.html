@@ -1261,13 +1261,7 @@
         .instrument-rotator .live-indicator {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
-            color: rgba(255,255,255,0.82);
-            font-size: 0.72rem;
-            font-weight: 800;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            user-select: none;
+            flex-shrink: 0;
             position: relative;
         }
 
@@ -2146,10 +2140,9 @@
             </a>
             <!-- Instrument rotator + stats: hidden below md (phones); tablet+ only (Bootstrap utilities, not JS-toggled). -->
             <div class="tv-navbar-market-strip d-none d-md-flex align-items-center ms-1 ms-lg-2 flex-shrink-1 min-w-0" style="gap:1rem;">
-                <div id="instrument-rotator" class="instrument-rotator d-flex align-items-center" aria-label="{% if not current_user.is_authenticated and request.endpoint == 'main.index' %}Live{% else %}Market movers ticker{% endif %}">
-                    <span class="live-indicator" id="rot-feed-badge"{% if not (not current_user.is_authenticated and request.endpoint == 'main.index') %} title="Market overview"{% endif %}>
-                        <span class="live-dot" aria-hidden="true"></span>
-                        <span id="rot-feed-label" class="visually-hidden">{% if not current_user.is_authenticated and request.endpoint == 'main.index' %}Live{% else %}Market overview{% endif %}</span>
+                <div id="instrument-rotator" class="instrument-rotator d-flex align-items-center" aria-label="Market overview">
+                    <span class="live-indicator" id="rot-feed-badge" aria-hidden="true">
+                        <span class="live-dot"></span>
                     </span>
                     <div class="instrument-slot">
                         <span class="instrument-icon me-2"><i class="fas fa-chart-line"></i></span>
@@ -2805,7 +2798,7 @@
                     const resp = await fetch('/api/db/instruments/quotes?limit=8&ttl_s=3600');
                     if(!resp.ok) {
                         const ind = document.getElementById('rot-feed-badge');
-                        if (ind) ind.title = 'Market overview unavailable';
+                        if (ind) ind.title = '';
                         return false;
                     }
                     const data = await resp.json();
@@ -2820,16 +2813,6 @@
                             icon: (q.symbol||'').toLowerCase().includes('btc') ? 'fab fa-bitcoin' : 'fas fa-chart-line'
                         }));
                         lastQuotesAt = Date.now();
-                        try{
-                            const liveIndicator = document.getElementById('rot-feed-badge');
-                            const liveLbl = document.getElementById('rot-feed-label');
-                            if (liveIndicator) {
-                                liveIndicator.title = 'Market overview';
-                            }
-                            if (liveLbl) {
-                                liveLbl.textContent = 'Market overview';
-                            }
-                        }catch(e){}
                         return true;
                     }
                 }catch(e){ /* silent fallback */ }
