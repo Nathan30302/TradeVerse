@@ -108,7 +108,7 @@
                             <div class="row g-4 align-items-center mb-2 pb-3 border-bottom border-secondary border-opacity-25">
                                 <div class="col-auto">
                                     {% set av = current_user.avatar_url %}
-                                    <img src="{% if av %}{% if av.startswith('http://') or av.startswith('https://') or av.startswith('/static/') %}{{ av }}{% else %}{{ url_for('static', filename=av) }}{% endif %}{% else %}{{ url_for('static', filename='img/default-avatar.png') }}{% endif %}"
+                                    <img src="{% if av %}{% if av.startswith('http://') or av.startswith('https://') or av.startswith('/static/') %}{{ av }}{% else %}{{ url_for('static', filename=av) }}{% endif %}{% else %}{{ url_for('static', filename='img/default-avatar.svg') }}{% endif %}"
                                          alt="" class="rounded-circle border border-secondary border-opacity-50" style="width:72px;height:72px;object-fit:cover;">
                                 </div>
                                 <div class="col">

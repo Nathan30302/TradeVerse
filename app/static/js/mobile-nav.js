@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Open mobile menu
     function openMobileNav() {
         mobileNavDrawer.classList.add('active');
+        mobileNavDrawer.setAttribute('aria-hidden', 'false');
+        mobileNavDrawer.removeAttribute('inert');
         if (mobileNavOverlay) {
             mobileNavOverlay.classList.add('active');
         }
@@ -22,6 +24,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Close mobile menu
     function closeMobileNav() {
         mobileNavDrawer.classList.remove('active');
+        mobileNavDrawer.setAttribute('aria-hidden', 'true');
+        mobileNavDrawer.setAttribute('inert', '');
         if (mobileNavOverlay) {
             mobileNavOverlay.classList.remove('active');
         }
