@@ -2055,10 +2055,9 @@
                         <span class="instrument-icon me-2"><i class="fas fa-chart-line"></i></span>
                         <span class="instrument-symbol">—</span>
                         <span class="instrument-name text-muted ms-2">—</span>
-                        <span class="instrument-price ms-3">—</span>
                         <span class="instrument-change ms-2">—</span>
-                        <span class="quote-updated ms-2" id="quote-updated">—</span>
                     </div>
+                    <span class="quote-updated ms-2" id="quote-updated" aria-label="Quote snapshot age">—</span>
                 </div>
 
                 <div id="dynamic-island" class="dynamic-island d-none d-lg-flex align-items-center" title="Trading stats">
@@ -2668,8 +2667,8 @@
                 chg.className = `instrument-change ${changeClass}`;
                 const v = Number(it.change);
                 const safeV = (Number.isFinite(v) ? v : 0);
-                const arrow = safeV >= 0 ? '▲' : '▼';
-                chg.textContent = `${arrow} ${safeV >= 0 ? '+' : ''}${safeV.toFixed(2)}%`;
+                /* Direction arrow comes from CSS ::before on .instrument-change */
+                chg.textContent = `${safeV >= 0 ? '+' : ''}${safeV.toFixed(2)}%`;
 
                 slot.appendChild(iconWrap);
                 slot.appendChild(sym);
@@ -2720,12 +2719,11 @@
                         try{
                             const liveIndicator = document.getElementById('rot-feed-badge');
                             const liveLbl = document.getElementById('rot-feed-label');
-                            // Keep the green indicator but remove the "LIVE" text.
                             if (liveLbl) {
-                                liveLbl.textContent = '';
+                                liveLbl.textContent = 'Live';
                             }
                             if(liveIndicator && data.source){
-                                liveIndicator.title = 'Live' + ' · ' + String(data.source);
+                                liveIndicator.title = 'Live · ' + String(data.source);
                             }
                         }catch(e){}
                         return true;

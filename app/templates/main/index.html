@@ -411,48 +411,42 @@
         </div>
         <div class="col-lg-5 order-1 order-lg-2">
             <div class="hero-glass p-4 p-md-4 mx-auto" style="max-width: 420px;">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <span class="badge bg-success-subtle text-success fw-semibold">Live</span>
-                            <span class="muted ms-2 small">Today's Performance</span>
-                        </div>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-chart-line me-1"></i> View Chart
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-chart-line me-2"></i> Equity Curve</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-chart-bar me-2"></i> Daily P/L</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-chart-pie me-2"></i> Win Rate</a></li>
-                            </ul>
-                        </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <span class="badge bg-secondary-subtle text-secondary fw-semibold">Preview</span>
+                        <span class="text-muted ms-2 small">Sample dashboard look</span>
                     </div>
+                    <a href="{{ url_for('main.features') }}" class="btn btn-sm btn-outline-light">
+                        <i class="fas fa-layer-group me-1"></i> Features
+                    </a>
+                </div>
 
-                    <div class="row text-center mb-3">
-                        <div class="col-4">
-                            <div class="h4 mb-0 text-success">+2.1%</div>
-                            <small class="text-muted">P/L</small>
-                        </div>
-                        <div class="col-4">
-                            <div class="h4 mb-0">3</div>
-                            <small class="text-muted">Trades</small>
-                        </div>
-                        <div class="col-4">
-                            <div class="h4 mb-0 text-primary">1:2.5</div>
-                            <small class="text-muted">Avg R:R</small>
-                        </div>
+                <div class="row text-center mb-3" aria-hidden="true">
+                    <div class="col-4">
+                        <div class="h4 mb-0 text-success">+2.1%</div>
+                        <small class="text-muted">P/L</small>
                     </div>
+                    <div class="col-4">
+                        <div class="h4 mb-0">3</div>
+                        <small class="text-muted">Trades</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="h4 mb-0 text-primary">1:2.5</div>
+                        <small class="text-muted">Avg R:R</small>
+                    </div>
+                </div>
+                <p class="visually-hidden">Illustrative numbers for layout; not your account data.</p>
 
-                    <div class="chart-container" style="height: 160px; position: relative;">
-                        <canvas id="miniChart" width="400" height="160"></canvas>
-                    </div>
+                <div class="chart-container" style="height: 160px; position: relative;">
+                    <canvas id="miniChart" width="400" height="160" aria-hidden="true"></canvas>
+                </div>
 
-                    <div class="mt-3">
-                        <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-success" style="width: 65%"></div>
-                        </div>
-                        <small class="muted">Monthly target: 65% complete</small>
+                <div class="mt-3">
+                    <div class="progress" style="height: 8px;" aria-hidden="true">
+                        <div class="progress-bar bg-success" style="width: 65%"></div>
                     </div>
+                    <small class="text-muted">Example: monthly goal progress</small>
+                </div>
             </div>
         </div>
       </div>
@@ -660,9 +654,8 @@
             {% if discord_community_url %}
             <p class="mb-4 small opacity-90">
                 <a href="{{ discord_community_url }}" class="text-white text-decoration-underline fw-semibold" target="_blank" rel="noopener noreferrer">
-                    <i class="fab fa-discord me-1"></i>Join our community
+                    <i class="fab fa-discord me-1"></i>Join our community on Discord
                 </a>
-                <span class="opacity-75"> — same invite as above; jump in anytime.</span>
             </p>
             {% endif %}
             <div class="row g-3">
