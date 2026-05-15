@@ -32,6 +32,24 @@
         color: #e2e8f0 !important;
         background: rgba(30, 41, 59, 0.6);
     }
+    body[data-theme="light"] .tv-settings-tabs .nav-link:not(.active),
+    body[data-theme="sand"] .tv-settings-tabs .nav-link:not(.active) {
+        color: #334155 !important;
+        background: #f1f5f9 !important;
+        border: 1px solid #e2e8f0;
+    }
+    body[data-theme="light"] .tv-settings-tabs .nav-link.active,
+    body[data-theme="sand"] .tv-settings-tabs .nav-link.active {
+        color: #fff !important;
+        border-color: transparent;
+    }
+    .tv-plan-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-weight: 700;
+        font-size: 0.8125rem;
+    }
     .tv-settings-card {
         border-radius: 18px !important;
         border: 1px solid rgba(148, 163, 184, 0.18) !important;
@@ -259,14 +277,23 @@
                         <div class="tv-surface soft rounded-3 p-4 mb-4">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                                 <div>
-                                    <div class="small text-muted text-uppercase fw-semibold mb-1">Current access</div>
-                                    <div class="fs-5 fw-bold">
-                                        {% if sub.tier == 'owner' %}Owner
+                                    <div class="small text-muted text-uppercase fw-semibold mb-1">Current plan</div>
+                                    <div class="tv-plan-pill mt-1">
+                                        {% if sub.tier == 'owner' %}
+                                            <span class="badge rounded-pill bg-warning text-dark">Owner</span>
+                                        {% elif owner_platform_session_only %}
+                                            <span class="badge rounded-pill bg-warning text-dark">Admin</span>
                                         {% elif sub.status == 'trialing' %}
-                                            {% if sub.tier == 'pro_plus' %}Pro Plus (trial){% elif sub.tier == 'pro' %}Pro (trial){% else %}Trial{% endif %}
-                                        {% elif sub.tier == 'pro_plus' %}Pro Plus
-                                        {% elif sub.tier == 'pro' %}Pro
-                                        {% else %}Free{% endif %}
+                                            <span class="badge rounded-pill bg-info text-dark">
+                                                {% if sub.tier == 'pro_plus' %}Pro Plus trial{% elif sub.tier == 'pro' %}Pro trial{% else %}Trial{% endif %}
+                                            </span>
+                                        {% elif sub.tier == 'pro_plus' %}
+                                            <span class="badge rounded-pill bg-primary">Pro Plus</span>
+                                        {% elif sub.tier == 'pro' %}
+                                            <span class="badge rounded-pill bg-primary bg-opacity-75">Pro</span>
+                                        {% else %}
+                                            <span class="badge rounded-pill bg-secondary">Free</span>
+                                        {% endif %}
                                     </div>
                                     {% if sub.status == 'trialing' and sub.trial_ends_at %}
                                     <div class="small text-muted mt-1">

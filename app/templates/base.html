@@ -446,6 +446,24 @@
             min-width: 0;
             flex: 1 1 auto;
             overflow: hidden;
+            gap: 0.65rem;
+            align-items: center;
+        }
+        #instrument-rotator.instrument-rotator {
+            flex-shrink: 1;
+            min-width: 0;
+        }
+        .tv-navbar-market-strip .instrument-name {
+            display: none;
+        }
+        @media (min-width: 1400px) {
+            .tv-navbar-market-strip .instrument-name {
+                display: inline;
+                max-width: 5.5rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
         }
         .tv-nav-account-slot {
             flex: 0 0 auto;
@@ -533,6 +551,12 @@
         body[data-tv-landing="1"] .landing-hero .landing-trial-note {
             color: rgba(255, 255, 255, 0.78) !important;
         }
+        body[data-tv-landing="1"] .tv-navbar-market-strip {
+            gap: 0.5rem;
+        }
+        body[data-tv-landing="1"] #dynamic-island {
+            flex-shrink: 0;
+        }
 
         .btn-navbar {
             background-color: var(--card-bg);
@@ -606,6 +630,21 @@
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
             max-width: 100%;
             overflow: hidden;
+        }
+        .tv-account-chip .badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            vertical-align: middle;
+        }
+        body[data-theme="light"] .tv-account-chip,
+        body[data-theme="sand"] .tv-account-chip {
+            background: linear-gradient(155deg, rgba(99, 102, 241, 0.18), rgba(30, 41, 59, 0.92));
+            border-color: rgba(148, 163, 184, 0.35);
+        }
+        body[data-theme="light"] .tv-account-chip .fw-semibold,
+        body[data-theme="sand"] .tv-account-chip .fw-semibold {
+            color: #f8fafc !important;
         }
         .tv-account-avatar {
             width: 38px;
@@ -1345,12 +1384,9 @@
             background: rgba(255,255,255,0.05);
         }
 
+        /* Age counter between ticker and island — hidden (cleaner navbar, matches marketing mock) */
         .instrument-rotator .quote-updated {
-            color: rgba(255,255,255,0.65);
-            font-size: 0.78rem;
-            font-weight: 600;
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
+            display: none !important;
         }
 
         .instrument-rotator .instrument-icon i {
@@ -1474,6 +1510,42 @@
         body[data-theme="light"] .tv-page-hero .page-title {
             color: #0f172a;
             text-shadow: none;
+        }
+        body[data-theme="light"] .tv-page-hero .page-subtitle,
+        body[data-theme="sand"] .tv-page-hero .page-subtitle {
+            color: #475569 !important;
+        }
+        body[data-theme="light"] .tv-page-hero a,
+        body[data-theme="sand"] .tv-page-hero a {
+            color: #4f46e5;
+        }
+
+        /* Page headers: consistent vertical rhythm app-wide */
+        .page-header .row {
+            align-items: center;
+        }
+        .page-header .page-title {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.35rem 0.5rem;
+            line-height: 1.2;
+        }
+        .page-header .page-title i {
+            opacity: 0.92;
+        }
+        .page-header .col-auto .btn {
+            white-space: nowrap;
+        }
+
+        /* Cards & forms: prevent horizontal bleed on narrow layouts */
+        .main-content .card-body,
+        .main-content .table-responsive {
+            min-width: 0;
+        }
+        .form-label {
+            margin-bottom: 0.35rem;
+            font-weight: 600;
         }
 
         body[data-theme="blue"] .tv-page-hero {
@@ -2800,15 +2872,7 @@
                 slot.appendChild(name);
                 slot.appendChild(chg);
 
-                // Updated label (e.g. "5s" / "2m")
-                if (quoteUpdatedEl) {
-                    if (!lastQuotesAt) {
-                        quoteUpdatedEl.textContent = '—';
-                    } else {
-                        const seconds = Math.max(0, Math.floor((Date.now() - lastQuotesAt) / 1000));
-                        quoteUpdatedEl.textContent = seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m`;
-                    }
-                }
+                /* quote-updated hidden in navbar CSS — skip DOM updates */
                 slot.classList.add('fade-in');
             }
 
@@ -3019,15 +3083,18 @@
                     rotator.addEventListener('click', () => fetchInstruments());
                 }
                 // update island periodically with server stats
-                updateIslandFromServer();
-                // Avoid redundant polling on /dashboard where the page already refreshes.
-                if(!String(window.location.pathname || '').startsWith('/dashboard')){
-                    setInterval(updateIslandFromServer, 30000);
-                    // manual refresh on click for real-time updates
-                    if(island){
-                        island.style.cursor = 'pointer';
-                        island.title = 'Click to refresh';
-                        island.addEventListener('click', () => updateIslandFromServer());
+                if (isMarketingLanding) {
+                    updateIslandFallback();
+                } else {
+                    updateIslandFromServer();
+                    // Avoid redundant polling on /dashboard where the page already refreshes.
+                    if(!String(window.location.pathname || '').startsWith('/dashboard')){
+                        setInterval(updateIslandFromServer, 30000);
+                        if(island){
+                            island.style.cursor = 'pointer';
+                            island.title = 'Click to refresh';
+                            island.addEventListener('click', () => updateIslandFromServer());
+                        }
                     }
                 }
             }
