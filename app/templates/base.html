@@ -1197,42 +1197,6 @@
             100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
 
-        .rot-feed-tag {
-            font-size: 0.62rem;
-            font-weight: 800;
-            letter-spacing: 0.06em;
-            padding: 0.1rem 0.42rem;
-            border-radius: 6px;
-            text-transform: uppercase;
-        }
-        .rot-feed-tag.sim {
-            background: rgba(251, 191, 36, 0.16);
-            color: #fde68a;
-        }
-        .rot-feed-tag.live {
-            background: rgba(34, 197, 94, 0.15);
-            color: #bbf7d0;
-        }
-        .rot-feed-tag.off {
-            background: rgba(148, 163, 184, 0.14);
-            color: #e2e8f0;
-        }
-        .instrument-rotator .instrument-slot .instrument-price {
-            font-family: ui-monospace, monospace;
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: rgba(250, 250, 250, 0.9);
-            white-space: nowrap;
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .instrument-rotator .live-dot { animation: none !important; }
-        }
-        .instrument-rotator:focus-visible {
-            outline: 2px solid rgba(165, 180, 252, 0.95);
-            outline-offset: 2px;
-            border-radius: 12px;
-        }
-
         .instrument-rotator .instrument-slot {
             display: flex;
             align-items: center;
@@ -2048,7 +2012,7 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{% set _th = current_user.theme or 'dark' %}{% if _th in ui_theme_choices %}{{ _th }}{% else %}dark{% endif %}{% else %}{% endif %}" data-market-quotes="{% if config.FEATURE_MARKET_QUOTES %}1{% else %}0{% endif %}">
+<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{% set _th = current_user.theme or 'dark' %}{% if _th in ui_theme_choices %}{{ _th }}{% else %}dark{% endif %}{% else %}{% endif %}">
 
     {% if maintenance_mode %}
     <div class="alert alert-warning rounded-0 border-0 mb-0 text-center py-2 small" role="alert">
@@ -2082,10 +2046,10 @@
             </a>
             <!-- Instrument rotator + stats: hidden below md (phones); tablet+ only (Bootstrap utilities, not JS-toggled). -->
             <div class="tv-navbar-market-strip d-none d-md-flex align-items-center ms-2 ms-lg-4 flex-shrink-0" style="gap:1rem;">
-                <div id="instrument-rotator" class="instrument-rotator d-flex align-items-center" aria-label="Market movers ticker" tabindex="0">
+                <div id="instrument-rotator" class="instrument-rotator d-flex align-items-center" aria-label="Market movers ticker">
                     <span class="live-indicator" id="rot-feed-badge" title="Market movers snapshot">
                         <span class="live-dot" aria-hidden="true"></span>
-                        <span id="rot-feed-label" class="rot-feed-tag sim" title="">Sim</span>
+                        <span id="rot-feed-label">—</span>
                     </span>
                     <div class="instrument-slot">
                         <span class="instrument-icon me-2"><i class="fas fa-chart-line"></i></span>
@@ -2653,14 +2617,13 @@
     <script>
         // Instrument rotator (single fixed slot) + Dynamic Island
         (function(){
-            const QUOTES_CACHE_KEY = 'tv_nav_quotes_v1';
             const fallbackData = [
-                { symbol: 'BTC', code: 'BTCUSD', name: 'Bitcoin', change: 2.35, price: 67200, icon: 'fab fa-bitcoin' },
-                { symbol: 'XAU', code: 'XAUUSD', name: 'Gold', change: 0.18, price: 2340, icon: 'fas fa-gem' },
-                { symbol: 'NAS100', code: 'NAS100', name: 'Nasdaq 100', change: 1.92, price: 17880, icon: 'fas fa-chart-line' },
-                { symbol: 'US30', code: 'US30', name: 'US30', change: -0.45, price: 38400, icon: 'fas fa-chart-bar' },
-                { symbol: 'US500', code: 'US500', name: 'S&P 500', change: 1.15, price: 5280, icon: 'fas fa-line-chart' },
-                { symbol: 'EUR', code: 'EURUSD', name: 'EUR/USD', change: -0.42, price: 1.085, icon: 'fas fa-euro-sign' }
+                { symbol: 'BTC', code: 'BTCUSD', name: 'Bitcoin', change: 2.35, icon: 'fab fa-bitcoin' },
+                { symbol: 'XAU', code: 'XAUUSD', name: 'Gold', change: 0.18, icon: 'fas fa-gem' },
+                { symbol: 'NAS100', code: 'NAS100', name: 'Nasdaq 100', change: 1.92, icon: 'fas fa-chart-line' },
+                { symbol: 'US30', code: 'US30', name: 'US30', change: -0.45, icon: 'fas fa-chart-bar' },
+                { symbol: 'US500', code: 'US500', name: 'S&P 500', change: 1.15, icon: 'fas fa-line-chart' },
+                { symbol: 'EUR', code: 'EURUSD', name: 'EUR/USD', change: -0.42, icon: 'fas fa-euro-sign' }
             ];
 
             const rotator = document.getElementById('instrument-rotator');
@@ -2670,61 +2633,9 @@
 
             let instruments = fallbackData.slice();
             let idx = 0;
+            const rotateInterval = 4000; // ms
             let rotateTimer = null;
             let lastQuotesAt = null;
-
-            const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-            function nextRotateMs(){
-                if (reducedMotion()) return 7800 + Math.floor(Math.random() * 5200);
-                return 3200 + Math.floor(Math.random() * 4200);
-            }
-
-            function readQuotesCache(){
-                try {
-                    const raw = sessionStorage.getItem(QUOTES_CACHE_KEY);
-                    if (!raw) return null;
-                    const o = JSON.parse(raw);
-                    if (!o || !Array.isArray(o.items) || !o.ts) return null;
-                    if (Date.now() - o.ts > 86400000) return null;
-                    return o.items;
-                } catch (e) { return null; }
-            }
-
-            function writeQuotesCache(items){
-                try {
-                    sessionStorage.setItem(QUOTES_CACHE_KEY, JSON.stringify({ ts: Date.now(), items: items }));
-                } catch (e) {}
-            }
-
-            function setFeedBadge(isLive, source, cached){
-                const liveLbl = document.getElementById('rot-feed-label');
-                const ind = document.getElementById('rot-feed-badge');
-                if (!liveLbl) return;
-                const marketOn = document.body.getAttribute('data-market-quotes') === '1';
-                liveLbl.classList.remove('sim', 'live', 'off');
-                if (!marketOn) {
-                    liveLbl.textContent = 'Off';
-                    liveLbl.classList.add('off');
-                    liveLbl.title = 'Market ticker disabled';
-                    if (ind) ind.title = 'Market ticker disabled';
-                    return;
-                }
-                if (cached) {
-                    liveLbl.textContent = 'Saved';
-                    liveLbl.classList.add('sim');
-                    liveLbl.title = 'Last snapshot (offline or retry)';
-                } else if (isLive) {
-                    liveLbl.textContent = 'Live';
-                    liveLbl.classList.add('live');
-                    liveLbl.title = source ? ('Live · ' + source) : 'Live quotes';
-                } else {
-                    liveLbl.textContent = 'Demo';
-                    liveLbl.classList.add('sim');
-                    liveLbl.title = source ? ('Sample movers · ' + source) : 'Illustrative sample data';
-                }
-                if (ind) ind.title = liveLbl.title;
-            }
 
             function formatPrice(p){
                 if (Math.abs(p) >= 1000) return Intl.NumberFormat().format(Math.round(p));
@@ -2734,8 +2645,10 @@
             function applyInstrument(it){
                 if(!slot) return;
                 const changeClass = (it.change || 0) >= 0 ? 'positive' : 'negative';
+                // Smooth fade transition - show only name, % change with arrow and color (no prices)
                 slot.classList.remove('fade-in');
                 void slot.offsetWidth;
+                // Safe DOM updates (no innerHTML)
                 slot.textContent = '';
                 const iconWrap = document.createElement('span');
                 iconWrap.className = 'instrument-icon';
@@ -2751,29 +2664,19 @@
                 name.className = 'instrument-name';
                 name.textContent = String(it.name || '—');
 
-                const priceN = Number(it.price);
-                if (priceN > 0) {
-                    const pr = document.createElement('span');
-                    pr.className = 'instrument-price ms-2';
-                    pr.textContent = formatPrice(priceN);
-                    slot.appendChild(iconWrap);
-                    slot.appendChild(sym);
-                    slot.appendChild(name);
-                    slot.appendChild(pr);
-                } else {
-                    slot.appendChild(iconWrap);
-                    slot.appendChild(sym);
-                    slot.appendChild(name);
-                }
-
                 const chg = document.createElement('span');
                 chg.className = `instrument-change ${changeClass}`;
                 const v = Number(it.change);
                 const safeV = (Number.isFinite(v) ? v : 0);
                 const arrow = safeV >= 0 ? '▲' : '▼';
                 chg.textContent = `${arrow} ${safeV >= 0 ? '+' : ''}${safeV.toFixed(2)}%`;
+
+                slot.appendChild(iconWrap);
+                slot.appendChild(sym);
+                slot.appendChild(name);
                 slot.appendChild(chg);
 
+                // Updated label (e.g. "5s" / "2m")
                 if (quoteUpdatedEl) {
                     if (!lastQuotesAt) {
                         quoteUpdatedEl.textContent = '—';
@@ -2781,7 +2684,6 @@
                         const seconds = Math.max(0, Math.floor((Date.now() - lastQuotesAt) / 1000));
                         quoteUpdatedEl.textContent = seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m`;
                     }
-                    slot.appendChild(quoteUpdatedEl);
                 }
                 slot.classList.add('fade-in');
             }
@@ -2794,66 +2696,53 @@
             }
 
             async function fetchInstruments(){
-                const marketOn = document.body.getAttribute('data-market-quotes') === '1';
-                if (!marketOn) {
-                    instruments = fallbackData.slice();
-                    setFeedBadge(false, 'disabled', false);
-                    return false;
-                }
-                const tryCache = () => {
-                    const cached = readQuotesCache();
-                    if (cached && cached.length) {
-                        instruments = cached;
-                        setFeedBadge(false, 'cache', true);
-                        return true;
-                    }
-                    return false;
-                };
                 try{
+                    // Request hourly-ish data by default (server may still respond faster)
                     const resp = await fetch('/api/db/instruments/quotes?limit=8&ttl_s=3600');
                     if(!resp.ok) {
-                        if (tryCache()) return true;
-                        setFeedBadge(false, 'offline', false);
+                        const lbl = document.getElementById('rot-feed-label');
+                        if (lbl) lbl.textContent = '—';
                         return false;
                     }
                     const data = await resp.json();
                     if(data && data.quotes && data.quotes.length){
+                        // map to our shape
                         instruments = data.quotes.map(q => ({
                             symbol: q.symbol || q.code || q.ticker || 'N/A',
                             code: q.code || q.symbol || q.ticker,
                             name: q.name || q.symbol || q.code || '',
-                            price: parseFloat(q.price || q.last || q.bid || 0) || 0,
-                            change: typeof q.change_pct !== 'undefined' ? parseFloat(q.change_pct) : (parseFloat(q.change) || 0),
+                            price: q.price || q.last || q.bid || 0,
+                            change: typeof q.change_pct !== 'undefined' ? parseFloat(q.change_pct) : (q.change || 0),
                             icon: (q.symbol||'').toLowerCase().includes('btc') ? 'fab fa-bitcoin' : 'fas fa-chart-line'
                         }));
                         lastQuotesAt = Date.now();
-                        writeQuotesCache(instruments);
-                        setFeedBadge(!!data.is_live, data.source || '', false);
+                        // Update feed badge: LIVE + tooltip
+                        try{
+                            const liveIndicator = document.getElementById('rot-feed-badge');
+                            const liveLbl = document.getElementById('rot-feed-label');
+                            // Keep the green indicator but remove the "LIVE" text.
+                            if (liveLbl) {
+                                liveLbl.textContent = '';
+                            }
+                            if(liveIndicator && data.source){
+                                liveIndicator.title = 'Live' + ' · ' + String(data.source);
+                            }
+                        }catch(e){}
                         return true;
                     }
-                }catch(e){ /* silent */ }
-                if (tryCache()) return true;
-                instruments = fallbackData.slice();
-                setFeedBadge(false, 'offline', false);
+                }catch(e){ /* silent fallback */ }
                 return false;
-            }
-
-            function scheduleRotate(){
-                rotateTimer = setTimeout(function(){
-                    rotateTimer = null;
-                    rotateOnce();
-                    scheduleRotate();
-                }, nextRotateMs());
             }
 
             function startRotation(){
                 if (rotateTimer) return;
-                scheduleRotate();
+                rotateOnce();
+                rotateTimer = setInterval(rotateOnce, rotateInterval);
             }
 
             function stopRotation(){
                 if (!rotateTimer) return;
-                clearTimeout(rotateTimer);
+                clearInterval(rotateTimer);
                 rotateTimer = null;
             }
 
@@ -3006,29 +2895,23 @@
             }
 
             async function init(){
+                // try fetching live instruments, otherwise use fallback
                 await fetchInstruments();
-                if (instruments && instruments.length) {
-                    idx = 0;
-                    rotateOnce();
-                }
+                // Visibility: strip uses d-none d-md-flex; island uses d-none d-lg-flex (do not remove — avoids showing on phones).
                 startRotation();
+                // Refresh “daily movement” snapshot hourly (premium, predictable cadence)
                 setInterval(fetchInstruments, 60 * 60 * 1000);
                 if (rotator) {
                     rotator.style.cursor = 'pointer';
-                    rotator.title = 'Click for fresh snapshot · Right arrow: next symbol';
-                    rotator.addEventListener('click', function (ev) {
-                        if (ev.target.closest && ev.target.closest('#rot-feed-badge')) return;
-                        fetchInstruments();
-                    });
-                    rotator.addEventListener('keydown', function (ev) {
-                        if (ev.key !== 'ArrowRight') return;
-                        ev.preventDefault();
-                        rotateOnce();
-                    });
+                    rotator.title = 'Click to refresh market movers';
+                    rotator.addEventListener('click', () => fetchInstruments());
                 }
+                // update island periodically with server stats
                 updateIslandFromServer();
+                // Avoid redundant polling on /dashboard where the page already refreshes.
                 if(!String(window.location.pathname || '').startsWith('/dashboard')){
                     setInterval(updateIslandFromServer, 30000);
+                    // manual refresh on click for real-time updates
                     if(island){
                         island.style.cursor = 'pointer';
                         island.title = 'Click to refresh';
@@ -3039,6 +2922,7 @@
 
             document.addEventListener('DOMContentLoaded', init);
 
+            // Pause rotator on hover (prevents jitter while reading)
             if (rotator) {
                 rotator.addEventListener('mouseenter', stopRotation);
                 rotator.addEventListener('mouseleave', startRotation);

@@ -276,52 +276,6 @@
     .auth-feature span {
         font-size: 0.75rem;
     }
-
-    /* Trading wisdom rotator (signup) */
-    .auth-quote {
-        text-align: center;
-        margin-top: 2rem;
-        padding: 1rem 1.1rem 1.15rem;
-        background: rgba(99, 102, 241, 0.12);
-        border-radius: 14px;
-        border-left: 3px solid #667eea;
-        max-width: 480px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    .auth-quote-line {
-        color: #e2e8f0;
-        font-style: italic;
-        font-size: 0.9rem;
-        margin: 0 0 0.65rem 0;
-        line-height: 1.55;
-    }
-    .auth-quote-toolbar {
-        display: block;
-        margin-top: 0.5rem;
-    }
-    .auth-quote-progress {
-        width: 100%;
-        height: 5px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 4px;
-        overflow: hidden;
-    }
-    .auth-quote-bar {
-        height: 100%;
-        width: 0%;
-        border-radius: 4px;
-        background: linear-gradient(90deg, #667eea, #a855f7);
-        transition: none;
-    }
-    .auth-quote-hint {
-        font-size: 0.72rem;
-        color: #64748b;
-        margin-top: 0.5rem;
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .auth-quote-bar { transition: none; }
-    }
     
     .navbar, .sidebar, footer {
         display: none !important;
@@ -468,20 +422,6 @@
             </a>
         </div>
         
-        {% if config.QUOTES or config.TRADING_TIPS %}
-        <div id="auth-wisdom-data"
-             data-lines="{{ (config.QUOTES + (config.TRADING_TIPS or [])) | tojson | e }}"
-             data-interval="12000"
-             style="display:none" aria-hidden="true"></div>
-        <div class="auth-quote" id="authQuoteRotator" role="region" aria-label="Trading wisdom">
-            <p class="auth-quote-line" id="authQuoteText" aria-live="polite">{{ random_quote }}</p>
-            <div class="auth-quote-toolbar">
-                <div class="auth-quote-progress" aria-hidden="true"><div class="auth-quote-bar" id="authQuoteBar"></div></div>
-            </div>
-            <div class="auth-quote-hint">Tip changes automatically when the bar reaches the end (~12s).</div>
-        </div>
-        {% endif %}
-
         <!-- Features -->
         <div class="auth-features">
             <div class="auth-feature">
@@ -495,8 +435,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/tv-auth-wisdom.js') }}" defer></script>
 {% endblock %}

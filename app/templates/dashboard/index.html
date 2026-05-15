@@ -46,9 +46,9 @@
     }
     .quote-text.fade-out { opacity: 0; }
     .quote-progress {
-        height: 5px;
-        background: rgba(255,255,255,0.12);
-        border-radius: 4px;
+        height: 3px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 3px;
         overflow: hidden;
         position: relative;
     }
@@ -58,7 +58,7 @@
         background: linear-gradient(90deg, rgba(185, 28, 28, 0.95), rgba(239, 68, 68, 0.95));
         border-radius: 3px;
         width: 0%;
-        transition: none;
+        transition: width 0.1s linear;
         position: relative;
         overflow: hidden;
     }
@@ -107,20 +107,6 @@
         0%   { transform: translateX(-70%); opacity: 0.35; }
         35%  { opacity: 0.75; }
         100% { transform: translateX(140%); opacity: 0.30; }
-    }
-
-    .quote-auto-hint {
-        font-size: 0.72rem;
-        color: rgba(255,255,255,0.5);
-        margin: 0.45rem 0 0 0;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .quote-card::before { animation: none !important; opacity: 0; }
-        .quote-progress-bar::before,
-        .quote-progress-bar::after { animation: none !important; opacity: 0.25; }
-        .quote-text { transition: none !important; }
-        .quote-progress-bar { transition: none !important; }
     }
 </style>
 {% endblock %}
@@ -232,17 +218,16 @@
     </div>
 </div>
 {% else %}
-<div class="quote-container mb-4" id="quoteContainer" role="region" aria-label="Trading wisdom">
+<div class="quote-container mb-4" id="quoteContainer">
     <div class="quote-card">
         <div class="quote-icon">
-            <i class="fas fa-lightbulb" aria-hidden="true"></i>
+            <i class="fas fa-lightbulb"></i>
         </div>
         <div class="quote-content">
-            <p class="quote-text" id="quoteText" aria-live="polite">{{ quote }}</p>
-            <div class="quote-progress" aria-hidden="true">
+            <p class="quote-text" id="quoteText">{{ quote }}</p>
+            <div class="quote-progress">
                 <div class="quote-progress-bar" id="quoteProgressBar"></div>
             </div>
-            <p class="quote-auto-hint mb-0">The bar fills left to right; the next line appears when it reaches the end (~12s).</p>
         </div>
     </div>
 </div>
@@ -686,8 +671,8 @@
      data-equity-url="{{ url_for('dashboard.equity_curve_api') }}"
      data-winloss-url="{{ url_for('dashboard.win_rate_chart_api') }}"
      data-stats-url="{{ url_for('dashboard.api/stats') if false else url_for('dashboard.stats_api') }}"
-     data-quotes="{{ (config.QUOTES + (config.TRADING_TIPS or [])) | tojson | e }}"
-     data-rotation="{{ config.QUOTE_ROTATION_INTERVAL | default(12000) }}"
+     data-quotes="{{ config.QUOTES | tojson | e }}"
+     data-rotation="{{ config.QUOTE_ROTATION_INTERVAL | default(10000) }}"
      style="display:none;"></div>
 
 {% endblock %}
@@ -705,11 +690,11 @@
     var WINLOSS_URL  = dataEl ? dataEl.getAttribute("data-winloss-url") : "";
     var STATS_URL    = "/dashboard/api/stats";
     var QUOTES       = [];
-    var ROTATION_MS  = 12000;
+    var ROTATION_MS  = 10000;
 
     if (dataEl) {
         try { QUOTES = JSON.parse(dataEl.getAttribute("data-quotes") || "[]"); } catch (e) { QUOTES = []; }
-        try { ROTATION_MS = parseInt(dataEl.getAttribute("data-rotation") || "12000", 10) || 12000; } catch (e) { ROTATION_MS = 12000; }
+        try { ROTATION_MS = parseInt(dataEl.getAttribute("data-rotation") || "10000", 10) || 10000; } catch (e) { ROTATION_MS = 10000; }
     }
 
     /* ----------------------------------------------------------------
@@ -902,7 +887,7 @@
     }
 
     /* ----------------------------------------------------------------
-       Rotating quotes + trading tips (fixed interval, progress bar only)
+       Rotating motivational quotes
     ---------------------------------------------------------------- */
     function initQuoteRotator() {
         var textEl       = document.getElementById("quoteText");
@@ -910,19 +895,11 @@
         var containerEl  = document.getElementById("quoteContainer");
         if (!textEl || !progressEl || !QUOTES || QUOTES.length === 0) { return; }
 
-        var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         var currentIdx  = Math.floor(Math.random() * QUOTES.length);
         var startTs     = null;
         var rafId       = null;
-        var cycleMs     = reduced ? Math.round(ROTATION_MS * 1.25) : ROTATION_MS;
-
-        if (containerEl) {
-            containerEl.style.cursor = "default";
-            containerEl.removeAttribute("title");
-        }
 
         function changeQuote() {
-            var fadeMs = reduced ? 80 : 380;
             textEl.classList.add("fade-out");
             setTimeout(function () {
                 currentIdx = (currentIdx + 1) % QUOTES.length;
@@ -930,17 +907,26 @@
                 textEl.classList.remove("fade-out");
                 progressEl.style.width = "0%";
                 startTs = null;
-            }, fadeMs);
+            }, 500);
         }
 
         function tick(ts) {
             if (!startTs) startTs = ts;
-            var p = Math.min((ts - startTs) / cycleMs, 1);
-            progressEl.style.width = (p * 100).toFixed(2) + "%";
+            var p = Math.min((ts - startTs) / ROTATION_MS, 1);
+            progressEl.style.width = Math.round(p * 1000) / 10 + "%";
             if (p >= 1) {
                 changeQuote();
             }
             rafId = window.requestAnimationFrame(tick);
+        }
+
+        // Premium interaction: tap/click to skip to next quote instantly
+        if (containerEl) {
+            containerEl.style.cursor = "pointer";
+            containerEl.title = "Click to show next quote";
+            containerEl.addEventListener("click", function () {
+                changeQuote();
+            });
         }
 
         if (rafId) window.cancelAnimationFrame(rafId);

@@ -326,21 +326,9 @@ class Config:
         "Winners focus on process. Losers focus on outcomes.",
         "Small consistent gains beat big risky bets."
     ]
-
-    # Short educational lines mixed into dashboard + auth quote rotation
-    TRADING_TIPS = [
-        "Size risk so one loss cannot erase your week.",
-        "Define invalidation before you enter — then honor it.",
-        "The best setups are often the ones you wait longest for.",
-        "Journal the emotion, not only the P/L.",
-        "Correlations spike in stress markets — mind your exposure.",
-        "Liquidity events move fast; plan exits before volatility hits.",
-        "A flat day beats a revenge-trading day.",
-        "Consistency beats hero trades.",
-    ]
-
-    # Dashboard quote card: auto-rotate interval (milliseconds)
-    QUOTE_ROTATION_INTERVAL = 12000
+    
+    # Quote rotation interval in milliseconds (30 seconds)
+    QUOTE_ROTATION_INTERVAL = 30000
 
     # Feature flags (set to 0/false to disable surfaces quickly)
     FEATURE_AI_BUDDY = os.environ.get('FEATURE_AI_BUDDY', 'true').lower() in ('1', 'true', 'yes')
