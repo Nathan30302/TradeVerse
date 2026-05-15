@@ -153,6 +153,9 @@ def create_app(config_name='default'):
     app.register_blueprint(imports_routes.bp)
     app.register_blueprint(api_instruments.bp)
 
+    from app.routes import api_voice
+    app.register_blueprint(api_voice.bp)
+
     # Owner admin dashboard (RBAC)
     from app.routes import owner_admin
     app.register_blueprint(owner_admin.bp)
@@ -197,7 +200,20 @@ def create_app(config_name='default'):
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-        response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        # Allow mic on this origin for trade voice notes (Web Speech API / MediaRecorder).
+        response.headers.setdefault(
+            'Permissions-Policy',
+            'camera=(), microphone=(self), geolocation=()',
+        )
+        return response
+
+    @app.after_request
+    def _html_cache_control(response):
+        """Safari aggressively caches HTML — avoid stale landing/UI after deploys."""
+        ct = (response.content_type or '').lower()
+        if 'text/html' in ct:
+            response.headers['Cache-Control'] = 'no-cache, must-revalidate'
+            response.headers.setdefault('Pragma', 'no-cache')
         return response
 
     @app.after_request
@@ -410,6 +426,7 @@ def register_context_processors(app):
             'discord_community_url': (app.config.get('DISCORD_COMMUNITY_URL') or '').strip(),
             'ui_theme_choices': tuple(app.config.get('UI_THEME_CHOICES') or ()),
             'current_year': datetime.now(timezone.utc).year,
+            'voice_transcribe_enabled': bool(os.environ.get('OPENAI_API_KEY', '').strip()),
         }
 
     @app.context_processor

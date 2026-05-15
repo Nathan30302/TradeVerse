@@ -402,7 +402,13 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/instrument-picker-simple.js') }}"></script>
-<script src="{{ url_for('static', filename='js/trade-voice-notes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/trade-voice-notes.js') }}?v={{ app_version }}"></script>
+<script>
+  window.TV_VOICE = {
+    transcribeUrl: {{ url_for('api_voice.transcribe')|tojson }},
+    transcribeEnabled: {{ voice_transcribe_enabled|tojson }}
+  };
+</script>
 <script>
 (function () {
   'use strict';
