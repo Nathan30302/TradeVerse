@@ -414,6 +414,26 @@
             background-color: rgba(255,255,255,0.15);
             color: #fff !important;
         }
+
+        /* Top navbar: keep account menu a compact chip (Bootstrap + flex-grow-1 was stretching it full-width). */
+        #navbarNav.navbar-collapse {
+            flex-grow: 0 !important;
+            flex-basis: auto !important;
+            width: auto !important;
+            max-width: 100%;
+        }
+        #navbarNav .navbar-nav {
+            width: auto !important;
+            flex-wrap: nowrap;
+            align-items: center;
+        }
+        #navbarNav .navbar-nav > .nav-item {
+            flex: 0 0 auto;
+        }
+        .navbar .navbar-nav .nav-link.dropdown-toggle {
+            width: auto !important;
+            max-width: min(300px, 78vw);
+        }
         
         .btn-navbar {
             background-color: var(--card-bg);
@@ -485,6 +505,8 @@
             border-radius: 14px;
             padding: 0.85rem 0.9rem;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            max-width: 100%;
+            overflow: hidden;
         }
         .tv-account-avatar {
             width: 38px;
@@ -2089,13 +2111,13 @@
                 <i class="fas fa-bars"></i>
             </button>
 
-            <div class="collapse navbar-collapse flex-grow-1 flex-lg-grow-0 justify-content-lg-end" id="navbarNav">
+            <div class="collapse navbar-collapse flex-grow-0 justify-content-lg-end" id="navbarNav">
                 <ul class="navbar-nav ms-lg-auto align-items-lg-center flex-wrap justify-content-end">
                     {% if current_user.is_authenticated %}
                         {% set sub = current_user.effective_subscription() %}
                         {# Core app links live in the sidebar (md+) and mobile drawer; no duplicate "App" menu here. #}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu for {{ current_user.username }}">
+                        <li class="nav-item dropdown flex-shrink-0">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center text-nowrap" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu for {{ current_user.username }}">
                                 <img src="{% if current_user.avatar_url %}{% if current_user.avatar_url.startswith('http://') or current_user.avatar_url.startswith('https://') or current_user.avatar_url.startswith('/static/') %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename=current_user.avatar_url) }}{% endif %}{% else %}{{ url_for('static', filename='img/default-avatar.png') }}{% endif %}" alt="" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;margin-right:8px;">
                                 {# Username in navbar only below md; from md up the sidebar account chip shows it (avoids duplicate clutter). #}
                                 <span class="d-inline d-md-none text-truncate" style="max-width: 10rem;">{{ current_user.username }}</span>
