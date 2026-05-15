@@ -456,19 +456,39 @@
             position: relative;
             z-index: 1050;
         }
-        .navbar .nav-item.dropdown .dropdown-menu {
+        .navbar .nav-item.dropdown .dropdown-menu,
+        .navbar .tv-nav-account-slot .dropdown-menu {
             z-index: 2000;
         }
-        .navbar .nav-item.dropdown .dropdown-toggle.tv-nav-account-toggle {
+        .navbar .nav-item.dropdown .dropdown-toggle.tv-nav-account-toggle,
+        .navbar .tv-nav-account-slot .dropdown > .nav-link.dropdown-toggle.tv-nav-account-toggle {
             border-radius: 12px;
             padding: 0.28rem 0.5rem 0.28rem 0.35rem !important;
             min-width: 2.75rem;
         }
-        .navbar .nav-item.dropdown .dropdown-toggle.tv-nav-account-toggle::after {
+        .navbar .nav-item.dropdown .dropdown-toggle.tv-nav-account-toggle::after,
+        .navbar .tv-nav-account-slot .dropdown > .nav-link.dropdown-toggle.tv-nav-account-toggle::after {
             margin-left: 0.1rem;
             vertical-align: 0.15em;
         }
         
+        /* Main content: allow flex/grid children to shrink (charts, tables) on laptop widths */
+        @media (min-width: 768px) {
+            .container-fluid > .row > .main-content {
+                min-width: 0;
+            }
+        }
+
+        /* Account dropdown outside .navbar-nav — same light-on-gradient treatment as top links */
+        .navbar .tv-nav-account-slot .dropdown > .nav-link.dropdown-toggle.tv-nav-account-toggle {
+            color: rgba(255,255,255,0.92) !important;
+            font-weight: 500;
+        }
+        .navbar .tv-nav-account-slot .dropdown > .nav-link.dropdown-toggle.tv-nav-account-toggle:hover {
+            background-color: rgba(255,255,255,0.15);
+            color: #fff !important;
+        }
+
         .btn-navbar {
             background-color: var(--card-bg);
             color: var(--primary);
@@ -2505,7 +2525,7 @@
             {% endif %}
 
             <!-- Main Content -->
-            <main id="main-content" class="{% if current_user.is_authenticated %}col-md-10 ms-sm-auto{% else %}col-12{% endif %} main-content" role="main">
+            <main id="main-content" class="{% if current_user.is_authenticated %}col-12 col-md-10{% else %}col-12{% endif %} main-content" role="main">
                 <!-- Flash Messages -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
