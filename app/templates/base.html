@@ -489,6 +489,18 @@
             color: #fff !important;
         }
 
+        /* Marketing homepage: navbar shows pulse only — no ticker copy, age, or stats pill */
+        body[data-tv-landing="1"] .instrument-rotator .instrument-slot,
+        body[data-tv-landing="1"] .instrument-rotator .quote-updated {
+            display: none !important;
+        }
+        body[data-tv-landing="1"] #dynamic-island {
+            display: none !important;
+        }
+        body[data-tv-landing="1"] .instrument-rotator {
+            gap: 0.25rem;
+        }
+
         .btn-navbar {
             background-color: var(--card-bg);
             color: var(--primary);
@@ -2100,7 +2112,7 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{% set _th = current_user.theme or 'dark' %}{% if _th in ui_theme_choices %}{{ _th }}{% else %}dark{% endif %}{% else %}{% endif %}">
+<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{% set _th = current_user.theme or 'dark' %}{% if _th in ui_theme_choices %}{{ _th }}{% else %}dark{% endif %}{% else %}{% endif %}"{% if not current_user.is_authenticated and request.endpoint == 'main.index' %} data-tv-landing="1"{% endif %}>
 
     {% if maintenance_mode %}
     <div class="alert alert-warning rounded-0 border-0 mb-0 text-center py-2 small" role="alert">
@@ -2134,10 +2146,10 @@
             </a>
             <!-- Instrument rotator + stats: hidden below md (phones); tablet+ only (Bootstrap utilities, not JS-toggled). -->
             <div class="tv-navbar-market-strip d-none d-md-flex align-items-center ms-1 ms-lg-2 flex-shrink-1 min-w-0" style="gap:1rem;">
-                <div id="instrument-rotator" class="instrument-rotator d-flex align-items-center" aria-label="Market movers ticker">
-                    <span class="live-indicator" id="rot-feed-badge" title="Market movers snapshot">
+                <div id="instrument-rotator" class="instrument-rotator d-flex align-items-center" aria-label="{% if not current_user.is_authenticated and request.endpoint == 'main.index' %}Live{% else %}Market movers ticker{% endif %}">
+                    <span class="live-indicator" id="rot-feed-badge"{% if not (not current_user.is_authenticated and request.endpoint == 'main.index') %} title="Market overview"{% endif %}>
                         <span class="live-dot" aria-hidden="true"></span>
-                        <span id="rot-feed-label" class="visually-hidden">Market snapshot</span>
+                        <span id="rot-feed-label" class="visually-hidden">{% if not current_user.is_authenticated and request.endpoint == 'main.index' %}Live{% else %}Market overview{% endif %}</span>
                     </span>
                     <div class="instrument-slot">
                         <span class="instrument-icon me-2"><i class="fas fa-chart-line"></i></span>
@@ -2235,15 +2247,13 @@
             </div>
             {% else %}
             <div class="collapse navbar-collapse flex-grow-0 justify-content-lg-end" id="navbarNav">
-                <ul class="navbar-nav ms-lg-auto align-items-lg-center flex-wrap justify-content-end">
-                    {% if request.endpoint != 'main.index' %}
+                <ul class="navbar-nav ms-lg-auto align-items-lg-center flex-wrap justify-content-end gap-lg-1">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Login</a>
+                        <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt me-1"></i> Log in</a>
                     </li>
-                    <li class="nav-item ms-lg-2">
-                        <a href="{{ url_for('auth.register') }}" class="btn btn-navbar">Sign Up</a>
+                    <li class="nav-item ms-lg-1">
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-navbar fw-semibold">Get started</a>
                     </li>
-                    {% endif %}
                 </ul>
             </div>
             {% endif %}
@@ -2396,10 +2406,10 @@
         <div class="mobile-nav-section">Account</div>
         <ul class="nav flex-column mb-3">
             <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Sign in</a>
+                <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Log in</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link fw-semibold" href="{{ url_for('auth.register') }}"><i class="fas fa-user-plus"></i> Create account</a>
+                <a class="nav-link fw-semibold" href="{{ url_for('auth.register') }}"><i class="fas fa-rocket"></i> Get started</a>
             </li>
         </ul>
         {% endif %}
@@ -2723,6 +2733,7 @@
             const island = document.getElementById('dynamic-island');
             const slot = rotator ? rotator.querySelector('.instrument-slot') : null;
             const quoteUpdatedEl = document.getElementById('quote-updated');
+            const isMarketingLanding = document.body.getAttribute('data-tv-landing') === '1';
 
             let instruments = fallbackData.slice();
             let idx = 0;
@@ -2794,7 +2805,7 @@
                     const resp = await fetch('/api/db/instruments/quotes?limit=8&ttl_s=3600');
                     if(!resp.ok) {
                         const ind = document.getElementById('rot-feed-badge');
-                        if (ind) ind.title = 'Market snapshot unavailable';
+                        if (ind) ind.title = 'Market overview unavailable';
                         return false;
                     }
                     const data = await resp.json();
@@ -2813,14 +2824,10 @@
                             const liveIndicator = document.getElementById('rot-feed-badge');
                             const liveLbl = document.getElementById('rot-feed-label');
                             if (liveIndicator) {
-                                liveIndicator.title = data.source
-                                    ? ('Quotes · ' + String(data.source))
-                                    : 'Quotes updated';
+                                liveIndicator.title = 'Market overview';
                             }
                             if (liveLbl) {
-                                liveLbl.textContent = data.source
-                                    ? ('Market snapshot from ' + String(data.source))
-                                    : 'Market snapshot loaded';
+                                liveLbl.textContent = 'Market overview';
                             }
                         }catch(e){}
                         return true;
@@ -2990,6 +2997,9 @@
             }
 
             async function init(){
+                if (isMarketingLanding) {
+                    return;
+                }
                 // try fetching live instruments, otherwise use fallback
                 await fetchInstruments();
                 // Visibility: strip uses d-none d-md-flex; island uses d-none d-lg-flex (do not remove — avoids showing on phones).
@@ -2998,7 +3008,7 @@
                 setInterval(fetchInstruments, 60 * 60 * 1000);
                 if (rotator) {
                     rotator.style.cursor = 'pointer';
-                    rotator.title = 'Click to refresh market movers';
+                    rotator.title = 'Click to refresh market overview';
                     rotator.addEventListener('click', () => fetchInstruments());
                 }
                 // update island periodically with server stats
@@ -3018,7 +3028,7 @@
             document.addEventListener('DOMContentLoaded', init);
 
             // Pause rotator on hover (prevents jitter while reading)
-            if (rotator) {
+            if (rotator && !isMarketingLanding) {
                 rotator.addEventListener('mouseenter', stopRotation);
                 rotator.addEventListener('mouseleave', startRotation);
             }

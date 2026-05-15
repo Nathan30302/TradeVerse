@@ -144,6 +144,26 @@
     padding-right: 1.35rem;
   }
 
+  @media (min-width: 992px) {
+    .landing-hero-cta .btn-lg {
+      min-height: 52px;
+      font-size: 1.05rem;
+    }
+  }
+
+  .landing-hero-cta-wrap {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    background: rgba(2, 6, 23, 0.38);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    margin-bottom: 0.35rem;
+  }
+
   .landing-hero-connect {
     display: flex;
     flex-wrap: wrap;
@@ -342,7 +362,7 @@
     <div class="landing-hero px-3 px-md-4 px-lg-5">
       <div class="hero-bg" aria-hidden="true"></div>
       <div class="hero-vfx" aria-hidden="true"></div>
-      <div class="row align-items-center g-4 g-xl-5 position-relative" style="z-index: 1;">
+      <div class="row align-items-center align-items-lg-start g-4 g-xl-5 position-relative" style="z-index: 1;">
         <div class="col-lg-7 order-2 order-lg-1">
             <div class="hero-content pe-lg-2">
                 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
@@ -353,12 +373,8 @@
                 <h1 class="fw-bold mb-3 mb-lg-4 hero-title">
                     Journal. Execute. <span class="text-primary">Improve.</span>
                 </h1>
-                <p class="lead mb-4 hero-subtitle" style="color: rgba(255,255,255,0.88) !important;">
-                    Capture trade plans, execute seamlessly, and review performance with AI-assisted insights —
-                    all in one streamlined trading journal designed for serious traders.
-                </p>
 
-                <div class="landing-hero-cta d-flex flex-wrap align-items-stretch gap-3 mb-1">
+                <div class="landing-hero-cta landing-hero-cta-wrap mb-2 mb-lg-3">
                     {% if not current_user.is_authenticated %}
                         <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg shadow-lg fw-bold">
                             <i class="fas fa-rocket me-2"></i> Get started
@@ -376,10 +392,15 @@
                     {% endif %}
                 </div>
                 {% if not current_user.is_authenticated %}
-                <p class="small mb-0 mt-2" style="color: rgba(255,255,255,0.72) !important;">Free trial · no credit card required</p>
+                <p class="small mb-3 mb-lg-4" style="color: rgba(255,255,255,0.78) !important;">Free trial · no credit card required</p>
                 {% endif %}
 
-                <div class="landing-hero-connect">
+                <p class="lead mb-0 hero-subtitle" style="color: rgba(255,255,255,0.88) !important; max-width: 36rem;">
+                    Capture trade plans, execute seamlessly, and review performance with AI-assisted insights —
+                    all in one streamlined trading journal designed for serious traders.
+                </p>
+
+                <div class="landing-hero-connect mt-4">
                     {% if discord_community_url %}
                     <a href="{{ discord_community_url }}" class="landing-connect-item" target="_blank" rel="noopener noreferrer">
                         <i class="fab fa-discord" style="color:#5865F2;" aria-hidden="true"></i>
