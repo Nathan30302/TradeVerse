@@ -489,12 +489,13 @@
             color: #fff !important;
         }
 
-        /* Marketing homepage: hide market strip; keep navbar clean for brand + CTAs */
-        body[data-tv-landing="1"] .tv-navbar-market-strip {
-            display: none !important;
-        }
+        /* Marketing homepage: premium dark canvas + full-width hero */
         body[data-tv-landing="1"] .main-content {
-            padding: clamp(0.65rem, 1.5vw, 1rem) clamp(0.75rem, 2vw, 1.5rem) 2.5rem;
+            padding: clamp(0.5rem, 1.2vw, 0.85rem) clamp(0.65rem, 1.8vw, 1.25rem) 2.5rem;
+            background: #000;
+        }
+        body[data-tv-landing="1"] .landing-page {
+            background: #000;
         }
         body[data-tv-landing="1"] .tv-nav-guest-actions .nav-link {
             white-space: nowrap;
@@ -510,15 +511,19 @@
             color: #3730a3;
         }
         body[data-tv-landing="1"] {
-            background-color: var(--bg-primary);
+            background-color: #000;
         }
         body[data-tv-landing="1"] .landing-hero .hero-title,
-        body[data-tv-landing="1"] .landing-hero .hero-subtitle,
-        body[data-tv-landing="1"] .landing-hero .hero-title .hero-accent {
+        body[data-tv-landing="1"] .landing-hero .hero-subtitle {
             color: rgba(255, 255, 255, 0.97) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.97);
         }
         body[data-tv-landing="1"] .landing-hero .hero-title .hero-accent {
-            color: #c7d2fe !important;
+            background: linear-gradient(120deg, #38bdf8 0%, #818cf8 48%, #c084fc 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent !important;
         }
         body[data-tv-landing="1"] .landing-hero .landing-hero-badge {
             background: rgba(99, 102, 241, 0.38) !important;
@@ -2270,8 +2275,8 @@
             </div>
             {% else %}
             <div class="tv-nav-guest-actions d-none d-md-flex align-items-center flex-shrink-0" style="gap: 0.35rem;">
-                <a class="nav-link py-2 px-2" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt me-1"></i> Log in</a>
-                <a href="{{ url_for('auth.register') }}" class="btn btn-navbar fw-semibold px-3">Get started</a>
+                <a class="nav-link py-2 px-2" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt me-1"></i> Sign in</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-navbar fw-semibold px-3">Sign up</a>
             </div>
             {% endif %}
             </div>
@@ -3002,9 +3007,6 @@
             }
 
             async function init(){
-                if (isMarketingLanding) {
-                    return;
-                }
                 // try fetching live instruments, otherwise use fallback
                 await fetchInstruments();
                 // Visibility: strip uses d-none d-md-flex; island uses d-none d-lg-flex (do not remove — avoids showing on phones).
@@ -3033,7 +3035,7 @@
             document.addEventListener('DOMContentLoaded', init);
 
             // Pause rotator on hover (prevents jitter while reading)
-            if (rotator && !isMarketingLanding) {
+            if (rotator) {
                 rotator.addEventListener('mouseenter', stopRotation);
                 rotator.addEventListener('mouseleave', startRotation);
             }
