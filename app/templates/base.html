@@ -489,16 +489,44 @@
             color: #fff !important;
         }
 
-        /* Marketing homepage: navbar shows pulse only — no ticker copy, age, or stats pill */
-        body[data-tv-landing="1"] .instrument-rotator .instrument-slot,
-        body[data-tv-landing="1"] .instrument-rotator .quote-updated {
+        /* Marketing homepage: hide market strip; keep navbar clean for brand + CTAs */
+        body[data-tv-landing="1"] .tv-navbar-market-strip {
             display: none !important;
         }
-        body[data-tv-landing="1"] #dynamic-island {
-            display: none !important;
+        body[data-tv-landing="1"] .main-content {
+            padding: clamp(0.65rem, 1.5vw, 1rem) clamp(0.75rem, 2vw, 1.5rem) 2.5rem;
         }
-        body[data-tv-landing="1"] .instrument-rotator {
-            gap: 0.25rem;
+        body[data-tv-landing="1"] .tv-nav-guest-actions .nav-link {
+            white-space: nowrap;
+        }
+        body[data-tv-landing="1"] .tv-nav-guest-actions .btn-navbar {
+            background: rgba(255, 255, 255, 0.96);
+            color: #4338ca;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+            white-space: nowrap;
+        }
+        body[data-tv-landing="1"] .tv-nav-guest-actions .btn-navbar:hover {
+            background: #fff;
+            color: #3730a3;
+        }
+        body[data-tv-landing="1"] {
+            background-color: var(--bg-primary);
+        }
+        body[data-tv-landing="1"] .landing-hero .hero-title,
+        body[data-tv-landing="1"] .landing-hero .hero-subtitle,
+        body[data-tv-landing="1"] .landing-hero .hero-title .hero-accent {
+            color: rgba(255, 255, 255, 0.97) !important;
+        }
+        body[data-tv-landing="1"] .landing-hero .hero-title .hero-accent {
+            color: #c7d2fe !important;
+        }
+        body[data-tv-landing="1"] .landing-hero .landing-hero-badge {
+            background: rgba(99, 102, 241, 0.38) !important;
+            color: #eef2ff !important;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+        }
+        body[data-tv-landing="1"] .landing-hero .landing-trial-note {
+            color: rgba(255, 255, 255, 0.78) !important;
         }
 
         .btn-navbar {
@@ -1842,8 +1870,8 @@
             color: var(--text-primary);
         }
 
-        .hero-title { color: var(--text-primary); }
-        .hero-subtitle { color: var(--text-secondary); }
+        .hero-title:not(.landing-hero .hero-title) { color: var(--text-primary); }
+        .hero-subtitle:not(.landing-hero .hero-subtitle) { color: var(--text-secondary); }
 
         /* Segmented Control for Theme Selection */
         .theme-segmented {
@@ -2118,6 +2146,8 @@
     {% if current_user.is_authenticated %}
         {% set _raw = current_user.theme or 'dark' %}
         {% set theme_name = _raw if _raw in ui_theme_choices else 'dark' %}
+    {% elif request.endpoint == 'main.index' %}
+        {% set theme_name = 'dark' %}
     {% else %}
         {% set theme_name = 'light' %}
     {% endif %}
@@ -2239,15 +2269,9 @@
                 </ul>
             </div>
             {% else %}
-            <div class="collapse navbar-collapse flex-grow-0 justify-content-lg-end" id="navbarNav">
-                <ul class="navbar-nav ms-lg-auto align-items-lg-center flex-wrap justify-content-end gap-lg-1">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt me-1"></i> Log in</a>
-                    </li>
-                    <li class="nav-item ms-lg-1">
-                        <a href="{{ url_for('auth.register') }}" class="btn btn-navbar fw-semibold">Get started</a>
-                    </li>
-                </ul>
+            <div class="tv-nav-guest-actions d-none d-md-flex align-items-center flex-shrink-0" style="gap: 0.35rem;">
+                <a class="nav-link py-2 px-2" href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt me-1"></i> Log in</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-navbar fw-semibold px-3">Get started</a>
             </div>
             {% endif %}
             </div>
@@ -2678,35 +2702,33 @@
                 });
             });
 
-            // Initialize theme on page load
-            document.addEventListener('DOMContentLoaded', function() {
+            function resolveInitialTheme() {
+                const isLanding = document.body.getAttribute('data-tv-landing') === '1';
+                if (isLanding) {
+                    return 'dark';
+                }
                 const serverTheme = document.body.getAttribute('data-server-theme');
                 const saved = localStorage.getItem('tv_theme');
-                
-                // Priority: server theme > saved theme > system preference > light
-                if(serverTheme) {
-                    applyTheme(serverTheme, true, false);
-                } else if(saved && TV_THEMES.includes(saved)) {
-                    applyTheme(saved, true, false);
-                } else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    applyTheme('dark', true, false);
-                } else {
-                    applyTheme('light', true, false);
+                if (serverTheme) {
+                    return serverTheme;
                 }
-            });
-
-            // Also initialize immediately in case DOMContentLoaded already fired
-            const serverTheme = document.body.getAttribute('data-server-theme');
-            const saved = localStorage.getItem('tv_theme');
-            if(serverTheme) {
-                applyTheme(serverTheme, true, false);
-            } else if(saved && TV_THEMES.includes(saved)) {
-                applyTheme(saved, true, false);
-            } else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                applyTheme('dark', true, false);
-            } else {
-                applyTheme('light', true, false);
+                if (saved && TV_THEMES.includes(saved)) {
+                    return saved;
+                }
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    return 'dark';
+                }
+                return 'light';
             }
+
+            function bootstrapTheme() {
+                const isLanding = document.body.getAttribute('data-tv-landing') === '1';
+                const theme = resolveInitialTheme();
+                applyTheme(theme, !isLanding, false);
+            }
+
+            document.addEventListener('DOMContentLoaded', bootstrapTheme);
+            bootstrapTheme();
         })();
     </script>
 
