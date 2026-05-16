@@ -213,7 +213,6 @@ def index():
                            recent_trades=recent_trades,
                            streak=streak,
                            initial_quote_text=initial_mq['text'],
-                           initial_quote_author=initial_mq.get('author', 'TradeVerse'),
                            max_drawdown=max_drawdown,
                            week_performance=week_performance,
                            ai_summary=ai_summary,

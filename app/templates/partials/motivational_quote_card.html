@@ -13,7 +13,6 @@
         <div class="tv-quote-body">
             <div class="tv-quote-text-wrap">
                 <blockquote class="tv-quote-text">&ldquo;{{ initial_quote_text }}&rdquo;</blockquote>
-                <cite class="tv-quote-author">{{ initial_quote_author | default('TradeVerse') }}</cite>
             </div>
             <div class="tv-quote-lines" aria-hidden="true">
                 <div class="tv-quote-line-static"></div>
@@ -21,14 +20,6 @@
                     <span class="tv-quote-timer-fill"></span>
                 </div>
             </div>
-        </div>
-        <div class="tv-quote-controls">
-            <button type="button" class="tv-quote-btn tv-quote-refresh" title="Shuffle quotes" aria-label="Shuffle quotes">
-                <i class="fas fa-sync-alt" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="tv-quote-btn tv-quote-next" title="Next quote" aria-label="Next quote">
-                <i class="fas fa-chevron-right" aria-hidden="true"></i>
-            </button>
         </div>
     </div>
 </div>

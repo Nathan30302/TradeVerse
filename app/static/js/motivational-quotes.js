@@ -45,13 +45,9 @@
 
     this.textWrap = root.querySelector('.tv-quote-text-wrap');
     this.textEl = root.querySelector('.tv-quote-text');
-    this.authorEl = root.querySelector('.tv-quote-author');
     this.fillEl = root.querySelector('.tv-quote-timer-fill');
-    this.nextBtn = root.querySelector('.tv-quote-next');
-    this.refreshBtn = root.querySelector('.tv-quote-refresh');
 
     this._loadConfig();
-    this._bindControls();
     if (this.quotes.length) {
       var hasContent = this.textEl && this.textEl.textContent.trim().length > 0;
       if (!hasContent) {
@@ -82,40 +78,11 @@
     this.orderPos = 0;
   };
 
-  MotivationalQuotes.prototype._bindControls = function () {
-    var self = this;
-    if (this.nextBtn) {
-      this.nextBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        self.advance(true);
-      });
-    }
-    if (this.refreshBtn) {
-      this.refreshBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (self.rafId) {
-          global.cancelAnimationFrame(self.rafId);
-          self.rafId = null;
-        }
-        self.order = shuffle(self.quotes.map(function (_, idx) { return idx; }));
-        self.orderPos = 0;
-        self._showQuote(self.quotes[self.order[0]], true);
-        self._resetProgress();
-        self._startCycle();
-      });
-    }
-  };
-
   MotivationalQuotes.prototype._showQuote = function (quote, animate) {
     if (!quote || !this.textEl) return;
     var self = this;
     var apply = function () {
       self.textEl.textContent = '\u201c' + quote.text + '\u201d';
-      if (self.authorEl) {
-        self.authorEl.textContent = quote.author;
-      }
       if (self.textWrap) {
         self.textWrap.classList.remove('is-fading');
       }
@@ -137,7 +104,7 @@
     return this.order[this.orderPos];
   };
 
-  MotivationalQuotes.prototype.advance = function (manual) {
+  MotivationalQuotes.prototype.advance = function () {
     var self = this;
     if (!this.quotes.length) return;
     if (this.rafId) {
@@ -170,7 +137,7 @@
         self.fillEl.style.transform = 'scaleX(' + p.toFixed(4) + ')';
       }
       if (p >= 1) {
-        self.advance(false);
+        self.advance();
         return;
       }
       self.rafId = global.requestAnimationFrame(tick);
