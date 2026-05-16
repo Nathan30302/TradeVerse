@@ -327,8 +327,8 @@ class Config:
         "Small consistent gains beat big risky bets."
     ]
     
-    # Quote rotation interval in milliseconds (30 seconds)
-    QUOTE_ROTATION_INTERVAL = 30000
+    # Quote rotation interval in milliseconds (25 seconds)
+    QUOTE_ROTATION_INTERVAL = 25000
 
     # Feature flags (set to 0/false to disable surfaces quickly)
     FEATURE_AI_BUDDY = os.environ.get('FEATURE_AI_BUDDY', 'true').lower() in ('1', 'true', 'yes')

@@ -126,8 +126,12 @@ def index():
     # Get current streak
     streak = current_user.get_current_streak()
 
-    # Get motivational quote
-    quote = random.choice(current_app.config.get('QUOTES', ['Trade with discipline.']))
+    from app.content.motivational_quotes import MOTIVATIONAL_QUOTES
+
+    initial_mq = random.choice(MOTIVATIONAL_QUOTES) if MOTIVATIONAL_QUOTES else {
+        'text': 'Trade with discipline.',
+        'author': 'TradeVerse',
+    }
 
     # Calculate additional metrics
     total_trades = stats['total_trades']
@@ -208,7 +212,8 @@ def index():
                            stats=stats,
                            recent_trades=recent_trades,
                            streak=streak,
-                           quote=quote,
+                           initial_quote_text=initial_mq['text'],
+                           initial_quote_author=initial_mq.get('author', 'TradeVerse'),
                            max_drawdown=max_drawdown,
                            week_performance=week_performance,
                            ai_summary=ai_summary,

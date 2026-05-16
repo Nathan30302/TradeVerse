@@ -414,13 +414,20 @@ def register_context_processors(app):
     
     @app.context_processor
     def inject_globals():
+        import json
         from datetime import datetime, timezone
+        from app.content.motivational_quotes import MOTIVATIONAL_QUOTES, QUOTE_ROTATION_MS
+
+        _mq = MOTIVATIONAL_QUOTES
+        _mq_texts = [q['text'] for q in _mq] if _mq else app.config.get('QUOTES', [])
 
         return {
             'app_name': app.config.get('APP_NAME'),
             'app_tagline': app.config.get('APP_TAGLINE'),
             'app_version': app.config.get('APP_VERSION'),
-            'random_quote': random.choice(app.config.get('QUOTES', [])),
+            'random_quote': random.choice(_mq_texts) if _mq_texts else '',
+            'motivational_quotes_json': json.dumps(_mq),
+            'quote_rotation_ms': app.config.get('QUOTE_ROTATION_INTERVAL', QUOTE_ROTATION_MS),
             'maintenance_mode': bool(app.config.get('MAINTENANCE_MODE')),
             'support_email': app.config.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com',
             'discord_community_url': (app.config.get('DISCORD_COMMUNITY_URL') or '').strip(),

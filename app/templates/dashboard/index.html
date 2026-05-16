@@ -3,112 +3,7 @@
 {% block title %}Dashboard - {{ app_name }}{% endblock %}
 
 {% block extra_css %}
-<style>
-    .quote-card {
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-        border-radius: 16px;
-        padding: 1.25rem 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        position: relative;
-        overflow: hidden;
-    }
-    .quote-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-        animation: shimmerQuote 3s infinite;
-    }
-    @keyframes shimmerQuote {
-        0%   { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-    }
-    .quote-icon {
-        width: 48px; height: 48px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        flex-shrink: 0;
-    }
-    .quote-icon i { color: white; font-size: 1.25rem; }
-    .quote-content { flex: 1; min-width: 0; }
-    .quote-text {
-        color: white;
-        font-size: 1rem;
-        font-style: italic;
-        margin: 0 0 0.5rem 0;
-        line-height: 1.5;
-        opacity: 1;
-        transition: opacity 0.5s ease;
-    }
-    .quote-text.fade-out { opacity: 0; }
-    .quote-progress {
-        height: 3px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 3px;
-        overflow: hidden;
-        position: relative;
-    }
-    .quote-progress-bar {
-        height: 100%;
-        /* Base “vein” fill */
-        background: linear-gradient(90deg, rgba(185, 28, 28, 0.95), rgba(239, 68, 68, 0.95));
-        border-radius: 3px;
-        width: 0%;
-        transition: width 0.1s linear;
-        position: relative;
-        overflow: hidden;
-    }
-
-    /* “Blood in veins” feel: moving cells + a pulse traveling forward */
-    .quote-progress-bar::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        /* repeating “cells” */
-        background:
-            radial-gradient(circle at 12px 50%, rgba(255, 255, 255, 0.22) 0 2px, transparent 3px),
-            radial-gradient(circle at 36px 50%, rgba(255, 255, 255, 0.14) 0 2px, transparent 3px),
-            radial-gradient(circle at 60px 50%, rgba(255, 255, 255, 0.18) 0 2px, transparent 3px),
-            radial-gradient(circle at 84px 50%, rgba(255, 255, 255, 0.12) 0 2px, transparent 3px);
-        background-size: 96px 100%;
-        opacity: 0.55;
-        animation: bloodCells 0.55s linear infinite;
-        pointer-events: none;
-    }
-
-    .quote-progress-bar::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-            90deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.22) 35%,
-            rgba(255, 255, 255, 0.05) 55%,
-            transparent 75%
-        );
-        transform: translateX(-60%);
-        animation: bloodPulse 1.1s ease-in-out infinite;
-        opacity: 0.6;
-        pointer-events: none;
-        mix-blend-mode: overlay;
-    }
-
-    @keyframes bloodCells {
-        0%   { background-position: 0 0; }
-        100% { background-position: 96px 0; }
-    }
-
-    @keyframes bloodPulse {
-        0%   { transform: translateX(-70%); opacity: 0.35; }
-        35%  { opacity: 0.75; }
-        100% { transform: translateX(140%); opacity: 0.30; }
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/motivational-quotes.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -218,19 +113,7 @@
     </div>
 </div>
 {% else %}
-<div class="quote-container mb-4" id="quoteContainer">
-    <div class="quote-card">
-        <div class="quote-icon">
-            <i class="fas fa-lightbulb"></i>
-        </div>
-        <div class="quote-content">
-            <p class="quote-text" id="quoteText">{{ quote }}</p>
-            <div class="quote-progress">
-                <div class="quote-progress-bar" id="quoteProgressBar"></div>
-            </div>
-        </div>
-    </div>
-</div>
+{% include 'partials/motivational_quote_card.html' %}
 {% endif %}
 
 {# ------------------------------------------------------------------ #}
@@ -671,8 +554,6 @@
      data-equity-url="{{ url_for('dashboard.equity_curve_api') }}"
      data-winloss-url="{{ url_for('dashboard.win_rate_chart_api') }}"
      data-stats-url="{{ url_for('dashboard.api/stats') if false else url_for('dashboard.stats_api') }}"
-     data-quotes="{{ config.QUOTES | tojson | e }}"
-     data-rotation="{{ config.QUOTE_ROTATION_INTERVAL | default(10000) }}"
      style="display:none;"></div>
 
 {% endblock %}
@@ -689,13 +570,6 @@
     var EQUITY_URL   = dataEl ? dataEl.getAttribute("data-equity-url")  : "";
     var WINLOSS_URL  = dataEl ? dataEl.getAttribute("data-winloss-url") : "";
     var STATS_URL    = "/dashboard/api/stats";
-    var QUOTES       = [];
-    var ROTATION_MS  = 10000;
-
-    if (dataEl) {
-        try { QUOTES = JSON.parse(dataEl.getAttribute("data-quotes") || "[]"); } catch (e) { QUOTES = []; }
-        try { ROTATION_MS = parseInt(dataEl.getAttribute("data-rotation") || "10000", 10) || 10000; } catch (e) { ROTATION_MS = 10000; }
-    }
 
     /* ----------------------------------------------------------------
        Utility: simple number animator
@@ -887,59 +761,11 @@
     }
 
     /* ----------------------------------------------------------------
-       Rotating motivational quotes
-    ---------------------------------------------------------------- */
-    function initQuoteRotator() {
-        var textEl       = document.getElementById("quoteText");
-        var progressEl   = document.getElementById("quoteProgressBar");
-        var containerEl  = document.getElementById("quoteContainer");
-        if (!textEl || !progressEl || !QUOTES || QUOTES.length === 0) { return; }
-
-        var currentIdx  = Math.floor(Math.random() * QUOTES.length);
-        var startTs     = null;
-        var rafId       = null;
-
-        function changeQuote() {
-            textEl.classList.add("fade-out");
-            setTimeout(function () {
-                currentIdx = (currentIdx + 1) % QUOTES.length;
-                textEl.textContent = QUOTES[currentIdx];
-                textEl.classList.remove("fade-out");
-                progressEl.style.width = "0%";
-                startTs = null;
-            }, 500);
-        }
-
-        function tick(ts) {
-            if (!startTs) startTs = ts;
-            var p = Math.min((ts - startTs) / ROTATION_MS, 1);
-            progressEl.style.width = Math.round(p * 1000) / 10 + "%";
-            if (p >= 1) {
-                changeQuote();
-            }
-            rafId = window.requestAnimationFrame(tick);
-        }
-
-        // Premium interaction: tap/click to skip to next quote instantly
-        if (containerEl) {
-            containerEl.style.cursor = "pointer";
-            containerEl.title = "Click to show next quote";
-            containerEl.addEventListener("click", function () {
-                changeQuote();
-            });
-        }
-
-        if (rafId) window.cancelAnimationFrame(rafId);
-        rafId = window.requestAnimationFrame(tick);
-    }
-
-    /* ----------------------------------------------------------------
        Boot
     ---------------------------------------------------------------- */
     document.addEventListener("DOMContentLoaded", function () {
         loadEquityChart();
         loadWinLossChart();
-        initQuoteRotator();
 
         var pnlEl    = document.getElementById("mini-pnl");
         var winEl    = document.getElementById("mini-win");
@@ -964,4 +790,5 @@
 
 }());
 </script>
+<script src="{{ url_for('static', filename='js/motivational-quotes.js') }}"></script>
 {% endblock %}
