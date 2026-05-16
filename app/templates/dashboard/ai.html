@@ -81,6 +81,16 @@
     75% { transform: translate(0.5px, 0.5px); }
     100% { transform: translate(0,0); }
   }
+  .tv-ai-tabs .nav-link { border-radius: 999px; font-weight: 600; }
+  .tv-ai-tabs .nav-link.active { background: var(--primary, #6366f1); color: #fff; }
+  .tv-morning-line { padding: 0.35rem 0; border-bottom: 1px solid rgba(148,163,184,0.12); }
+  .tv-morning-line:last-child { border-bottom: none; }
+  #ai-chat-card { scroll-margin-top: 5rem; }
+  #aiChatLog {
+    max-height: min(52vh, 520px);
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
 </style>
 {% endblock %}
 

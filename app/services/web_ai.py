@@ -173,7 +173,7 @@ def answer_with_web(
     content = _openai_chat(system, user)
     content = (content or "").strip()
     if not content:
-        return WebAIResult(answer="I couldn’t generate an answer right now. Try again.", follow_ups=[])
+        return WebAIResult(answer="", follow_ups=[])
 
     # Lightweight follow-up extraction: last two lines starting with '?' or bullets.
     follow_ups: List[str] = []

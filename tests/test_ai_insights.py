@@ -59,6 +59,15 @@ def test_ai_insights_service():
         assert topic is not None
         assert 'psychology' in topic.triggers or 'revenge' in topic.triggers
 
+        # With trades logged, general education should not dump unrelated weekly summary only
+        edu = analyzer.answer_question('How do I stop revenge trading?')
+        ans = (edu.get('answer') or '').lower()
+        assert 'you asked' in ans or 'psychology' in ans or 'revenge' in ans
+        assert 'recent snapshot' not in ans or 'you asked' in ans
+
+        rr = analyzer.answer_question('Explain risk reward to me')
+        assert 'risk' in (rr.get('answer') or '').lower()
+
 
 if __name__ == '__main__':
     success = test_ai_insights_service()

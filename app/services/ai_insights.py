@@ -899,6 +899,24 @@ class AIAnalyzer:
             line += " Add a one-line lesson so AI Buddy can spot patterns."
         return line
 
+    @staticmethod
+    def _is_personal_performance_question(text: str) -> bool:
+        """True when the user is asking about their own journal stats (not general education)."""
+        t = (text or '').lower()
+        markers = (
+            'my win rate', 'my performance', 'my trades', 'my best', 'my worst', 'my biggest',
+            'how did i', 'how have i', 'this week', 'last week', 'biggest leak',
+            'best strategy', 'best setup', 'worst strategy', 'trade doctor',
+            'how am i doing', 'how have i been',
+        )
+        if any(m in t for m in markers):
+            return True
+        if 'perform' in t and any(x in t for x in ('my ', 'i ', 'this week', 'weekly')):
+            return True
+        if any(w in t for w in ('mistake', 'leak', 'losing money')) and 'my ' in t:
+            return True
+        return False
+
     def suggest_weekly_focus_rule(self) -> str:
         """Auto-suggest one weekly rule from alerts / Trade Doctor."""
         weekly = self.get_weekly_review() or {}
@@ -971,11 +989,8 @@ class AIAnalyzer:
         def has(*words: str) -> bool:
             return any(w in text for w in words)
 
-        performance_intent = has(
-            'leak', 'mistake', 'losing', 'perform', 'weekly', 'win rate', 'wins', 'losses',
-            'best strategy', 'best setup', 'biggest', 'this week', 'my ',
-        )
-        if total < 1 and performance_intent:
+        personal = self._is_personal_performance_question(text)
+        if total < 1 and personal:
             return self._empty_state_coach_reply(stats, coach_context)
 
         def _coach_basics() -> str:
@@ -1028,7 +1043,7 @@ class AIAnalyzer:
             answer = self._wrap_coach_answer("\n".join(parts), stats, coach_context)
             return {'answer': answer, 'follow_ups': ["What’s my current weak point: win rate or R:R?", "Give me a stop-loss rule I can follow.", "How do I size positions safely?"]}
 
-        if has('win rate', 'wins', 'losses', 'perform', 'performance', 'this week', 'weekly'):
+        if personal and has('win rate', 'wins', 'losses', 'performance', 'this week', 'weekly'):
             summary = weekly.get('summary') or ''
             if not summary:
                 summary = f"Weekly snapshot: {total} closed trades, {win_rate:.0f}% win rate, net {total_pnl:.0f}, average R:R {avg_rr:.2f}."
@@ -1077,7 +1092,7 @@ class AIAnalyzer:
                 'follow_ups': ["What’s my weekly snapshot?", "What’s my biggest leak?"],
             }
 
-        if has('best setup', 'best strategy', 'best', 'edge'):
+        if personal and has('best setup', 'best strategy', 'my best', 'my edge'):
             best = (setups or {}).get('best_strategy')
             if best and isinstance(best, dict):
                 name = str(best.get('name') or '')
@@ -1095,7 +1110,18 @@ class AIAnalyzer:
                 'follow_ups': ["How should I tag strategies?", "What’s the fastest way to improve with low sample size?"],
             }
 
-        if has('mistake', 'mistakes', 'leak', 'why am i losing', 'losing', 'overtrade', 'revenge', 'fomo'):
+        if has('revenge', 'fomo', 'tilt', 'psychology', 'discipline', 'emotion') and not personal:
+            kb_psy = match_topic(text)
+            if kb_psy:
+                kb_answer, kb_fups = render_topic(kb_psy)
+                return {
+                    'answer': self._wrap_coach_answer(kb_answer, stats, coach_context),
+                    'follow_ups': kb_fups[:3],
+                }
+
+        if personal and has(
+            'mistake', 'mistakes', 'leak', 'why am i losing', 'overtrade', 'revenge', 'fomo', 'biggest',
+        ):
             issues = (alerts or [])[:4]
             if issues:
                 answer = "Here are the top issues I can actually see in your recent sample:\n- " + "\n- ".join(issues)
@@ -1136,30 +1162,63 @@ class AIAnalyzer:
             }
 
         kb = match_topic(text)
-        if kb and (has('explain', 'what is', 'what are', 'how does', 'define') or total < 1):
+        if kb and not personal:
             kb_answer, kb_fups = render_topic(kb)
             return {
                 'answer': self._wrap_coach_answer(kb_answer, stats, coach_context),
                 'follow_ups': kb_fups[:3],
             }
 
-        # Fallback: respond with a richer, non-repeating “coach brief” instead of the same summary
-        base = weekly.get('summary') or f"Recent snapshot: {total} closed trades, {win_rate:.0f}% win rate, net {total_pnl:.0f}, avg R:R {avg_rr:.2f}."
-        variations = [
-            base,
-            base + " If you want a sharper answer, ask about (1) best strategy, (2) biggest leak, or (3) next-week rule.",
-            base + " Ask me a specific: ‘what should I stop doing?’ and I’ll give you one rule.",
+        # Direct answer: acknowledge the question instead of dumping an unrelated weekly summary
+        q_display = (q[:200] + '…') if len(q) > 200 else q
+        body_parts = [
+            f"**You asked:** {q_display}",
+            '',
         ]
-        # Avoid exact repetition
-        answer = next((v for v in variations if v != last_assistant), variations[0])
-
-        # Light general knowledge supplement if user asked a broad trading question
-        if re.search(r'\bhow do i\b|\bwhat is\b|\bexplain\b', text):
-            answer += "\n\nIf your question is general trading knowledge, ask directly (e.g. “Explain liquidity”, “How to journal properly”, “How to manage drawdown”)."
+        if kb:
+            kb_answer, kb_fups = render_topic(kb)
+            body_parts.append(kb_answer)
+            follow_ups = kb_fups[:3]
+        elif re.search(r'\bhow do i\b|\bwhat is\b|\bexplain\b|\bhow does\b|\bdefine\b', text):
+            body_parts.append(
+                "Here’s a practical framework:\n"
+                "- Fix risk per trade and a daily stop (example: −2R or 2 losses).\n"
+                "- Trade one repeatable setup with a written checklist.\n"
+                "- Journal every trade with SL, emotion, and a one-line lesson."
+            )
+            follow_ups = [
+                'Explain risk:reward and how to improve it.',
+                'How do I journal properly?',
+                "What’s my biggest leak this week?",
+            ]
+        elif personal and total > 0:
+            base = weekly.get('summary') or (
+                f"Recent snapshot: {total} closed trades, {win_rate:.0f}% win rate, "
+                f"net {total_pnl:.0f}, avg R:R {avg_rr:.2f}."
+            )
+            body_parts.append(
+                "Here’s what your journal shows right now:\n" + base
+                + "\n\nAsk a sharper follow-up: *biggest leak*, *best strategy*, or *one rule for next week*."
+            )
+            follow_ups = [
+                "What’s my biggest leak this week?",
+                'What should my one rule be next week?',
+                'What’s my best strategy and why?',
+            ]
+        else:
+            body_parts.append(
+                "I’m your trading coach — ask about risk, psychology, journaling, or your weekly stats. "
+                "Try: “Explain risk:reward”, “How do I stop revenge trading?”, or “How did I perform this week?”"
+            )
+            follow_ups = [
+                'Explain risk:reward and how to improve it.',
+                'How do I stop revenge trading?',
+                "What’s my biggest leak this week?",
+            ]
 
         return {
-            'answer': self._wrap_coach_answer(answer, stats, coach_context),
-            'follow_ups': ["Explain position sizing.", "What’s a good journaling process?", "What’s my best session?"],
+            'answer': self._wrap_coach_answer('\n'.join(body_parts), stats, coach_context),
+            'follow_ups': follow_ups[:3],
         }
 
     def trade_doctor(self, *, last_n: int = 10) -> Dict[str, Any]:

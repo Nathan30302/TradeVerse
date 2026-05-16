@@ -1034,31 +1034,34 @@ def ai_query():
         )
     if len(question) > 1200:
         return jsonify({"answer": "That question is a bit long. Please shorten it and ask again.", "follow_ups": []}), 400
+
+    history = payload.get('history') or []
+    if not isinstance(history, list):
+        history = []
+
+    answer = ""
+    follow_ups: list[str] = []
+    suggested_focus = ''
+    used_web = False
+    wf = ''
     try:
-        history = payload.get('history') or []
-        if not isinstance(history, list):
-            history = []
+        wf = (_safe_getattr(current_user, 'weekly_focus_rule', None) or '').strip()
+    except Exception:
+        wf = ''
 
-        # Prefer local coach for reliability; if web mode is enabled but fails,
-        # gracefully fall back to local instead of returning a generic error.
-        answer = ""
-        follow_ups: list[str] = []
-        use_web = (
-            bool(current_app.config.get("FEATURE_AI_WEB"))
-            and bool(os.environ.get("OPENAI_API_KEY", "").strip())
-            and user_has_feature(current_user, "ai_web")
-        )
+    use_web = (
+        bool(current_app.config.get("FEATURE_AI_WEB"))
+        and bool(os.environ.get("OPENAI_API_KEY", "").strip())
+        and user_has_feature(current_user, "ai_web")
+    )
 
+    coach_block = ""
+    try:
         analyzer = AIAnalyzer(current_user.id)
-        try:
-            wf = (_safe_getattr(current_user, 'weekly_focus_rule', None) or '').strip()
-        except Exception:
-            wf = ''
         try:
             weekly = analyzer.get_weekly_review() or {}
             ws = (weekly.get("stats") or {}) if isinstance(weekly, dict) else {}
         except Exception:
-            weekly = {}
             ws = {}
         ctx_dict = build_coach_context_dict(current_user, ws)
         coach_block = format_coach_context_block(ctx_dict, include_stats=True)
@@ -1073,12 +1076,15 @@ def ai_query():
         except Exception:
             ctx_all = ""
         ctx = f"username={current_user.username or ''}\n{coach_block}\n{ctx_all}"
-        suggested_focus = ''
+
         if use_web:
             try:
                 web = answer_with_web(question=question, user_context=ctx, history=history[-12:])
-                answer = web.answer
-                follow_ups = [str(x) for x in (web.follow_ups or []) if x]
+                web_answer = (web.answer or "").strip()
+                if web_answer and "couldn't generate" not in web_answer.lower():
+                    answer = web_answer
+                    follow_ups = [str(x) for x in (web.follow_ups or []) if x]
+                    used_web = True
             except OpenAIRateLimited:
                 current_app.logger.info(
                     "Web AI: OpenAI rate limited after retries; using local coach."
@@ -1097,29 +1103,32 @@ def ai_query():
             )
             answer = (result.get('answer') if isinstance(result, dict) else '') or ''
             follow_ups = [str(x) for x in ((result.get('follow_ups') if isinstance(result, dict) else []) or []) if x]
-            if result.get('suggested_weekly_focus'):
+            if isinstance(result, dict) and result.get('suggested_weekly_focus'):
                 suggested_focus = str(result.get('suggested_weekly_focus'))
-
-        follow_ups = follow_ups[:3]
-        if not follow_ups:
-            follow_ups = [
-                "What’s my biggest performance leak this week?",
-                "What should my one rule be next week?",
-                "What should I focus on tomorrow?",
-            ]
     except Exception as exc:
-        current_app.logger.warning('AI Buddy answer_question failed: %s', exc)
-        answer = 'AI Buddy could not process your question right now. Please try again later.'
-        follow_ups = []
-        wf = ''
-        suggested_focus = ''
-        use_web = False
+        current_app.logger.warning('AI Buddy ai_query failed: %s', exc, exc_info=True)
+
+    answer = (answer or "").strip()
+    if not answer:
+        answer = (
+            "I hit a snag answering that, but I’m still here. "
+            "Try rephrasing in one sentence, or tap a quick chip like **Risk:Reward** or **Biggest leak**."
+        )
+
+    follow_ups = follow_ups[:3]
+    if not follow_ups:
+        follow_ups = [
+            "What’s my biggest performance leak this week?",
+            "What should my one rule be next week?",
+            "Explain risk:reward and how to improve it.",
+        ]
+
     return jsonify({
         'answer': answer,
         'follow_ups': follow_ups,
         'context': {'weekly_focus_rule': wf},
         'suggested_weekly_focus': suggested_focus,
-        'used_web': bool(use_web and answer),
+        'used_web': used_web,
     })
 
 

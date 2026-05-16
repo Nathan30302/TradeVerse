@@ -30,7 +30,7 @@
     var coachActive = false;
     var recognition = null;
     var isSpeaking = false;
-    var coachAutoSend = true;
+    var requestInFlight = false;
     var lastTradeDoctor = null;
 
     var tvCurrency = root.getAttribute('data-currency') || 'USD';
@@ -60,6 +60,38 @@
         .catch(function () {});
     }
 
+    function showAiTab(name) {
+      var panels = {
+        today: document.getElementById('ai-section-today'),
+        review: document.getElementById('ai-section-review'),
+        setup: document.getElementById('ai-section-setup'),
+      };
+      Object.keys(panels).forEach(function (key) {
+        var el = panels[key];
+        if (!el) return;
+        if (key === name) el.classList.remove('d-none');
+        else el.classList.add('d-none');
+      });
+      document.querySelectorAll('#aiBuddyTabs [data-ai-tab]').forEach(function (btn) {
+        var active = btn.getAttribute('data-ai-tab') === name;
+        btn.classList.toggle('active', active);
+      });
+      try { sessionStorage.setItem('tv_ai_tab', name); } catch (e) {}
+    }
+
+    function ensureChatTab() {
+      showAiTab('today');
+      var card = document.getElementById('ai-chat-card');
+      if (card && card.scrollIntoView) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function scrollChatToBottom() {
+      var log = document.getElementById('aiChatLog');
+      if (log) log.scrollTop = log.scrollHeight;
+    }
+
     function pickEnglishVoice() {
       try {
         var voices = global.speechSynthesis ? global.speechSynthesis.getVoices() : [];
@@ -70,12 +102,19 @@
       return null;
     }
 
+    function stopListening() {
+      try {
+        if (recognition) recognition.stop();
+      } catch (e) {}
+    }
+
     function speakText(text) {
       return new Promise(function (resolve) {
         if (!global.speechSynthesis) { resolve(); return; }
-        try { if (recognition) recognition.stop(); } catch (e) {}
+        stopListening();
         global.speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(text);
+        var plain = String(text || '').replace(/\*\*/g, '');
+        var u = new SpeechSynthesisUtterance(plain);
         u.rate = 1.02;
         u.pitch = 1.03;
         var v = pickEnglishVoice();
@@ -177,6 +216,7 @@
       bubble.appendChild(head);
       bubble.appendChild(body);
       chat.appendChild(bubble);
+      scrollChatToBottom();
       if (!opts.skipHistory) {
         HISTORY.push({ role: role, content: content });
         if (HISTORY.length > 14) HISTORY = HISTORY.slice(-14);
@@ -186,25 +226,33 @@
       }
     }
 
-    function setLoading(isLoading) {
+    function setChatBusy(isBusy) {
       var btn = document.getElementById('aiSubmitBtn');
-      if (btn) {
-        btn.disabled = !!isLoading;
-        btn.classList.toggle('loading', !!isLoading);
-      }
       var q = document.getElementById('aiQuestion');
-      if (q) q.disabled = !!isLoading;
+      var chips = document.getElementById('aiQuickChips');
+      var tdBtn = document.getElementById('tradeDoctorBtn');
+      if (btn) {
+        btn.disabled = !!isBusy;
+        btn.classList.toggle('loading', !!isBusy);
+      }
+      if (q) q.disabled = !!isBusy;
+      if (chips) {
+        chips.querySelectorAll('button').forEach(function (b) { b.disabled = !!isBusy; });
+      }
+      if (tdBtn) tdBtn.disabled = !!isBusy;
       var log = document.getElementById('aiChatLog');
       var existing = document.getElementById('aiTyping');
-      if (isLoading && log && !existing) {
+      if (isBusy && log && !existing) {
         var bubble = document.createElement('div');
         bubble.id = 'aiTyping';
         bubble.className = 'tv-surface soft p-3 mb-2';
         bubble.innerHTML = '<div class="small tv-muted mb-1">AI Buddy</div><div class="tv-typing" aria-label="Thinking"><span></span><span></span><span></span></div>';
         log.appendChild(bubble);
-      } else if (!isLoading && existing) {
+        scrollChatToBottom();
+      } else if (!isBusy && existing) {
         existing.remove();
       }
+      if (isBusy) stopListening();
     }
 
     function showSuggestedFocus(rule) {
@@ -255,56 +303,84 @@
         });
     }
 
+    function handleAnswerResponse(data) {
+      var ans = (data && data.answer) ? data.answer : '';
+      if (!ans.trim()) {
+        ans = 'I could not build an answer for that. Try a shorter question or tap **Risk:Reward**.';
+      }
+      appendChat('assistant', ans);
+      renderFollowUps((data && data.follow_ups) ? data.follow_ups : []);
+      if (data && data.suggested_weekly_focus) showSuggestedFocus(data.suggested_weekly_focus);
+      if (coachActive) {
+        speakText(ans).then(function () {
+          if (coachActive && !requestInFlight) startListening();
+        });
+      }
+    }
+
     function onAskClick(forcedQuestion) {
+      if (requestInFlight) return;
       var questionEl = document.getElementById('aiQuestion');
       if (!questionEl) return;
       var q = (forcedQuestion || questionEl.value || '').trim();
       if (!q) return;
+
+      ensureChatTab();
       questionEl.value = '';
       appendChat('user', q);
-      setLoading(true);
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', AI_QUERY_URL, true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('X-CSRFToken', CSRF);
-      xhr.setRequestHeader('X-CSRF-Token', CSRF);
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState !== 4) return;
-        setLoading(false);
-        if (xhr.status === 200) {
-          try {
-            var data = JSON.parse(xhr.responseText);
-            var ans = (data && data.answer) ? data.answer : 'Sorry, AI Buddy could not answer that right now.';
-            appendChat('assistant', ans);
-            renderFollowUps((data && data.follow_ups) ? data.follow_ups : []);
-            if (data && data.suggested_weekly_focus) showSuggestedFocus(data.suggested_weekly_focus);
-            if (coachActive) {
-              speakText(ans).then(function () { startListening(); });
-            }
-          } catch (e) {
-            appendChat('assistant', 'Sorry, AI Buddy could not answer that right now.');
+      var priorHistory = HISTORY.slice(0, -1);
+
+      requestInFlight = true;
+      setChatBusy(true);
+
+      fetch(AI_QUERY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRFToken': CSRF,
+          'X-CSRF-Token': CSRF,
+        },
+        body: JSON.stringify({ question: q, history: priorHistory }),
+      })
+        .then(function (r) {
+          if (!r.ok) {
+            return r.json().catch(function () { return {}; }).then(function (err) {
+              throw new Error((err && err.answer) || ('HTTP ' + r.status));
+            });
           }
-        } else {
-          appendChat('assistant', 'Unable to reach AI Buddy. Please try again later.');
-        }
-      };
-      xhr.onerror = function () {
-        setLoading(false);
-        appendChat('assistant', 'Unable to reach AI Buddy. Please try again later.');
-      };
-      xhr.send(JSON.stringify({ question: q, history: HISTORY }));
+          return r.json();
+        })
+        .then(function (data) {
+          handleAnswerResponse(data);
+        })
+        .catch(function (err) {
+          var msg = (err && err.message) ? String(err.message) : '';
+          if (msg.indexOf('HTTP 503') >= 0) {
+            appendChat('assistant', 'AI Buddy is temporarily unavailable. Your local coach will be back shortly — try again in a moment.');
+          } else {
+            appendChat('assistant', 'I could not reach the coach right now. Check your connection and try again, or rephrase in one short sentence.');
+          }
+        })
+        .finally(function () {
+          requestInFlight = false;
+          setChatBusy(false);
+        });
     }
 
     function runTradeDoctor() {
+      if (requestInFlight) return;
+      ensureChatTab();
       appendChat('assistant', '**Trade Doctor** is analyzing your last 10 closed trades…');
-      setLoading(true);
+      requestInFlight = true;
+      setChatBusy(true);
       fetch(TRADE_DOCTOR_URL, { headers: { Accept: 'application/json' } })
         .then(function (r) { return r.json(); })
         .then(function (d) {
           lastTradeDoctor = d;
-          var text = (d && d.text) ? d.text : 'Trade Doctor returned no analysis.';
+          var text = (d && d.text) ? d.text : 'Log at least 3 closed trades with strategy, emotion, and stop loss — then run Trade Doctor again.';
           appendChat('assistant', text);
-          if (d && d.leak) {
+          if (d && d.leak && d.leak !== 'No recent closed trades') {
             var actions = document.createElement('div');
             actions.className = 'd-flex flex-wrap gap-2 mt-2';
             var pinBtn = document.createElement('button');
@@ -317,8 +393,7 @@
             focusBtn.className = 'btn btn-sm btn-outline-primary';
             focusBtn.textContent = 'Use as weekly focus';
             focusBtn.addEventListener('click', function () {
-              var rule = 'Trade Doctor: ' + d.leak;
-              applyWeeklyFocus(rule);
+              applyWeeklyFocus('Trade Doctor: ' + d.leak);
             });
             actions.appendChild(pinBtn);
             actions.appendChild(focusBtn);
@@ -327,13 +402,16 @@
           }
         })
         .catch(function () {
-          appendChat('assistant', 'Trade Doctor couldn’t load right now. Try again in a moment.');
+          appendChat('assistant', 'Trade Doctor could not load right now. Try again in a moment.');
         })
-        .finally(function () { setLoading(false); });
+        .finally(function () {
+          requestInFlight = false;
+          setChatBusy(false);
+        });
     }
 
     function startListening() {
-      if (!coachActive) return;
+      if (!coachActive || requestInFlight || isSpeaking) return;
       var SR = global.SpeechRecognition || global.webkitSpeechRecognition;
       if (!SR) return;
       try {
@@ -341,32 +419,35 @@
           recognition = new SR();
           recognition.lang = 'en-US';
           recognition.interimResults = false;
+          recognition.continuous = false;
           recognition.maxAlternatives = 1;
           recognition.onresult = function (evt) {
-            var res = evt.results && evt.results[0] && evt.results[0][0] ? evt.results[0][0] : null;
-            var transcript = res ? (res.transcript || '').trim() : '';
-            var questionEl = document.getElementById('aiQuestion');
-            if (questionEl && transcript) {
-              questionEl.value = transcript;
-              appendChat('assistant', 'I heard: “' + transcript + '”' + (coachAutoSend ? ' — sending…' : ' — tap Ask when ready.'));
-              if (coachAutoSend) {
-                setTimeout(function () { onAskClick(transcript); }, 400);
-              }
-            }
+            if (!coachActive || requestInFlight) return;
+            var res = evt.results && evt.results[evt.results.length - 1] && evt.results[evt.results.length - 1][0];
+            if (!res || !res.isFinal) return;
+            var transcript = (res.transcript || '').trim();
+            if (!transcript) return;
+            stopListening();
+            onAskClick(transcript);
           };
           recognition.onerror = function (ev) {
             var code = (ev && ev.error) ? ev.error : 'unknown';
-            if (code !== 'aborted' && code !== 'no-speech') {
-              appendChat('assistant', 'Voice input issue (' + code + '). You can type your question instead.');
+            if (code === 'aborted' || code === 'no-speech') return;
+            if (coachActive) {
+              appendChat('assistant', 'Voice input issue (' + code + '). You can type your question instead.', { skipHistory: false });
             }
           };
           recognition.onend = function () {
-            if (coachActive && !isSpeaking) {
-              setTimeout(function () { try { recognition.start(); } catch (e) {} }, 500);
+            if (coachActive && !requestInFlight && !isSpeaking) {
+              setTimeout(function () {
+                try {
+                  if (coachActive && !requestInFlight && !isSpeaking) recognition.start();
+                } catch (e) {}
+              }, 600);
             }
           };
         }
-        if (!isSpeaking) recognition.start();
+        recognition.start();
       } catch (e) {}
     }
 
@@ -376,24 +457,25 @@
       var coachBtn = document.getElementById('coachTalkBtn');
       if (stopBtn) stopBtn.classList.add('d-none');
       if (coachBtn) coachBtn.disabled = false;
-      try { if (recognition) recognition.stop(); } catch (e) {}
+      stopListening();
       try { global.speechSynthesis.cancel(); } catch (e) {}
+      isSpeaking = false;
     }
 
     function startCoach() {
+      ensureChatTab();
       coachActive = true;
       var stopBtn = document.getElementById('coachStopBtn');
       var coachBtn = document.getElementById('coachTalkBtn');
       if (stopBtn) stopBtn.classList.remove('d-none');
       if (coachBtn) coachBtn.disabled = true;
       var intro = USERNAME
-        ? 'Hey ' + USERNAME + '. Ask out loud — I’ll answer and listen again.'
-        : 'Ask out loud — I’ll answer and listen again.';
-      appendChat('assistant', intro);
+        ? 'Hey ' + USERNAME + '. Ask out loud — I’ll answer, then listen again.'
+        : 'Ask out loud — I’ll answer, then listen again.';
+      appendChat('assistant', intro, { skipStore: false });
       speakText(intro).then(startListening);
     }
 
-    // Bind UI
     var voiceBtn = document.getElementById('voiceBtn');
     var voicePauseBtn = document.getElementById('voicePauseBtn');
     var voiceStopBtn = document.getElementById('voiceStopBtn');
@@ -416,15 +498,22 @@
     });
     if (voiceStopBtn) voiceStopBtn.addEventListener('click', function () {
       try { global.speechSynthesis.cancel(); } catch (e) {}
+      isSpeaking = false;
     });
     if (submitBtn) submitBtn.addEventListener('click', function () { onAskClick(); });
     if (clearBtn) clearBtn.addEventListener('click', function () {
       HISTORY = [];
+      requestInFlight = false;
       try { sessionStorage.removeItem('tv_ai_history'); } catch (e) {}
       renderFollowUps([]);
       var log = document.getElementById('aiChatLog');
       if (log) log.textContent = '';
-      appendChat('assistant', 'Cleared. Ask a fresh question whenever you\'re ready.');
+      ensureChatTab();
+      if (questionEl) {
+        questionEl.value = '';
+        questionEl.focus();
+        questionEl.placeholder = 'Ask a trading question…';
+      }
     });
     if (questionEl) questionEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') onAskClick();
@@ -433,7 +522,7 @@
     if (coachBtn) coachBtn.addEventListener('click', function () {
       var SR = global.SpeechRecognition || global.webkitSpeechRecognition;
       if (!SR) {
-        appendChat('assistant', 'Coach Talk isn’t supported in this browser. Use typed chat or Play Voice Review.');
+        appendChat('assistant', 'Coach Talk is not supported in this browser. Use typed chat or Play Voice Review.');
         return;
       }
       startCoach();
@@ -476,29 +565,9 @@
     var initialFocus = root.getAttribute('data-suggested-focus');
     if (initialFocus) showSuggestedFocus(initialFocus);
 
-    function showAiTab(name) {
-      var panels = {
-        today: document.getElementById('ai-section-today'),
-        review: document.getElementById('ai-section-review'),
-        setup: document.getElementById('ai-section-setup'),
-      };
-      Object.keys(panels).forEach(function (key) {
-        var el = panels[key];
-        if (!el) return;
-        if (key === name) el.classList.remove('d-none');
-        else el.classList.add('d-none');
-      });
-      document.querySelectorAll('#aiBuddyTabs [data-ai-tab]').forEach(function (btn) {
-        var active = btn.getAttribute('data-ai-tab') === name;
-        btn.classList.toggle('active', active);
-      });
-      try { sessionStorage.setItem('tv_ai_tab', name); } catch (e) {}
-    }
-
-    var tabKey = 'tv_ai_tab';
     var savedTab = 'today';
-    try { savedTab = sessionStorage.getItem(tabKey) || 'today'; } catch (e) {}
-    if (!['today', 'review', 'setup'].includes(savedTab)) savedTab = 'today';
+    try { savedTab = sessionStorage.getItem('tv_ai_tab') || 'today'; } catch (e) {}
+    if (['today', 'review', 'setup'].indexOf(savedTab) < 0) savedTab = 'today';
     showAiTab(savedTab);
 
     document.querySelectorAll('#aiBuddyTabs [data-ai-tab]').forEach(function (btn) {
