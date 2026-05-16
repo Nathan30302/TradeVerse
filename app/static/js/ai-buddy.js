@@ -30,7 +30,9 @@
     var coachActive = false;
     var recognition = null;
     var isSpeaking = false;
+    var isListening = false;
     var requestInFlight = false;
+    var voiceSendTimer = null;
     var lastTradeDoctor = null;
 
     var tvCurrency = root.getAttribute('data-currency') || 'USD';
@@ -102,7 +104,69 @@
       return null;
     }
 
+    function setCoachStatus(state, message) {
+      var el = document.getElementById('aiCoachStatus');
+      if (!el) return;
+      el.classList.remove('is-listening', 'is-thinking', 'is-speaking', 'is-error');
+      if (state === 'listening') el.classList.add('is-listening');
+      else if (state === 'thinking') el.classList.add('is-thinking');
+      else if (state === 'speaking') el.classList.add('is-speaking');
+      else if (state === 'error') el.classList.add('is-error');
+      if (message) el.textContent = message;
+    }
+
+    function isVoiceAutoSend() {
+      var cb = document.getElementById('aiVoiceAutoSend');
+      return !cb || cb.checked;
+    }
+
+    function extractTranscript(evt) {
+      var interim = [];
+      var finals = [];
+      if (!evt || !evt.results) return { text: '', isFinal: false };
+      for (var i = 0; i < evt.results.length; i++) {
+        var bit = evt.results[i];
+        if (!bit || !bit[0]) continue;
+        var t = (bit[0].transcript || '').trim();
+        if (!t) continue;
+        if (bit.isFinal) finals.push(t);
+        else interim.push(t);
+      }
+      var text = (finals.length ? finals.join(' ') : interim.join(' ')).trim();
+      var isFinal = evt.results.length > 0 && evt.results[evt.results.length - 1].isFinal;
+      return { text: text, isFinal: isFinal };
+    }
+
+    function clearVoiceSendTimer() {
+      if (voiceSendTimer) {
+        clearTimeout(voiceSendTimer);
+        voiceSendTimer = null;
+      }
+    }
+
+    function scheduleVoiceSend(transcript) {
+      clearVoiceSendTimer();
+      var qEl = document.getElementById('aiQuestion');
+      if (qEl) {
+        qEl.value = transcript;
+        qEl.classList.remove('tv-voice-interim');
+      }
+      if (!isVoiceAutoSend()) {
+        setCoachStatus('idle', 'Review your question in the box, then tap Ask AI Buddy.');
+        return;
+      }
+      setCoachStatus('thinking', 'Sending your question…');
+      voiceSendTimer = setTimeout(function () {
+        voiceSendTimer = null;
+        if (!transcript.trim() || requestInFlight) return;
+        onAskClick(transcript);
+      }, 450);
+    }
+
     function stopListening() {
+      isListening = false;
+      var qEl = document.getElementById('aiQuestion');
+      if (qEl) qEl.classList.remove('tv-voice-listening', 'tv-voice-interim');
       try {
         if (recognition) recognition.stop();
       } catch (e) {}
@@ -120,11 +184,17 @@
         var v = pickEnglishVoice();
         if (v) u.voice = v;
         isSpeaking = true;
+        setCoachStatus('speaking', 'Speaking the answer…');
         var coachBtn = document.getElementById('coachTalkBtn');
         if (coachBtn) coachBtn.classList.add('tv-speaking');
         u.onend = u.onerror = function () {
           isSpeaking = false;
           if (coachBtn) coachBtn.classList.remove('tv-speaking');
+          if (coachActive && !requestInFlight) {
+            setCoachStatus('listening', 'Listening… speak your next question.');
+          } else if (!coachActive) {
+            setCoachStatus('idle', 'Type a question or tap Coach Talk to use your microphone.');
+          }
           resolve();
         };
         global.speechSynthesis.speak(u);
@@ -169,6 +239,13 @@
       var who = document.createElement('div');
       who.textContent = role === 'user' ? (USERNAME ? USERNAME + ' (you)' : 'You') : 'AI Buddy';
       head.appendChild(who);
+      if (role === 'assistant' && opts.usedWeb !== undefined) {
+        var src = document.createElement('span');
+        src.className = 'tv-answer-source';
+        src.textContent = opts.usedWeb ? 'Pro web' : 'Journal coach';
+        src.title = opts.usedWeb ? 'Answer used live web context' : 'Answer from your journal and stats';
+        head.appendChild(src);
+      }
       if (role === 'assistant') {
         var actions = document.createElement('div');
         actions.className = 'd-flex gap-2 flex-wrap';
@@ -235,7 +312,7 @@
         btn.disabled = !!isBusy;
         btn.classList.toggle('loading', !!isBusy);
       }
-      if (q) q.disabled = !!isBusy;
+      if (q) q.disabled = !!isBusy && !isListening;
       if (chips) {
         chips.querySelectorAll('button').forEach(function (b) { b.disabled = !!isBusy; });
       }
@@ -252,7 +329,14 @@
       } else if (!isBusy && existing) {
         existing.remove();
       }
-      if (isBusy) stopListening();
+      if (isBusy) {
+        stopListening();
+        setCoachStatus('thinking', 'Thinking…');
+      } else if (coachActive && !isSpeaking) {
+        setCoachStatus('listening', 'Listening… speak your question.');
+      } else if (!coachActive) {
+        setCoachStatus('idle', 'Type a question or tap Coach Talk to use your microphone.');
+      }
     }
 
     function showSuggestedFocus(rule) {
@@ -308,7 +392,7 @@
       if (!ans.trim()) {
         ans = 'I could not build an answer for that. Try a shorter question or tap **Risk:Reward**.';
       }
-      appendChat('assistant', ans);
+      appendChat('assistant', ans, { usedWeb: !!(data && data.used_web) });
       renderFollowUps((data && data.follow_ups) ? data.follow_ups : []);
       if (data && data.suggested_weekly_focus) showSuggestedFocus(data.suggested_weekly_focus);
       if (coachActive) {
@@ -326,6 +410,8 @@
       if (!q) return;
 
       ensureChatTab();
+      clearVoiceSendTimer();
+      questionEl.classList.remove('tv-voice-interim', 'tv-voice-listening');
       questionEl.value = '';
       appendChat('user', q);
       var priorHistory = HISTORY.slice(0, -1);
@@ -418,48 +504,71 @@
         if (!recognition) {
           recognition = new SR();
           recognition.lang = 'en-US';
-          recognition.interimResults = false;
+          recognition.interimResults = true;
           recognition.continuous = false;
           recognition.maxAlternatives = 1;
           recognition.onresult = function (evt) {
             if (!coachActive || requestInFlight) return;
-            var res = evt.results && evt.results[evt.results.length - 1] && evt.results[evt.results.length - 1][0];
-            if (!res || !res.isFinal) return;
-            var transcript = (res.transcript || '').trim();
-            if (!transcript) return;
-            stopListening();
-            onAskClick(transcript);
+            var parsed = extractTranscript(evt);
+            if (!parsed.text) return;
+            var qEl = document.getElementById('aiQuestion');
+            if (qEl) {
+              qEl.value = parsed.text;
+              qEl.classList.toggle('tv-voice-interim', !parsed.isFinal);
+              qEl.classList.add('tv-voice-listening');
+            }
+            if (parsed.isFinal) {
+              setCoachStatus('listening', 'Got it — processing…');
+              stopListening();
+              scheduleVoiceSend(parsed.text);
+            } else {
+              setCoachStatus('listening', 'Listening… ' + parsed.text);
+            }
           };
           recognition.onerror = function (ev) {
             var code = (ev && ev.error) ? ev.error : 'unknown';
             if (code === 'aborted' || code === 'no-speech') return;
+            setCoachStatus('error', 'Voice issue: ' + code + '. Type your question or try again.');
             if (coachActive) {
               appendChat('assistant', 'Voice input issue (' + code + '). You can type your question instead.', { skipHistory: false });
             }
           };
           recognition.onend = function () {
-            if (coachActive && !requestInFlight && !isSpeaking) {
+            isListening = false;
+            var qEl = document.getElementById('aiQuestion');
+            if (qEl) qEl.classList.remove('tv-voice-listening');
+            if (!isVoiceAutoSend() && coachActive && !requestInFlight && !isSpeaking) return;
+            if (coachActive && !requestInFlight && !isSpeaking && !voiceSendTimer) {
               setTimeout(function () {
                 try {
-                  if (coachActive && !requestInFlight && !isSpeaking) recognition.start();
+                  if (coachActive && !requestInFlight && !isSpeaking && !voiceSendTimer) startListening();
                 } catch (e) {}
               }, 600);
             }
           };
         }
+        isListening = true;
+        var qEl = document.getElementById('aiQuestion');
+        if (qEl) qEl.classList.add('tv-voice-listening');
+        setCoachStatus('listening', 'Listening… speak clearly.');
         recognition.start();
       } catch (e) {}
     }
 
     function stopCoach() {
       coachActive = false;
+      clearVoiceSendTimer();
       var stopBtn = document.getElementById('coachStopBtn');
       var coachBtn = document.getElementById('coachTalkBtn');
       if (stopBtn) stopBtn.classList.add('d-none');
-      if (coachBtn) coachBtn.disabled = false;
+      if (coachBtn) {
+        coachBtn.disabled = false;
+        coachBtn.classList.remove('tv-coach-active', 'tv-speaking');
+      }
       stopListening();
       try { global.speechSynthesis.cancel(); } catch (e) {}
       isSpeaking = false;
+      setCoachStatus('idle', 'Type a question or tap Coach Talk to use your microphone.');
     }
 
     function startCoach() {
@@ -468,7 +577,11 @@
       var stopBtn = document.getElementById('coachStopBtn');
       var coachBtn = document.getElementById('coachTalkBtn');
       if (stopBtn) stopBtn.classList.remove('d-none');
-      if (coachBtn) coachBtn.disabled = true;
+      if (coachBtn) {
+        coachBtn.disabled = true;
+        coachBtn.classList.add('tv-coach-active');
+      }
+      setCoachStatus('speaking', 'Starting Coach Talk…');
       var intro = USERNAME
         ? 'Hey ' + USERNAME + '. Ask out loud — I’ll answer, then listen again.'
         : 'Ask out loud — I’ll answer, then listen again.';
@@ -509,10 +622,15 @@
       var log = document.getElementById('aiChatLog');
       if (log) log.textContent = '';
       ensureChatTab();
+      clearVoiceSendTimer();
       if (questionEl) {
         questionEl.value = '';
+        questionEl.classList.remove('tv-voice-interim', 'tv-voice-listening');
         questionEl.focus();
         questionEl.placeholder = 'Ask a trading question…';
+      }
+      if (!coachActive) {
+        setCoachStatus('idle', 'Type a question or tap Coach Talk to use your microphone.');
       }
     });
     if (questionEl) questionEl.addEventListener('keydown', function (e) {

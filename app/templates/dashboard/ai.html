@@ -91,6 +91,53 @@
     overflow-y: auto;
     scroll-behavior: smooth;
   }
+  #aiCoachStatus {
+    min-height: 1.75rem;
+    font-size: 0.8125rem;
+    border-radius: 10px;
+    padding: 0.35rem 0.65rem;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+  }
+  #aiCoachStatus.is-listening {
+    background: rgba(34, 197, 94, 0.12);
+    border-color: rgba(34, 197, 94, 0.35);
+    color: #166534;
+  }
+  #aiCoachStatus.is-thinking {
+    background: rgba(99, 102, 241, 0.14);
+    border-color: rgba(99, 102, 241, 0.35);
+  }
+  #aiCoachStatus.is-speaking {
+    background: rgba(14, 165, 233, 0.12);
+    border-color: rgba(14, 165, 233, 0.35);
+  }
+  #aiCoachStatus.is-error {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #991b1b;
+  }
+  #aiQuestion.tv-voice-interim {
+    font-style: italic;
+    color: var(--text-muted, #64748b);
+  }
+  #aiQuestion.tv-voice-listening {
+    border-color: rgba(34, 197, 94, 0.55);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  }
+  #coachTalkBtn.tv-coach-active {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.45);
+    color: #166534;
+  }
+  .tv-answer-source {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.12);
+    color: #4338ca;
+    font-weight: 600;
+  }
 </style>
 {% endblock %}
 
@@ -210,12 +257,17 @@
         </div>
     </div>
     <div class="card-body">
+        <div id="aiCoachStatus" class="mb-2 tv-muted" role="status" aria-live="polite">Type a question or tap Coach Talk to use your microphone.</div>
         <div class="mb-3">
             <label for="aiQuestion" class="form-label">Ask a trading question</label>
             <input id="aiQuestion"
                    class="form-control"
                    placeholder="How did I perform this week? What is my best setup?"
                    autocomplete="off">
+        </div>
+        <div class="form-check form-switch small mb-3">
+            <input class="form-check-input" type="checkbox" id="aiVoiceAutoSend" checked>
+            <label class="form-check-label" for="aiVoiceAutoSend">Auto-send after voice (uncheck to review in the box, then tap Ask)</label>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <button id="aiSubmitBtn" type="button" class="btn btn-outline-primary">
