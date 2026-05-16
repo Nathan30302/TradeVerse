@@ -6,6 +6,7 @@ from app import create_app, db, schema_compat
 from app.models.user import User
 from app.models.trade import Trade
 from app.services.ai_insights import AIAnalyzer
+from app.services.trading_knowledge import _trigger_matches, match_topic
 
 
 def test_ai_insights_service():
@@ -39,6 +40,24 @@ def test_ai_insights_service():
         assert isinstance(resp, dict)
         assert isinstance(resp.get('answer'), str)
         assert len(resp.get('answer') or '') > 0
+
+        empty_user = User(username='emptyai', email='empty@example.com')
+        empty_user.set_password('password')
+        db.session.add(empty_user)
+        db.session.commit()
+        empty_analyzer = AIAnalyzer(empty_user.id)
+        empty_weekly = empty_analyzer.get_weekly_review()
+        assert empty_weekly.get('has_data') is False
+        assert empty_weekly.get('weaknesses') == []
+        assert empty_weekly.get('alerts') == []
+
+        empty_resp = empty_analyzer.answer_question('How did I perform this week?')
+        assert 'log' in (empty_resp.get('answer') or '').lower()
+
+        assert _trigger_matches('revenge trading after a loss', 'ev') is False
+        topic = match_topic('how do i stop revenge trading')
+        assert topic is not None
+        assert 'psychology' in topic.triggers or 'revenge' in topic.triggers
 
 
 if __name__ == '__main__':

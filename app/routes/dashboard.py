@@ -25,7 +25,8 @@ from flask import request, flash, redirect, url_for
 from datetime import datetime, timedelta, timezone
 from app.utils.timeutil import utc_now
 import random
-from app.services.entitlements import _safe_getattr, require_feature
+from app.services.entitlements import _safe_getattr, require_feature, user_has_feature
+from app.services.ai_coach_context import build_coach_context_dict, format_coach_context_block
 from zoneinfo import ZoneInfo
 import os
 
@@ -163,6 +164,12 @@ def index():
         current_app.logger.warning('AI Buddy weekly review failed: %s', exc)
         ai_summary = _safe_ai_summary()
 
+    last_trade_insight = ''
+    try:
+        last_trade_insight = AIAnalyzer(current_user.id).get_last_trade_insight()
+    except Exception:
+        last_trade_insight = ''
+
     # Get best and worst trades
     best_trade = Trade.query.filter_by(
         user_id=current_user.id,
@@ -219,7 +226,8 @@ def index():
                            best_trade=best_trade,
                            worst_trade=worst_trade,
                            onboarding=onboarding,
-                           pinned_note=pinned_note)
+                           pinned_note=pinned_note,
+                           last_trade_insight=last_trade_insight)
 
 # ==================== Analytics ====================
 
@@ -917,6 +925,21 @@ def ai():
     except Exception:
         pinned_note = None
 
+    morning_briefing = {'lines': [], 'has_data': False}
+    suggested_focus = ''
+    try:
+        morning_briefing = analyzer.get_morning_briefing(user_name=(current_user.username or ''))
+        suggested_focus = analyzer.suggest_weekly_focus_rule()
+    except Exception:
+        pass
+
+    has_ai_web = user_has_feature(current_user, 'ai_web')
+    last_trade_insight = ''
+    try:
+        last_trade_insight = analyzer.get_last_trade_insight()
+    except Exception:
+        pass
+
     return render_template('dashboard/ai.html',
                            weekly_review=weekly_review,
                            monthly_review=monthly_review,
@@ -924,7 +947,11 @@ def ai():
                            voice_summary=voice_summary,
                            alerts=alerts,
                            weekly_focus_rule=wf,
-                           pinned_note=pinned_note)
+                           pinned_note=pinned_note,
+                           morning_briefing=morning_briefing,
+                           suggested_weekly_focus=suggested_focus,
+                           has_ai_web=has_ai_web,
+                           last_trade_insight=last_trade_insight)
 
 
 @bp.route('/ai/notes/save', methods=['POST'])
@@ -1016,24 +1043,25 @@ def ai_query():
         # gracefully fall back to local instead of returning a generic error.
         answer = ""
         follow_ups: list[str] = []
-        use_web = bool(current_app.config.get("FEATURE_AI_WEB")) and bool(os.environ.get("OPENAI_API_KEY")) and bool(os.environ.get("TAVILY_API_KEY"))
+        use_web = (
+            bool(current_app.config.get("FEATURE_AI_WEB"))
+            and bool(os.environ.get("OPENAI_API_KEY", "").strip())
+            and user_has_feature(current_user, "ai_web")
+        )
 
-        # Compact user context so answers stay consistent with your data.
+        analyzer = AIAnalyzer(current_user.id)
         try:
             wf = (_safe_getattr(current_user, 'weekly_focus_rule', None) or '').strip()
         except Exception:
             wf = ''
         try:
-            weekly = AIAnalyzer(current_user.id).get_weekly_review() or {}
+            weekly = analyzer.get_weekly_review() or {}
             ws = (weekly.get("stats") or {}) if isinstance(weekly, dict) else {}
-            ctx_week = (
-                f"trades_7d={int(ws.get('total_trades') or 0)}\n"
-                f"win_rate_7d={float(ws.get('win_rate') or 0.0):.1f}%\n"
-                f"pnl_7d={float(ws.get('total_pnl') or 0.0):.2f}\n"
-                f"avg_rr_7d={float(ws.get('avg_rr') or 0.0):.2f}\n"
-            )
         except Exception:
-            ctx_week = ""
+            weekly = {}
+            ws = {}
+        ctx_dict = build_coach_context_dict(current_user, ws)
+        coach_block = format_coach_context_block(ctx_dict, include_stats=True)
         try:
             s = current_user.get_stats()
             ctx_all = (
@@ -1044,12 +1072,8 @@ def ai_query():
             )
         except Exception:
             ctx_all = ""
-        ctx = (
-            f"username={current_user.username or ''}\n"
-            + (f"weekly_focus_rule={wf}\n" if wf else "")
-            + ctx_week
-            + ctx_all
-        )
+        ctx = f"username={current_user.username or ''}\n{coach_block}\n{ctx_all}"
+        suggested_focus = ''
         if use_web:
             try:
                 web = answer_with_web(question=question, user_context=ctx, history=history[-12:])
@@ -1065,13 +1089,16 @@ def ai_query():
                 )
 
         if not answer:
-            result = AIAnalyzer(current_user.id).answer_question(
+            result = analyzer.answer_question(
                 question,
                 history=history[-12:],
-                user_name=(current_user.username or '')
+                user_name=(current_user.username or ''),
+                coach_context=coach_block,
             )
             answer = (result.get('answer') if isinstance(result, dict) else '') or ''
             follow_ups = [str(x) for x in ((result.get('follow_ups') if isinstance(result, dict) else []) or []) if x]
+            if result.get('suggested_weekly_focus'):
+                suggested_focus = str(result.get('suggested_weekly_focus'))
 
         follow_ups = follow_ups[:3]
         if not follow_ups:
@@ -1085,7 +1112,102 @@ def ai_query():
         answer = 'AI Buddy could not process your question right now. Please try again later.'
         follow_ups = []
         wf = ''
-    return jsonify({'answer': answer, 'follow_ups': follow_ups, 'context': {'weekly_focus_rule': wf}})
+        suggested_focus = ''
+        use_web = False
+    return jsonify({
+        'answer': answer,
+        'follow_ups': follow_ups,
+        'context': {'weekly_focus_rule': wf},
+        'suggested_weekly_focus': suggested_focus,
+        'used_web': bool(use_web and answer),
+    })
+
+
+@bp.route('/ai/briefing')
+@login_required
+def ai_briefing_api():
+    """Morning briefing lines for the Today tab."""
+    try:
+        data = AIAnalyzer(current_user.id).get_morning_briefing(
+            user_name=(current_user.username or '')
+        )
+        return jsonify(data)
+    except Exception as exc:
+        current_app.logger.warning('ai_briefing_api failed: %s', exc)
+        return jsonify({'lines': [], 'has_data': False})
+
+
+@bp.route('/ai/suggest-focus')
+@login_required
+def ai_suggest_focus_api():
+    """Suggested weekly focus rule (JSON)."""
+    try:
+        rule = AIAnalyzer(current_user.id).suggest_weekly_focus_rule()
+        return jsonify({'rule': rule})
+    except Exception as exc:
+        current_app.logger.warning('ai_suggest_focus_api failed: %s', exc)
+        return jsonify({'rule': ''})
+
+
+@bp.route('/ai/weekly-focus/apply', methods=['POST'])
+@login_required
+def apply_weekly_focus_json():
+    """Apply weekly focus from JSON (Trade Doctor / chat suggestions)."""
+    payload = request.get_json() or {}
+    text = (payload.get('rule') or payload.get('weekly_focus') or '').strip()
+    if len(text) > 4000:
+        text = text[:4000]
+    try:
+        db.session.execute(
+            update(User)
+            .where(User.id == current_user.id)
+            .values(weekly_focus_rule=text if text else None)
+        )
+        db.session.commit()
+        return jsonify({'ok': True, 'weekly_focus_rule': text})
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.warning('apply_weekly_focus_json failed: %s', exc)
+        return jsonify({'ok': False, 'error': 'Could not save weekly focus.'}), 500
+
+
+@bp.route('/ai/notes/pin', methods=['POST'])
+@login_required
+def pin_ai_note_json():
+    """One-click pin from Trade Doctor (JSON)."""
+    payload = request.get_json() or {}
+    rule = (payload.get('pinned_rule') or payload.get('rule') or '').strip()
+    checklist = payload.get('checklist') or payload.get('checklist_text') or []
+    if isinstance(checklist, list):
+        checklist = "\n".join(str(x).strip() for x in checklist if str(x).strip())
+    else:
+        checklist = str(checklist or '').strip()
+    source = (payload.get('source') or 'trade_doctor').strip()[:30] or 'trade_doctor'
+    if not rule:
+        return jsonify({'ok': False, 'error': 'Pinned rule is required.'}), 400
+    if len(rule) > 4000:
+        rule = rule[:4000]
+    if len(checklist) > 8000:
+        checklist = checklist[:8000]
+    try:
+        AICoachingNote.query.filter(
+            AICoachingNote.user_id == current_user.id,
+            AICoachingNote.is_active == True,
+        ).update({"is_active": False})
+        note = AICoachingNote(
+            user_id=current_user.id,
+            pinned_rule=rule,
+            checklist_text=checklist,
+            source=source,
+            is_active=True,
+        )
+        db.session.add(note)
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.warning('pin_ai_note_json failed: %s', exc)
+        return jsonify({'ok': False, 'error': 'Could not save note.'}), 500
 
 
 @bp.route('/ai/trade-doctor')

@@ -65,6 +65,7 @@ FEATURES_BY_TIER: Dict[str, Set[str]] = {
         "advanced_analytics",
         "exports",
         "broker_api_import",
+        "coach_mode",
     },
     "pro_plus": {
         "basic_analytics",
@@ -72,6 +73,7 @@ FEATURES_BY_TIER: Dict[str, Set[str]] = {
         "exports",
         "broker_api_import",
         "coach_mode",
+        "ai_web",
     },
     "elite": {
         "basic_analytics",
@@ -79,6 +81,7 @@ FEATURES_BY_TIER: Dict[str, Set[str]] = {
         "exports",
         "broker_api_import",
         "coach_mode",
+        "ai_web",
     },
 }
 

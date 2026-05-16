@@ -140,6 +140,111 @@
     </div>
 </div>
 
+
+
+<div id="ai-page-root"
+     data-query-url="{{ url_for('dashboard.ai_query') }}"
+     data-trade-doctor-url="{{ url_for('dashboard.trade_doctor_api') }}"
+     data-pin-url="{{ url_for('dashboard.pin_ai_note_json') }}"
+     data-focus-url="{{ url_for('dashboard.apply_weekly_focus_json') }}"
+     data-voice="{{ (voice_summary or '') | e }}"
+     data-username="{{ (current_user.username or '') | e }}"
+     data-suggested-focus="{{ (suggested_weekly_focus or '') | e }}"
+     data-currency="{{ (chart_currency_code or current_user.preferred_currency or 'USD')|e }}"
+     data-fx="{{ fx_usd_to_preferred|default(1.0) }}">
+<ul class="nav nav-pills tv-ai-tabs mb-4 gap-2" id="aiBuddyTabs" role="tablist">
+    <li class="nav-item"><button type="button" class="nav-link active" data-ai-tab="today">Today</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-ai-tab="review">Review</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-ai-tab="setup">Coach setup</button></li>
+</ul>
+
+<div id="ai-section-today" class="ai-tab-panel">
+<div class="tv-surface soft p-3 p-md-4 mb-4 tv-hud-panel">
+    <div class="tv-section-title mb-2"><i class="fas fa-sun me-2 text-warning"></i> Morning briefing</div>
+    {% for line in (morning_briefing.lines or []) %}
+    <div class="tv-morning-line small">{{ line }}</div>
+    {% else %}
+    <p class="small tv-muted mb-0">Log closed trades to unlock a personalized briefing.</p>
+    {% endfor %}
+    {% if last_trade_insight %}
+    <p class="mt-3 pt-3 border-top small mb-0"><span class="text-muted">Latest trade:</span> {{ last_trade_insight }}</p>
+    {% endif %}
+    {% if has_ai_web %}<p class="small tv-muted mt-2 mb-0"><i class="fas fa-sparkles"></i> Web coach (OpenAI) is active for chat.</p>{% endif %}
+</div>
+<div class="tv-surface soft p-3 p-md-4 mb-4 d-none" id="aiSuggestedFocus">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <div class="fw-semibold mb-1">Suggested weekly focus</div>
+            <div class="small" id="aiSuggestedFocusText">{{ suggested_weekly_focus or '' }}</div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-primary" id="useSuggestedFocusBtn">Use this rule</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="suggestFocusBtn">Suggest again</button>
+        </div>
+    </div>
+</div>
+
+
+{# ------------------------------------------------------------------ #}
+{# Talk to AI Buddy                                                    #}
+{# ------------------------------------------------------------------ #}
+<div id="ai-chat-card" class="card border-0 mb-4 tv-surface tv-hud-panel">
+    <div class="card-header bg-primary text-white">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h5 class="mb-0"><i class="fas fa-comments"></i> Talk to AI Buddy</h5>
+            <div class="small" id="aiDataBasis" style="opacity:.9;">
+                <span class="badge bg-light text-dark">Last 7d: <span id="aiBasisTrades">—</span> trades</span>
+                <span class="badge bg-light text-dark">WR: <span id="aiBasisWR">—</span></span>
+                <span class="badge bg-light text-dark">P/L: <span id="aiBasisPNL">—</span></span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label for="aiQuestion" class="form-label">Ask a trading question</label>
+            <input id="aiQuestion"
+                   class="form-control"
+                   placeholder="How did I perform this week? What is my best setup?"
+                   autocomplete="off">
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button id="aiSubmitBtn" type="button" class="btn btn-outline-primary">
+                <i class="fas fa-paper-plane"></i> Ask AI Buddy
+            </button>
+            <button id="aiClearBtn" type="button" class="btn btn-outline-secondary" title="Clear this chat">
+                <i class="fas fa-eraser"></i> Clear
+            </button>
+            <button id="coachTalkBtn" type="button" class="btn btn-outline-secondary" title="Voice conversation (if supported)">
+                <i class="fas fa-microphone"></i> Coach Talk
+            </button>
+            <button id="coachStopBtn" type="button" class="btn btn-outline-danger d-none">
+                <i class="fas fa-stop"></i> Stop
+            </button>
+        </div>
+
+        <div id="aiChat" class="mt-4">
+            <div class="tv-panel" style="min-height: 120px;">
+                <div class="small tv-muted mb-2">Try:</div>
+                <div class="d-flex flex-wrap gap-2" id="aiQuickChips">
+                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my biggest performance leak this week?">Biggest leak</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What should my one rule be next week?">One rule</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my best strategy and why?">Best strategy</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="Explain risk:reward and how to improve it.">Risk:Reward</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="tradeDoctorBtn">
+                        <i class="fas fa-stethoscope"></i> Trade Doctor
+                    </button>
+                </div>
+                <div class="mt-3 small tv-muted"><em>Ask AI Buddy about your win rate, mistakes, best setups, or general trading questions.</em></div>
+            </div>
+            <div id="aiChatLog" class="mt-3"></div>
+            <div class="mt-3 d-flex flex-wrap gap-2" id="aiFollowUps"></div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<div id="ai-section-setup" class="ai-tab-panel d-none">
 <div class="tv-surface soft p-3 p-md-4 mb-4">
     <div class="tv-section-title mb-2"><i class="fas fa-bullseye me-2 text-primary"></i>Your weekly focus</div>
     <p class="small tv-muted mb-3">One sentence AI Buddy should enforce when coaching you (review weekly).</p>
@@ -211,13 +316,13 @@
 </div>
 
 {% set sub = current_user.effective_subscription() %}
-{% if sub.tier not in ['pro_plus', 'elite', 'owner'] %}
+{% if not has_ai_web %}
 <div class="card tv-surface soft mb-4" style="border-left: 4px solid #6366f1;">
     <div class="card-body d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
         <div>
-            <div class="fw-semibold mb-1"><i class="fas fa-lock me-2 text-primary"></i>Pro Plus unlocks deeper AI insights</div>
+            <div class="fw-semibold mb-1"><i class="fas fa-lock me-2 text-primary"></i>Pro Plus unlocks the web coach (OpenAI)</div>
             <div class="small text-muted">
-                Upgrade to unlock richer weekly alerts, advanced behavioural patterns, and stronger “what to fix next” recommendations.
+                Upgrade for conversational coaching with your journal context. The local coach remains on all plans.
             </div>
         </div>
         <a class="btn btn-primary btn-sm" href="{{ url_for('main.pricing') }}">
@@ -227,7 +332,8 @@
 </div>
 {% endif %}
 
-{# ------------------------------------------------------------------ #}
+</div>
+
 {# Resolve all template variables once, safely, before rendering HTML #}
 {# ------------------------------------------------------------------ #}
 {% set weekly_stats        = (weekly_review.get('stats')           if weekly_review else {}) or {} %}
@@ -249,6 +355,7 @@
 {% set bi      = behavioral_insights or {} %}
 {% set bi_risk = bi.get('risk_behavior') or {} %}
 
+<div id="ai-section-review" class="ai-tab-panel d-none">
 {# ------------------------------------------------------------------ #}
 {# Weekly Review + Smart Alerts                                        #}
 {# ------------------------------------------------------------------ #}
@@ -305,7 +412,7 @@
                 </div>
                 {% endif %}
 
-                {% if weekly_weaknesses %}
+                {% if weekly_review.get('has_data') and weekly_weaknesses %}
                 <div class="mt-3">
                     <h6 class="text-warning"><i class="fas fa-exclamation-triangle"></i> Areas to Improve</h6>
                     <ul class="mb-0 ps-3">
@@ -316,7 +423,7 @@
                 </div>
                 {% endif %}
 
-                {% if weekly_recs %}
+                {% if weekly_review.get('has_data') and weekly_recs %}
                 <div class="mt-3">
                     <h6 class="text-info"><i class="fas fa-lightbulb"></i> Recommendations</h6>
                     <ul class="mb-0 ps-3">
@@ -512,555 +619,12 @@
         {% endif %}
     </div>
 </div>
-
-{# ------------------------------------------------------------------ #}
-{# Talk to AI Buddy                                                    #}
-{# ------------------------------------------------------------------ #}
-<div class="card border-0 mb-4 tv-surface tv-hud-panel">
-    <div class="card-header bg-primary text-white">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <h5 class="mb-0"><i class="fas fa-comments"></i> Talk to AI Buddy</h5>
-            <div class="small" id="aiDataBasis" style="opacity:.9;">
-                <span class="badge bg-light text-dark">Last 7d: <span id="aiBasisTrades">—</span> trades</span>
-                <span class="badge bg-light text-dark">WR: <span id="aiBasisWR">—</span></span>
-                <span class="badge bg-light text-dark">P/L: <span id="aiBasisPNL">—</span></span>
-            </div>
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="mb-3">
-            <label for="aiQuestion" class="form-label">Ask a trading question</label>
-            <input id="aiQuestion"
-                   class="form-control"
-                   placeholder="How did I perform this week? What is my best setup?"
-                   autocomplete="off">
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-            <button id="aiSubmitBtn" type="button" class="btn btn-outline-primary">
-                <i class="fas fa-paper-plane"></i> Ask AI Buddy
-            </button>
-            <button id="aiClearBtn" type="button" class="btn btn-outline-secondary" title="Clear this chat">
-                <i class="fas fa-eraser"></i> Clear
-            </button>
-            <button id="coachTalkBtn" type="button" class="btn btn-outline-secondary" title="Voice conversation (if supported)">
-                <i class="fas fa-microphone"></i> Coach Talk
-            </button>
-            <button id="coachStopBtn" type="button" class="btn btn-outline-danger d-none">
-                <i class="fas fa-stop"></i> Stop
-            </button>
-        </div>
-
-        <div id="aiChat" class="mt-4">
-            <div class="tv-panel" style="min-height: 120px;">
-                <div class="small tv-muted mb-2">Try:</div>
-                <div class="d-flex flex-wrap gap-2" id="aiQuickChips">
-                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my biggest performance leak this week?">Biggest leak</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What should my one rule be next week?">One rule</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my best strategy and why?">Best strategy</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="Explain risk:reward and how to improve it.">Risk:Reward</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="tradeDoctorBtn">
-                        <i class="fas fa-stethoscope"></i> Trade Doctor
-                    </button>
-                </div>
-                <div class="mt-3 small tv-muted"><em>Ask AI Buddy about your win rate, mistakes, best setups, or general trading questions.</em></div>
-            </div>
-            <div id="aiChatLog" class="mt-3"></div>
-            <div class="mt-3 d-flex flex-wrap gap-2" id="aiFollowUps"></div>
-        </div>
-    </div>
 </div>
 </div>
+
+{# ------------------------------------------------------------------ #}
 {% endblock %}
 
 {% block extra_js %}
-{# Render Jinja values into data attributes so JS never sees raw Jinja syntax #}
-<div id="ai-page-data"
-     data-query-url="{{ url_for('dashboard.ai_query') }}"
-     data-voice="{{ (voice_summary or '') | e }}"
-     data-username="{{ (current_user.username or '') | e }}"
-     style="display:none;"></div>
-
-<script>
-(function () {
-    "use strict";
-
-    var dataEl = document.getElementById("ai-page-data");
-    var AI_QUERY_URL = dataEl ? dataEl.getAttribute("data-query-url") : "";
-    var VOICE_TEXT   = dataEl ? dataEl.getAttribute("data-voice")     : "";
-    var USERNAME     = dataEl ? dataEl.getAttribute("data-username")  : "";
-    var CSRF_TOKEN   = "";
-    var HISTORY      = [];
-    var coachActive  = false;
-    var recognition  = null;
-    var isSpeaking   = false;
-    var voiceQueue   = [];
-    var voiceIdx     = 0;
-    var STATS_URL    = "/dashboard/api/stats";
-    var TRADE_DOCTOR_URL = "{{ url_for('dashboard.trade_doctor_api') }}";
-
-    function getCsrf() {
-        if (typeof window.tvGetCsrf === "function") {
-            var t = window.tvGetCsrf();
-            if (t) { return t; }
-        }
-        var el = document.querySelector("input[name='csrf_token']");
-        return el ? el.value : "";
-    }
-
-    var tvCurrency = {{ (chart_currency_code or current_user.preferred_currency or 'USD')|tojson }};
-    var tvFx = {{ fx_usd_to_preferred|default(1.0)|tojson }};
-
-    function fmtMoney(n) {
-        if (typeof n !== "number" || isNaN(n)) return "—";
-        var v = n * (typeof tvFx === "number" && tvFx > 0 ? tvFx : 1);
-        try {
-            return new Intl.NumberFormat(undefined, { style: "currency", currency: tvCurrency }).format(v);
-        } catch (e) {
-            return (v >= 0 ? "" : "-") + "$" + Math.abs(v).toFixed(2);
-        }
-    }
-
-    function refreshBasis() {
-        try {
-            fetch(STATS_URL, { headers: { "Accept": "application/json" } })
-                .then(function (r) { return r.json(); })
-                .then(function (d) {
-                    var t = document.getElementById("aiBasisTrades");
-                    var wr = document.getElementById("aiBasisWR");
-                    var pnl = document.getElementById("aiBasisPNL");
-                    if (t) t.textContent = String(d && d.wins_7d !== undefined ? ((d.wins_7d || 0) + (d.losses_7d || 0)) : (d.trades_today || "—"));
-                    if (wr) wr.textContent = (d && typeof d.win_rate_7d === "number") ? (d.win_rate_7d.toFixed(1) + "%") : "—";
-                    if (pnl) pnl.textContent = (d && typeof d.pnl_7d === "number") ? fmtMoney(d.pnl_7d) : "—";
-                })
-                .catch(function () { /* silent */ });
-        } catch (e) {}
-    }
-
-    function stopListening() {
-        try { if (recognition) recognition.stop(); } catch (e) {}
-    }
-
-    function pickEnglishVoice() {
-        try {
-            var voices = window.speechSynthesis && window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
-            for (var i = 0; i < voices.length; i++) {
-                if ((voices[i].lang || '').toLowerCase().startsWith('en')) return voices[i];
-            }
-        } catch (e) {}
-        return null;
-    }
-
-    function speakText(text) {
-        return new Promise(function(resolve) {
-            if (!window.speechSynthesis) { resolve(); return; }
-            stopListening(); // avoid mic capturing the TTS voice
-            window.speechSynthesis.cancel();
-
-            var u = new SpeechSynthesisUtterance(text);
-            u.rate = 1.02;
-            u.pitch = 1.03;
-            u.volume = 1.0;
-            var v = pickEnglishVoice();
-            if (v) u.voice = v;
-
-            isSpeaking = true;
-            var coachBtn = document.getElementById("coachTalkBtn");
-            if (coachBtn) coachBtn.classList.add("tv-speaking");
-            u.onend = function(){
-                isSpeaking = false;
-                if (coachBtn) coachBtn.classList.remove("tv-speaking");
-                resolve();
-            };
-            u.onerror = function(){
-                isSpeaking = false;
-                if (coachBtn) coachBtn.classList.remove("tv-speaking");
-                resolve();
-            };
-            window.speechSynthesis.speak(u);
-        });
-    }
-
-    function splitSentences(text) {
-        if (!text) return [];
-        // Basic sentence splitter with trim; keeps it robust and cheap.
-        return String(text)
-            .replace(/\s+/g, " ")
-            .split(/(?<=[.!?])\s+/)
-            .map(function(s){ return s.trim(); })
-            .filter(Boolean);
-    }
-
-    async function playVoiceReview() {
-        if (!VOICE_TEXT || !window.speechSynthesis) { return; }
-        voiceQueue = splitSentences(VOICE_TEXT);
-        voiceIdx = 0;
-        for (; voiceIdx < voiceQueue.length; voiceIdx++) {
-            // Allow pause/stop mid-stream
-            if (!voiceQueue || voiceQueue.length === 0) break;
-            await speakText(voiceQueue[voiceIdx]);
-        }
-    }
-
-    function onVoiceClick() {
-        playVoiceReview();
-    }
-
-    function onVoicePauseToggle() {
-        if (!window.speechSynthesis) return;
-        // If currently speaking, pause; if paused, resume.
-        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-        else window.speechSynthesis.pause();
-    }
-
-    function onVoiceStop() {
-        try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e) {}
-        voiceQueue = [];
-        voiceIdx = 0;
-    }
-
-    function renderFollowUps(items) {
-        var wrap = document.getElementById("aiFollowUps");
-        if (!wrap) { return; }
-        wrap.textContent = "";
-        if (!items || !items.length) { return; }
-        for (var i = 0; i < items.length; i++) {
-            var b = document.createElement("button");
-            b.type = "button";
-            b.className = "btn btn-sm btn-outline-secondary tv-follow";
-            b.textContent = items[i];
-            b.setAttribute("data-q", items[i]);
-            wrap.appendChild(b);
-        }
-    }
-
-    function appendChat(role, content, opts) {
-        opts = opts || {};
-        var chat = document.getElementById("aiChatLog");
-        if (!chat) { return; }
-        var bubble = document.createElement("div");
-        bubble.className = "tv-surface soft p-3 mb-2";
-        var head = document.createElement("div");
-        head.className = "d-flex align-items-center justify-content-between gap-2 small tv-muted mb-2";
-        var who = document.createElement("div");
-        who.textContent = role === "user" ? (USERNAME ? (USERNAME + " (you)") : "You") : "AI Buddy";
-        head.appendChild(who);
-
-        // Premium: assistant actions (copy / speak)
-        if (role === "assistant") {
-            var actions = document.createElement("div");
-            actions.className = "d-flex gap-2";
-
-            var copyBtn = document.createElement("button");
-            copyBtn.type = "button";
-            copyBtn.className = "btn btn-sm btn-outline-secondary";
-            copyBtn.textContent = "Copy";
-            copyBtn.addEventListener("click", function(){
-                try {
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(String(content || ""));
-                    }
-                } catch(e) {}
-            });
-
-            var speakBtn = document.createElement("button");
-            speakBtn.type = "button";
-            speakBtn.className = "btn btn-sm btn-outline-secondary";
-            speakBtn.textContent = "Speak";
-            speakBtn.addEventListener("click", function(){
-                try { speakText(String(content || "")); } catch(e) {}
-            });
-
-            actions.appendChild(copyBtn);
-            actions.appendChild(speakBtn);
-            head.appendChild(actions);
-        }
-        var body = document.createElement("div");
-        body.style.whiteSpace = "normal";
-
-        // Safe mini-formatting: **bold** and "- " bullet lists (no raw HTML)
-        function esc(s){
-            return String(s || "")
-              .replace(/&/g, "&amp;")
-              .replace(/</g, "&lt;")
-              .replace(/>/g, "&gt;");
-        }
-        function formatText(s){
-            var safe = esc(s);
-            safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-            var lines = safe.split("\n");
-            var out = [];
-            var inList = false;
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i];
-                var isBullet = line.trim().startsWith("- ");
-                if (isBullet) {
-                    if (!inList) { out.push("<ul style='margin:0 0 0.5rem 1.25rem;'>"); inList = true; }
-                    out.push("<li>" + line.trim().slice(2) + "</li>");
-                } else {
-                    if (inList) { out.push("</ul>"); inList = false; }
-                    if (line.trim() === "") out.push("<div style='height:0.5rem;'></div>");
-                    else out.push("<div style='white-space:pre-wrap;'>" + line + "</div>");
-                }
-            }
-            if (inList) out.push("</ul>");
-            return out.join("");
-        }
-        body.innerHTML = formatText(content);
-        bubble.appendChild(head);
-        bubble.appendChild(body);
-        chat.appendChild(bubble);
-        if (!opts.skipHistory) {
-            // keep small-ish history
-            HISTORY.push({ role: role, content: content });
-            if (HISTORY.length > 14) { HISTORY = HISTORY.slice(-14); }
-        }
-        if (!opts.skipStore) {
-            try { sessionStorage.setItem("tv_ai_history", JSON.stringify(HISTORY)); } catch(e) {}
-        }
-    }
-
-    function setLoading(isLoading) {
-        var btn = document.getElementById("aiSubmitBtn");
-        if (!btn) { return; }
-        btn.disabled = !!isLoading;
-        btn.classList.toggle("loading", !!isLoading);
-
-        var q = document.getElementById("aiQuestion");
-        if (q) q.disabled = !!isLoading;
-
-        // Typing bubble
-        var log = document.getElementById("aiChatLog");
-        if (!log) { return; }
-        var existing = document.getElementById("aiTyping");
-        if (isLoading) {
-            if (!existing) {
-                var bubble = document.createElement("div");
-                bubble.id = "aiTyping";
-                bubble.className = "tv-surface soft p-3 mb-2";
-                var head = document.createElement("div");
-                head.className = "small tv-muted mb-1";
-                head.textContent = "AI Buddy";
-                var body = document.createElement("div");
-                body.innerHTML = '<div class="tv-typing" aria-label="AI Buddy is thinking"><span></span><span></span><span></span></div>';
-                bubble.appendChild(head);
-                bubble.appendChild(body);
-                log.appendChild(bubble);
-            }
-        } else if (existing) {
-            existing.remove();
-        }
-    }
-
-    function onAskClick(forcedQuestion) {
-        var questionEl = document.getElementById("aiQuestion");
-        if (!questionEl) { return; }
-
-        var question = forcedQuestion || questionEl.value;
-        if (!question || question.trim() === "") { return; }
-        var q = question.trim();
-        questionEl.value = "";
-        appendChat("user", q);
-        setLoading(true);
-
-        var payload = JSON.stringify({ question: q, history: HISTORY });
-
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", AI_QUERY_URL, true);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        xhr.setRequestHeader("X-CSRFToken", CSRF_TOKEN);
-        xhr.setRequestHeader("X-CSRF-Token", CSRF_TOKEN);
-
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState !== 4) { return; }
-            if (xhr.status === 200) {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-                    var ans = (data && data.answer) ? data.answer : "Sorry, AI Buddy could not answer that right now.";
-                    appendChat("assistant", ans);
-                    renderFollowUps((data && data.follow_ups) ? data.follow_ups : []);
-                    if (coachActive) {
-                        speakText(ans).then(function(){
-                            // Auto-listen again for a back-and-forth feel
-                            startListening();
-                        });
-                    }
-                } catch (parseErr) {
-                    appendChat("assistant", "Sorry, AI Buddy could not answer that right now.");
-                }
-            } else {
-                appendChat("assistant", "Unable to reach AI Buddy. Please try again later.");
-            }
-            setLoading(false);
-        };
-
-        xhr.onerror = function () {
-            appendChat("assistant", "Unable to reach AI Buddy. Please try again later.");
-            setLoading(false);
-        };
-
-        xhr.send(payload);
-    }
-
-    function runTradeDoctor(){
-        appendChat("assistant", "**Trade Doctor** is analyzing your last 10 closed trades…");
-        setLoading(true);
-        try {
-            fetch(TRADE_DOCTOR_URL, { headers: { "Accept": "application/json" } })
-              .then(function(r){ return r.json(); })
-              .then(function(d){
-                  var text = (d && d.text) ? d.text : "Trade Doctor returned no analysis.";
-                  appendChat("assistant", text);
-
-                  // Offer a 1-click save as pinned note
-                  if (d && d.leak) {
-                      appendChat("assistant", "If you want, click “Save pinned note” and I’ll pin this plan + checklist on your dashboard.");
-                      // prefill the pinned note form (best effort)
-                      try {
-                          var ruleEl = document.getElementById("pinned_rule");
-                          var clEl = document.getElementById("checklist_text");
-                          if (ruleEl && d.leak) ruleEl.value = "Trade Doctor: " + d.leak;
-                          if (clEl && d.checklist && Array.isArray(d.checklist)) clEl.value = d.checklist.join("\n");
-                      } catch(e) {}
-                  }
-              })
-              .catch(function(){
-                  appendChat("assistant", "Trade Doctor couldn’t load right now. Try again in a moment.");
-              })
-              .finally(function(){ setLoading(false); });
-        } catch(e){
-            setLoading(false);
-        }
-    }
-
-    function clearChat() {
-        HISTORY = [];
-        try { sessionStorage.removeItem("tv_ai_history"); } catch(e) {}
-        renderFollowUps([]);
-        var log = document.getElementById("aiChatLog");
-        if (log) log.textContent = "";
-        appendChat("assistant", "Cleared. Ask a fresh question whenever you're ready.");
-    }
-
-    function onQuestionKeydown(e) {
-        if (e.keyCode === 13) {
-            onAskClick();
-        }
-    }
-
-    document.addEventListener("DOMContentLoaded", function () {
-        CSRF_TOKEN = getCsrf();
-        refreshBasis();
-        setInterval(refreshBasis, 60000);
-
-        var voiceBtn   = document.getElementById("voiceBtn");
-        var voicePauseBtn = document.getElementById("voicePauseBtn");
-        var voiceStopBtn  = document.getElementById("voiceStopBtn");
-        var submitBtn  = document.getElementById("aiSubmitBtn");
-        var clearBtn   = document.getElementById("aiClearBtn");
-        var questionEl = document.getElementById("aiQuestion");
-        var coachBtn   = document.getElementById("coachTalkBtn");
-        var stopBtn    = document.getElementById("coachStopBtn");
-        var quickWrap  = document.getElementById("aiQuickChips");
-        var followWrap = document.getElementById("aiFollowUps");
-        var tdBtn      = document.getElementById("tradeDoctorBtn");
-
-        if (voiceBtn)   { voiceBtn.addEventListener("click", onVoiceClick); }
-        if (voicePauseBtn) { voicePauseBtn.addEventListener("click", onVoicePauseToggle); }
-        if (voiceStopBtn)  { voiceStopBtn.addEventListener("click", onVoiceStop); }
-        // Don't pass the click event object as the question.
-        if (submitBtn)  { submitBtn.addEventListener("click", function(){ onAskClick(); }); }
-        if (clearBtn)   { clearBtn.addEventListener("click", clearChat); }
-        if (questionEl) { questionEl.addEventListener("keydown", onQuestionKeydown); }
-        if (tdBtn) { tdBtn.addEventListener("click", runTradeDoctor); }
-
-        function startListening() {
-            if (!coachActive) { return; }
-            var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SR) { return; }
-            try {
-                if (!recognition) {
-                    recognition = new SR();
-                    recognition.lang = "en-US";
-                    recognition.interimResults = true;
-                    recognition.maxAlternatives = 1;
-                    recognition.onresult = function (evt) {
-                        try {
-                            var res = evt.results && evt.results[0] && evt.results[0][0] ? evt.results[0][0] : null;
-                            var transcript = res ? (res.transcript || "") : "";
-                            if (questionEl && transcript) {
-                                // Show exactly what the browser heard (user can edit).
-                                questionEl.value = transcript;
-                            }
-                            // Do NOT auto-send; user must press Ask (prevents misheard sends).
-                        } catch(e) {}
-                    };
-                    recognition.onerror = function () { /* silent */ };
-                    recognition.onend = function () {
-                        // If still active, keep the loop alive
-                        if (coachActive) {
-                            setTimeout(function(){ try { recognition.start(); } catch(e) {} }, 400);
-                        }
-                    };
-                }
-                // Don’t start listening while TTS is speaking (prevents self-feedback)
-                if (!isSpeaking) recognition.start();
-            } catch(e) {}
-        }
-
-        function stopCoach() {
-            coachActive = false;
-            if (stopBtn) { stopBtn.classList.add("d-none"); }
-            if (coachBtn) { coachBtn.disabled = false; }
-            stopListening();
-            try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e) {}
-        }
-
-        function startCoach() {
-            coachActive = true;
-            if (stopBtn) { stopBtn.classList.remove("d-none"); }
-            if (coachBtn) { coachBtn.disabled = true; }
-            var intro = USERNAME ? ("Hey " + USERNAME + ". Ask me anything about your trading. I’ll answer, then you can ask back.") : "Ask me anything about your trading. I’ll answer, then you can ask back.";
-            appendChat("assistant", intro);
-            speakText(intro).then(function(){ startListening(); });
-        }
-
-        if (coachBtn) {
-            coachBtn.addEventListener("click", function(){
-                var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SR) {
-                    appendChat("assistant", "Coach Talk isn’t supported in this browser. You can still use voice review and typed chat.");
-                    return;
-                }
-                startCoach();
-            });
-        }
-        if (stopBtn) { stopBtn.addEventListener("click", stopCoach); }
-
-        function handleChipClick(e) {
-            var t = e.target;
-            if (!t) return;
-            var q = t.getAttribute && t.getAttribute("data-q");
-            if (q) onAskClick(q);
-        }
-        if (quickWrap) quickWrap.addEventListener("click", handleChipClick);
-        if (followWrap) followWrap.addEventListener("click", handleChipClick);
-
-        // Restore chat history (premium “memory” feel)
-        try {
-            var saved = sessionStorage.getItem("tv_ai_history");
-            if (saved) {
-                var parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    HISTORY = parsed.slice(-14);
-                    for (var i = 0; i < HISTORY.length; i++) {
-                        var m = HISTORY[i];
-                        if (m && m.role && m.content) appendChat(m.role, m.content, { skipHistory: true, skipStore: true });
-                    }
-                }
-            }
-        } catch(e) {}
-    });
-
-}());
-</script>
+<script src="{{ url_for('static', filename='js/ai-buddy.js') }}"></script>
 {% endblock %}

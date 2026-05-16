@@ -7,6 +7,7 @@ requiring external web/LLM services.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -64,7 +65,7 @@ TOPICS: List[KnowledgeTopic] = [
     KnowledgeTopic(
         key="expectancy",
         title="Expectancy: the math that decides if you’re profitable",
-        triggers=("expectancy", "edge", "positive expectancy", "profit factor", "ev", "statistics", "math", "sample size"),
+        triggers=("expectancy", "positive expectancy", "profit factor", "statistics", "sample size", "expected value"),
         bullets=(
             "Expectancy answers: ‘On average, what do I make per trade?’",
             "Core drivers: win rate, average win size, average loss size.",
@@ -236,11 +237,21 @@ TOPICS: List[KnowledgeTopic] = [
 ]
 
 
+def _trigger_matches(question: str, trigger: str) -> bool:
+    """Word-boundary match so short triggers (e.g. 'ev') don't hit 'revenge'."""
+    t = (trigger or "").strip().lower()
+    if not t:
+        return False
+    if " " in t or len(t) >= 4:
+        return t in question
+    return bool(re.search(r"\b" + re.escape(t) + r"\b", question))
+
+
 def match_topic(question_lower: str) -> KnowledgeTopic | None:
     q = (question_lower or "").lower()
-    for t in TOPICS:
-        if any(k in q for k in t.triggers):
-            return t
+    for topic in TOPICS:
+        if any(_trigger_matches(q, k) for k in topic.triggers):
+            return topic
     return None
 
 

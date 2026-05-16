@@ -999,6 +999,13 @@ def close(trade_id):
         result_emoji = trade.get_result_emoji()
         base = f'{result_emoji} Trade closed! P/L: {trade.profit_loss:+.2f}'
         flash(base, 'success')
+        try:
+            from app.services.ai_insights import AIAnalyzer
+            insight = AIAnalyzer(current_user.id).get_last_trade_insight()
+            if insight:
+                flash(f'AI Buddy: {insight}', 'info')
+        except Exception:
+            pass
         if cooldown_note:
             flash(cooldown_note, 'warning')
         
