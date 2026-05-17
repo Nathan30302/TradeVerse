@@ -28,6 +28,7 @@
 
     var HISTORY = [];
     var coachActive = false;
+    var coachIntroShown = false;
     var recognition = null;
     var isSpeaking = false;
     var isListening = false;
@@ -303,33 +304,39 @@
       }
     }
 
-    function setChatBusy(isBusy) {
+    function setChatBusy(isBusy, questionHint) {
       var btn = document.getElementById('aiSubmitBtn');
       var q = document.getElementById('aiQuestion');
       var chips = document.getElementById('aiQuickChips');
       var tdBtn = document.getElementById('tradeDoctorBtn');
+      var busy = !!isBusy;
       if (btn) {
-        btn.disabled = !!isBusy;
-        btn.classList.toggle('loading', !!isBusy);
+        btn.disabled = busy;
+        btn.classList.toggle('loading', busy);
       }
-      if (q) q.disabled = !!isBusy && !isListening;
+      if (q) q.disabled = busy && !isListening;
       if (chips) {
-        chips.querySelectorAll('button').forEach(function (b) { b.disabled = !!isBusy; });
+        chips.querySelectorAll('button').forEach(function (b) { b.disabled = busy; });
       }
-      if (tdBtn) tdBtn.disabled = !!isBusy;
+      if (tdBtn) tdBtn.disabled = busy;
       var log = document.getElementById('aiChatLog');
       var existing = document.getElementById('aiTyping');
-      if (isBusy && log && !existing) {
+      if (busy && log && !existing) {
         var bubble = document.createElement('div');
         bubble.id = 'aiTyping';
         bubble.className = 'tv-surface soft p-3 mb-2';
-        bubble.innerHTML = '<div class="small tv-muted mb-1">AI Buddy</div><div class="tv-typing" aria-label="Thinking"><span></span><span></span><span></span></div>';
+        var hint = questionHint ? String(questionHint).trim().slice(0, 100) : '';
+        var safeHint = hint.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        var label = hint
+          ? '<div class="small tv-muted mb-1 text-truncate" title="' + safeHint + '">Answering: ' + safeHint + '</div>'
+          : '<div class="small tv-muted mb-1">AI Buddy</div>';
+        bubble.innerHTML = label + '<div class="tv-typing" aria-label="Thinking"><span></span><span></span><span></span></div>';
         log.appendChild(bubble);
         scrollChatToBottom();
-      } else if (!isBusy && existing) {
+      } else if (!busy && existing) {
         existing.remove();
       }
-      if (isBusy) {
+      if (busy) {
         stopListening();
         setCoachStatus('thinking', 'Thinking…');
       } else if (coachActive && !isSpeaking) {
@@ -407,7 +414,11 @@
       var questionEl = document.getElementById('aiQuestion');
       if (!questionEl) return;
       var q = (forcedQuestion || questionEl.value || '').trim();
-      if (!q) return;
+      if (!q) {
+        setCoachStatus('idle', 'Type your question first, or tap a quick chip below.');
+        if (questionEl) questionEl.focus();
+        return;
+      }
 
       ensureChatTab();
       clearVoiceSendTimer();
@@ -417,7 +428,7 @@
       var priorHistory = HISTORY.slice(0, -1);
 
       requestInFlight = true;
-      setChatBusy(true);
+      setChatBusy(true, q);
 
       fetch(AI_QUERY_URL, {
         method: 'POST',
@@ -581,12 +592,18 @@
         coachBtn.disabled = true;
         coachBtn.classList.add('tv-coach-active');
       }
-      setCoachStatus('speaking', 'Starting Coach Talk…');
       var intro = USERNAME
         ? 'Hey ' + USERNAME + '. Ask out loud — I’ll answer, then listen again.'
         : 'Ask out loud — I’ll answer, then listen again.';
-      appendChat('assistant', intro, { skipStore: false });
-      speakText(intro).then(startListening);
+      if (!coachIntroShown) {
+        coachIntroShown = true;
+        setCoachStatus('speaking', 'Starting Coach Talk…');
+        appendChat('assistant', intro, { skipStore: false });
+        speakText(intro).then(startListening);
+      } else {
+        setCoachStatus('listening', 'Listening… speak your question.');
+        startListening();
+      }
     }
 
     var voiceBtn = document.getElementById('voiceBtn');

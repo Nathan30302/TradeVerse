@@ -900,20 +900,40 @@ class AIAnalyzer:
         return line
 
     @staticmethod
+    def _direct_ack(question: str, *, max_len: int = 140) -> str:
+        """One-line reminder that the coach is answering what the user asked."""
+        q = (question or '').strip()
+        if not q:
+            return ''
+        display = (q[:max_len] + '…') if len(q) > max_len else q
+        return f"**Answering:** *{display}*\n\n"
+
+    @staticmethod
     def _is_personal_performance_question(text: str) -> bool:
         """True when the user is asking about their own journal stats (not general education)."""
         t = (text or '').lower()
         markers = (
             'my win rate', 'my performance', 'my trades', 'my best', 'my worst', 'my biggest',
-            'how did i', 'how have i', 'this week', 'last week', 'biggest leak',
+            'my pnl', 'my profit', 'my loss', 'my stats', 'my journal', 'my account', 'my edge',
+            'my trading', 'my results', 'my data', 'my week', 'my month',
+            'how did i', 'how have i', 'how am i', 'how many trades', 'how much did i',
+            'this week', 'last week', 'biggest leak', 'performance leak',
             'best strategy', 'best setup', 'worst strategy', 'trade doctor',
-            'how am i doing', 'how have i been',
+            'how am i doing', 'how have i been', 'am i profitable', 'am i winning',
+            'based on my', 'from my trades', 'in my journal', 'for me based',
+            'suggest a rule for me', 'suggest a weekly', 'one rule for me',
         )
         if any(m in t for m in markers):
             return True
         if 'perform' in t and any(x in t for x in ('my ', 'i ', 'this week', 'weekly')):
             return True
-        if any(w in t for w in ('mistake', 'leak', 'losing money')) and 'my ' in t:
+        if any(w in t for w in ('mistake', 'leak', 'losing money', 'losing on')) and (
+            'my ' in t or ' i ' in t or t.startswith('i ')
+        ):
+            return True
+        if re.search(r'\b(i|my)\b.{0,40}\b(win rate|pnl|profit|loss|trades?|performance|doing)\b', t):
+            return True
+        if re.search(r'\b(what|how many|how much)\b.{0,30}\b(my|i)\b', t):
             return True
         return False
 
@@ -1031,6 +1051,7 @@ class AIAnalyzer:
         # General trading knowledge topics (still tailored with your stats when possible)
         if has('risk', 'rr', 'r:r', 'risk reward', 'stop loss', 'sl', 'tp', 'take profit'):
             parts = [
+                self._direct_ack(q),
                 f"{user_name + ', ' if user_name else ''}here’s the clean way to think about risk and R-multiples:",
                 "- Risk is what you lose if SL is hit (either in pips or $).",
                 "- Reward is what you gain if TP is hit.",
@@ -1043,13 +1064,36 @@ class AIAnalyzer:
             answer = self._wrap_coach_answer("\n".join(parts), stats, coach_context)
             return {'answer': answer, 'follow_ups': ["What’s my current weak point: win rate or R:R?", "Give me a stop-loss rule I can follow.", "How do I size positions safely?"]}
 
+        if personal and has(
+            'pnl', 'profit', 'loss', 'net', 'how many', 'how much',
+            'total trades', 'trades did', 'trades have', 'closed trades',
+        ) and not has('explain', 'what is', 'define', 'how do i stop', 'how to stop'):
+            summary = weekly.get('summary') or (
+                f"Last 7 days: **{total}** closed trades, **{win_rate:.0f}%** win rate, "
+                f"net **{total_pnl:+.2f}**, average R:R **{avg_rr:.2f}**."
+            )
+            body = self._direct_ack(q) + summary
+            if alerts:
+                body += "\n\n**Top issue to watch:** " + str(alerts[0])
+            if recs:
+                body += "\n\n**Next step:** " + str(recs[0])
+            return {
+                'answer': self._wrap_coach_answer(body, stats, coach_context),
+                'follow_ups': [
+                    "What’s my biggest performance leak this week?",
+                    "What should my one rule be next week?",
+                    "What’s my best strategy and why?",
+                ],
+            }
+
         if personal and has('win rate', 'wins', 'losses', 'performance', 'this week', 'weekly'):
             summary = weekly.get('summary') or ''
             if not summary:
                 summary = f"Weekly snapshot: {total} closed trades, {win_rate:.0f}% win rate, net {total_pnl:.0f}, average R:R {avg_rr:.2f}."
             # Premium: structured coach brief with actions + evidence.
             answer = (
-                "**Weekly Coach Brief**\n"
+                self._direct_ack(q)
+                + "**Weekly Coach Brief**\n"
                 + summary
                 + "\n\n**Top alerts (what’s costing you)**\n"
                 + ("- " + "\n- ".join(alerts[:3]) if alerts else "- No strong alerts yet (log more trades + notes).")
@@ -1110,12 +1154,19 @@ class AIAnalyzer:
                 'follow_ups': ["How should I tag strategies?", "What’s the fastest way to improve with low sample size?"],
             }
 
-        if has('revenge', 'fomo', 'tilt', 'psychology', 'discipline', 'emotion') and not personal:
+        if has('revenge', 'fomo', 'tilt', 'psychology', 'discipline', 'emotion'):
             kb_psy = match_topic(text)
             if kb_psy:
                 kb_answer, kb_fups = render_topic(kb_psy)
+                body = self._direct_ack(q) + kb_answer
+                if personal and total > 0 and alerts:
+                    body += (
+                        "\n\n**From your journal this week:** "
+                        + str(alerts[0])
+                        + " — pick one rule and test it for 5 trades."
+                    )
                 return {
-                    'answer': self._wrap_coach_answer(kb_answer, stats, coach_context),
+                    'answer': self._wrap_coach_answer(body, stats, coach_context),
                     'follow_ups': kb_fups[:3],
                 }
 
@@ -1124,10 +1175,15 @@ class AIAnalyzer:
         ):
             issues = (alerts or [])[:4]
             if issues:
-                answer = "Here are the top issues I can actually see in your recent sample:\n- " + "\n- ".join(issues)
+                answer = (
+                    self._direct_ack(q)
+                    + "Here are the top issues I can actually see in your recent sample:\n- "
+                    + "\n- ".join(issues)
+                )
             else:
                 answer = (
-                    "I don’t have strong alert signals yet, so here are the most common profit leaks to audit:\n"
+                    self._direct_ack(q)
+                    + "I don’t have strong alert signals yet, so here are the most common profit leaks to audit:\n"
                     "- Low R:R (taking 0.5R winners but 1R losers)\n"
                     "- Trading outside your best session\n"
                     "- Moving SL / closing winners early\n"
@@ -1139,7 +1195,10 @@ class AIAnalyzer:
                 'follow_ups': ["What’s my one rule next week?", "How do I stop revenge trading?", "Build me a pre-trade checklist."],
             }
 
-        if has('improve', 'get better', 'better trader', 'how can i', 'how do i improve', 'help me'):
+        if has(
+            'improve', 'get better', 'better trader',
+            'how do i improve', 'how can i improve', 'help me',
+        ) and not personal:
             return {
                 'answer': _coach_basics(),
                 'follow_ups': [
@@ -1170,11 +1229,7 @@ class AIAnalyzer:
             }
 
         # Direct answer: acknowledge the question instead of dumping an unrelated weekly summary
-        q_display = (q[:200] + '…') if len(q) > 200 else q
-        body_parts = [
-            f"**You asked:** {q_display}",
-            '',
-        ]
+        body_parts = [self._direct_ack(q)]
         if kb:
             kb_answer, kb_fups = render_topic(kb)
             body_parts.append(kb_answer)
@@ -1197,8 +1252,12 @@ class AIAnalyzer:
                 f"net {total_pnl:.0f}, avg R:R {avg_rr:.2f}."
             )
             body_parts.append(
-                "Here’s what your journal shows right now:\n" + base
-                + "\n\nAsk a sharper follow-up: *biggest leak*, *best strategy*, or *one rule for next week*."
+                "Here’s what your journal shows that relates to your question:\n" + base
+            )
+            if alerts:
+                body_parts.append("\n**Pattern I see:** " + str(alerts[0]))
+            body_parts.append(
+                "\nFor a sharper answer, try: *biggest leak*, *best strategy*, or *one rule for next week*."
             )
             follow_ups = [
                 "What’s my biggest leak this week?",

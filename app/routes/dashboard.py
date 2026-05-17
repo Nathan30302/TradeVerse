@@ -1077,9 +1077,17 @@ def ai_query():
             ctx_all = ""
         ctx = f"username={current_user.username or ''}\n{coach_block}\n{ctx_all}"
 
-        if use_web:
+        # Journal-grounded questions stay on the local coach so answers match the user's data.
+        is_personal = AIAnalyzer._is_personal_performance_question(question)
+
+        if use_web and not is_personal:
             try:
-                web = answer_with_web(question=question, user_context=ctx, history=history[-12:])
+                web = answer_with_web(
+                    question=question,
+                    user_context=ctx,
+                    history=history[-12:],
+                    is_personal=False,
+                )
                 web_answer = (web.answer or "").strip()
                 if web_answer and "couldn't generate" not in web_answer.lower():
                     answer = web_answer

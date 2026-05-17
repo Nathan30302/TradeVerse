@@ -130,6 +130,7 @@ def answer_with_web(
     question: str,
     user_context: str,
     history: Optional[List[Dict[str, str]]] = None,
+    is_personal: bool = False,
 ) -> WebAIResult:
     """
     Use Tavily search results as additional context and ask OpenAI to answer.
@@ -156,18 +157,27 @@ def answer_with_web(
     hist_txt = ("\n\nConversation context:\n" + "\n".join(hist_lines)) if hist_lines else ""
 
     system = (
-        "You are TradeVerse AI Buddy: a professional trading coach.\n"
-        "Be practical, risk-first, and tailored to the user's stats.\n"
-        "If the question asks for general trading knowledge, you may use web sources.\n"
-        "Do not hallucinate prices/news. If sources are thin, say so.\n"
-        "Keep answers concise with bullets and a clear next action.\n"
+        "You are TradeVerse AI Buddy: a professional trading coach inside a trading journal app.\n"
+        "Rules:\n"
+        "1) Answer the user's exact question first — do not change the topic or give a generic lecture.\n"
+        "2) When user context includes journal stats, cite those numbers; never invent trades or P/L.\n"
+        "3) Be practical, risk-first, and concise (bullets + one clear next action).\n"
+        "4) For general education you may use web source summaries; do not hallucinate live prices or news.\n"
+        "5) If you cannot answer from context/sources, say what is missing and ask one clarifying question.\n"
+    )
+    personal_note = (
+        "This question is about the user's own journal — prioritize their stats from User context.\n"
+        if is_personal
+        else ""
     )
     user = (
         f"User context:\n{user_context}\n"
         f"{hist_txt}\n\n"
+        f"{personal_note}"
         f"Question: {q}\n"
         f"{sources_txt}\n\n"
-        "Answer as a coach. End with 2 follow-up questions the user can ask next."
+        "Structure: (1) Direct answer to the question, (2) 2–4 bullet points, (3) one next action.\n"
+        "End with 2 short follow-up questions the user can tap next."
     )
 
     content = _openai_chat(system, user)

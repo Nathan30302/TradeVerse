@@ -67,6 +67,21 @@ def test_ai_insights_service():
 
         rr = analyzer.answer_question('Explain risk reward to me')
         assert 'risk' in (rr.get('answer') or '').lower()
+        assert 'answering' in (rr.get('answer') or '').lower()
+
+        personal_pnl = analyzer.answer_question('How much profit did I make this week?')
+        pnl_ans = (personal_pnl.get('answer') or '').lower()
+        assert 'answering' in pnl_ans
+        assert 'trade' in pnl_ans or 'win rate' in pnl_ans
+
+        assert AIAnalyzer._is_personal_performance_question('How much profit did I make this week?')
+        assert AIAnalyzer._is_personal_performance_question('What is my win rate?')
+        assert not AIAnalyzer._is_personal_performance_question('Explain risk reward to me')
+
+        improve_personal = analyzer.answer_question('How can I improve my win rate this week?')
+        imp_ans = (improve_personal.get('answer') or '').lower()
+        assert 'weekly' in imp_ans or 'win rate' in imp_ans or 'coach brief' in imp_ans
+        assert 'fastest way to improve (the *professional* version)' not in imp_ans
 
 
 if __name__ == '__main__':
