@@ -533,10 +533,10 @@ def calendar():
             trades_by_day[day] = []
         trades_by_day[day].append(trade)
 
-    # Calculate daily P/L
+    # Calculate daily P/L (include break-even; skip open trades with null P/L)
     daily_pnl = {}
     for day, day_trades in trades_by_day.items():
-        pnl = sum(t.profit_loss for t in day_trades if t.profit_loss)
+        pnl = sum(t.profit_loss for t in day_trades if t.profit_loss is not None)
         daily_pnl[day] = pnl
 
     return render_template(

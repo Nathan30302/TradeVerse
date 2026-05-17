@@ -173,8 +173,9 @@
                                 <div class="card-body text-center">
                                     <h6 class="text-muted mb-2">Win Rate</h6>
                                     <h3 class="mb-0 text-info">
-                                        {% set wins = trades_by_day[day]|selectattr('profit_loss', '>', 0)|list|length %}
-                                        {% set total_closed = trades_by_day[day]|selectattr('profit_loss', '!=', none)|list|length %}
+                                        {% set closed_trades = trades_by_day[day]|rejectattr('profit_loss', 'none')|list %}
+                                        {% set wins = closed_trades|selectattr('profit_loss', 'gt', 0)|list|length %}
+                                        {% set total_closed = closed_trades|length %}
                                         {% if total_closed > 0 %}
                                             {{ ((wins / total_closed) * 100)|round(1) }}%
                                         {% else %}
