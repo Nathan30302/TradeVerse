@@ -28,10 +28,10 @@ bp = Blueprint('monetization', __name__, url_prefix='/monetization')
 
 def render_pricing_page():
     """
-    Public pricing page HTML.
+    Authenticated pricing page HTML.
 
     Canonical URL is ``/pricing`` (``main.pricing``). The legacy URL
-    ``/monetization/pricing`` issues a 301 to avoid duplicate URLs in Search Console.
+    ``/monetization/pricing`` issues a 301 for old internal links.
     """
     current_tier = "free"
     if current_user.is_authenticated:

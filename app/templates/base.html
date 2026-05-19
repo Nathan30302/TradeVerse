@@ -2480,11 +2480,6 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'main.pricing' %}active{% endif %}" href="{{ url_for('main.pricing') }}">
-                    <i class="fas fa-tags"></i> Pricing
-                </a>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'main.contact' %}active{% endif %}" href="{{ url_for('main.contact') }}">
                     <i class="fas fa-envelope"></i> Contact
                 </a>
@@ -2670,7 +2665,9 @@
                     © {{ current_year }} TradeVerse. All rights reserved.
                     | <a href="{{ url_for('main.about') }}" class="link-secondary">About</a>
                     | <a href="{{ url_for('main.features') }}" class="link-secondary">Features</a>
+                    {% if current_user.is_authenticated %}
                     | <a href="{{ url_for('main.pricing') }}" class="link-secondary">Pricing</a>
+                    {% endif %}
                     | <a href="{{ url_for('main.contact') }}" class="link-secondary">Contact</a>
                     {% if discord_community_url %}
                     | <a href="{{ discord_community_url }}" class="link-secondary" target="_blank" rel="noopener noreferrer">Community</a>

@@ -2,7 +2,7 @@
 
 {% block title %}{{ app_name }} - Professional Trading Journal{% endblock %}
 
-{% set page_desc = "TradeVerse is a professional trading journal: log trades, use the trade planner, see analytics and dashboards, and improve discipline — with Free and Pro plans." %}
+{% set page_desc = "TradeVerse is a professional trading journal: log trades, use the trade planner, see analytics and dashboards, and improve discipline." %}
 {% block meta_description %}{{ page_desc }}{% endblock %}
 {% block og_description %}{{ page_desc }}{% endblock %}
 {% block twitter_description %}{{ page_desc }}{% endblock %}
@@ -554,7 +554,7 @@
                 <div class="landing-hero-actions">
                     {% if not current_user.is_authenticated %}
                         <a href="{{ url_for('auth.register') }}" class="btn btn-landing-primary btn-lg">
-                            <i class="fas fa-rocket me-2"></i> Start Free Trial
+                            <i class="fas fa-rocket me-2"></i> Get Started
                         </a>
                         <a href="{{ url_for('auth.login') }}" class="landing-hero-signin">
                             Sign In <i class="fas fa-arrow-right" aria-hidden="true"></i>
@@ -653,9 +653,6 @@
             <span class="landing-explore-label">EXPLORE</span>
             <span class="landing-explore-sep d-none d-sm-inline" aria-hidden="true"></span>
             <a href="{{ url_for('main.features') }}"><i class="fas fa-star me-1 text-primary"></i>Features</a>
-            <span class="landing-explore-sep d-none d-sm-inline" aria-hidden="true"></span>
-            <a href="{{ url_for('main.pricing') }}"><i class="fas fa-tags me-1 text-primary"></i>Pricing</a>
-            <span class="landing-explore-sep d-none d-sm-inline" aria-hidden="true"></span>
             <a href="{{ url_for('main.contact') }}"><i class="fas fa-envelope me-1 text-primary"></i>Contact</a>
         </div>
         <div class="landing-explore-auth">
@@ -1036,7 +1033,7 @@
                     <blockquote class="blockquote mb-4">
                         <p class="mb-0">
                             "Best trading journal I've used. Clean interface, powerful features, and helps me stay 
-                            disciplined. The risk management tools alone are worth the subscription."
+                            disciplined. The risk management tools alone make the workflow worth it."
                         </p>
                     </blockquote>
                     <div class="d-flex align-items-center">
@@ -1062,32 +1059,32 @@
         <div class="col-lg-9 col-xl-8">
             <h2 class="landing-cta-headline fw-bold mb-3 mb-lg-4">Ready to Level Up Your Trading?</h2>
             <p class="lead mb-4 mb-lg-5 opacity-95">
-                Join thousands of traders using TradeVerse to improve their performance.
-                Start your journey today with our free trial — no credit card required.
+                Join traders using TradeVerse to improve their performance.
+                Create your account to see available plan options inside the app.
             </p>
             <div class="row g-3 justify-content-center mb-4 mb-lg-5">
                 <div class="col-12 col-sm-4">
                     <div class="d-flex align-items-center justify-content-center text-white opacity-90 small">
                         <i class="fas fa-check-circle me-2 flex-shrink-0"></i>
-                        <span>2-month free trial</span>
+                        <span>Trading journal</span>
                     </div>
                 </div>
                 <div class="col-12 col-sm-4">
                     <div class="d-flex align-items-center justify-content-center text-white opacity-90 small">
                         <i class="fas fa-check-circle me-2 flex-shrink-0"></i>
-                        <span>No credit card required</span>
+                        <span>Analytics dashboard</span>
                     </div>
                 </div>
                 <div class="col-12 col-sm-4">
                     <div class="d-flex align-items-center justify-content-center text-white opacity-90 small">
                         <i class="fas fa-check-circle me-2 flex-shrink-0"></i>
-                        <span>Cancel anytime</span>
+                        <span>AI-assisted reviews</span>
                     </div>
                 </div>
             </div>
             {% if not current_user.is_authenticated %}
             <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-4 px-md-5 py-3 shadow-lg fw-bold rounded-3">
-                <i class="fas fa-rocket me-2"></i> Start free — no card required
+                <i class="fas fa-rocket me-2"></i> Create your account
             </a>
             {% else %}
             <a href="{{ url_for('dashboard.index') }}" class="btn btn-light btn-lg px-5 py-3 shadow-lg fw-bold rounded-3">
