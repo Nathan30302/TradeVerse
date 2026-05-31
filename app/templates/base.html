@@ -511,6 +511,13 @@
         body[data-tv-landing="1"] .main-content {
             padding: clamp(0.5rem, 1.2vw, 0.85rem) clamp(0.65rem, 1.8vw, 1.25rem) 2.5rem;
             background: #000;
+            /* Override app-wide min-height — Safari was leaving a large empty black gap */
+            min-height: 0;
+        }
+        body[data-tv-landing="1"] .fade-in {
+            animation: none;
+            opacity: 1;
+            transform: none;
         }
         body[data-tv-landing="1"] .landing-page {
             background: #000;
@@ -555,7 +562,18 @@
             gap: 0.5rem;
         }
         body[data-tv-landing="1"] #dynamic-island {
-            flex-shrink: 0;
+            flex-shrink: 1;
+            min-width: 0;
+            max-width: min(420px, 42vw);
+        }
+        body[data-tv-landing="1"] .tv-nav-bar-inner {
+            flex-wrap: nowrap;
+            align-items: center;
+        }
+        @media (max-width: 1199.98px) {
+            body[data-tv-landing="1"] #dynamic-island {
+                display: none !important;
+            }
         }
 
         .btn-navbar {
