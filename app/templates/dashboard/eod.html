@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}End of session - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="tv-page-hero">
+    <div class="page-header">
+        <h1 class="page-title mb-2"><i class="fas fa-moon"></i> End of session</h1>
+        <p class="page-subtitle mb-0">Close the loop before you walk away from the charts.</p>
+    </div>
+</div>
+
+{% set rq = daily.get('review_queue') or {} %}
+{% set lines = (daily.get('morning_briefing') or {}).get('lines') or [] %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card tv-surface h-100 {% if rq.get('total', 0) == 0 %}border-success{% endif %}">
+            <div class="card-body">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" {% if rq.get('total', 0) == 0 %}checked disabled{% endif %} id="eod1">
+                    <label class="form-check-label" for="eod1">
+                        <strong>Review open items</strong>
+                        <div class="small tv-muted">{{ rq.get('total', 0) }} trade/plan reviews pending</div>
+                    </label>
+                </div>
+                {% if rq.get('first_trade_id') %}
+                <a class="btn btn-sm btn-outline-primary mt-2" href="{{ url_for('trade.view', trade_id=rq.first_trade_id, review=1) }}">Review now</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card tv-surface h-100">
+            <div class="card-body">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="eod2">
+                    <label class="form-check-label" for="eod2">
+                        <strong>Check weekly focus</strong>
+                        <div class="small tv-muted">{{ daily.get('weekly_focus') or 'Set one rule in AI Buddy' }}</div>
+                    </label>
+                </div>
+                <a class="btn btn-sm btn-outline-secondary mt-2" href="{{ url_for('dashboard.ai') }}">Set focus</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card tv-surface h-100">
+            <div class="card-body">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="eod3">
+                    <label class="form-check-label" for="eod3">
+                        <strong>Log today's session</strong>
+                        <div class="small tv-muted">{{ stats.get('open_trades', 0) }} open · {{ stats.closed_trades }} closed total</div>
+                    </label>
+                </div>
+                <a class="btn btn-sm btn-primary mt-2" href="{{ url_for('trade.add') }}">Add trade</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card tv-surface">
+    <div class="card-header"><h5 class="mb-0">Coach snapshot</h5></div>
+    <div class="card-body">
+        {% if ai_summary and ai_summary.get('summary') %}
+        <p class="mb-2">{{ ai_summary.summary }}</p>
+        {% elif lines %}
+        {% for line in lines[:2] %}<p class="small mb-1">{{ line }}</p>{% endfor %}
+        {% else %}
+        <p class="small tv-muted mb-0">Log trades to get a personalized wrap-up here.</p>
+        {% endif %}
+        <a href="{{ url_for('dashboard.weekly_review') }}" class="btn btn-sm btn-outline-primary mt-2">Run weekly review</a>
+    </div>
+</div>
+{% endblock %}

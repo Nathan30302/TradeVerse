@@ -11,6 +11,10 @@
     <p class="page-subtitle">Deep insights into your trading performance</p>
 </div>
 
+{% with feature_key='advanced_analytics', title='Trader-grade metrics preview', body='Unlock expectancy (R), drawdown depth, and R-multiple win rate — included with Pro.' %}
+{% include 'partials/upgrade_preview.html' %}
+{% endwith %}
+
 <!-- Trader-grade Metrics (Pro/Elite) -->
 <div class="card mb-4" id="advanced-metrics-card" style="display:none;">
     <div class="card-header">
@@ -117,7 +121,9 @@
                 </table>
             </div>
         {% else %}
-            <p class="text-center text-muted py-4">No data available. Add trades to see insights!</p>
+            {% with icon='fa-coins', title='No instrument data yet', body='Log closed trades to see performance by symbol.', cta_url=url_for('trade.add'), cta_label='Log first trade' %}
+            {% include 'partials/empty_state.html' %}
+            {% endwith %}
         {% endif %}
     </div>
 </div>

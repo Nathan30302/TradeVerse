@@ -16,6 +16,7 @@ from app.services.feedback_analyzer import generate_trade_feedback
 from app.services.cooldown_manager import CooldownManager, get_active_cooldown, trigger_emotional_cooldown
 from app.services.account_flags import current_user_exports_blocked
 from app.services.entitlements import user_has_feature
+from app.services.retention import trade_needs_review
 from datetime import datetime
 from app.utils.timeutil import utc_now, parse_datetime_optional
 import csv
@@ -476,6 +477,9 @@ def add():
             flash(ok_msg, 'success')
             if cooldown_note:
                 flash(cooldown_note, 'warning')
+            if trade.status == 'CLOSED' and trade_needs_review(trade):
+                flash('Add a one-line lesson while it is fresh — it powers AI Buddy and your review queue.', 'info')
+                return redirect(url_for('trade.view', trade_id=trade.id, review=1))
             return redirect(url_for('trade.view', trade_id=trade.id))
             
         except ValueError as e:

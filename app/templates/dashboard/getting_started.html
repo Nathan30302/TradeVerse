@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Getting started - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="tv-page-hero">
+    <div class="page-header">
+        <h1 class="page-title mb-2"><i class="fas fa-route"></i> Getting started</h1>
+        <p class="page-subtitle mb-0">Three minutes to your first journal win — pick one path below.</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card tv-surface h-100">
+            <div class="card-body">
+                <div class="badge bg-primary mb-2">Step 1</div>
+                <h5 class="fw-bold">Plan a trade</h5>
+                <p class="small tv-muted">Write your bias, entry, and invalidation before you click buy or sell.</p>
+                <a href="{{ url_for('planner.new_plan') }}" class="btn btn-primary w-100">Open planner</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card tv-surface h-100">
+            <div class="card-body">
+                <div class="badge bg-success mb-2">Step 2</div>
+                <h5 class="fw-bold">Log a trade</h5>
+                <p class="small tv-muted">Record what happened — prices, emotion, and risk.</p>
+                <a href="{{ url_for('trade.add') }}" class="btn btn-outline-primary w-100">Add trade</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card tv-surface h-100">
+            <div class="card-body">
+                <div class="badge bg-info mb-2">Step 3</div>
+                <h5 class="fw-bold">Import history</h5>
+                <p class="small tv-muted">Upload CSV or connect a broker if you already have trades elsewhere.</p>
+                <a href="{{ url_for('imports.index') }}" class="btn btn-outline-secondary w-100">Import trades</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card tv-surface mb-4">
+    <div class="card-body d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+        <div>
+            <h5 class="fw-bold mb-1">Try sample data</h5>
+            <p class="small tv-muted mb-0">Load 3 demo trades to explore AI Buddy, analytics, and the weekly review — no risk to your account.</p>
+        </div>
+        <form method="POST" action="{{ url_for('dashboard.getting_started_sample_data') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-primary">Load sample trades</button>
+        </form>
+    </div>
+</div>
+
+<div class="text-center">
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-link">Skip to dashboard</a>
+</div>
+{% endblock %}

@@ -12,6 +12,7 @@ from flask_login import current_user, login_required
 from app import db
 from app.models.playbook_setup import PlaybookSetup
 from app.models.trade import Trade
+from app.services.retention import setup_letter_grade
 from sqlalchemy import case, func
 
 
@@ -52,6 +53,7 @@ def index():
         for setup_id, count, pnl, wins, losses, avg_rr in rows:
             total = int(wins or 0) + int(losses or 0)
             wr = (float(wins) / total * 100.0) if total else 0.0
+            grade, grade_color = setup_letter_grade(wr, int(count or 0), float(avg_rr or 0.0))
             stats_by_setup[int(setup_id)] = {
                 "count": int(count or 0),
                 "pnl": float(pnl or 0.0),
@@ -59,6 +61,8 @@ def index():
                 "losses": int(losses or 0),
                 "win_rate": float(wr),
                 "avg_rr": float(avg_rr or 0.0),
+                "grade": grade,
+                "grade_color": grade_color,
             }
 
     return render_template("playbook/index.html", setups=setups, stats_by_setup=stats_by_setup)
@@ -110,11 +114,24 @@ def view(setup_id: int):
     losses = len([t for t in trades if (t.profit_loss or 0) < 0])
     total = wins + losses
     win_rate = (wins / total * 100.0) if total else 0.0
+    avg_rr = (
+        sum([(t.risk_reward or 0.0) for t in trades]) / len(trades) if trades else 0.0
+    )
+    grade, grade_color = setup_letter_grade(win_rate, len(trades), avg_rr)
     return render_template(
         "playbook/view.html",
         setup=setup,
         trades=trades,
-        setup_stats={"count": len(trades), "pnl": pnl, "wins": wins, "losses": losses, "win_rate": win_rate},
+        setup_stats={
+            "count": len(trades),
+            "pnl": pnl,
+            "wins": wins,
+            "losses": losses,
+            "win_rate": win_rate,
+            "avg_rr": avg_rr,
+            "grade": grade,
+            "grade_color": grade_color,
+        },
     )
 
 

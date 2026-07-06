@@ -44,6 +44,13 @@
     </div>
 </div>
 
+{% include 'partials/dashboard_trial_banner.html' %}
+
+{# ------------------------------------------------------------------ #}
+{# Daily loop — briefing, streak, review queue, weekly score          #}
+{# ------------------------------------------------------------------ #}
+{% include 'partials/dashboard_daily_loop.html' %}
+
 {# ------------------------------------------------------------------ #}
 {# Pinned coaching note (premium)                                     #}
 {# ------------------------------------------------------------------ #}
@@ -102,12 +109,18 @@
                 </div>
             </div>
         </div>
-        <div class="text-center mt-4">
-            <a href="{{ url_for('planner.new_plan') }}" class="btn btn-light btn-lg me-2">
-                <i class="fas fa-clipboard-list"></i> Create First Plan
+        <div class="text-center mt-4 d-flex flex-wrap justify-content-center gap-2">
+            <a href="{{ url_for('dashboard.getting_started') }}" class="btn btn-light btn-lg">
+                <i class="fas fa-route"></i> Guided setup
+            </a>
+            <a href="{{ url_for('planner.new_plan') }}" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-clipboard-list"></i> Create plan
             </a>
             <a href="{{ url_for('trade.add') }}" class="btn btn-outline-light btn-lg">
-                <i class="fas fa-plus"></i> Log a Trade
+                <i class="fas fa-plus"></i> Log a trade
+            </a>
+            <a href="{{ url_for('imports.index') }}" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-file-import"></i> Import
             </a>
         </div>
     </div>
@@ -157,7 +170,11 @@
                 <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Review a closed trade</span>
             {% else %}
                 <span class="tv-muted"><i class="far fa-circle me-1"></i>Review a closed trade</span>
-                <span class="d-block mt-1 tv-muted">Add notes or lessons on a closed trade.</span>
+                {% if review_queue is defined and review_queue.get('first_trade_id') %}
+                <a class="d-block mt-1" href="{{ url_for('trade.view', trade_id=review_queue.first_trade_id, review=1) }}">Review next trade →</a>
+                {% else %}
+                <a class="d-block mt-1" href="{{ url_for('trade.list') }}">Open trades →</a>
+                {% endif %}
             {% endif %}
         </div>
         <div class="col-md-6 col-lg-4">

@@ -1,0 +1,54 @@
+{% if current_user.is_authenticated %}
+<div id="tv-mobile-today-strip" class="d-md-none tv-mobile-today-strip" role="region" aria-label="Today at a glance">
+    <div class="tv-mobile-today-inner">
+        <div class="tv-mobile-today-stat">
+            <span class="label">Reviews</span>
+            <span class="value" id="tv-mobile-reviews">{{ (review_queue.total if review_queue is defined else (today_strip.reviews if today_strip is defined else 0)) }}</span>
+        </div>
+        <div class="tv-mobile-today-stat">
+            <span class="label">Streak</span>
+            <span class="value" id="tv-mobile-streak">{{ (daily.journaling_streak if daily is defined else (today_strip.streak if today_strip is defined else 0)) }}</span>
+        </div>
+        <a class="btn btn-sm btn-primary flex-shrink-0" href="{{ url_for('trade.add') }}">
+            <i class="fas fa-plus"></i> Log
+        </a>
+    </div>
+</div>
+<style>
+  .tv-mobile-today-strip {
+    position: sticky;
+    bottom: 0;
+    z-index: 1040;
+    padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, transparent, rgba(2, 6, 23, 0.92) 24%);
+    pointer-events: none;
+  }
+  .tv-mobile-today-inner {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(15, 23, 42, 0.95);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  .tv-mobile-today-stat {
+    display: flex;
+    flex-direction: column;
+    min-width: 3.5rem;
+  }
+  .tv-mobile-today-stat .label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+  }
+  .tv-mobile-today-stat .value {
+    font-weight: 800;
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+</style>
+{% endif %}

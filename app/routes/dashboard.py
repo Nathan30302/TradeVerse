@@ -27,6 +27,14 @@ from app.utils.timeutil import utc_now
 import random
 from app.services.entitlements import _safe_getattr, require_feature, user_has_feature
 from app.services.ai_coach_context import build_coach_context_dict, format_coach_context_block
+from app.services.retention import (
+    build_dashboard_daily_context,
+    create_sample_trades,
+    get_weekly_review_payload,
+    get_review_queue,
+    get_morning_briefing,
+    setup_letter_grade,
+)
 from zoneinfo import ZoneInfo
 import os
 
@@ -215,6 +223,11 @@ def index():
     except Exception:
         pinned_note = None
 
+    daily = build_dashboard_daily_context(
+        current_user,
+        user_name=(current_user.username or ''),
+    )
+
     return render_template('dashboard/index.html',
                            stats=stats,
                            recent_trades=recent_trades,
@@ -227,7 +240,67 @@ def index():
                            worst_trade=worst_trade,
                            onboarding=onboarding,
                            pinned_note=pinned_note,
-                           last_trade_insight=last_trade_insight)
+                           last_trade_insight=last_trade_insight,
+                           daily=daily,
+                           review_queue=daily.get('review_queue') or {})
+
+
+@bp.route('/getting-started')
+@login_required
+def getting_started():
+    """First-run wizard — plan, log, or import sample data."""
+    stats = current_user.get_stats()
+    return render_template(
+        'dashboard/getting_started.html',
+        stats=stats,
+        review_queue=get_review_queue(current_user.id),
+    )
+
+
+@bp.route('/getting-started/sample-data', methods=['POST'])
+@login_required
+def getting_started_sample_data():
+    """Optional demo trades so AI Buddy and analytics are not empty."""
+    created = create_sample_trades(current_user.id)
+    if created:
+        flash(f'Added {created} sample trades. Explore your dashboard and AI Buddy.', 'success')
+    else:
+        flash('You already have trades — sample data was not added.', 'info')
+    return redirect(url_for('dashboard.index'))
+
+
+@bp.route('/weekly-review')
+@login_required
+def weekly_review():
+    """Five-minute weekly review ritual."""
+    payload = get_weekly_review_payload(
+        current_user.id,
+        user_name=(current_user.username or ''),
+    )
+    return render_template('dashboard/weekly_review.html', **payload)
+
+
+@bp.route('/eod')
+@login_required
+def eod_ritual():
+    """End-of-session checklist: reviews, focus, briefing."""
+    daily = build_dashboard_daily_context(
+        current_user,
+        user_name=(current_user.username or ''),
+    )
+    stats = current_user.get_stats()
+    ai_summary = _safe_ai_summary()
+    if stats.get('total_trades', 0) > 0:
+        try:
+            ai_summary = AIAnalyzer(current_user.id).get_weekly_review() or ai_summary
+        except Exception:
+            pass
+    return render_template(
+        'dashboard/eod.html',
+        daily=daily,
+        stats=stats,
+        ai_summary=ai_summary,
+    )
 
 # ==================== Analytics ====================
 

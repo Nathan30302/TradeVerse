@@ -2390,6 +2390,18 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.weekly_review' %}active{% endif %}"
+                   href="{{ url_for('dashboard.weekly_review') }}">
+                    <i class="fas fa-calendar-week"></i> Weekly review
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.eod_ritual' %}active{% endif %}"
+                   href="{{ url_for('dashboard.eod_ritual') }}">
+                    <i class="fas fa-moon"></i> End of session
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'trade.list' %}active{% endif %}"
                    href="{{ url_for('trade.list') }}">
                     <i class="fas fa-list"></i> My Trades
@@ -2534,6 +2546,20 @@
                                href="{{ url_for('dashboard.index') }}">
                                 <i class="fas fa-home"></i>
                                 <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'dashboard.weekly_review' %}active{% endif %}" 
+                               href="{{ url_for('dashboard.weekly_review') }}">
+                                <i class="fas fa-calendar-week"></i>
+                                <span>Weekly review</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'dashboard.eod_ritual' %}active{% endif %}" 
+                               href="{{ url_for('dashboard.eod_ritual') }}">
+                                <i class="fas fa-moon"></i>
+                                <span>End of session</span>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -3226,6 +3252,14 @@
         render();
         setInterval(render, 1000);
     }());
+    </script>
+    {% endif %}
+    {% if current_user.is_authenticated %}
+    {% include 'partials/mobile_today_strip.html' %}
+    <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('{{ url_for('main.service_worker') }}').catch(function () {});
+    }
     </script>
     {% endif %}
 </body>

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Weekly review - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="tv-page-hero">
+    <div class="page-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <h1 class="page-title mb-2"><i class="fas fa-calendar-week"></i> Weekly review</h1>
+            <p class="page-subtitle mb-0">Five minutes: stats → leak → one rule for next week.</p>
+        </div>
+        <a href="{{ url_for('dashboard.ai') }}" class="btn btn-outline-primary btn-sm">Open AI Buddy</a>
+    </div>
+</div>
+
+{% set wk = weekly or {} %}
+{% set wk_stats = wk.get('stats') or {} %}
+{% set alerts = wk.get('alerts') or [] %}
+{% set recs = wk.get('recommendations') or [] %}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <div class="card tv-surface h-100">
+            <div class="card-header"><h5 class="mb-0">This week</h5></div>
+            <div class="card-body">
+                <p>{{ wk.get('summary') or 'Log closed trades to unlock your weekly snapshot.' }}</p>
+                <div class="row g-2 text-center">
+                    <div class="col-4">
+                        <div class="tv-panel p-2">
+                            <div class="small tv-muted">Trades</div>
+                            <div class="fw-bold">{{ wk_stats.get('total_trades', 0) }}</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="tv-panel p-2">
+                            <div class="small tv-muted">Win rate</div>
+                            <div class="fw-bold">{{ '%.0f'|format(wk_stats.get('win_rate', 0)) }}%</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="tv-panel p-2">
+                            <div class="small tv-muted">Net P/L</div>
+                            <div class="fw-bold">{{ wk_stats.get('total_pnl', 0)|currency(current_user.preferred_currency) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card tv-surface h-100">
+            <div class="card-header"><h5 class="mb-0">Review queue</h5></div>
+            <div class="card-body">
+                <p class="mb-2">{{ review_queue.get('total', 0) }} item{% if review_queue.get('total', 0) != 1 %}s{% endif %} waiting.</p>
+                {% if review_queue.get('first_trade_id') %}
+                <a class="btn btn-primary btn-sm" href="{{ url_for('trade.view', trade_id=review_queue.first_trade_id, review=1) }}">Review next trade</a>
+                {% elif review_queue.get('plans_count', 0) > 0 %}
+                <a class="btn btn-primary btn-sm" href="{{ url_for('planner.index') }}">Review executed plans</a>
+                {% else %}
+                <span class="small tv-muted">You're caught up on reviews.</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card tv-surface h-100">
+            <div class="card-header"><h5 class="mb-0">Top alerts</h5></div>
+            <div class="card-body">
+                {% if alerts %}
+                <ul class="mb-0 ps-3">
+                    {% for a in alerts[:5] %}<li class="small mb-1">{{ a }}</li>{% endfor %}
+                </ul>
+                {% else %}
+                <p class="small tv-muted mb-0">No strong alerts yet — keep logging with notes and strategy tags.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card tv-surface h-100">
+            <div class="card-header"><h5 class="mb-0">Suggested focus next week</h5></div>
+            <div class="card-body">
+                <p class="fw-semibold">{{ suggested_focus or 'Max 2 trades per day; stop after −2R daily loss.' }}</p>
+                <form method="POST" action="{{ url_for('dashboard.save_weekly_focus') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ url_for('dashboard.weekly_review') }}">
+                    <input type="hidden" name="weekly_focus" value="{{ suggested_focus }}">
+                    <button type="submit" class="btn btn-sm btn-primary">Use this rule</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

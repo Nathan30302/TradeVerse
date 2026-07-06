@@ -89,35 +89,27 @@
         <!-- Notifications -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-bell"></i> Notifications</h5>
+                <h5 class="mb-0"><i class="fas fa-bell"></i> Reminders &amp; digests</h5>
             </div>
             <div class="card-body">
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="emailNotifications" checked disabled>
-                    <label class="form-check-label" for="emailNotifications">
-                        <strong>Email Notifications</strong>
-                        <br><small class="text-muted">Receive updates about your trades via email</small>
-                    </label>
-                </div>
-
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="weeklyReport" checked disabled>
-                    <label class="form-check-label" for="weeklyReport">
-                        <strong>Weekly Performance Report</strong>
-                        <br><small class="text-muted">Get a summary of your trading performance every week</small>
-                    </label>
-                </div>
-
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="tradingReminders" disabled>
-                    <label class="form-check-label" for="tradingReminders">
-                        <strong>Trading Reminders</strong>
-                        <br><small class="text-muted">Daily reminders to log your trades</small>
-                    </label>
-                </div>
-
-                <div class="alert alert-info mt-3">
-                    <i class="fas fa-info-circle"></i> Notification settings coming soon!
+                <p class="text-muted small">In-app rituals are live today — use your dashboard daily loop for briefings, review queue, and weekly focus.</p>
+                <ul class="list-unstyled mb-3">
+                    <li class="mb-2">
+                        <i class="fas fa-calendar-week text-primary me-2"></i>
+                        <strong>Weekly review</strong> — <a href="{{ url_for('dashboard.weekly_review') }}">Run your 5-minute review</a>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-moon text-secondary me-2"></i>
+                        <strong>End of session</strong> — <a href="{{ url_for('dashboard.eod_ritual') }}">Close your trading day</a>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-envelope text-info me-2"></i>
+                        <strong>Trial reminders</strong> — sent automatically when email is configured on the server.
+                    </li>
+                </ul>
+                <div class="alert alert-secondary mb-0 small">
+                    <i class="fas fa-mobile-alt me-1"></i>
+                    <strong>Install the app:</strong> Add TradeVerse to your home screen from the browser menu for quick access to your journal.
                 </div>
             </div>
         </div>

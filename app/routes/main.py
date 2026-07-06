@@ -50,6 +50,16 @@ def favicon():
         )
 
 
+@bp.route('/sw.js')
+def service_worker():
+    """PWA service worker at site root for full scope."""
+    return send_from_directory(
+        current_app.static_folder,
+        'sw.js',
+        mimetype='application/javascript',
+    )
+
+
 @bp.route('/sitemap.xml')
 def sitemap():
     """Simple sitemap for public marketing pages."""

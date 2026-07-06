@@ -1,0 +1,11 @@
+{% if feature_key and not has_feature(feature_key) %}
+<div class="card tv-surface border-primary border-opacity-25 mb-4">
+    <div class="card-body d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+        <div>
+            <div class="fw-semibold mb-1"><i class="fas fa-lock me-1 text-primary"></i> {{ title or 'Pro feature preview' }}</div>
+            <p class="small tv-muted mb-0">{{ body or 'Upgrade to unlock deeper analytics and exports for your journal.' }}</p>
+        </div>
+        <a class="btn btn-primary btn-sm flex-shrink-0" href="{{ url_for('main.pricing') }}">Upgrade</a>
+    </div>
+</div>
+{% endif %}

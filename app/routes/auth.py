@@ -275,7 +275,7 @@ def register():
                 f'🎉 Welcome to TradeVerse, {username}! Your account is ready — you are signed in.',
                 'success',
             )
-            return redirect(url_for('dashboard.index'))
+            return redirect(url_for('dashboard.getting_started'))
 
         except IntegrityError:
             db.session.rollback()

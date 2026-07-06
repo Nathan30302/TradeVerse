@@ -32,8 +32,14 @@
                 <div class="card-body">
                     {% if setup_stats is defined %}
                     <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% if setup_stats.get('grade') and setup_stats.grade != '—' %}
+                        <span class="badge bg-{{ setup_stats.get('grade_color', 'secondary') }} fs-6">Grade {{ setup_stats.grade }}</span>
+                        {% endif %}
                         <span class="badge bg-dark">{{ setup_stats.count }} trade{{ '' if setup_stats.count == 1 else 's' }}</span>
                         <span class="badge bg-{{ 'success' if setup_stats.win_rate >= 55 else ('warning' if setup_stats.win_rate >= 45 else 'danger') }}">{{ '%.0f'|format(setup_stats.win_rate) }}% WR</span>
+                        {% if setup_stats.get('avg_rr') is not none %}
+                        <span class="badge bg-secondary">Avg R:R {{ '%.2f'|format(setup_stats.avg_rr) }}</span>
+                        {% endif %}
                         <span class="badge bg-{{ 'success' if setup_stats.pnl > 0 else ('danger' if setup_stats.pnl < 0 else 'secondary') }}">{{ '%+.2f'|format(setup_stats.pnl) }} P/L</span>
                     </div>
                     {% endif %}

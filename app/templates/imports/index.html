@@ -11,6 +11,14 @@
         </div>
     </div>
 
+    <div class="alert alert-info border-0 shadow-sm mb-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <div>
+            <strong><i class="fas fa-route me-1"></i> New here?</strong>
+            <span class="ms-1">Start with a CSV upload, or load sample trades from <a href="{{ url_for('dashboard.getting_started') }}">Getting started</a> to explore analytics first.</span>
+        </div>
+        <a class="btn btn-sm btn-primary flex-shrink-0" href="{{ url_for('imports.upload_file') }}">Upload CSV</a>
+    </div>
+
     <!-- Quick Actions -->
     <div class="row mb-4">
         <div class="col-md-4 mb-3">

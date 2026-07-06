@@ -1,0 +1,10 @@
+{% set sub = current_user.effective_subscription() %}
+{% if trial_days_remaining is not none and trial_days_remaining <= 14 and sub.status == 'trialing' %}
+<div class="alert alert-warning border-0 shadow-sm mb-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2" role="status">
+    <div>
+        <strong><i class="fas fa-hourglass-half me-1"></i> Pro Plus trial</strong>
+        <span class="ms-1">{{ trial_days_remaining }} day{% if trial_days_remaining != 1 %}s{% endif %} left — keep exports, advanced analytics, and AI web coaching.</span>
+    </div>
+    <a class="btn btn-sm btn-dark" href="{{ url_for('main.pricing') }}">View plans</a>
+</div>
+{% endif %}

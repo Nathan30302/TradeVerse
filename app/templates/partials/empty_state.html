@@ -1,0 +1,12 @@
+{# Unified empty state — one primary CTA per screen #}
+<div class="tv-empty-well py-5 px-3 text-center">
+    <div class="tv-empty-icon"><i class="fas {{ icon or 'fa-inbox' }}"></i></div>
+    <h4 class="mb-2">{{ title or 'Nothing here yet' }}</h4>
+    <p class="text-muted mb-3 mx-auto" style="max-width: 28rem;">{{ body or 'Get started with one action below.' }}</p>
+    {% if cta_url and cta_label %}
+    <a href="{{ cta_url }}" class="btn btn-primary">{{ cta_label }}</a>
+    {% endif %}
+    {% if secondary_url and secondary_label %}
+    <a href="{{ secondary_url }}" class="btn btn-outline-secondary ms-2">{{ secondary_label }}</a>
+    {% endif %}
+</div>

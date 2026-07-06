@@ -507,6 +507,17 @@ def register_context_processors(app):
         }
 
     @app.context_processor
+    def inject_retention_today_strip():
+        """Lightweight review/streak counts for the mobile today strip."""
+        if not getattr(current_user, 'is_authenticated', False):
+            return {}
+        try:
+            from app.services.retention import get_today_strip_context
+            return {'today_strip': get_today_strip_context(current_user)}
+        except Exception:
+            return {'today_strip': {'reviews': 0, 'streak': 0}}
+
+    @app.context_processor
     def inject_cooldown():
         """
         Provide active cooldown to all templates so base.html can enforce a global lock overlay.
