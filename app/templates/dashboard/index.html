@@ -573,7 +573,7 @@
 <div id="dashboard-data"
      data-equity-url="{{ url_for('dashboard.equity_curve_api') }}"
      data-winloss-url="{{ url_for('dashboard.win_rate_chart_api') }}"
-     data-stats-url="{{ url_for('dashboard.api/stats') if false else url_for('dashboard.stats_api') }}"
+    data-stats-url="{{ url_for('dashboard.stats_api') }}"
      style="display:none;"></div>
 
 {% endblock %}

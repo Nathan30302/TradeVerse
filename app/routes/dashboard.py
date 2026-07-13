@@ -311,7 +311,11 @@ def analytics():
     In-depth analysis of trading performance
     """
     session['onboarding_analytics_visited'] = True
-
+    # Ensure any previous failed transaction doesn't abort subsequent reads.
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
     # Performance by instrument
     instrument_stats = db.session.query(
         Trade.symbol,
@@ -772,29 +776,62 @@ def get_week_performance():
 def get_performance_by_day():
     """Get performance by day of week (user timezone)."""
     from calendar import day_name
+    # Use a single aggregated DB query to compute per-weekday stats. This avoids
+    # loading all Trade rows into Python which is slow for large datasets.
+    try:
+        dialect = (db.session.get_bind() or db.engine).dialect.name
+    except Exception:
+        dialect = None
 
-    trades = Trade.query.filter_by(
-        user_id=current_user.id,
-        status='CLOSED'
-    ).all()
+    if dialect == 'sqlite':
+        # SQLite: use strftime('%w', exit_date) -> 0 (Sunday) - 6
+        dow_expr = func.strftime('%w', Trade.exit_date)
+    else:
+        # Postgres and others: use EXTRACT(DOW FROM exit_date) -> 0 (Sunday) - 6
+        dow_expr = func.cast(func.extract('dow', Trade.exit_date), db.Integer)
 
+    rows = db.session.query(
+        dow_expr.label('dow'),
+        func.count(Trade.id).label('count'),
+        func.sum(Trade.profit_loss).label('pnl')
+    ).filter(
+        Trade.user_id == current_user.id,
+        Trade.status == 'CLOSED',
+        Trade.exit_date.isnot(None),
+        Trade.profit_loss.isnot(None),
+    ).group_by('dow').all()
+
+    # Initialize empty stats
     day_stats = {i: {'wins': 0, 'losses': 0, 'pnl': 0} for i in range(7)}
 
-    try:
-        user_tz = ZoneInfo((getattr(current_user, 'timezone', None) or 'UTC').strip() or 'UTC')
-    except Exception:
-        user_tz = ZoneInfo('UTC')
+    # For accuracy, we need counts of wins vs losses per dow; do a second aggregated
+    # query that splits wins and losses.
+    win_rows = db.session.query(
+        dow_expr.label('dow'),
+        func.sum(case((Trade.profit_loss > 0, 1), else_=0)).label('wins'),
+        func.sum(case((Trade.profit_loss <= 0, 1), else_=0)).label('losses')
+    ).filter(
+        Trade.user_id == current_user.id,
+        Trade.status == 'CLOSED',
+        Trade.exit_date.isnot(None),
+        Trade.profit_loss.isnot(None),
+    ).group_by('dow').all()
 
-    for trade in trades:
-        if trade.exit_date and trade.profit_loss is not None:
-            # exit_date is stored as naive UTC; interpret as UTC then convert to user TZ
-            local_exit = trade.exit_date.replace(tzinfo=timezone.utc).astimezone(user_tz)
-            day = local_exit.weekday()
-            if trade.profit_loss > 0:
-                day_stats[day]['wins'] += 1
-            else:
-                day_stats[day]['losses'] += 1
-            day_stats[day]['pnl'] += trade.profit_loss
+    for r in rows:
+        try:
+            dow = int(r.dow)
+        except Exception:
+            dow = int(r.dow) if r.dow is not None else 0
+        day_stats[dow]['pnl'] = float(r.pnl or 0)
+        # count is available but we prefer wins/losses breakdown
+
+    for r in win_rows:
+        try:
+            dow = int(r.dow)
+        except Exception:
+            dow = int(r.dow) if r.dow is not None else 0
+        day_stats[dow]['wins'] = int(r.wins or 0)
+        day_stats[dow]['losses'] = int(r.losses or 0)
 
     result = []
     for day in range(7):
@@ -854,6 +891,12 @@ def calculate_performance():
         score = calculate_weekly_score(current_user.id)
         flash(f'✅ Performance score calculated: {score.overall_score:.1f} ({score.grade})', 'success')
     except Exception as e:
+        # Ensure the DB session is clean if a commit failed earlier in the flow.
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        current_app.logger.exception('calculate_performance failed')
         flash(f'❌ Error calculating score: {str(e)}', 'danger')
 
     return redirect(url_for('dashboard.performance'))
