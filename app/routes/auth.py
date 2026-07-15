@@ -622,6 +622,10 @@ def profile():
         theme = (request.form.get('theme') or 'dark').strip().lower()
         if theme not in allowed:
             theme = 'dark'
+        allowed_fonts = current_app.config.get('ALLOWED_UI_FONTS') or frozenset()
+        ui_font = (request.form.get('ui_font') or 'jakarta').strip().lower()
+        if ui_font not in allowed_fonts:
+            ui_font = 'jakarta'
 
         # Always mutate a session-bound User. Flask-Login may hand us a detached
         # schema-compat hydrate; assigning on that object and commit() is a no-op
@@ -665,6 +669,10 @@ def profile():
             user.timezone = timezone
             user.preferred_currency = preferred_currency
             user.theme = theme
+            try:
+                user.ui_font = ui_font
+            except Exception:
+                pass
             if 'country_code' in request.form and not cerr:
                 try:
                     user.country_code = country_code
@@ -909,7 +917,7 @@ def login_history():
 def set_theme():
     """
     AJAX endpoint to persist the user's theme preference.
-    Expects JSON: { "theme": "light|dark|blue|midnight|sand" } (see Config.ALLOWED_UI_THEMES).
+    Expects JSON: { "theme": "<allowed theme id>" } (see Config.ALLOWED_UI_THEMES).
     """
     try:
         data = request.get_json(force=True)
@@ -923,4 +931,28 @@ def set_theme():
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception("set_theme error")
+        return jsonify(ok=False, error='server_error'), 500
+
+@bp.route('/set-font', methods=['POST'])
+@login_required
+def set_font():
+    """
+    AJAX endpoint to persist the user's UI font preference.
+    Expects JSON: { "font": "jakarta|manrope|sora" } (see Config.ALLOWED_UI_FONTS).
+    """
+    try:
+        data = request.get_json(force=True)
+        allowed = current_app.config.get('ALLOWED_UI_FONTS') or frozenset()
+        font = (data.get('font') or 'jakarta').strip().lower()
+        if font not in allowed:
+            return jsonify(ok=False, error='invalid_font'), 400
+        try:
+            current_user.ui_font = font
+        except Exception:
+            return jsonify(ok=False, error='font_unavailable'), 503
+        db.session.commit()
+        return jsonify(ok=True, font=font)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("set_font error")
         return jsonify(ok=False, error='server_error'), 500

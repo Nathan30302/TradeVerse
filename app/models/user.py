@@ -39,7 +39,9 @@ class User(UserMixin, db.Model):
     # ==================== Preferences ====================
     timezone = db.Column(db.String(50), default='UTC')
     preferred_currency = db.Column(db.String(3), default='USD')
-    theme = db.Column(db.String(20), default='dark')  # light|dark|blue|midnight|sand
+    theme = db.Column(db.String(20), default='dark')  # light|dark|blue|midnight|sand|ember|forest|pearl
+    # Deferred so lagging prod DBs boot before migration/schema_compat adds the column.
+    ui_font = deferred(db.Column(db.String(20), default='jakarta'))  # jakarta|manrope|sora
     
     # ==================== Account Status ====================
     is_active = db.Column(db.Boolean, default=True)

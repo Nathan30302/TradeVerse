@@ -115,11 +115,20 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.1.0'
+    APP_VERSION = '2.1.1'
 
     # UI themes (order preserved for pickers)
-    UI_THEME_CHOICES = ('light', 'dark', 'blue', 'midnight', 'sand')
+    UI_THEME_CHOICES = ('light', 'dark', 'blue', 'midnight', 'sand', 'ember', 'forest', 'pearl')
     ALLOWED_UI_THEMES = frozenset(UI_THEME_CHOICES)
+
+    # UI fonts (body + display pairing)
+    UI_FONT_CHOICES = ('jakarta', 'manrope', 'sora')
+    ALLOWED_UI_FONTS = frozenset(UI_FONT_CHOICES)
+    UI_FONT_LABELS = {
+        'jakarta': 'Journal (Plus Jakarta)',
+        'manrope': 'Clean (Manrope)',
+        'sora': 'Sharp (Sora)',
+    }
 
     # Public support contact (mailto + footer). Override via SUPPORT_EMAIL if needed.
     SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com'

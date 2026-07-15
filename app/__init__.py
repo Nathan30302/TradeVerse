@@ -508,6 +508,8 @@ def register_context_processors(app):
             'support_email': app.config.get('SUPPORT_EMAIL') or 'tradeversesupport@gmail.com',
             'discord_community_url': (app.config.get('DISCORD_COMMUNITY_URL') or '').strip(),
             'ui_theme_choices': tuple(app.config.get('UI_THEME_CHOICES') or ()),
+            'ui_font_choices': tuple(app.config.get('UI_FONT_CHOICES') or ()),
+            'ui_font_labels': dict(app.config.get('UI_FONT_LABELS') or {}),
             'current_year': datetime.now(timezone.utc).year,
             'voice_transcribe_enabled': bool(os.environ.get('OPENAI_API_KEY', '').strip()),
         }

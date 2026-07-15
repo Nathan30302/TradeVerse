@@ -1,0 +1,27 @@
+/* Ember — charcoal desk + copper heat */
+:root {
+  --primary: #ea580c;
+  --secondary: #f59e0b;
+  --success: #22c55e;
+  --danger: #f43f5e;
+  --warning: #fbbf24;
+  --info: #fb923c;
+
+  --text-primary: #fff7ed;
+  --text-secondary: #fdba74;
+  --bg-primary: #140c08;
+  --bg-secondary: #1c120c;
+  --card-bg: #1a110d;
+  --card-border: #3d2418;
+  --form-bg: #120a07;
+  --form-border: #4a2c1c;
+  --form-text: #fff7ed;
+  --form-label: #fdba74;
+  --table-hover: #24160f;
+  --tab-text: #c2410c;
+  --tab-active: #fb923c;
+  --tab-border: #3d2418;
+  --sidebar-bg: #0c0806;
+  --sidebar-hover: #1c120c;
+  --sidebar-text: #ffedd5;
+}

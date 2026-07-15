@@ -55,7 +55,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&family=Literata:opsz,wght@7..72,500;7..72,650;7..72,700&family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,650;8..60,700&display=swap" rel="stylesheet">
     
     <!-- Styling: Bootstrap 5 + custom CSS below. (Tailwind CDN removed — unused utilities;
          avoids console warnings and duplicate overlap with Bootstrap in production.) -->
@@ -2233,7 +2233,7 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{% set _th = current_user.theme or 'dark' %}{% if _th in ui_theme_choices %}{{ _th }}{% else %}dark{% endif %}{% else %}{% endif %}"{% if not current_user.is_authenticated and request.endpoint == 'main.index' %} data-tv-landing="1"{% endif %}>
+<body data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% else %}{% endif %}" data-server-theme="{% if current_user.is_authenticated %}{% set _th = current_user.theme or 'dark' %}{% if _th in ui_theme_choices %}{{ _th }}{% else %}dark{% endif %}{% else %}{% endif %}" data-server-font="{% if current_user.is_authenticated %}{% set _fn = current_user.ui_font or 'jakarta' %}{% if _fn in ui_font_choices %}{{ _fn }}{% else %}jakarta{% endif %}{% else %}jakarta{% endif %}"{% if not current_user.is_authenticated and request.endpoint == 'main.index' %} data-tv-landing="1"{% endif %}>
 
     {% if maintenance_mode %}
     <div class="alert alert-warning rounded-0 border-0 mb-0 text-center py-2 small" role="alert">
@@ -2356,13 +2356,16 @@
                     <li class="dropdown-item section-label">Appearance</li>
                     <li class="px-3 py-2">
                         <div class="theme-segmented theme-segmented-grid" id="theme-segmented" title="Appearance">
-                            <button type="button" class="theme-option" data-theme="light" title="Light"><span class="theme-option-dot"></span>Light</button>
-                            <button type="button" class="theme-option" data-theme="dark" title="Dark"><span class="theme-option-dot"></span>Dark</button>
-                            <button type="button" class="theme-option" data-theme="blue" title="Ocean"><span class="theme-option-dot"></span>Ocean</button>
-                            <button type="button" class="theme-option" data-theme="midnight" title="Midnight"><span class="theme-option-dot"></span>Night</button>
-                            <button type="button" class="theme-option" data-theme="sand" title="Sand"><span class="theme-option-dot"></span>Sand</button>
+                            <button type="button" class="theme-option" data-theme="light" title="Light"><span class="theme-option-dot" style="background:#e2e8f0"></span>Light</button>
+                            <button type="button" class="theme-option" data-theme="dark" title="Dark"><span class="theme-option-dot" style="background:#14b8a6"></span>Dark</button>
+                            <button type="button" class="theme-option" data-theme="blue" title="Ocean"><span class="theme-option-dot" style="background:#0ea5e9"></span>Ocean</button>
+                            <button type="button" class="theme-option" data-theme="midnight" title="Midnight"><span class="theme-option-dot" style="background:#a78bfa"></span>Night</button>
+                            <button type="button" class="theme-option" data-theme="sand" title="Sand"><span class="theme-option-dot" style="background:#b45309"></span>Sand</button>
+                            <button type="button" class="theme-option" data-theme="ember" title="Ember"><span class="theme-option-dot" style="background:#ea580c"></span>Ember</button>
+                            <button type="button" class="theme-option" data-theme="forest" title="Forest"><span class="theme-option-dot" style="background:#10b981"></span>Forest</button>
+                            <button type="button" class="theme-option" data-theme="pearl" title="Pearl"><span class="theme-option-dot" style="background:#94a3b8"></span>Pearl</button>
                         </div>
-                        <small class="text-muted d-block mt-1 px-1">Saved to your account. Use <strong>Settings → Appearance</strong> for more space.</small>
+                        <small class="text-muted d-block mt-1 px-1">Themes + fonts: <strong>Settings → Appearance</strong></small>
                     </li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
@@ -2724,35 +2727,29 @@
     <script src="{{ url_for('static', filename='js/mobile-nav.js') }}"></script>
     
     <script>
-        // Theme switcher: persists selection and updates CSS variables with instant visual feedback
+        // Theme + font switcher: persist to account + localStorage
         (function(){
-            const TV_THEMES = ['light','dark','blue','midnight','sand'];
+            const TV_THEMES = ['light','dark','blue','midnight','sand','ember','forest','pearl'];
+            const TV_FONTS = ['jakarta','manrope','sora'];
 
             function applyTheme(name, persist=true, notifyServer=true){
-                // Normalize unknown themes (stale localStorage / DB) so UI never breaks
                 if(!TV_THEMES.includes(name)){
                     name = 'dark';
                 }
 
-                // Set data-theme attribute on body for CSS variable switching
                 document.body.setAttribute('data-theme', name);
 
-                // Update theme stylesheet link so CSS file-based overrides load (prevents FOUC on reload)
                 const themeLink = document.getElementById('theme-css');
                 if(themeLink){
-                    themeLink.href = '/static/css/themes/' + name + '.css';
+                    themeLink.href = '/static/css/themes/' + name + '.css?v={{ app_version }}';
                 }
 
-                // Update hidden form input for server-side saves (if present)
                 const themeInput = document.querySelector('input[name="theme"]');
                 if(themeInput) themeInput.value = name;
 
-                // Update localStorage if persist enabled
                 if(persist) localStorage.setItem('tv_theme', name);
 
-                // Update theme buttons/segmented controls if present
-                const themeOptions = document.querySelectorAll('.theme-option, [data-theme]');
-                themeOptions.forEach(btn => {
+                document.querySelectorAll('.theme-option').forEach(btn => {
                     try{
                         const dt = btn.getAttribute('data-theme');
                         if (dt === name) {
@@ -2768,13 +2765,12 @@
                                 btn.classList.remove('btn-primary');
                             }
                         }
-                    }catch(e){/* ignore malformed elements */}
+                    }catch(e){/* ignore */}
                 });
 
-                // Update theme-card active state
                 document.querySelectorAll('.theme-card').forEach(c => c.classList.toggle('active', c.dataset.theme === name));
+                document.querySelectorAll('.swatch[data-theme]').forEach(c => c.classList.toggle('active', c.dataset.theme === name));
 
-                // Notify server for authenticated users to persist theme in DB
                 if(notifyServer) {
                     try {
                         const userId = document.body.getAttribute('data-user-id');
@@ -2797,15 +2793,54 @@
                 }
             }
 
-            // Expose applyTheme globally for use by other scripts
-            window.applyTheme = applyTheme;
+            function applyFont(name, persist=true, notifyServer=true){
+                if(!TV_FONTS.includes(name)){
+                    name = 'jakarta';
+                }
+                document.body.setAttribute('data-font', name);
+                const fontInput = document.querySelector('input[name="ui_font"]');
+                if(fontInput) fontInput.value = name;
+                if(persist) localStorage.setItem('tv_font', name);
 
-            // Setup segmented control click handlers
-            const themeOptions = document.querySelectorAll('.theme-option');
-            themeOptions.forEach(btn => {
+                document.querySelectorAll('.font-option').forEach(btn => {
+                    btn.classList.toggle('active', btn.getAttribute('data-font') === name);
+                });
+                document.querySelectorAll('.font-card').forEach(c => c.classList.toggle('active', c.dataset.font === name));
+
+                if(notifyServer) {
+                    try {
+                        const userId = document.body.getAttribute('data-user-id');
+                        if(userId){
+                            const csrf = (typeof tvGetCsrf === 'function' ? tvGetCsrf() : '') || '';
+                            fetch('/auth/set-font', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type':'application/json',
+                                    'X-CSRFToken': csrf,
+                                    'X-CSRF-Token': csrf
+                                },
+                                credentials: 'same-origin',
+                                body: JSON.stringify({font: name})
+                            }).then(resp => {
+                                if(!resp.ok) console.warn('Font save failed:', resp.statusText);
+                            }).catch(err => console.log('Font save failed silently:', err));
+                        }
+                    } catch(e){ console.log('Font notification error:', e); }
+                }
+            }
+
+            window.applyTheme = applyTheme;
+            window.applyFont = applyFont;
+
+            document.querySelectorAll('.theme-option').forEach(btn => {
                 btn.addEventListener('click', function(){
-                    const theme = this.getAttribute('data-theme');
-                    applyTheme(theme, true, true);
+                    applyTheme(this.getAttribute('data-theme'), true, true);
+                });
+            });
+
+            document.querySelectorAll('.font-option').forEach(btn => {
+                btn.addEventListener('click', function(){
+                    applyFont(this.getAttribute('data-font'), true, true);
                 });
             });
 
@@ -2816,7 +2851,7 @@
                 }
                 const serverTheme = document.body.getAttribute('data-server-theme');
                 const saved = localStorage.getItem('tv_theme');
-                if (serverTheme) {
+                if (serverTheme && TV_THEMES.includes(serverTheme)) {
                     return serverTheme;
                 }
                 if (saved && TV_THEMES.includes(saved)) {
@@ -2828,14 +2863,22 @@
                 return 'light';
             }
 
-            function bootstrapTheme() {
-                const isLanding = document.body.getAttribute('data-tv-landing') === '1';
-                const theme = resolveInitialTheme();
-                applyTheme(theme, !isLanding, false);
+            function resolveInitialFont() {
+                const serverFont = document.body.getAttribute('data-server-font');
+                const saved = localStorage.getItem('tv_font');
+                if (serverFont && TV_FONTS.includes(serverFont)) return serverFont;
+                if (saved && TV_FONTS.includes(saved)) return saved;
+                return 'jakarta';
             }
 
-            document.addEventListener('DOMContentLoaded', bootstrapTheme);
-            bootstrapTheme();
+            function bootstrapAppearance() {
+                const isLanding = document.body.getAttribute('data-tv-landing') === '1';
+                applyTheme(resolveInitialTheme(), !isLanding, false);
+                applyFont(resolveInitialFont(), !isLanding, false);
+            }
+
+            document.addEventListener('DOMContentLoaded', bootstrapAppearance);
+            bootstrapAppearance();
         })();
     </script>
 

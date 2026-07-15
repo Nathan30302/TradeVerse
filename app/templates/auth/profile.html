@@ -136,15 +136,28 @@
                             <label for="theme" class="form-label fw-bold">Theme</label>
                             <select class="form-select" id="theme" name="theme" aria-label="Color theme">
                                 {% set labels = {
-                                    'light': '☀️ Light',
-                                    'dark': '🌙 Dark',
-                                    'blue': '🌊 Ocean',
-                                    'midnight': '✨ Midnight',
-                                    'sand': '📜 Sand'
+                                    'light': 'Light',
+                                    'dark': 'Dark',
+                                    'blue': 'Ocean',
+                                    'midnight': 'Midnight',
+                                    'sand': 'Sand',
+                                    'ember': 'Ember',
+                                    'forest': 'Forest',
+                                    'pearl': 'Pearl'
                                 } %}
                                 {% for tid in ui_theme_choices %}
                                 <option value="{{ tid }}" {% if current_user.theme == tid %}selected{% endif %}>
                                     {% if tid in labels %}{{ labels[tid] }}{% else %}{{ tid|replace('_',' ')|title }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ui_font" class="form-label fw-bold">Font</label>
+                            <select class="form-select" id="ui_font" name="ui_font" aria-label="UI font">
+                                {% for fid in ui_font_choices %}
+                                <option value="{{ fid }}" {% if (current_user.ui_font or 'jakarta') == fid %}selected{% endif %}>
+                                    {{ ui_font_labels.get(fid, fid)|default(fid) }}
                                 </option>
                                 {% endfor %}
                             </select>

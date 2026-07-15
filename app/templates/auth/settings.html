@@ -120,27 +120,27 @@
                 <h5 class="mb-0"><i class="fas fa-paint-brush"></i> Appearance</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted">Choose your preferred theme. This setting is saved to your account and will apply when you sign in on any device.</p>
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <button type="button" class="swatch btn p-2" data-theme="light" title="Light" aria-label="Light theme" style="border-radius:10px;border:2px solid var(--card-border);background:linear-gradient(135deg,var(--card-bg),var(--bg-secondary));">
-                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);" aria-hidden="true"></div>
-                    </button>
-                    <button type="button" class="swatch btn p-2" data-theme="dark" title="Dark" aria-label="Dark theme" style="border-radius:10px;border:2px solid var(--card-border);background:linear-gradient(135deg,#0b1220,#1f2937);">
-                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#475569,#334155);" aria-hidden="true"></div>
-                    </button>
-                    <button type="button" class="swatch btn p-2" data-theme="blue" title="Ocean" aria-label="Ocean theme" style="border-radius:10px;border:2px solid var(--card-border);background:linear-gradient(135deg,#0369a1,#0e7490);">
-                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#38bdf8,#22d3ee);" aria-hidden="true"></div>
-                    </button>
-                    <button type="button" class="swatch btn p-2" data-theme="midnight" title="Midnight" aria-label="Midnight theme" style="border-radius:10px;border:2px solid var(--card-border);background:linear-gradient(135deg,#000000,#18181b);">
-                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#a78bfa,#34d399);" aria-hidden="true"></div>
-                    </button>
-                    <button type="button" class="swatch btn p-2" data-theme="sand" title="Sand" aria-label="Sand theme" style="border-radius:10px;border:2px solid var(--card-border);background:linear-gradient(135deg,#faf8f5,#e7e5e4);">
-                        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#b45309,#ca8a04);" aria-hidden="true"></div>
-                    </button>
+                <p class="text-muted mb-3">Themes save to your account and follow you on every device.</p>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <button type="button" class="swatch btn p-2" data-theme="light" title="Light" aria-label="Light theme" style="border-radius:10px;border:2px solid var(--card-border);"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#f8fafc,#0f766e);"></div></button>
+                    <button type="button" class="swatch btn p-2" data-theme="dark" title="Dark" aria-label="Dark theme" style="border-radius:10px;border:2px solid var(--card-border);"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#0b1220,#14b8a6);"></div></button>
+                    <button type="button" class="swatch btn p-2" data-theme="blue" title="Ocean" aria-label="Ocean theme" style="border-radius:10px;border:2px solid var(--card-border);"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#0369a1,#22d3ee);"></div></button>
+                    <button type="button" class="swatch btn p-2" data-theme="midnight" title="Midnight" aria-label="Midnight theme" style="border-radius:10px;border:2px solid var(--card-border);"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#000,#a78bfa);"></div></button>
+                    <button type="button" class="swatch btn p-2" data-theme="sand" title="Sand" aria-label="Sand theme" style="border-radius:10px;border:2px solid var(--card-border);"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#faf8f5,#b45309);"></div></button>
+                    <button type="button" class="swatch btn p-2" data-theme="ember" title="Ember" aria-label="Ember theme" style="border-radius:10px;border:2px solid var(--card-border);"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#140c08,#ea580c);"></div></button>
+                    <button type="button" class="swatch btn p-2" data-theme="forest" title="Forest" aria-label="Forest theme" style="border-radius:10px;border:2px solid var(--card-border);"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#06140f,#10b981);"></div></button>
+                    <button type="button" class="swatch btn p-2" data-theme="pearl" title="Pearl" aria-label="Pearl theme" style="border-radius:10px;border:2px solid var(--card-border);"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#f8fafc,#64748b);"></div></button>
                 </div>
-                <div class="mt-3">
-                    <small class="text-muted">Current saved theme: <strong id="server-theme">{{ current_user.theme or 'dark' }}</strong></small>
+                <small class="text-muted d-block mb-4">Current theme: <strong id="server-theme">{{ current_user.theme or 'dark' }}</strong></small>
+
+                <h6 class="fw-bold mb-2">Font</h6>
+                <p class="text-muted small mb-3">Pick the typeface that makes TradeVerse feel like yours.</p>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    <button type="button" class="btn btn-outline-primary font-option" data-font="jakarta" style="font-family:'Plus Jakarta Sans',sans-serif;">Journal</button>
+                    <button type="button" class="btn btn-outline-primary font-option" data-font="manrope" style="font-family:Manrope,sans-serif;">Clean</button>
+                    <button type="button" class="btn btn-outline-primary font-option" data-font="sora" style="font-family:Sora,sans-serif;">Sharp</button>
                 </div>
+                <small class="text-muted">Current font: <strong id="server-font">{{ current_user.ui_font or 'jakarta' }}</strong></small>
             </div>
         </div>
 
@@ -186,35 +186,21 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function(){
-        const swatches = document.querySelectorAll('.swatch');
-        swatches.forEach(s => s.addEventListener('click', async function(e){
+        document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', function(){
             const theme = this.getAttribute('data-theme');
-            try{
-                const csrf = (typeof tvGetCsrf === 'function' ? tvGetCsrf() : '') ||
-                    (document.querySelector('input[name="csrf_token"]')?.value || '');
-                const res = await fetch('/auth/set-theme', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrf,
-                        'X-CSRF-Token': csrf
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({theme})
-                });
-                if(res.ok){
-                    // update UI
-                    document.getElementById('server-theme').textContent = theme;
-                    // apply immediately using global applyTheme if available
-                    if(window.applyTheme) window.applyTheme(theme, true, false);
-                } else {
-                    const json = await res.json().catch(()=>({}));
-                    alert('Could not save theme: ' + (json.error||res.statusText));
-                }
-            }catch(err){
-                console.error('Error saving theme', err);
-                alert('Failed to save theme');
+            if (window.applyTheme) {
+                window.applyTheme(theme, true, true);
             }
+            const el = document.getElementById('server-theme');
+            if (el) el.textContent = theme;
+        }));
+        document.querySelectorAll('.font-option').forEach(s => s.addEventListener('click', function(){
+            const font = this.getAttribute('data-font');
+            if (window.applyFont) {
+                window.applyFont(font, true, true);
+            }
+            const el = document.getElementById('server-font');
+            if (el) el.textContent = font;
         }));
     });
 </script>

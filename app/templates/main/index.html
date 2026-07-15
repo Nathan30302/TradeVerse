@@ -2,7 +2,7 @@
 
 {% block title %}{{ app_name }} - Professional Trading Journal{% endblock %}
 
-{% set page_desc = "TradeVerse is a professional trading journal: log trades, use the trade planner, see analytics and dashboards, and improve discipline." %}
+{% set page_desc = "TradeVerse is the trader operating system: plan, log, and review with AI Buddy, playbooks, Strategy Lab backtests, and weekly focus rules." %}
 {% block meta_description %}{{ page_desc }}{% endblock %}
 {% block og_description %}{{ page_desc }}{% endblock %}
 {% block twitter_description %}{{ page_desc }}{% endblock %}
@@ -60,8 +60,8 @@
     padding: clamp(2.5rem, 5.5vw, 4.75rem) 0;
     isolation: isolate;
     background:
-      radial-gradient(1200px 600px at 18% 18%, rgba(99,102,241,0.18), transparent 58%),
-      radial-gradient(900px 500px at 88% 22%, rgba(16,185,129,0.12), transparent 55%);
+      radial-gradient(1200px 600px at 18% 18%, rgba(20,184,166,0.22), transparent 58%),
+      radial-gradient(900px 500px at 88% 22%, rgba(194,65,12,0.12), transparent 55%);
     box-shadow: 0 28px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08) inset;
     border: 1px solid rgba(255,255,255,0.12);
   }
@@ -136,7 +136,7 @@
   }
 
   .landing-hero .hero-title .hero-accent {
-    background: linear-gradient(120deg, #38bdf8 0%, #818cf8 48%, #c084fc 100%);
+    background: linear-gradient(120deg, #2dd4bf 0%, #14b8a6 48%, #5eead4 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -152,8 +152,8 @@
   }
 
   .landing-hero .landing-hero-badge {
-    background: rgba(99, 102, 241, 0.38) !important;
-    color: #eef2ff !important;
+    background: rgba(20, 184, 166, 0.32) !important;
+    color: #ecfdf5 !important;
     border: 1px solid rgba(255, 255, 255, 0.22);
   }
 
@@ -188,19 +188,19 @@
   }
 
   .btn-landing-primary {
-    background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+    background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
     border: none;
     color: #fff !important;
     font-weight: 700;
     border-radius: 12px;
     min-height: 52px;
     padding: 0.65rem 1.65rem;
-    box-shadow: 0 12px 32px rgba(99, 102, 241, 0.45);
+    box-shadow: 0 12px 32px rgba(15, 118, 110, 0.45);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
   .btn-landing-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 16px 40px rgba(99, 102, 241, 0.55);
+    box-shadow: 0 16px 40px rgba(20, 184, 166, 0.55);
     color: #fff !important;
   }
 
@@ -313,7 +313,7 @@
   }
 
   .landing-explore-inner a:hover {
-    background: rgba(99, 102, 241, 0.14);
+    background: rgba(20, 184, 166, 0.14);
     color: #0f172a !important;
   }
 
@@ -586,22 +586,22 @@
             <div class="hero-content pe-lg-2">
                 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                     <span class="badge landing-hero-badge fw-semibold px-3 py-2">
-                        <i class="fas fa-paper-plane me-2"></i> Professional Trading Platform
+                        <i class="fas fa-book-open me-2"></i> The trader&rsquo;s operating system
                     </span>
                 </div>
                 <h1 class="fw-bold mb-3 mb-lg-4 hero-title">
-                    Journal. Execute. <span class="hero-accent">Improve.</span>
+                    Plan. Log. <span class="hero-accent">Review.</span>
                 </h1>
 
                 <p class="lead mb-4 hero-subtitle" style="max-width: 36rem;">
-                    Capture trade plans, execute seamlessly, and review performance with AI-assisted insights —
-                    all in one streamlined trading journal designed for serious traders.
+                    TradeVerse turns scattered notes into a disciplined loop — playbook setups, honest trade logs,
+                    AI Buddy coaching, and weekly focus rules that make you sharper every session.
                 </p>
 
                 <div class="landing-hero-actions">
                     {% if not current_user.is_authenticated %}
                         <a href="{{ url_for('auth.register') }}" class="btn btn-landing-primary btn-lg">
-                            <i class="fas fa-rocket me-2"></i> Get Started
+                            <i class="fas fa-rocket me-2"></i> Start free — build your edge
                         </a>
                         <a href="{{ url_for('auth.login') }}" class="landing-hero-signin">
                             Sign In <i class="fas fa-arrow-right" aria-hidden="true"></i>
@@ -637,13 +637,25 @@
                     <div class="col-12 col-sm-6">
                         <div class="landing-trust-chip h-100">
                             <i class="fas fa-check-circle text-success flex-shrink-0" aria-hidden="true"></i>
-                            <span>One-click plan execution</span>
+                            <span>Playbook + plan before you click</span>
                         </div>
                     </div>
                     <div class="col-12 col-sm-6">
                         <div class="landing-trust-chip h-100">
                             <i class="fas fa-chalkboard-user text-primary flex-shrink-0" aria-hidden="true"></i>
-                            <span>AI-assisted reviews &amp; insights</span>
+                            <span>AI Buddy + weekly focus rules</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <div class="landing-trust-chip h-100">
+                            <i class="fas fa-flask flex-shrink-0" style="color:#2dd4bf;" aria-hidden="true"></i>
+                            <span>Strategy Lab market backtests</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <div class="landing-trust-chip h-100">
+                            <i class="fas fa-palette flex-shrink-0" style="color:#fb923c;" aria-hidden="true"></i>
+                            <span>8 themes &amp; premium fonts</span>
                         </div>
                     </div>
                 </div>
@@ -715,12 +727,51 @@
 </nav>
 {% endif %}
 
+<!-- Workflow — one product story -->
+<div class="container landing-section">
+    <div class="landing-section-head text-center mb-4 mb-lg-5">
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">The loop</span>
+        <h2 class="display-5 fw-bold mb-3">Four moves. One addictive habit.</h2>
+        <p class="lead text-muted mb-0">TradeVerse is designed so every feature feeds the next — nothing sits unused.</p>
+    </div>
+    <div class="row g-3 g-lg-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card feature-card h-100 border-0 p-3">
+                <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">01</div>
+                <h5 class="fw-bold">Plan</h5>
+                <p class="text-muted small mb-0">Lock entry, stop, and target in the planner before emotion takes over.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card feature-card h-100 border-0 p-3">
+                <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">02</div>
+                <h5 class="fw-bold">Log</h5>
+                <p class="text-muted small mb-0">Capture the real fill, emotion, and playbook checklist in seconds.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card feature-card h-100 border-0 p-3">
+                <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">03</div>
+                <h5 class="fw-bold">Review</h5>
+                <p class="text-muted small mb-0">End-of-session ritual + AI Buddy pulse turns mistakes into rules.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card feature-card h-100 border-0 p-3">
+                <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">04</div>
+                <h5 class="fw-bold">Prove</h5>
+                <p class="text-muted small mb-0">Strategy Lab backtests ideas on real market history before you size up.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Features Section -->
 <div class="container landing-section">
     <div class="landing-section-head text-center mb-4 mb-lg-5">
-        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Features</span>
-        <h2 class="display-5 fw-bold mb-3">Why Traders Choose TradeVerse</h2>
-        <p class="lead text-muted mb-0">Everything you need to improve your trading performance</p>
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Inside the journal</span>
+        <h2 class="display-5 fw-bold mb-3">Built as one system — not scattered tools</h2>
+        <p class="lead text-muted mb-0">Every screen pushes the same goal: protect your edge and improve next week.</p>
     </div>
     
     <div class="row g-4">
@@ -887,10 +938,10 @@
 <div class="landing-gradient-panel">
     <div class="row align-items-center g-4">
         <div class="col-lg-6">
-            <h2 class="display-5 fw-bold mb-3">Built for Serious Traders</h2>
+            <h2 class="display-5 fw-bold mb-3">Built for traders who want an edge that compounds</h2>
             <p class="lead mb-4 opacity-95">
-                Designed for disciplined traders who want clarity, repeatability, and measurable improvement.
-                Join our growing community of professional traders who trust TradeVerse for their trading success.
+                Clarity over clutter. Playbook discipline over impulse. Reviews that change next week&rsquo;s behavior —
+                not another spreadsheet you abandon.
             </p>
             {% if discord_community_url %}
             <p class="mb-4 small opacity-90">
@@ -927,8 +978,8 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
-                                    <h4 class="mb-0 fw-bold">2,500+</h4>
-                                    <small class="text-muted">Active Users</small>
+                                    <h4 class="mb-0 fw-bold">Plan→Log</h4>
+                                    <small class="text-muted">Daily loop</small>
                                 </div>
                                 <i class="fas fa-users fa-2x text-primary"></i>
                             </div>
@@ -940,8 +991,8 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
-                                    <h4 class="mb-0 fw-bold">98%</h4>
-                                    <small class="text-muted">User Satisfaction</small>
+                                    <h4 class="mb-0 fw-bold">AI Buddy</h4>
+                                    <small class="text-muted">Coach on demand</small>
                                 </div>
                                 <i class="fas fa-star fa-2x text-warning"></i>
                             </div>
@@ -953,8 +1004,8 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
-                                    <h4 class="mb-0 fw-bold">4.8/5</h4>
-                                    <small class="text-muted">Average Rating</small>
+                                    <h4 class="mb-0 fw-bold">Lab</h4>
+                                    <small class="text-muted">Market backtests</small>
                                 </div>
                                 <i class="fas fa-thumbs-up fa-2x text-success"></i>
                             </div>
@@ -966,8 +1017,8 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
-                                    <h4 class="mb-0 fw-bold">24/7</h4>
-                                    <small class="text-muted">Support</small>
+                                    <h4 class="mb-0 fw-bold">Focus</h4>
+                                    <small class="text-muted">Weekly rules</small>
                                 </div>
                                 <i class="fas fa-headset fa-2x text-info"></i>
                             </div>
@@ -1104,10 +1155,10 @@
 <div class="landing-gradient-panel text-center">
     <div class="row justify-content-center">
         <div class="col-lg-9 col-xl-8">
-            <h2 class="landing-cta-headline fw-bold mb-3 mb-lg-4">Ready to Level Up Your Trading?</h2>
+            <h2 class="landing-cta-headline fw-bold mb-3 mb-lg-4">Your next winning week starts with one honest log</h2>
             <p class="lead mb-4 mb-lg-5 opacity-95">
-                Join traders using TradeVerse to improve their performance.
-                Create your account to see available plan options inside the app.
+                Open TradeVerse, set a weekly focus rule, and let AI Buddy + your playbook keep you accountable.
+                Sign up in minutes — the journal does the heavy lifting after that.
             </p>
             <div class="row g-3 justify-content-center mb-4 mb-lg-5">
                 <div class="col-12 col-sm-4">

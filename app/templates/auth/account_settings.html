@@ -212,57 +212,52 @@
                 <div class="card tv-settings-card">
                     <div class="card-header bg-transparent"><i class="fas fa-palette me-2 text-primary"></i>Theme</div>
                     <div class="card-body p-4">
-                        <p class="text-muted mb-4">Pick a look — it saves to your account and follows you across devices. All themes are checked for readable text and navigation.</p>
+                        <p class="text-muted mb-4">Pick a look — it saves to your account and follows you across devices.</p>
                         <div class="row g-3">
+                            {% set theme_meta = [
+                                ('light', 'Light', 'Bright workspace', 'linear-gradient(135deg,#f8fafc,#0f766e)'),
+                                ('dark', 'Dark', 'Low glare (default)', 'linear-gradient(135deg,#0b1220,#14b8a6)'),
+                                ('blue', 'Ocean', 'Cool cyan accent', 'linear-gradient(135deg,#0ea5e9,#06b6d4)'),
+                                ('midnight', 'Midnight', 'Deep OLED-style dark', 'linear-gradient(135deg,#000,#a78bfa)'),
+                                ('sand', 'Sand', 'Warm paper tones', 'linear-gradient(135deg,#faf8f5,#b45309)'),
+                                ('ember', 'Ember', 'Copper heat on charcoal', 'linear-gradient(135deg,#140c08,#ea580c)'),
+                                ('forest', 'Forest', 'Jade night discipline', 'linear-gradient(135deg,#06140f,#10b981)'),
+                                ('pearl', 'Pearl', 'Cool luminous light', 'linear-gradient(135deg,#f8fafc,#64748b)'),
+                            ] %}
+                            {% for tid, title, blurb, grad in theme_meta %}
                             <div class="col-6 col-lg-4">
-                                <div class="theme-card h-100" data-theme="light">
+                                <div class="theme-card h-100" data-theme="{{ tid }}">
                                     <div class="mb-3">
-                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #6366f1, #8b5cf6);" role="presentation"></div>
+                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: {{ grad }};" role="presentation"></div>
                                     </div>
-                                    <h6 class="fw-bold">Light</h6>
-                                    <p class="small text-muted mb-3">Bright workspace</p>
-                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="light"><i class="fas fa-check me-1"></i>Select</button>
+                                    <h6 class="fw-bold">{{ title }}</h6>
+                                    <p class="small text-muted mb-3">{{ blurb }}</p>
+                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="{{ tid }}"><i class="fas fa-check me-1"></i>Select</button>
                                 </div>
                             </div>
-                            <div class="col-6 col-lg-4">
-                                <div class="theme-card h-100" data-theme="dark">
-                                    <div class="mb-3">
-                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #1e293b, #334155);" role="presentation"></div>
-                                    </div>
-                                    <h6 class="fw-bold">Dark</h6>
-                                    <p class="small text-muted mb-3">Low glare (default)</p>
-                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="dark"><i class="fas fa-check me-1"></i>Select</button>
-                                </div>
+                            {% endfor %}
+                        </div>
+                        <hr class="my-4">
+                        <h6 class="fw-bold mb-2">Font</h6>
+                        <p class="text-muted small mb-3">Typography that fits how you like to read your journal.</p>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <button type="button" class="btn w-100 font-option font-card py-3" data-font="jakarta" style="font-family:'Plus Jakarta Sans',sans-serif;border:1px solid var(--card-border);">
+                                    <div class="fw-bold">Journal</div>
+                                    <div class="small text-muted">Plus Jakarta + Fraunces</div>
+                                </button>
                             </div>
-                            <div class="col-6 col-lg-4">
-                                <div class="theme-card h-100" data-theme="blue">
-                                    <div class="mb-3">
-                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #0ea5e9, #06b6d4);" role="presentation"></div>
-                                    </div>
-                                    <h6 class="fw-bold">Ocean</h6>
-                                    <p class="small text-muted mb-3">Cool cyan accent</p>
-                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="blue"><i class="fas fa-check me-1"></i>Select</button>
-                                </div>
+                            <div class="col-md-4">
+                                <button type="button" class="btn w-100 font-option font-card py-3" data-font="manrope" style="font-family:Manrope,sans-serif;border:1px solid var(--card-border);">
+                                    <div class="fw-bold">Clean</div>
+                                    <div class="small text-muted">Manrope + Source Serif</div>
+                                </button>
                             </div>
-                            <div class="col-6 col-lg-4">
-                                <div class="theme-card h-100" data-theme="midnight">
-                                    <div class="mb-3">
-                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #000000, #312e81);" role="presentation"></div>
-                                    </div>
-                                    <h6 class="fw-bold">Midnight</h6>
-                                    <p class="small text-muted mb-3">Deep OLED-style dark</p>
-                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="midnight"><i class="fas fa-check me-1"></i>Select</button>
-                                </div>
-                            </div>
-                            <div class="col-6 col-lg-4">
-                                <div class="theme-card h-100" data-theme="sand">
-                                    <div class="mb-3">
-                                        <div class="rounded-3 mx-auto" style="width: 64px; height: 64px; background: linear-gradient(135deg, #faf8f5, #d6d3d1);" role="presentation"></div>
-                                    </div>
-                                    <h6 class="fw-bold">Sand</h6>
-                                    <p class="small text-muted mb-3">Warm paper tones</p>
-                                    <button type="button" class="btn btn-sm btn-outline-primary theme-select-btn rounded-pill w-100" data-theme="sand"><i class="fas fa-check me-1"></i>Select</button>
-                                </div>
+                            <div class="col-md-4">
+                                <button type="button" class="btn w-100 font-option font-card py-3" data-font="sora" style="font-family:Sora,sans-serif;border:1px solid var(--card-border);">
+                                    <div class="fw-bold">Sharp</div>
+                                    <div class="small text-muted">Sora + Literata</div>
+                                </button>
                             </div>
                         </div>
                         <p class="text-muted small mt-4 mb-0"><i class="fas fa-info-circle me-1"></i>You can also switch theme from the user menu in the top bar.</p>

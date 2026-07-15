@@ -19,6 +19,33 @@
   --tv-glow: rgba(15, 118, 110, 0.18);
 }
 
+body[data-font="jakarta"] {
+  --tv-font: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --tv-display: "Fraunces", "Times New Roman", serif;
+}
+
+body[data-font="manrope"] {
+  --tv-font: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --tv-display: "Source Serif 4", "Times New Roman", serif;
+}
+
+body[data-font="sora"] {
+  --tv-font: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --tv-display: "Literata", "Times New Roman", serif;
+}
+
+.font-option.active,
+.font-card.active {
+  border-color: var(--tv-accent-bright, #14b8a6) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tv-accent-bright, #14b8a6) 50%, transparent);
+  background: color-mix(in srgb, var(--tv-accent, #0f766e) 10%, transparent);
+}
+
+.swatch.active {
+  outline: 2px solid var(--tv-accent-bright, #14b8a6);
+  outline-offset: 2px;
+}
+
 body {
   font-family: var(--tv-font) !important;
   letter-spacing: -0.011em;

@@ -26,6 +26,7 @@ USER_OPTIONAL_COLUMNS: FrozenSet[str] = frozenset(
         "exports_blocked",
         "country_code",
         "phone_number",
+        "ui_font",
     }
 )
 
@@ -42,12 +43,13 @@ _USER_COLUMN_DDL: Dict[str, Tuple[str, Optional[str]]] = {
     "exports_blocked": ("BOOLEAN", "FALSE"),
     "country_code": ("VARCHAR(2)", None),
     "phone_number": ("VARCHAR(32)", None),
+    "ui_font": ("VARCHAR(20)", "'jakarta'"),
 }
 
 TRADE_OPTIONAL_COLUMNS: FrozenSet[str] = frozenset({"playbook_setup_id"})
 
 # Stamp target when the live DB already has app tables but alembic_version is empty/stuck.
-_TARGET_ALEMBIC_REV = "20260715_playbook_images"
+_TARGET_ALEMBIC_REV = "20260715_user_ui_font"
 _EARLY_ALEMBIC_REVS = frozenset(
     {
         "07e766313e36",

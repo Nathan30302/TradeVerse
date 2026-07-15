@@ -37,6 +37,7 @@ _DEFERRED_DEFAULTS = {
     "subscription_tier": "free",
     "subscription_status": "active",
     "exports_blocked": False,
+    "ui_font": "jakarta",
 }
 _DEFERRED_NONE = (
     "trial_ends_at",

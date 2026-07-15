@@ -1,0 +1,27 @@
+/* Forest — deep green night + jade focus */
+:root {
+  --primary: #10b981;
+  --secondary: #34d399;
+  --success: #22c55e;
+  --danger: #f87171;
+  --warning: #eab308;
+  --info: #2dd4bf;
+
+  --text-primary: #ecfdf5;
+  --text-secondary: #a7f3d0;
+  --bg-primary: #06140f;
+  --bg-secondary: #0a1f17;
+  --card-bg: #0c1a14;
+  --card-border: #1e3d32;
+  --form-bg: #05110c;
+  --form-border: #245042;
+  --form-text: #ecfdf5;
+  --form-label: #a7f3d0;
+  --table-hover: #122820;
+  --tab-text: #6ee7b7;
+  --tab-active: #34d399;
+  --tab-border: #1e3d32;
+  --sidebar-bg: #040e0a;
+  --sidebar-hover: #0a1f17;
+  --sidebar-text: #d1fae5;
+}
