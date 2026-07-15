@@ -8,6 +8,32 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+
+# Common abbreviations used in Settings / Profile (map to IANA for ZoneInfo).
+_TZ_ALIASES = {
+    "UTC": "UTC",
+    "GMT": "UTC",
+    "EST": "America/New_York",
+    "EDT": "America/New_York",
+    "CST": "America/Chicago",
+    "CDT": "America/Chicago",
+    "MST": "America/Denver",
+    "MDT": "America/Denver",
+    "PST": "America/Los_Angeles",
+    "PDT": "America/Los_Angeles",
+}
+
+
+def resolve_zoneinfo(tz_name: Optional[str]) -> ZoneInfo:
+    """Resolve user timezone strings (including EST/CST-style labels) to ZoneInfo."""
+    raw = (tz_name or "UTC").strip() or "UTC"
+    mapped = _TZ_ALIASES.get(raw.upper(), raw)
+    try:
+        return ZoneInfo(mapped)
+    except Exception:
+        return ZoneInfo("UTC")
 
 
 def utc_now() -> datetime:

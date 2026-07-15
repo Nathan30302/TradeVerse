@@ -269,12 +269,12 @@
                     <div class="mt-4 pt-3 border-top border-secondary-subtle" id="tvMoreFields">
                         <div class="tv-more-section">
                             <h6 class="text-muted text-uppercase small fw-bold mb-2">Strategy &amp; session</h6>
-                            <p class="small text-muted mb-3">Strategy and pre-trade plan are required before you can save. Post-trade notes are required when you mark the trade as <strong>Closed</strong>.</p>
+                            <p class="small text-muted mb-3">For <strong>open</strong> trades these are optional (log fast). For <strong>closed</strong> trades, strategy, pre-trade plan, and post-trade notes are required so coaching stays accurate.</p>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-4">
-                                    <label for="strategy" class="form-label small fw-semibold">Strategy <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="strategy" name="strategy" required>
-                                        <option value="" selected disabled>Select strategy…</option>
+                                    <label for="strategy" class="form-label small fw-semibold">Strategy <span id="tv-strategy-required" class="text-danger d-none">*</span></label>
+                                    <select class="form-select" id="strategy" name="strategy">
+                                        <option value="" selected>Optional for open trades…</option>
                                         {% for strategy in config.STRATEGIES %}
                                             <option value="{{ strategy }}">{{ strategy }}</option>
                                         {% endfor %}
@@ -327,9 +327,9 @@
                             </div>
                             <h6 class="text-muted text-uppercase small fw-bold mb-3">Notes</h6>
                             <div class="mb-3">
-                                <label for="pre_trade_plan" class="form-label small fw-semibold">Pre-trade plan <span class="text-danger">*</span></label>
-                                <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" required minlength="8" maxlength="8000" placeholder="What was the setup and plan? (at least one sentence.)"></textarea>
-                                <div class="form-text">Minimum 8 characters.</div>
+                                <label for="pre_trade_plan" class="form-label small fw-semibold">Pre-trade plan <span id="tv-pre-plan-required" class="text-danger d-none">*</span></label>
+                                <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" maxlength="8000" placeholder="What was the setup and plan? (required when closed.)"></textarea>
+                                <div class="form-text">Recommended always; required when the trade is Closed (min. 8 characters).</div>
                             </div>
                             <div class="mb-3">
                                 <label for="post_trade_notes" class="form-label small fw-semibold">Post-trade notes <span id="tv-post-notes-required" class="text-danger d-none">*</span></label>
@@ -901,6 +901,10 @@ function calculateRR() {
     var exitIn = document.getElementById('exit_price');
     var postTa = document.getElementById('post_trade_notes');
     var postReqStar = document.getElementById('tv-post-notes-required');
+    var stratReqStar = document.getElementById('tv-strategy-required');
+    var preReqStar = document.getElementById('tv-pre-plan-required');
+    var stratElStatus = document.getElementById('strategy');
+    var preTa = document.getElementById('pre_trade_plan');
     function applyLogStatus() {
       var closed = closedR && closedR.checked;
       if (hStat) hStat.value = closed ? 'closed' : 'open';
@@ -916,6 +920,14 @@ function calculateRR() {
         }
       }
       if (postReqStar) postReqStar.classList.toggle('d-none', !closed);
+      if (stratReqStar) stratReqStar.classList.toggle('d-none', !closed);
+      if (preReqStar) preReqStar.classList.toggle('d-none', !closed);
+      if (stratElStatus) stratElStatus.required = !!closed;
+      if (preTa) {
+        preTa.required = !!closed;
+        if (closed) preTa.setAttribute('minlength', '8');
+        else preTa.removeAttribute('minlength');
+      }
     }
     if (openR) openR.addEventListener('change', applyLogStatus);
     if (closedR) closedR.addEventListener('change', applyLogStatus);
@@ -975,17 +987,24 @@ function calculateRR() {
           exitInline.classList.add('d-none');
         }
         var stratEl = document.getElementById('strategy');
-        if (!stratEl || !String(stratEl.value || '').trim()) {
-          e.preventDefault();
-          showValErr('Select the strategy you used for this trade.');
-          stratEl && stratEl.focus();
-          return false;
-        }
         var preEl = document.getElementById('pre_trade_plan');
-        if (!preEl || String(preEl.value || '').trim().length < 8) {
+        if (closedR && closedR.checked) {
+          if (!stratEl || !String(stratEl.value || '').trim()) {
+            e.preventDefault();
+            showValErr('Closed trades need a strategy (helps Analytics and Patterns).');
+            stratEl && stratEl.focus();
+            return false;
+          }
+          if (!preEl || String(preEl.value || '').trim().length < 8) {
+            e.preventDefault();
+            showValErr('Closed trades need a short pre-trade plan (at least 8 characters).');
+            preEl && preEl.focus();
+            return false;
+          }
+        } else if (preEl && String(preEl.value || '').trim() && String(preEl.value || '').trim().length < 8) {
           e.preventDefault();
-          showValErr('Add a pre-trade plan (at least 8 characters) before saving.');
-          preEl && preEl.focus();
+          showValErr('Pre-trade plan must be at least 8 characters if you fill it in.');
+          preEl.focus();
           return false;
         }
         if (closedR && closedR.checked) {

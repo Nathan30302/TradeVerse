@@ -344,8 +344,9 @@ def add():
             post_trade_notes = request.form.get('post_trade_notes', '').strip()
 
             allowed_strategies = current_app.config.get('STRATEGIES') or []
-            if not strategy or (allowed_strategies and strategy not in allowed_strategies):
-                flash('Select a valid strategy from the list before saving.', 'danger')
+            # Open trades: strategy/plan optional so logging is fast; closed trades keep the discipline bar.
+            if strategy and allowed_strategies and strategy not in allowed_strategies:
+                flash('Select a valid strategy from the list (or leave it blank for now).', 'danger')
                 return render_template(
                     'trade/add.html',
                     active_cooldown=active_cooldown,
@@ -353,8 +354,27 @@ def add():
                     accountability_required=accountability_required,
                     playbook_setups=playbook_setups,
                 )
-            if len(pre_trade_plan) < 8:
-                flash('Pre-trade plan must be at least 8 characters (one short sentence).', 'danger')
+            if log_status == 'closed':
+                if not strategy or (allowed_strategies and strategy not in allowed_strategies):
+                    flash('Closed trades need a strategy from the list (helps Analytics and Patterns).', 'danger')
+                    return render_template(
+                        'trade/add.html',
+                        active_cooldown=active_cooldown,
+                        prefill=None,
+                        accountability_required=accountability_required,
+                        playbook_setups=playbook_setups,
+                    )
+                if len(pre_trade_plan) < 8:
+                    flash('Closed trades need a short pre-trade plan (at least 8 characters).', 'danger')
+                    return render_template(
+                        'trade/add.html',
+                        active_cooldown=active_cooldown,
+                        prefill=None,
+                        accountability_required=accountability_required,
+                        playbook_setups=playbook_setups,
+                    )
+            elif pre_trade_plan and len(pre_trade_plan) < 8:
+                flash('Pre-trade plan must be at least 8 characters if you fill it in.', 'danger')
                 return render_template(
                     'trade/add.html',
                     active_cooldown=active_cooldown,

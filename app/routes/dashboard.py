@@ -451,7 +451,8 @@ def stats_api():
     # because DB datetimes are stored as naive UTC across the app.
     tz_name = (getattr(current_user, "timezone", None) or "UTC").strip()
     try:
-        user_tz = ZoneInfo(tz_name)
+        from app.utils.timeutil import resolve_zoneinfo
+        user_tz = resolve_zoneinfo(tz_name)
     except Exception:
         user_tz = ZoneInfo("UTC")
 
@@ -546,9 +547,13 @@ def calendar():
     """
     Calendar View
 
-    Visual calendar showing trading activity
+    Visual calendar showing trading activity (days bucketed in the user's timezone).
     """
     from calendar import monthrange, Calendar, SUNDAY
+    from app.utils.timeutil import resolve_zoneinfo
+
+    user_tz = resolve_zoneinfo(getattr(current_user, "timezone", None))
+    now_local = datetime.now(timezone.utc).astimezone(user_tz)
 
     def _safe_int_arg(name, default, *, lo=None, hi=None):
         raw = request.args.get(name, default=None, type=str)
@@ -565,8 +570,8 @@ def calendar():
             v = default
         return v
 
-    year = _safe_int_arg("year", datetime.now().year, lo=1990, hi=2200)
-    month = _safe_int_arg("month", datetime.now().month, lo=1, hi=12)
+    year = _safe_int_arg("year", now_local.year, lo=1990, hi=2200)
+    month = _safe_int_arg("month", now_local.month, lo=1, hi=12)
 
     # Validate year range (reasonable bounds)
     if year < 2000:
@@ -590,23 +595,34 @@ def calendar():
         [d.day if d.month == month else 0 for d in week]
         for week in _cal.monthdatescalendar(year, month)
     ]
-    today = datetime.now()
-    today_day = today.day if (today.year == year and today.month == month) else None
+    today_day = now_local.day if (now_local.year == year and now_local.month == month) else None
 
-    # Get trades for the month
+    # Month window in user TZ → naive UTC for DB filter (stored datetimes are naive UTC).
+    start_local = datetime(year, month, 1, tzinfo=user_tz)
+    if month == 12:
+        end_local = datetime(year + 1, 1, 1, tzinfo=user_tz)
+    else:
+        end_local = datetime(year, month + 1, 1, tzinfo=user_tz)
+    start_utc = start_local.astimezone(timezone.utc).replace(tzinfo=None)
+    end_utc = end_local.astimezone(timezone.utc).replace(tzinfo=None)
+
     trades = Trade.query.filter(
         Trade.user_id == current_user.id,
-        extract('year', Trade.entry_date) == year,
-        extract('month', Trade.entry_date) == month
+        Trade.entry_date.isnot(None),
+        Trade.entry_date >= start_utc,
+        Trade.entry_date < end_utc,
     ).all()
 
-    # Organize by day
+    # Organize by local calendar day
     trades_by_day = {}
     for trade in trades:
-        day = trade.entry_date.day
-        if day not in trades_by_day:
-            trades_by_day[day] = []
-        trades_by_day[day].append(trade)
+        if not trade.entry_date:
+            continue
+        entry = trade.entry_date
+        if entry.tzinfo is None:
+            entry = entry.replace(tzinfo=timezone.utc)
+        local_day = entry.astimezone(user_tz).day
+        trades_by_day.setdefault(local_day, []).append(trade)
 
     # Calculate daily P/L (include break-even; skip open trades with null P/L)
     daily_pnl = {}
@@ -857,7 +873,14 @@ def performance():
 
     Weekly performance scores with progress charts
     """
-    # Get current week's score
+    from app.services.retention import ensure_weekly_performance_score
+
+    # Keep score in sync with dashboard auto-calc so the page is never an empty dead-end.
+    try:
+        ensure_weekly_performance_score(current_user.id)
+    except Exception:
+        current_app.logger.debug('ensure_weekly_performance_score skipped', exc_info=True)
+
     today = utc_now().date()
     week_start = today - timedelta(days=today.weekday())
 
@@ -869,7 +892,7 @@ def performance():
     # Get score history (last 12 weeks)
     score_history = get_performance_history(current_user.id, weeks=12)
 
-    # Calculate improvement trend
+    # Calculate improvement trend (recent weeks vs older weeks)
     if len(score_history) >= 2:
         recent_avg = sum(s.overall_score for s in score_history[:4]) / min(4, len(score_history))
         older_avg = sum(s.overall_score for s in score_history[4:8]) / max(1, min(4, len(score_history) - 4))
@@ -897,7 +920,7 @@ def calculate_performance():
         except Exception:
             pass
         current_app.logger.exception('calculate_performance failed')
-        flash(f'❌ Error calculating score: {str(e)}', 'danger')
+        flash('Could not calculate this week’s score. Try again after logging a few closed trades.', 'danger')
 
     return redirect(url_for('dashboard.performance'))
 
@@ -935,12 +958,15 @@ def save_weekly_focus():
     if len(text) > 4000:
         text = text[:4000]
     next_url = _safe_same_site_redirect(request.form.get('next'))
+    if not text:
+        flash('Enter a weekly focus rule before saving (do not leave it blank).', 'warning')
+        return redirect(next_url)
     try:
         # Core UPDATE avoids deferred / load_only login edge cases on current_user.
         db.session.execute(
             update(User)
             .where(User.id == current_user.id)
-            .values(weekly_focus_rule=text if text else None)
+            .values(weekly_focus_rule=text)
         )
         db.session.commit()
         flash('Weekly focus saved. AI Buddy will use this as context.', 'success')

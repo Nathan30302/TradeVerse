@@ -15,7 +15,7 @@
         <form action="{{ url_for('dashboard.calculate_performance') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-primary">
-                <i class="fas fa-calculator"></i> Calculate This Week
+                <i class="fas fa-sync-alt"></i> Recalculate this week
             </button>
         </form>
     </div>
@@ -39,9 +39,9 @@
                     <!-- Trend -->
                     <div class="mt-3">
                         {% if trend > 0 %}
-                            <span class="badge bg-success"><i class="fas fa-arrow-up"></i> +{{ trend|round(1) }} from last month</span>
+                            <span class="badge bg-success"><i class="fas fa-arrow-up"></i> +{{ trend|round(1) }} vs prior weeks</span>
                         {% elif trend < 0 %}
-                            <span class="badge bg-danger"><i class="fas fa-arrow-down"></i> {{ trend|round(1) }} from last month</span>
+                            <span class="badge bg-danger"><i class="fas fa-arrow-down"></i> {{ trend|round(1) }} vs prior weeks</span>
                         {% else %}
                             <span class="badge bg-secondary"><i class="fas fa-minus"></i> No change</span>
                         {% endif %}
@@ -49,8 +49,8 @@
                 {% else %}
                     <h6 class="text-muted mb-3">This Week's Grade</h6>
                     <div class="display-1 fw-bold text-muted">—</div>
-                    <p class="text-muted mt-3">No score calculated yet.</p>
-                    <p class="small">Click "Calculate This Week" to generate your score.</p>
+                    <p class="text-muted mt-3">No score yet — log closed trades, then recalculate.</p>
+                    <p class="small">Use “Recalculate this week” after you have a few reviewed trades.</p>
                 {% endif %}
             </div>
         </div>

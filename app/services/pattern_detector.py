@@ -68,15 +68,9 @@ class PatternDetector:
         self.patterns = []
         
         if len(self.trades) < self.MIN_TRADES_FOR_PATTERN:
-            self.patterns.append({
-                'type': 'info',
-                'category': 'general',
-                'icon': 'ℹ️',
-                'title': 'Not Enough Data',
-                'message': f'Need at least {self.MIN_TRADES_FOR_PATTERN} closed trades to detect patterns. You have {len(self.trades)}.',
-                'confidence': 0
-            })
-            return self.patterns
+            # Empty list so the template shows a real empty state + CTA
+            # (returning a fake "info" pattern hid that UI).
+            return []
         
         # Run all pattern detectors
         self._detect_session_patterns()

@@ -6,26 +6,32 @@
 <div class="tv-page-hero">
     <div class="page-header">
         <h1 class="page-title mb-2"><i class="fas fa-moon"></i> End of session</h1>
-        <p class="page-subtitle mb-0">Close the loop before you walk away from the charts.</p>
+        <p class="page-subtitle mb-0">Three steps before you walk away from the charts. Your checks are saved for today on this device.</p>
     </div>
 </div>
 
 {% set rq = daily.get('review_queue') or {} %}
 {% set lines = (daily.get('morning_briefing') or {}).get('lines') or [] %}
+{% set open_n = stats.get('open_trades', 0) %}
 
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card tv-surface h-100 {% if rq.get('total', 0) == 0 %}border-success{% endif %}">
             <div class="card-body">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" {% if rq.get('total', 0) == 0 %}checked disabled{% endif %} id="eod1">
+                    <input class="form-check-input tv-eod-check" type="checkbox" data-eod-key="review"
+                           {% if rq.get('total', 0) == 0 %}checked disabled{% endif %} id="eod1">
                     <label class="form-check-label" for="eod1">
-                        <strong>Review open items</strong>
+                        <strong>1. Review open items</strong>
                         <div class="small tv-muted">{{ rq.get('total', 0) }} trade/plan reviews pending</div>
                     </label>
                 </div>
                 {% if rq.get('first_trade_id') %}
                 <a class="btn btn-sm btn-outline-primary mt-2" href="{{ url_for('trade.view', trade_id=rq.first_trade_id, review=1) }}">Review now</a>
+                {% elif rq.get('plans_count', 0) > 0 %}
+                <a class="btn btn-sm btn-outline-primary mt-2" href="{{ url_for('planner.index', status='EXECUTED') }}">Review plans</a>
+                {% else %}
+                <span class="small text-success d-block mt-2">Caught up — nice work.</span>
                 {% endif %}
             </div>
         </div>
@@ -34,13 +40,13 @@
         <div class="card tv-surface h-100">
             <div class="card-body">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="eod2">
+                    <input class="form-check-input tv-eod-check" type="checkbox" data-eod-key="focus" id="eod2">
                     <label class="form-check-label" for="eod2">
-                        <strong>Check weekly focus</strong>
-                        <div class="small tv-muted">{{ daily.get('weekly_focus') or 'Set one rule in AI Buddy' }}</div>
+                        <strong>2. Check weekly focus</strong>
+                        <div class="small tv-muted">{{ daily.get('weekly_focus') or 'Set one rule for this week' }}</div>
                     </label>
                 </div>
-                <a class="btn btn-sm btn-outline-secondary mt-2" href="{{ url_for('dashboard.ai') }}">Set focus</a>
+                <a class="btn btn-sm btn-outline-secondary mt-2" href="{{ url_for('dashboard.weekly_review') }}">Weekly review</a>
             </div>
         </div>
     </div>
@@ -48,29 +54,55 @@
         <div class="card tv-surface h-100">
             <div class="card-body">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="eod3">
+                    <input class="form-check-input tv-eod-check" type="checkbox" data-eod-key="log" id="eod3">
                     <label class="form-check-label" for="eod3">
-                        <strong>Log today's session</strong>
-                        <div class="small tv-muted">{{ stats.get('open_trades', 0) }} open · {{ stats.closed_trades }} closed total</div>
+                        <strong>3. Finish today’s book</strong>
+                        <div class="small tv-muted">{{ open_n }} open · {{ stats.closed_trades }} closed total</div>
                     </label>
                 </div>
-                <a class="btn btn-sm btn-primary mt-2" href="{{ url_for('trade.add') }}">Add trade</a>
+                {% if open_n and open_n > 0 %}
+                <a class="btn btn-sm btn-primary mt-2" href="{{ url_for('trade.list', status='OPEN') }}">Close open trades</a>
+                {% else %}
+                <a class="btn btn-sm btn-primary mt-2" href="{{ url_for('trade.add') }}">Log a missed trade</a>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
 <div class="card tv-surface">
-    <div class="card-header"><h5 class="mb-0">Coach snapshot</h5></div>
+    <div class="card-header"><h5 class="mb-0">Session wrap-up</h5></div>
     <div class="card-body">
-        {% if ai_summary and ai_summary.get('summary') %}
+        {% if lines %}
+        {% for line in lines[:3] %}<p class="small mb-1">{{ line }}</p>{% endfor %}
+        {% elif ai_summary and ai_summary.get('summary') %}
         <p class="mb-2">{{ ai_summary.summary }}</p>
-        {% elif lines %}
-        {% for line in lines[:2] %}<p class="small mb-1">{{ line }}</p>{% endfor %}
         {% else %}
-        <p class="small tv-muted mb-0">Log trades to get a personalized wrap-up here.</p>
+        <p class="small tv-muted mb-0">Log and review trades to get a personalized wrap-up here.</p>
         {% endif %}
-        <a href="{{ url_for('dashboard.weekly_review') }}" class="btn btn-sm btn-outline-primary mt-2">Run weekly review</a>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-primary">Open AI Buddy</a>
+            <a href="{{ url_for('dashboard.weekly_review') }}" class="btn btn-sm btn-outline-secondary">Run weekly review</a>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var key = 'tv_eod_' + new Date().toISOString().slice(0, 10);
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (e) { saved = {}; }
+  document.querySelectorAll('.tv-eod-check').forEach(function (el) {
+    if (el.disabled) return;
+    var k = el.getAttribute('data-eod-key');
+    if (saved[k]) el.checked = true;
+    el.addEventListener('change', function () {
+      saved[k] = !!el.checked;
+      try { localStorage.setItem(key, JSON.stringify(saved)); } catch (err) { /* ignore */ }
+    });
+  });
+})();
+</script>
 {% endblock %}

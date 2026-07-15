@@ -84,12 +84,14 @@
             <div class="card-header"><h5 class="mb-0">Suggested focus next week</h5></div>
             <div class="card-body">
                 <p class="fw-semibold">{{ suggested_focus or 'Max 2 trades per day; stop after −2R daily loss.' }}</p>
+                {% set focus_to_save = suggested_focus or 'Max 2 trades per day; stop after −2R daily loss.' %}
                 <form method="POST" action="{{ url_for('dashboard.save_weekly_focus') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="next" value="{{ url_for('dashboard.weekly_review') }}">
-                    <input type="hidden" name="weekly_focus" value="{{ suggested_focus }}">
+                    <input type="hidden" name="weekly_focus" value="{{ focus_to_save|e }}">
                     <button type="submit" class="btn btn-sm btn-primary">Use this rule</button>
                 </form>
+                <p class="small tv-muted mt-2 mb-0">This becomes your focus for AI Buddy and End of session.</p>
             </div>
         </div>
     </div>

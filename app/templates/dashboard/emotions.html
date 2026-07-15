@@ -77,7 +77,7 @@
                             <br><small class="text-muted">{{ stats.count }} trades</small>
                         </div>
                         <div class="text-end">
-                            <span class="badge bg-success fs-6">${{ stats.total_pnl|round(2) }}</span>
+                            <span class="badge bg-success fs-6">{{ stats.total_pnl|currency(current_user.preferred_currency) }}</span>
                             <br><small class="text-success">{{ stats.win_rate|round(1) }}% win</small>
                         </div>
                     </div>
@@ -104,7 +104,7 @@
                             <br><small class="text-muted">{{ stats.count }} trades</small>
                         </div>
                         <div class="text-end">
-                            <span class="badge bg-danger fs-6">-${{ stats.total_pnl|abs|round(2) }}</span>
+                            <span class="badge bg-danger fs-6">{{ (-1 * stats.total_pnl|abs)|currency(current_user.preferred_currency) }}</span>
                             <br><small class="text-danger">{{ stats.win_rate|round(1) }}% win</small>
                         </div>
                     </div>
@@ -254,16 +254,17 @@
                             </div>
                         </td>
                         <td class="text-end {% if stats.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
-                            ${{ stats.total_pnl|round(2) }}
+                            {{ stats.total_pnl|currency(current_user.preferred_currency) }}
                         </td>
                         <td class="text-end {% if stats.avg_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
-                            ${{ stats.avg_pnl|round(2) }}
+                            {{ stats.avg_pnl|currency(current_user.preferred_currency) }}
                         </td>
                     </tr>
                     {% else %}
                     <tr>
                         <td colspan="7" class="text-center py-4 text-muted">
-                            No emotion data yet. Start logging emotions with your trades!
+                            No emotion data yet.
+                            <a href="{{ url_for('trade.add') }}">Log a trade</a> and pick an emotion so this page can coach you.
                         </td>
                     </tr>
                     {% endfor %}
