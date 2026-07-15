@@ -6,7 +6,7 @@ MVP: users can save and iterate on a small set of setups with a checklist.
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app import db
@@ -19,6 +19,18 @@ from sqlalchemy import case, func
 bp = Blueprint("playbook", __name__, url_prefix="/playbook")
 
 
+def _playbook_ready() -> bool:
+    return bool(current_app.extensions.get("tradeverse_schema", {}).get("playbook_ready"))
+
+
+def _playbook_unavailable_response():
+    flash(
+        "Playbook is not available yet. Run `flask db upgrade` to enable setup tracking.",
+        "warning",
+    )
+    return redirect(url_for("dashboard.index"))
+
+
 def _get_setup_or_404(setup_id: int) -> PlaybookSetup:
     setup = PlaybookSetup.query.filter_by(id=setup_id, user_id=current_user.id).first()
     if not setup:
@@ -29,6 +41,8 @@ def _get_setup_or_404(setup_id: int) -> PlaybookSetup:
 @bp.route("/")
 @login_required
 def index():
+    if not _playbook_ready():
+        return _playbook_unavailable_response()
     setups = (
         PlaybookSetup.query.filter_by(user_id=current_user.id)
         .order_by(PlaybookSetup.updated_at.desc().nullslast(), PlaybookSetup.created_at.desc())
@@ -71,6 +85,8 @@ def index():
 @bp.route("/new", methods=["GET", "POST"])
 @login_required
 def new():
+    if not _playbook_ready():
+        return _playbook_unavailable_response()
     if request.method == "GET":
         return render_template("playbook/new.html")
 
@@ -101,6 +117,8 @@ def new():
 @bp.route("/<int:setup_id>")
 @login_required
 def view(setup_id: int):
+    if not _playbook_ready():
+        return _playbook_unavailable_response()
     setup = _get_setup_or_404(setup_id)
     trades = (
         Trade.query.filter_by(user_id=current_user.id, playbook_setup_id=setup.id)
@@ -138,6 +156,8 @@ def view(setup_id: int):
 @bp.route("/<int:setup_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit(setup_id: int):
+    if not _playbook_ready():
+        return _playbook_unavailable_response()
     setup = _get_setup_or_404(setup_id)
     if request.method == "GET":
         return render_template("playbook/edit.html", setup=setup)
@@ -166,6 +186,8 @@ def edit(setup_id: int):
 @bp.route("/<int:setup_id>/delete", methods=["POST"])
 @login_required
 def delete(setup_id: int):
+    if not _playbook_ready():
+        return _playbook_unavailable_response()
     setup = _get_setup_or_404(setup_id)
     db.session.delete(setup)
     db.session.commit()

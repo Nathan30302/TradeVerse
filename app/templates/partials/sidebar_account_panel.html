@@ -6,7 +6,7 @@
         <div class="tv-account-avatar flex-shrink-0">
             {% if current_user.avatar_url %}
                 {% set av = current_user.avatar_url %}
-                <img src="{% if av.startswith('http://') or av.startswith('https://') or av.startswith('/static/') %}{{ av }}{% else %}{{ url_for('static', filename=av) }}{% endif %}" alt="" width="38" height="38">
+                <img src="{% if av.startswith('http://') or av.startswith('https://') or av.startswith('/static/') %}{{ av }}{% else %}{{ url_for('static', filename=av) }}{% endif %}" alt="" width="38" height="38" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';">
             {% else %}
                 <i class="fas fa-user"></i>
             {% endif %}

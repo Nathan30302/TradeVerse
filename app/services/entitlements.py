@@ -12,7 +12,7 @@ from datetime import datetime, timezone, timedelta
 from functools import wraps
 from typing import Callable, Dict, Iterable, Optional, Set, TypeVar
 
-from flask import abort
+from flask import abort, jsonify, request
 from flask_login import current_user
 import os
 
@@ -197,9 +197,22 @@ def user_has_feature(user, feature: str) -> bool:
     return state.is_active and feature in allowed
 
 
+def _feature_locked_response(feature: str):
+    """JSON for API/fetch callers; 404 HTML for normal page views."""
+    wants_json = (
+        request.path.startswith('/api/')
+        or '/api/' in request.path
+        or request.is_json
+        or request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'
+    )
+    if wants_json:
+        return jsonify({'success': False, 'error': 'feature_locked', 'feature': feature}), 403
+    abort(404)
+
+
 def require_feature(feature: str) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """
-    Route decorator. Returns 404 (not 403) to avoid leaking premium endpoints.
+    Route decorator. HTML views get 404; JSON/API callers get 403 with feature_locked.
     """
 
     def decorator(fn: Callable[..., T]) -> Callable[..., T]:
@@ -208,7 +221,7 @@ def require_feature(feature: str) -> Callable[[Callable[..., T]], Callable[..., 
             if not current_user.is_authenticated:
                 abort(401)
             if not user_has_feature(current_user, feature):
-                abort(404)
+                return _feature_locked_response(feature)
             return fn(*args, **kwargs)
 
         return wrapped

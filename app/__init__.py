@@ -133,9 +133,8 @@ def create_app(config_name='default'):
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(planner.bp)
     app.register_blueprint(instruments.bp)
-    if tv_schema.get("playbook_ready"):
-        app.register_blueprint(playbook.bp)
-    # Standard feature: register unconditionally so tests work after late create_all().
+    # Register unconditionally (like replay) so routes never 404 when migrations lag.
+    app.register_blueprint(playbook.bp)
     app.register_blueprint(replay.bp)
 
     # Register admin blueprint
@@ -536,7 +535,9 @@ def register_context_processors(app):
         tv = app.extensions.get("tradeverse_schema") or {}
         # Require blueprint + schema so url_for(playbook.index) can't run when routes were not registered at boot.
         return {
-            'feature_playbook': bool(tv.get('playbook_ready') and ('playbook' in app.blueprints)),
+            'feature_playbook': bool(
+                tv.get('playbook_ready') and ('playbook' in app.blueprints)
+            ),
             'feature_replay': bool(tv.get('replay_ready') and ('replay' in app.blueprints)),
         }
 

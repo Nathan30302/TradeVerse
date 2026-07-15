@@ -211,7 +211,7 @@ async function importFromAPI(credentialId) {
             modalBody.appendChild(el('p',null,`${data.trades_imported} trades imported`));
             modalBody.appendChild(el('p','text-muted',`${data.trades_skipped} duplicates skipped`));
             const a = el('a','btn btn-primary','Go to Dashboard');
-            a.href = '/dashboard';
+            a.href = {{ url_for('dashboard.index')|tojson }};
             modalBody.appendChild(a);
         } else {
             clearEl(modalBody);

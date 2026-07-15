@@ -74,10 +74,10 @@
                                                     onclick="testConnection({{ cred.id }})" title="Test Connection">
                                                 <i class="fas fa-sync"></i>
                                             </button>
-                                            <a href="{{ url_for('imports.api_import', credential_id=cred.id) }}" 
-                                               class="btn btn-outline-success" title="Import Trades">
+                                            <button type="button" class="btn btn-outline-success"
+                                                    onclick="importBrokerTrades({{ cred.id }})" title="Import Trades">
                                                 <i class="fas fa-download"></i>
-                                            </a>
+                                            </button>
                                             {% endif %}
                                             <button type="button" class="btn btn-outline-danger" 
                                                     onclick="disconnectBroker({{ cred.id }})" title="Disconnect">
@@ -191,6 +191,32 @@ function testConnection(credentialId) {
         }
     })
     .catch(err => alert('Error: ' + err.message));
+}
+
+function importBrokerTrades(credentialId) {
+    var csrf = (typeof tvGetCsrf === 'function' ? tvGetCsrf() : (document.querySelector('input[name="csrf_token"]')||{}).value) || '';
+    fetch(`/imports/api-import/${credentialId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf,
+            'X-CSRF-Token': csrf
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ dry_run: false })
+    })
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+        if (res.ok && res.data.success) {
+            alert('Imported ' + (res.data.trades_imported || 0) + ' trade(s).');
+            location.reload();
+        } else if (res.data && res.data.error === 'feature_locked') {
+            window.location.href = {{ url_for('main.pricing')|tojson }};
+        } else {
+            alert('Import failed: ' + ((res.data && res.data.error) || 'Unknown error'));
+        }
+    })
+    .catch(function (err) { alert('Error: ' + err.message); });
 }
 
 function disconnectBroker(credentialId) {
