@@ -436,6 +436,33 @@
   var form = document.getElementById('trade-add-form');
   if (!form) return;
   var hasPrefill = !!document.getElementById('trade-prefill-json');
+  function readDraftRaw() {
+    try {
+      var s = sessionStorage.getItem(KEY);
+      if (s) return s;
+    } catch (e) { /* ignore */ }
+    try {
+      return localStorage.getItem(KEY);
+    } catch (e2) {
+      return null;
+    }
+  }
+  function writeDraftRaw(raw) {
+    try {
+      sessionStorage.setItem(KEY, raw);
+    } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem(KEY, raw);
+    } catch (e2) { /* quota / private mode */ }
+  }
+  function clearDraftStores() {
+    try {
+      sessionStorage.removeItem(KEY);
+    } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem(KEY);
+    } catch (e2) { /* ignore */ }
+  }
   function collectDraft() {
     var data = {};
     var els = form.querySelectorAll('input, select, textarea');
@@ -515,9 +542,7 @@
   form.addEventListener('submit', function () { tvAllowPageHide = true; });
   window.tvClearAddTradeDraft = function () {
     clearTimeout(saveTimer);
-    try {
-      sessionStorage.removeItem(KEY);
-    } catch (e) { /* ignore */ }
+    clearDraftStores();
   };
   function tvHardResetAddForm() {
     window.tvClearAddTradeDraft();
@@ -553,14 +578,14 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
       try {
-        sessionStorage.setItem(KEY, JSON.stringify(collectDraft()));
+        writeDraftRaw(JSON.stringify(collectDraft()));
       } catch (e) { /* quota / private mode */ }
     }, 600);
   }
   function flushDraftNow() {
     clearTimeout(saveTimer);
     try {
-      sessionStorage.setItem(KEY, JSON.stringify(collectDraft()));
+      writeDraftRaw(JSON.stringify(collectDraft()));
     } catch (e) { /* ignore */ }
   }
   document.addEventListener('visibilitychange', function () {
@@ -572,9 +597,11 @@
   window.tvExpandMoreIfNeeded = tvExpandMoreIfNeeded;
   if (!hasPrefill) {
     try {
-      var raw = sessionStorage.getItem(KEY);
+      var raw = readDraftRaw();
       if (raw) {
         applyDraft(JSON.parse(raw));
+        /* Promote localStorage draft into session for this tab */
+        try { sessionStorage.setItem(KEY, raw); } catch (e3) { /* ignore */ }
         queueAfterDraftRestore();
       }
     } catch (e) { /* ignore */ }
@@ -611,7 +638,7 @@
       return;
     }
     try {
-      var raw = sessionStorage.getItem(KEY);
+      var raw = readDraftRaw();
       if (!raw || raw.length < 24) return;
       var o = JSON.parse(raw);
       var n = 0;
@@ -885,7 +912,12 @@ function calculateRR() {
         resetSaveButton();
         try {
           var k = window.TV_ADD_TRADE_DRAFT_KEY || 'tradev_add_trade_draft_v1';
-          if (document.getElementById('trade-add-form') && !sessionStorage.getItem(k)) {
+          var hasDraft = false;
+          try { hasDraft = !!sessionStorage.getItem(k); } catch (e1) {}
+          if (!hasDraft) {
+            try { hasDraft = !!localStorage.getItem(k); } catch (e2) {}
+          }
+          if (document.getElementById('trade-add-form') && !hasDraft) {
             window.location.reload();
           }
         } catch (err) {

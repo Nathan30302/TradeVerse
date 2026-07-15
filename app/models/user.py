@@ -136,6 +136,7 @@ class User(UserMixin, db.Model):
                 - expectancy: Expected value per trade
         """
         from app.models.trade import Trade
+        from sqlalchemy import case, and_
 
         empty_stats = {
             'total_trades': 0,
@@ -160,127 +161,127 @@ class User(UserMixin, db.Model):
             except Exception:
                 pass
 
-        # IMPORTANT: Use id-only aggregates (schema-drift safe). Always rollback after
-        # a failed query so Postgres does not leave InFailedSqlTransaction state.
+        cache = None
+        # Request-scoped cache: dashboard + daily loop often call get_stats repeatedly.
         try:
-            total_trades = (
-                db.session.query(func.count(Trade.id))
+            from flask import g, has_request_context
+
+            if has_request_context():
+                cache = getattr(g, '_tv_user_stats_cache', None)
+                if cache is None:
+                    g._tv_user_stats_cache = {}
+                    cache = g._tv_user_stats_cache
+                hit = cache.get(self.id)
+                if hit is not None:
+                    return dict(hit)
+        except Exception:
+            cache = None
+
+        # Single aggregate query (schema-drift safe: only id/status/pnl/rr columns).
+        try:
+            closed_pnl = and_(Trade.status == 'CLOSED', Trade.profit_loss.isnot(None))
+            row = (
+                db.session.query(
+                    func.count(Trade.id).label('total'),
+                    func.coalesce(
+                        func.sum(case((Trade.status == 'OPEN', 1), else_=0)), 0
+                    ).label('open_c'),
+                    func.coalesce(
+                        func.sum(case((Trade.status == 'CLOSED', 1), else_=0)), 0
+                    ).label('closed_c'),
+                    func.coalesce(
+                        func.sum(case((and_(closed_pnl, Trade.profit_loss > 0), 1), else_=0)), 0
+                    ).label('wins'),
+                    func.coalesce(
+                        func.sum(case((and_(closed_pnl, Trade.profit_loss < 0), 1), else_=0)), 0
+                    ).label('losses'),
+                    func.coalesce(
+                        func.sum(case((closed_pnl, 1), else_=0)), 0
+                    ).label('closed_pnl_n'),
+                    func.coalesce(
+                        func.sum(case((closed_pnl, Trade.profit_loss), else_=0)), 0.0
+                    ).label('total_pnl'),
+                    func.avg(
+                        case((and_(closed_pnl, Trade.profit_loss > 0), Trade.profit_loss))
+                    ).label('avg_win'),
+                    func.avg(
+                        case((and_(closed_pnl, Trade.profit_loss < 0), -Trade.profit_loss))
+                    ).label('avg_loss'),
+                    func.max(
+                        case((and_(closed_pnl, Trade.profit_loss > 0), Trade.profit_loss))
+                    ).label('largest_win'),
+                    func.max(
+                        case((and_(closed_pnl, Trade.profit_loss < 0), -Trade.profit_loss))
+                    ).label('largest_loss'),
+                    func.avg(
+                        case(
+                            (
+                                and_(closed_pnl, Trade.risk_reward.isnot(None)),
+                                Trade.risk_reward,
+                            )
+                        )
+                    ).label('avg_rr'),
+                    func.coalesce(
+                        func.sum(
+                            case((and_(closed_pnl, Trade.profit_loss > 0), Trade.profit_loss), else_=0)
+                        ),
+                        0.0,
+                    ).label('gross_profit'),
+                    func.coalesce(
+                        func.sum(
+                            case((and_(closed_pnl, Trade.profit_loss < 0), -Trade.profit_loss), else_=0)
+                        ),
+                        0.0,
+                    ).label('gross_loss'),
+                )
                 .filter(Trade.user_id == self.id)
-                .scalar()
-                or 0
+                .one()
             )
         except Exception:
             _rollback_quietly()
             return empty_stats
 
+        total_trades = int(row.total or 0)
         stats = dict(empty_stats)
         stats['total_trades'] = total_trades
-
         if total_trades == 0:
+            if cache is not None:
+                cache[self.id] = dict(stats)
             return stats
 
-        try:
-            open_trades = (
-                db.session.query(func.count(Trade.id))
-                .filter(Trade.user_id == self.id, Trade.status == 'OPEN')
-                .scalar()
-                or 0
-            )
-            closed_trades = (
-                db.session.query(func.count(Trade.id))
-                .filter(Trade.user_id == self.id, Trade.status == 'CLOSED')
-                .scalar()
-                or 0
-            )
-
-            stats['open_trades'] = open_trades
-            stats['closed_trades'] = closed_trades
-
-            base_closed = (
-                Trade.user_id == self.id,
-                Trade.status == 'CLOSED',
-                Trade.profit_loss.isnot(None),
-            )
-
-            closed_with_pnl_count = (
-                db.session.query(func.count(Trade.id)).filter(*base_closed).scalar() or 0
-            )
-            if closed_with_pnl_count == 0:
-                stats['win_rate'] = 0.0
-                stats['total_pnl'] = 0.0
-                return stats
-
-            win_c = (
-                db.session.query(func.count(Trade.id))
-                .filter(*base_closed, Trade.profit_loss > 0)
-                .scalar()
-                or 0
-            )
-            loss_c = (
-                db.session.query(func.count(Trade.id))
-                .filter(*base_closed, Trade.profit_loss < 0)
-                .scalar()
-                or 0
-            )
-            stats['winning_trades'] = int(win_c)
-            stats['losing_trades'] = int(loss_c)
-            stats['win_rate'] = (
-                (float(win_c) / float(closed_with_pnl_count)) * 100.0 if closed_with_pnl_count else 0.0
-            )
-
-            total_pnl = (
-                db.session.query(func.coalesce(func.sum(Trade.profit_loss), 0.0)).filter(*base_closed).scalar()
-            )
-            stats['total_pnl'] = float(total_pnl or 0.0)
-
-            avg_win = (
-                db.session.query(func.avg(Trade.profit_loss)).filter(*base_closed, Trade.profit_loss > 0).scalar()
-            )
-            if avg_win is not None:
-                stats['avg_win'] = float(avg_win)
-
-            avg_loss_row = (
-                db.session.query(func.avg(-Trade.profit_loss)).filter(*base_closed, Trade.profit_loss < 0).scalar()
-            )
-            if avg_loss_row is not None:
-                stats['avg_loss'] = float(avg_loss_row)
-
-            lw = db.session.query(func.max(Trade.profit_loss)).filter(*base_closed, Trade.profit_loss > 0).scalar()
-            if lw is not None:
-                stats['largest_win'] = float(lw)
-
-            ll = db.session.query(func.max(-Trade.profit_loss)).filter(*base_closed, Trade.profit_loss < 0).scalar()
-            if ll is not None:
-                stats['largest_loss'] = float(ll)
-
-            avg_rr = (
-                db.session.query(func.avg(Trade.risk_reward))
-                .filter(*base_closed, Trade.risk_reward.isnot(None))
-                .scalar()
-            )
-            if avg_rr is not None:
-                stats['avg_rr'] = float(avg_rr)
-
-            gross_profit = (
-                db.session.query(func.coalesce(func.sum(Trade.profit_loss), 0.0))
-                .filter(*base_closed, Trade.profit_loss > 0)
-                .scalar()
-                or 0.0
-            )
-            gross_loss = (
-                db.session.query(func.coalesce(func.sum(-Trade.profit_loss), 0.0))
-                .filter(*base_closed, Trade.profit_loss < 0)
-                .scalar()
-                or 0.0
-            )
-            if gross_loss and float(gross_loss) > 0:
-                stats['profit_factor'] = float(gross_profit) / float(gross_loss)
-
-            stats['expectancy'] = stats['total_pnl'] / float(closed_with_pnl_count)
+        stats['open_trades'] = int(row.open_c or 0)
+        stats['closed_trades'] = int(row.closed_c or 0)
+        closed_with_pnl = int(row.closed_pnl_n or 0)
+        if closed_with_pnl == 0:
+            if cache is not None:
+                cache[self.id] = dict(stats)
             return stats
-        except Exception:
-            _rollback_quietly()
-            return stats
+
+        wins = int(row.wins or 0)
+        losses = int(row.losses or 0)
+        stats['winning_trades'] = wins
+        stats['losing_trades'] = losses
+        stats['win_rate'] = (float(wins) / float(closed_with_pnl)) * 100.0
+        stats['total_pnl'] = float(row.total_pnl or 0.0)
+        if row.avg_win is not None:
+            stats['avg_win'] = float(row.avg_win)
+        if row.avg_loss is not None:
+            stats['avg_loss'] = float(row.avg_loss)
+        if row.largest_win is not None:
+            stats['largest_win'] = float(row.largest_win)
+        if row.largest_loss is not None:
+            stats['largest_loss'] = float(row.largest_loss)
+        if row.avg_rr is not None:
+            stats['avg_rr'] = float(row.avg_rr)
+        gp = float(row.gross_profit or 0.0)
+        gl = float(row.gross_loss or 0.0)
+        if gl > 0:
+            stats['profit_factor'] = gp / gl
+        stats['expectancy'] = stats['total_pnl'] / float(closed_with_pnl)
+
+        if cache is not None:
+            cache[self.id] = dict(stats)
+        return stats
 
     def safe_trade_count(self) -> int:
         """
@@ -353,25 +354,32 @@ class User(UserMixin, db.Model):
     def get_current_streak(self):
         """
         Calculate current winning or losing streak
-        
+
         Returns:
             dict: Dictionary with 'type' (win/loss) and 'count'
         """
+        from sqlalchemy.orm import load_only
         from app.models.trade import Trade
-        
-        recent_trades = self.trades.filter(
-            Trade.status == 'CLOSED',
-            Trade.profit_loss.isnot(None)
-        ).order_by(db.desc('exit_date')).limit(50).all()
-        
+
+        recent_trades = (
+            self.trades.options(load_only(Trade.id, Trade.profit_loss, Trade.exit_date))
+            .filter(
+                Trade.status == 'CLOSED',
+                Trade.profit_loss.isnot(None),
+            )
+            .order_by(db.desc('exit_date'))
+            .limit(50)
+            .all()
+        )
+
         if not recent_trades:
             return {'type': None, 'count': 0}
-        
+
         # Check if current streak is winning or losing
         last_trade = recent_trades[0]
         streak_type = 'win' if last_trade.profit_loss > 0 else 'loss'
         streak_count = 0
-        
+
         for trade in recent_trades:
             if streak_type == 'win' and trade.profit_loss > 0:
                 streak_count += 1
@@ -379,7 +387,7 @@ class User(UserMixin, db.Model):
                 streak_count += 1
             else:
                 break
-        
+
         return {'type': streak_type, 'count': streak_count}
     
     # ==================== Utility Methods ====================

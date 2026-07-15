@@ -1,8 +1,8 @@
 """
 Strategy Lab — plain-English setup → structured rules → journal / demo backtest.
 
-Full multi-year OHLC market backtesting (FVG/sweep chart overlays on 11y data)
-is a separate data-pipeline product. This module ships:
+Market OHLC backtesting (daily Yahoo / optional Twelve Data) is available via
+run_lab_backtest(mode='market'|'auto'). This module also ships:
 1) rule extraction from English,
 2) replay against the user's own journal trades,
 3) a transparent demo run with annotated setup narratives.
@@ -448,25 +448,65 @@ def run_strategy_lab(
     mode: str = 'auto',
 ) -> Dict[str, Any]:
     """
-    mode: auto | journal | demo
-    auto uses journal when matches exist, else demo.
+    mode: auto | journal | demo | market
+    auto: market OHLC when symbol available, else journal matches, else demo.
     """
     rules = parse_plain_english_setup(description, symbol=symbol, timeframe=timeframe)
     mode = (mode or 'auto').lower()
+
+    def _try_market() -> Optional[Dict[str, Any]]:
+        try:
+            from app.services.market_backtest import run_market_backtest
+            from app.services.market_ohlc import supports_symbol
+
+            sym = (rules.symbol_hint or symbol or '').strip()
+            if not sym:
+                return None
+            if not supports_symbol(sym):
+                # Still attempt — Yahoo may cover more than the static map
+                pass
+            return run_market_backtest(rules)
+        except Exception:
+            return None
+
     if mode == 'demo':
         result = run_demo_backtest(rules)
     elif mode == 'journal':
         result = run_journal_backtest(user_id, rules)
-    else:
-        result = run_journal_backtest(user_id, rules)
-        if not result['trades']:
-            demo = run_demo_backtest(rules)
-            demo['fallback_from'] = 'journal_empty'
-            demo['disclaimer'] = (
-                'No matching journal trades yet — showing a demo annotation so you can '
-                'see the format. Log tagged trades or import history to score your real edge.'
+    elif mode == 'market':
+        result = _try_market() or run_demo_backtest(rules)
+        if result.get('mode') != 'market':
+            result['fallback_from'] = 'market_unavailable'
+            result['disclaimer'] = (
+                'Market history unavailable for that symbol — showing demo format. '
+                'Try EURUSD / XAUUSD, or set TWELVEDATA_API_KEY.'
             )
-            result = demo
+    else:
+        # auto
+        market = _try_market()
+        if market and market.get('trades'):
+            result = market
+        else:
+            result = run_journal_backtest(user_id, rules)
+            if not result['trades']:
+                if market and not market.get('trades'):
+                    # Prefer market empty message if we attempted
+                    demo = run_demo_backtest(rules)
+                    demo['fallback_from'] = 'market_or_journal_empty'
+                    demo['disclaimer'] = (
+                        (market.get('disclaimer') if market else '')
+                        + ' No journal matches either — showing demo annotations. '
+                        'Log tagged trades or pick a liquid symbol (EURUSD, XAUUSD).'
+                    )
+                    result = demo
+                else:
+                    demo = run_demo_backtest(rules)
+                    demo['fallback_from'] = 'journal_empty'
+                    demo['disclaimer'] = (
+                        'No matching journal trades yet — showing a demo annotation so you can '
+                        'see the format. Use Market mode for daily OHLC backtests, or log tagged trades.'
+                    )
+                    result = demo
     result['generated_at'] = datetime.now(timezone.utc).isoformat()
     return result
 

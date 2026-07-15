@@ -250,7 +250,9 @@ def setup_letter_grade(win_rate: float, count: int, avg_rr: float) -> Tuple[str,
 
 def get_morning_briefing(user_id: int, user_name: str = '') -> Dict[str, Any]:
     try:
-        return AIAnalyzer(user_id).get_morning_briefing(user_name=user_name)
+        from app.services.ai_cache import get_cached_morning_briefing
+
+        return get_cached_morning_briefing(user_id, user_name=user_name) or {'lines': [], 'has_data': False}
     except Exception:
         _rollback_quietly()
         return {'lines': [], 'has_data': False}

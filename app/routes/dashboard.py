@@ -143,16 +143,17 @@ def index():
     # Calculate additional metrics
     total_trades = stats['total_trades']
 
-    # Calculate max drawdown
+    # Calculate max drawdown (load_only + single pass)
     max_drawdown = calculate_max_drawdown()
 
-    # Get this week's performance
+    # Get this week's performance (SQL aggregates — no full row load)
     week_performance = get_week_performance()
 
-    # AI Buddy snapshot — wrapped in try/except so a broken AI service never
-    # takes down the main dashboard.
+    # AI Buddy snapshot — cached briefly so dashboard stays snappy.
     try:
-        ai_summary = AIAnalyzer(current_user.id).get_weekly_review()
+        from app.services.ai_cache import get_cached_weekly_review
+
+        ai_summary = get_cached_weekly_review(current_user.id)
         # Ensure every key the template touches actually exists
         ai_summary.setdefault('summary', '')
         ai_summary.setdefault('setups', {})
@@ -172,20 +173,42 @@ def index():
 
     last_trade_insight = ''
     try:
-        last_trade_insight = AIAnalyzer(current_user.id).get_last_trade_insight()
+        from app.services.ai_cache import get_cached_last_trade_insight
+
+        last_trade_insight = get_cached_last_trade_insight(current_user.id)
     except Exception:
         last_trade_insight = ''
 
-    # Get best and worst trades
-    best_trade = Trade.query.filter_by(
-        user_id=current_user.id,
-        status='CLOSED'
-    ).order_by(Trade.profit_loss.desc()).first()
+    # Best / worst closed trades in one round-trip each with narrow columns
+    from sqlalchemy.orm import load_only
 
-    worst_trade = Trade.query.filter_by(
-        user_id=current_user.id,
-        status='CLOSED'
-    ).order_by(Trade.profit_loss).first()
+    _bw_opts = load_only(
+        Trade.id,
+        Trade.symbol,
+        Trade.trade_type,
+        Trade.profit_loss,
+        Trade.entry_date,
+    )
+    best_trade = (
+        Trade.query.options(_bw_opts)
+        .filter(
+            Trade.user_id == current_user.id,
+            Trade.status == 'CLOSED',
+            Trade.profit_loss.isnot(None),
+        )
+        .order_by(Trade.profit_loss.desc())
+        .first()
+    )
+    worst_trade = (
+        Trade.query.options(_bw_opts)
+        .filter(
+            Trade.user_id == current_user.id,
+            Trade.status == 'CLOSED',
+            Trade.profit_loss.isnot(None),
+        )
+        .order_by(Trade.profit_loss.asc())
+        .first()
+    )
 
     plan_exists = db.session.query(TradePlan.id).filter_by(user_id=current_user.id).limit(1).scalar()
     review_exists = db.session.query(Trade.id).filter(
@@ -226,6 +249,13 @@ def index():
         user_name=(current_user.username or ''),
     )
 
+    from app.services.insights_next_action import build_insights_next_action
+
+    insights_next_action = build_insights_next_action(
+        page='dashboard',
+        review_queue=daily.get('review_queue') or {},
+    )
+
     return render_template('dashboard/index.html',
                            stats=stats,
                            recent_trades=recent_trades,
@@ -240,8 +270,8 @@ def index():
                            pinned_note=pinned_note,
                            last_trade_insight=last_trade_insight,
                            daily=daily,
-                           review_queue=daily.get('review_queue') or {})
-
+                           review_queue=daily.get('review_queue') or {},
+                           insights_next_action=insights_next_action)
 
 @bp.route('/getting-started')
 @login_required
@@ -368,12 +398,23 @@ def analytics():
     # Performance by day of week
     day_stats = get_performance_by_day()
 
+    from app.services.insights_next_action import build_insights_next_action
+    from app.services.retention import get_review_queue
+
+    rq = {}
+    try:
+        rq = get_review_queue(current_user.id) or {}
+    except Exception:
+        rq = {}
+    insights_next_action = build_insights_next_action(page='analytics', review_queue=rq)
+
     return render_template('dashboard/analytics.html',
                            instrument_stats=instrument_stats,
                            strategy_stats=strategy_stats,
                            emotion_stats=emotion_stats,
                            session_stats=session_stats,
-                           day_stats=day_stats)
+                           day_stats=day_stats,
+                           insights_next_action=insights_next_action)
 
 
 @bp.route('/api/advanced-metrics')
@@ -737,50 +778,65 @@ def monthly_performance_api():
 # ==================== Helper Functions ====================
 
 def calculate_max_drawdown():
-    """Calculate maximum drawdown"""
-    trades = Trade.query.filter_by(
-        user_id=current_user.id,
-        status='CLOSED'
-    ).order_by(Trade.exit_date).all()
+    """Calculate maximum drawdown from closed P/L only (narrow column load)."""
+    from sqlalchemy.orm import load_only
 
-    if not trades:
+    rows = (
+        Trade.query.options(load_only(Trade.profit_loss, Trade.exit_date))
+        .filter(
+            Trade.user_id == current_user.id,
+            Trade.status == 'CLOSED',
+            Trade.profit_loss.isnot(None),
+        )
+        .order_by(Trade.exit_date.asc())
+        .all()
+    )
+
+    if not rows:
         return 0
 
-    equity = 0
-    peak = 0
-    max_dd = 0
+    equity = 0.0
+    peak = 0.0
+    max_dd = 0.0
 
-    for trade in trades:
-        if trade.profit_loss:
-            equity += trade.profit_loss
-            if equity > peak:
-                peak = equity
-            drawdown = peak - equity
-            if drawdown > max_dd:
-                max_dd = drawdown
+    for trade in rows:
+        pnl = trade.profit_loss or 0.0
+        equity += pnl
+        if equity > peak:
+            peak = equity
+        drawdown = peak - equity
+        if drawdown > max_dd:
+            max_dd = drawdown
 
     return max_dd
 
 def get_week_performance():
-    """Get performance for last 7 days (user timezone)."""
-    try:
-        user_tz = ZoneInfo((getattr(current_user, 'timezone', None) or 'UTC').strip() or 'UTC')
-    except Exception:
-        user_tz = ZoneInfo('UTC')
+    """Get performance for last 7 days (user timezone) via SQL aggregates."""
+    from app.utils.timeutil import resolve_zoneinfo
 
+    user_tz = resolve_zoneinfo(getattr(current_user, 'timezone', None))
     now_local = datetime.now(user_tz)
     start_local = now_local - timedelta(days=7)
     start_utc = start_local.astimezone(timezone.utc).replace(tzinfo=None)
 
-    trades = Trade.query.filter(
-        Trade.user_id == current_user.id,
-        Trade.status == 'CLOSED',
-        Trade.exit_date >= start_utc
-    ).all()
+    row = (
+        db.session.query(
+            func.count(Trade.id).label('trades'),
+            func.coalesce(func.sum(Trade.profit_loss), 0.0).label('pnl'),
+            func.sum(case((Trade.profit_loss > 0, 1), else_=0)).label('wins'),
+        )
+        .filter(
+            Trade.user_id == current_user.id,
+            Trade.status == 'CLOSED',
+            Trade.exit_date >= start_utc,
+            Trade.profit_loss.isnot(None),
+        )
+        .one()
+    )
 
-    total_pnl = sum((t.profit_loss or 0) for t in trades if t.profit_loss is not None)
-    total_trades = len(trades)
-    wins = len([t for t in trades if (t.profit_loss is not None) and t.profit_loss > 0])
+    total_trades = int(row.trades or 0)
+    wins = int(row.wins or 0)
+    total_pnl = float(row.pnl or 0.0)
 
     return {
         'pnl': total_pnl,
@@ -900,10 +956,21 @@ def performance():
     else:
         trend = 0
 
+    from app.services.insights_next_action import build_insights_next_action
+    from app.services.retention import get_review_queue
+
+    rq = {}
+    try:
+        rq = get_review_queue(current_user.id) or {}
+    except Exception:
+        rq = {}
+    insights_next_action = build_insights_next_action(page='performance', review_queue=rq)
+
     return render_template('dashboard/performance.html',
                            current_score=current_score,
                            score_history=score_history,
-                           trend=trend)
+                           trend=trend,
+                           insights_next_action=insights_next_action)
 
 
 @bp.route('/performance/calculate', methods=['POST'])
@@ -1408,13 +1475,28 @@ def patterns():
         Trade.entry_date >= utc_now() - timedelta(days=days)
     ).with_entities(Trade.id).count()
 
+    from app.services.insights_next_action import build_insights_next_action
+    from app.services.retention import get_review_queue
+
+    rq = {}
+    try:
+        rq = get_review_queue(current_user.id) or {}
+    except Exception:
+        rq = {}
+    insights_next_action = build_insights_next_action(
+        page='patterns',
+        review_queue=rq,
+        warning_count=len(warning_patterns),
+    )
+
     return render_template('dashboard/patterns.html',
                            patterns=detected_patterns,
                            positive_patterns=positive_patterns,
                            warning_patterns=warning_patterns,
                            insight_patterns=insight_patterns,
                            trade_count=trade_count,
-                           days=days)
+                           days=days,
+                           insights_next_action=insights_next_action)
 
 
 # ==================== Emotion Tracking ====================
@@ -1439,6 +1521,30 @@ def emotions():
     summary = analyzer.get_summary(days)
     before_after = analyzer.get_before_after_comparison(days)
 
+    dangerous_name = None
+    try:
+        if dangerous:
+            # List of (emotion_name, stats_dict)
+            first = dangerous[0]
+            if isinstance(first, (list, tuple)) and first:
+                dangerous_name = str(first[0])
+    except Exception:
+        dangerous_name = None
+
+    from app.services.insights_next_action import build_insights_next_action
+    from app.services.retention import get_review_queue
+
+    rq = {}
+    try:
+        rq = get_review_queue(current_user.id) or {}
+    except Exception:
+        rq = {}
+    insights_next_action = build_insights_next_action(
+        page='emotions',
+        review_queue=rq,
+        dangerous_emotion=dangerous_name,
+    )
+
     return render_template('dashboard/emotions.html',
                            performance=performance,
                            profitable=profitable,
@@ -1446,7 +1552,8 @@ def emotions():
                            frequency=frequency,
                            summary=summary,
                            before_after=before_after,
-                           days=days)
+                           days=days,
+                           insights_next_action=insights_next_action)
 
 
 @bp.route('/api/emotion-chart-data')

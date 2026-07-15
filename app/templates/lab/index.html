@@ -13,12 +13,12 @@
     </div>
 </div>
 
-<div class="alert alert-info border-0 shadow-sm mb-4">
-    <div class="fw-semibold mb-1">What this does today</div>
-    <p class="small mb-2 mb-md-0">
-        Scores your idea against <strong>trades you already logged</strong>, and explains each match in plain steps
-        (for example: bounce off support → entry → stop below the level).
-        Full chart backtesting on years of market data is the next upgrade — suggestions are listed below the form.
+    <div class="alert alert-info border-0 shadow-sm mb-4">
+    <div class="fw-semibold mb-1">What this does</div>
+    <p class="small mb-0">
+        <strong>Market mode:</strong> runs your idea on real daily candles (Yahoo / ECB Frankfurter free FX, or Twelve Data if you add an API key).
+        <strong>Journal mode:</strong> scores trades you already logged.
+        Results show step-by-step stories — not a black-box score.
     </p>
 </div>
 
@@ -63,10 +63,12 @@
                     <div class="mb-3">
                         <label class="form-label" for="mode">How to test</label>
                         <select class="form-select" id="mode" name="mode">
-                            <option value="auto" {% if mode == 'auto' %}selected{% endif %}>Auto — use my journal if possible, else demo</option>
+                            <option value="auto" {% if mode == 'auto' %}selected{% endif %}>Auto — market OHLC if possible, else journal, else demo</option>
+                            <option value="market" {% if mode == 'market' %}selected{% endif %}>Market chart backtest (daily OHLC)</option>
                             <option value="journal" {% if mode == 'journal' %}selected{% endif %}>My journal only</option>
                             <option value="demo" {% if mode == 'demo' %}selected{% endif %}>Demo examples (learn the format)</option>
                         </select>
+                        <div class="form-text">Market mode uses free daily history (Yahoo when available, else ECB/Frankfurter for forex). Optional: <code>TWELVEDATA_API_KEY</code> for more symbols.</div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fas fa-play me-1"></i> Run test
@@ -97,8 +99,11 @@
         {% if result %}
         <div class="card tv-surface mb-3">
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h5 class="mb-0">Results · {% if result.mode == 'journal' %}Your journal{% elif result.mode == 'demo' %}Demo{% else %}{{ result.mode }}{% endif %}</h5>
+                <h5 class="mb-0">Results · {% if result.mode == 'journal' %}Your journal{% elif result.mode == 'demo' %}Demo{% elif result.mode == 'market' %}Market OHLC{% else %}{{ result.mode }}{% endif %}</h5>
                 <span class="badge bg-secondary">{{ result.stats.matched }} trade{{ '' if result.stats.matched == 1 else 's' }}</span>
+                {% if result.provider %}
+                <span class="badge bg-dark">{{ result.provider }} · {{ result.symbol or '' }}</span>
+                {% endif %}
             </div>
             <div class="card-body">
                 <p class="small tv-muted">{{ result.disclaimer }}</p>
@@ -150,7 +155,7 @@
                             <strong>{{ t.symbol }}</strong>
                             <span class="badge bg-{% if t.direction == 'BUY' %}success{% else %}danger{% endif %} ms-1">{{ t.direction }}</span>
                             <span class="badge bg-{% if t.result == 'win' %}success{% elif t.result == 'loss' %}danger{% else %}secondary{% endif %}">{{ t.result }}</span>
-                            <span class="badge border">{{ 'Your trade' if t.source == 'journal' else 'Demo' }}</span>
+                            <span class="badge border">{{ 'Market' if t.source == 'market' else ('Your trade' if t.source == 'journal' else 'Demo') }}</span>
                         </div>
                         <div class="text-end">
                             {% if t.pnl is not none %}
@@ -196,16 +201,15 @@
         {% endif %}
 
         <div class="card tv-surface">
-            <div class="card-header"><h6 class="mb-0">Roadmap: real market backtesting</h6></div>
+            <div class="card-header"><h6 class="mb-0">Market data notes</h6></div>
             <div class="card-body small">
-                <p class="tv-muted mb-2">To go from “journal match” to automatic chart backtesting, the strongest path is:</p>
-                <ol class="mb-0">
-                    <li><strong>Import OHLC history</strong> (or connect a data feed) for the symbols you trade.</li>
-                    <li><strong>Turn your Playbook rules into checks</strong> (e.g. “price swept below support then closed back above”).</li>
-                    <li><strong>Replay bar-by-bar</strong> and mark every valid entry, stop, and target on a chart.</li>
-                    <li><strong>Report expectancy</strong>: win rate, average R, max drawdown, best session — then compare to your live journal.</li>
-                </ol>
-                <p class="tv-muted mt-3 mb-0">Until that ships: use Lab + Playbook + tagged trades — that already proves whether <em>you</em> follow the setup well.</p>
+                <ul class="mb-2">
+                    <li><strong>Free (default):</strong> Yahoo daily OHLC when rate limits allow; forex also via ECB Frankfurter (no API key).</li>
+                    <li><strong>Cached:</strong> successful downloads are stored on disk for ~24h so Lab stays fast and resilient.</li>
+                    <li><strong>Optional API:</strong> set <code>TWELVEDATA_API_KEY</code> for gold/indices/crypto coverage and higher limits.</li>
+                    <li><strong>Intraday (15M):</strong> needs a paid market feed; daily is the honest free baseline.</li>
+                </ul>
+                <p class="tv-muted mb-0">Always compare market backtests to your tagged Playbook journal — your live execution is the real edge.</p>
             </div>
         </div>
     </div>
