@@ -9,12 +9,42 @@ python -m flask db upgrade || echo "[render-start] flask db upgrade exited non-z
 # If multiple Alembic heads exist, try upgrading all of them.
 python -m flask db upgrade heads || echo "[render-start] flask db upgrade heads exited non-zero — continuing boot"
 
-# Ensure durable upload dirs exist on the persistent disk
-DATA_DIR="${TRADEVERSE_DATA_DIR:-/var/data}"
+# Prefer configured persistent disk; fall back if /var/data is not mounted/writable.
+# (Dashboard-created Render services often set TRADEVERSE_DATA_DIR without attaching a disk.)
+_can_write_dir() {
+  local d="$1"
+  mkdir -p "$d" 2>/dev/null || return 1
+  local probe="${d}/.tv_write_probe_$$"
+  if ! ( : >"$probe" ) 2>/dev/null; then
+    return 1
+  fi
+  rm -f "$probe" 2>/dev/null || true
+  return 0
+}
+
+PREFERRED_DATA_DIR="${TRADEVERSE_DATA_DIR:-${PERSISTENT_DISK_PATH:-/var/data}}"
+FALLBACK_DATA_DIR="$(pwd)/app/static"
+DATA_DIR="$PREFERRED_DATA_DIR"
+
+if ! _can_write_dir "$DATA_DIR"; then
+  echo "[render-start] WARN: ${PREFERRED_DATA_DIR} is not writable (no Render disk mounted?)."
+  echo "[render-start] Falling back to ${FALLBACK_DATA_DIR} — uploads/OHLC cache will be ephemeral until you attach a disk at /var/data."
+  DATA_DIR="$FALLBACK_DATA_DIR"
+  if ! _can_write_dir "$DATA_DIR"; then
+    echo "[render-start] WARN: fallback also failed; trying /tmp/tradeverse_data"
+    DATA_DIR="/tmp/tradeverse_data"
+    _can_write_dir "$DATA_DIR" || echo "[render-start] WARN: could not create upload dirs"
+  fi
+fi
+
+export TRADEVERSE_DATA_DIR="$DATA_DIR"
+echo "[render-start] TRADEVERSE_DATA_DIR=${TRADEVERSE_DATA_DIR}"
+
 mkdir -p "${DATA_DIR}/uploads/avatars" \
          "${DATA_DIR}/uploads/trade_screenshots" \
          "${DATA_DIR}/uploads/replay" \
-         "${DATA_DIR}/uploads/playbook" || true
+         "${DATA_DIR}/uploads/playbook" \
+         "${DATA_DIR}/uploads/ohlc_cache" 2>/dev/null || true
 
 # One-time Pro Plus promo grant for existing users (marker file on persistent disk)
 if [[ "${TV_GRANT_PROMO_ON_START:-0}" =~ ^(1|true|yes|on)$ ]]; then

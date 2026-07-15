@@ -413,13 +413,31 @@ class ProductionConfig(Config):
         '1', 'true', 'yes'
     )
 
-    # Durable uploads: attach a Render disk and set TRADEVERSE_DATA_DIR=/var/data
-    # Never use /tmp for avatars or trade screenshots — those vanish on restart.
-    TRADEVERSE_DATA_DIR = (
+    # Durable uploads: attach a Render disk and set TRADEVERSE_DATA_DIR=/var/data.
+    # If /var/data is configured but not mounted/writable, fall back to app/static
+    # so boot still succeeds (uploads become ephemeral until a disk is attached).
+    _preferred_data = (
         os.environ.get('TRADEVERSE_DATA_DIR')
         or os.environ.get('PERSISTENT_DISK_PATH')
         or '/var/data'
     )
+    _project_root = os.path.abspath(os.path.dirname(__file__))
+    _static_data = os.path.join(_project_root, 'app', 'static')
+
+    def _pick_writable_data_dir(preferred: str, fallback: str) -> str:
+        for candidate in (preferred, fallback, '/tmp/tradeverse_data'):
+            try:
+                os.makedirs(candidate, exist_ok=True)
+                probe = os.path.join(candidate, '.tv_write_probe')
+                with open(probe, 'wb') as fh:
+                    fh.write(b'ok')
+                os.remove(probe)
+                return candidate
+            except Exception:
+                continue
+        return fallback
+
+    TRADEVERSE_DATA_DIR = _pick_writable_data_dir(_preferred_data, _static_data)
     UPLOAD_FOLDER = os.path.join(TRADEVERSE_DATA_DIR, 'uploads')
     TRADE_SCREENSHOTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'trade_screenshots')
     AVATARS_FOLDER = os.path.join(UPLOAD_FOLDER, 'avatars')

@@ -22,26 +22,56 @@ def _env_data_dir() -> Optional[str]:
     return None
 
 
-def persistent_data_root() -> str:
-    """Durable root (e.g. /var/data). Uploads live under ``{root}/uploads/...``."""
-    env = _env_data_dir()
-    if env:
-        return env
+def _is_writable_dir(path: str) -> bool:
+    """Return True if path exists (or can be created) and is writable."""
+    try:
+        os.makedirs(path, exist_ok=True)
+        probe = os.path.join(path, ".tv_write_probe")
+        with open(probe, "wb") as fh:
+            fh.write(b"ok")
+        os.remove(probe)
+        return True
+    except OSError:
+        return False
+
+
+def _static_fallback_root() -> str:
     if has_app_context():
-        cfg = current_app.config.get("TRADEVERSE_DATA_DIR")
-        if cfg:
-            return str(cfg).rstrip("/")
-        flask_env = (current_app.config.get("ENV") or os.environ.get("FLASK_ENV") or "").lower()
-        if flask_env == "production":
-            return "/var/data"
         return os.path.join(current_app.root_path, "static")
-    if (os.environ.get("FLASK_ENV") or "").lower() == "production":
-        return "/var/data"
     return os.path.join("app", "static")
 
 
+def persistent_data_root() -> str:
+    """
+    Durable root (e.g. /var/data). Uploads live under ``{root}/uploads/...``.
+
+    If the configured path is not writable (common when Render sets
+    TRADEVERSE_DATA_DIR=/var/data without mounting a disk), fall back to
+    ``app/static`` so the process still boots and accepts uploads.
+    """
+    candidates: List[str] = []
+    env = _env_data_dir()
+    if env:
+        candidates.append(env)
+    if has_app_context():
+        cfg = current_app.config.get("TRADEVERSE_DATA_DIR")
+        if cfg:
+            candidates.append(str(cfg).rstrip("/"))
+    candidates.append(_static_fallback_root())
+    candidates.append("/tmp/tradeverse_data")
+
+    seen = set()
+    for root in candidates:
+        if not root or root in seen:
+            continue
+        seen.add(root)
+        if _is_writable_dir(root):
+            return root
+    return candidates[0] if candidates else _static_fallback_root()
+
+
 def ensure_upload_dirs() -> dict:
-    """Create avatar + screenshot + replay + playbook dirs; return resolved paths."""
+    """Create avatar + screenshot + replay + playbook + ohlc dirs; return resolved paths."""
     root = persistent_data_root()
     # root is either /var/data or .../static → uploads always under root/uploads
     base_uploads = os.path.join(root, "uploads")
@@ -49,7 +79,8 @@ def ensure_upload_dirs() -> dict:
     shots = os.path.join(base_uploads, "trade_screenshots")
     replay = os.path.join(base_uploads, "replay")
     playbook = os.path.join(base_uploads, "playbook")
-    for path in (base_uploads, avatars, shots, replay, playbook):
+    ohlc = os.path.join(base_uploads, "ohlc_cache")
+    for path in (base_uploads, avatars, shots, replay, playbook, ohlc):
         try:
             os.makedirs(path, exist_ok=True)
         except OSError:
@@ -61,6 +92,7 @@ def ensure_upload_dirs() -> dict:
         "trade_screenshots": shots,
         "replay": replay,
         "playbook": playbook,
+        "ohlc_cache": ohlc,
     }
 
 
