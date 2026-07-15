@@ -44,7 +44,7 @@
                     </div>
                     {% endif %}
 
-                    <div class="fw-semibold mb-2">Entry criteria</div>
+                    <div class="fw-semibold mb-2">How the strategy works</div>
                     <div class="small text-muted" style="white-space:pre-wrap">{{ setup.entry_criteria or "—" }}</div>
 
                     <hr class="my-3">
@@ -56,6 +56,21 @@
 
                     <div class="fw-semibold mb-2">Management plan</div>
                     <div class="small text-muted" style="white-space:pre-wrap">{{ setup.management_plan or "—" }}</div>
+
+                    {% set imgs = setup.example_image_list() %}
+                    {% if imgs %}
+                    <hr class="my-3">
+                    <div class="fw-semibold mb-2">Example charts</div>
+                    <div class="row g-2">
+                        {% for path in imgs %}
+                        <div class="col-6 col-md-4">
+                            <a href="{{ media_url(path) }}" target="_blank" rel="noopener">
+                                <img src="{{ media_url(path) }}" alt="Setup example" class="img-fluid rounded border" style="width:100%;max-height:180px;object-fit:cover;">
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -86,10 +101,13 @@
                 <div class="card-body">
                     <div class="fw-semibold mb-2">How to use this</div>
                     <ul class="small text-muted mb-0 ps-3">
-                        <li>Only trade this setup when the checklist is fully “yes”.</li>
-                        <li>Track execution mistakes in your post-trade notes.</li>
-                        <li>Refine rules weekly (don’t tweak mid-week).</li>
+                        <li>On <strong>Add Trade</strong>, select this setup before you enter.</li>
+                        <li>Only take the trade when every checklist item is “yes”.</li>
+                        <li>Review linked trades here to refine rules — don’t tweak mid-week.</li>
                     </ul>
+                    <a class="btn btn-sm btn-primary mt-3" href="{{ url_for('trade.add') }}?playbook_setup_id={{ setup.id }}">
+                        <i class="fas fa-plus"></i> Log a trade with this setup
+                    </a>
                 </div>
             </div>
 

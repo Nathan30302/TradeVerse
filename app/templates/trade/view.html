@@ -349,6 +349,18 @@
                     {% endif %}
                 </div>
                 <div>
+                    {% if playbook_setup %}
+                        <div class="mb-3">
+                            <div class="small text-muted mb-1">Setup used</div>
+                            <a href="{{ url_for('playbook.view', setup_id=playbook_setup.id) }}" class="fw-semibold">
+                                <i class="fas fa-book-open me-1"></i>{{ playbook_setup.name }}
+                            </a>
+                        </div>
+                    {% elif feature_playbook %}
+                        <div class="alert alert-secondary py-2 small mb-3">
+                            No playbook setup linked — tag the next trade to a setup so you stay on-system.
+                        </div>
+                    {% endif %}
                     {% if trade.playbook_followed %}
                         <div class="alert alert-success mb-0">
                             <i class="fas fa-check-circle"></i> Playbook followed

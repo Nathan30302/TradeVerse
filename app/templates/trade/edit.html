@@ -173,16 +173,28 @@
                         </div>
 
                         {% if feature_playbook %}
-                        <div class="col-md-3">
-                            <label for="playbook_setup_id" class="form-label fw-bold">Playbook setup</label>
-                            <select class="form-select" id="playbook_setup_id" name="playbook_setup_id">
-                                <option value="">None</option>
-                                {% for s in (playbook_setups or []) %}
-                                    <option value="{{ s.id }}" {% if trade.playbook_setup_id == s.id %}selected{% endif %}>
-                                        {{ s.name }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                        <div class="col-12">
+                            <div class="border rounded-3 p-3 bg-body-secondary bg-opacity-25">
+                                <label for="playbook_setup_id" class="form-label fw-bold"><i class="fas fa-book-open me-1"></i> Playbook setup</label>
+                                <p class="small text-muted">Select the strategy you followed for this trade.</p>
+                                <select class="form-select mb-2" id="playbook_setup_id" name="playbook_setup_id">
+                                    <option value="">Off-playbook (not following a saved setup)</option>
+                                    {% for s in (playbook_setups or []) %}
+                                        <option value="{{ s.id }}"
+                                                data-checklist="{{ s.checklist_text|e }}"
+                                                {% if trade.playbook_setup_id == s.id %}selected{% endif %}>
+                                            {{ s.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="playbook_followed"
+                                           name="playbook_followed" {% if trade.playbook_followed %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold" for="playbook_followed">
+                                        I followed this setup’s rules
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -247,26 +259,12 @@
                     <h5 class="mb-0"><i class="fas fa-clipboard-check"></i> Compliance</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="checklist_completed" 
-                                       name="checklist_completed" {% if trade.checklist_completed %}checked{% endif %}>
-                                <label class="form-check-label fw-bold" for="checklist_completed">
-                                    ✅ Pre-trade checklist completed
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="playbook_followed" 
-                                       name="playbook_followed" {% if trade.playbook_followed %}checked{% endif %}>
-                                <label class="form-check-label fw-bold" for="playbook_followed">
-                                    📖 Playbook rules followed
-                                </label>
-                            </div>
-                        </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="checklist_completed"
+                               name="checklist_completed" {% if trade.checklist_completed %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="checklist_completed">
+                            Pre-trade checklist completed
+                        </label>
                     </div>
                 </div>
             </div>

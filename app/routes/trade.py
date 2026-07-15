@@ -497,6 +497,13 @@ def add():
         else:
             flash('No previous trade to duplicate yet.', 'info')
 
+    if request.method == 'GET':
+        q_pb = (request.args.get('playbook_setup_id') or '').strip()
+        if q_pb:
+            if not prefill:
+                prefill = {}
+            prefill['playbook_setup_id'] = q_pb
+
     return render_template(
         'trade/add.html',
         active_cooldown=active_cooldown,
@@ -792,6 +799,16 @@ def view(trade_id):
             feedbacks = TradeFeedback.query.filter_by(trade_id=trade.id).order_by(TradeFeedback.feedback_type).all()
         except Exception as e:
             current_app.logger.error(f"Error fetching feedback for trade {trade_id}: {e}")
+
+        playbook_setup = None
+        try:
+            pb_id = getattr(trade, 'playbook_setup_id', None)
+            if pb_id and current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready'):
+                playbook_setup = PlaybookSetup.query.filter_by(
+                    id=pb_id, user_id=current_user.id
+                ).first()
+        except Exception:
+            current_app.logger.debug('playbook setup load skipped', exc_info=True)
         
         return render_template(
             'trade/view.html',
@@ -799,6 +816,7 @@ def view(trade_id):
             mistakes=mistakes,
             feedbacks=feedbacks,
             linked_plans=linked_plans,
+            playbook_setup=playbook_setup,
         )
 
     except HTTPException:

@@ -56,6 +56,7 @@ def render_pricing_page():
             'description': 'Journal trades with core dashboard stats',
             'features': [
                 'Trading journal & trade history',
+                'Playbook setups (rules, checklists, example charts)',
                 'Dashboard overview & core statistics',
                 'Basic analytics views',
             ],

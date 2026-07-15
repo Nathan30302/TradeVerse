@@ -55,7 +55,7 @@ def create_app(config_name='default'):
     if upload_folder:
         try:
             os.makedirs(upload_folder, exist_ok=True)
-            for key in ('AVATARS_FOLDER', 'TRADE_SCREENSHOTS_FOLDER', 'REPLAY_UPLOADS_FOLDER'):
+            for key in ('AVATARS_FOLDER', 'TRADE_SCREENSHOTS_FOLDER', 'REPLAY_UPLOADS_FOLDER', 'PLAYBOOK_IMAGES_FOLDER'):
                 path = app.config.get(key)
                 if path:
                     os.makedirs(path, exist_ok=True)

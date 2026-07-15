@@ -7,22 +7,22 @@
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
             <h1 class="h4 mb-1">New playbook setup</h1>
-            <div class="text-muted small">Write it like a checklist a robot could follow.</div>
+            <div class="text-muted small">Define one strategy you will follow — then pick it every time you trade it.</div>
         </div>
         <a class="btn btn-outline-secondary" href="{{ url_for('playbook.index') }}">Back</a>
     </div>
 
     <div class="card tv-surface">
         <div class="card-body">
-            <form method="POST" action="{{ url_for('playbook.new') }}">
+            <form method="POST" action="{{ url_for('playbook.new') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% include "playbook/_form.html" %}
                 <div class="d-flex justify-content-end gap-2 mt-3">
                     <a class="btn btn-secondary" href="{{ url_for('playbook.index') }}">Cancel</a>
-                    <button class="btn btn-primary" type="submit"><i class="fas fa-save"></i> Save</button>
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-save"></i> Save playbook</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 {% endblock %}
-

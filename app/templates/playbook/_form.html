@@ -1,8 +1,8 @@
 <div class="row g-3">
     <div class="col-12">
         <div class="alert alert-secondary small mb-0">
-            <strong>Structure:</strong> Name the setup → market/symbol/timeframe → entry (objective) → invalidation → management → checklist.
-            Tag concepts like <code>fvg</code>, <code>sweep</code>, <code>bos</code> so Strategy Lab can match your journal.
+            <strong>How to use Playbook:</strong> write the rules for one setup, add chart examples that show what “good” looks like,
+            then <strong>select this setup every time you take the trade</strong> so you follow your system—not impulse.
         </div>
     </div>
     <div class="col-12">
@@ -23,8 +23,8 @@
     </div>
 
     <div class="col-12">
-        <label class="form-label">Entry criteria</label>
-        <textarea class="form-control" name="entry_criteria" rows="4" placeholder="What must be true to enter? Keep it objective (sweep → displacement/FVG → retest).">{{ (setup.entry_criteria if setup else '')|e }}</textarea>
+        <label class="form-label">How the strategy works (entry criteria)</label>
+        <textarea class="form-control" name="entry_criteria" rows="4" placeholder="Describe the setup in plain steps: what must be true before you enter.">{{ (setup.entry_criteria if setup else '')|e }}</textarea>
     </div>
     <div class="col-12">
         <label class="form-label">Invalidation (where you are wrong)</label>
@@ -38,17 +38,39 @@
     <div class="col-12">
         <label class="form-label">Checklist (one per line)</label>
         <textarea class="form-control" name="checklist_text" rows="6" placeholder="HTF bias clear&#10;Liquidity sweep occurred&#10;FVG / zone present&#10;SL beyond invalidation&#10;No news risk">{{ (setup.checklist_text if setup else '')|e }}</textarea>
+        <div class="form-text">You’ll see this checklist when you select this setup on Add Trade.</div>
+    </div>
+
+    <div class="col-12">
+        <label class="form-label">Example charts / screenshots</label>
+        <input class="form-control" type="file" name="example_images" accept="image/png,image/jpeg,image/gif,image/webp" multiple>
+        <div class="form-text">Up to 6 images (PNG/JPG/WebP, max 5&nbsp;MB each). Show what a valid setup looks like.</div>
+        {% if setup and setup.example_image_list() %}
+        <div class="row g-2 mt-2">
+            {% for path in setup.example_image_list() %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="border rounded p-1 h-100">
+                    <img src="{{ media_url(path) }}" alt="Example" class="img-fluid rounded" style="max-height:140px;width:100%;object-fit:cover;">
+                    <div class="form-check mt-1">
+                        <input class="form-check-input" type="checkbox" name="remove_image" value="{{ path|e }}" id="rm_img_{{ loop.index }}">
+                        <label class="form-check-label small text-muted" for="rm_img_{{ loop.index }}">Remove</label>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     <div class="col-12 col-md-8">
         <label class="form-label">Tags</label>
         <input class="form-control" name="tags" value="{{ (setup.tags if setup else '')|e }}" placeholder="fvg, sweep, london, a+">
-        <div class="form-text">Comma-separated. Useful for Strategy Lab + filtering later.</div>
+        <div class="form-text">Comma-separated labels for your own filtering.</div>
     </div>
     <div class="col-12 col-md-4 d-flex align-items-end">
         <div class="form-check">
             <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if setup is none or setup.is_active %}checked{% endif %}>
-            <label class="form-check-label" for="is_active">Active</label>
+            <label class="form-check-label" for="is_active">Active (show when logging trades)</label>
         </div>
     </div>
 </div>

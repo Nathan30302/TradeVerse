@@ -226,12 +226,51 @@
                         </div>
                     </div>
 
+                    {% if feature_playbook %}
+                    <div class="border rounded-3 p-3 mb-3 bg-body" id="tv-playbook-card">
+                        <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
+                            <div>
+                                <h6 class="mb-1 fw-bold"><i class="fas fa-book-open me-1"></i> Playbook setup</h6>
+                                <p class="small text-muted mb-0">Select the strategy you are following for this trade. Stay on-system — don’t trade blind.</p>
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('playbook.new') }}">Add setup</a>
+                        </div>
+                        {% if playbook_setups %}
+                        <label for="playbook_setup_id" class="form-label small fw-semibold">Which setup are you trading?</label>
+                        <select class="form-select mb-2" id="playbook_setup_id" name="playbook_setup_id">
+                            <option value="">Off-playbook (not following a saved setup)</option>
+                            {% for s in playbook_setups %}
+                            <option value="{{ s.id }}"
+                                    data-checklist="{{ s.checklist_text|tojson }}"
+                                    data-entry="{{ (s.entry_criteria or '')|tojson }}"
+                                    {% if prefill and prefill.get('playbook_setup_id')|string == s.id|string %}selected{% endif %}>
+                                {{ s.name }}{% if s.timeframe %} · {{ s.timeframe }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div id="tv-playbook-preview" class="small d-none">
+                            <div class="fw-semibold mb-1">Checklist before entry</div>
+                            <ul id="tv-playbook-checklist" class="mb-2 ps-3"></ul>
+                            <div id="tv-playbook-entry" class="text-muted" style="white-space:pre-wrap"></div>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="playbook_followed" name="playbook_followed">
+                            <label class="form-check-label small" for="playbook_followed">I followed this setup’s rules (checklist was yes)</label>
+                        </div>
+                        {% else %}
+                        <p class="small text-muted mb-2">You don’t have an active playbook yet. Create one so you can tag trades to a defined strategy.</p>
+                        <a class="btn btn-sm btn-primary" href="{{ url_for('playbook.new') }}"><i class="fas fa-plus"></i> Create playbook setup</a>
+                        <input type="hidden" name="playbook_setup_id" value="">
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
                     <div class="mt-4 pt-3 border-top border-secondary-subtle" id="tvMoreFields">
                         <div class="tv-more-section">
                             <h6 class="text-muted text-uppercase small fw-bold mb-2">Strategy &amp; session</h6>
                             <p class="small text-muted mb-3">Strategy and pre-trade plan are required before you can save. Post-trade notes are required when you mark the trade as <strong>Closed</strong>.</p>
                             <div class="row g-3 mb-4">
-                                <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
+                                <div class="col-md-4">
                                     <label for="strategy" class="form-label small fw-semibold">Strategy <span class="text-danger">*</span></label>
                                     <select class="form-select" id="strategy" name="strategy" required>
                                         <option value="" selected disabled>Select strategy…</option>
@@ -240,7 +279,7 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
+                                <div class="col-md-4">
                                     <label for="session_type" class="form-label small fw-semibold">Session</label>
                                     <select class="form-select" id="session_type" name="session_type">
                                         <option value="">Optional</option>
@@ -249,7 +288,7 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-{% if feature_playbook %}3{% else %}4{% endif %}">
+                                <div class="col-md-4">
                                     <label for="timeframe" class="form-label small fw-semibold">Timeframe</label>
                                     <select class="form-select" id="timeframe" name="timeframe">
                                         <option value="">Optional</option>
@@ -263,17 +302,6 @@
                                         <option value="1W">1W</option>
                                     </select>
                                 </div>
-                                {% if feature_playbook %}
-                                <div class="col-md-3">
-                                    <label for="playbook_setup_id" class="form-label small fw-semibold">Playbook setup</label>
-                                    <select class="form-select" id="playbook_setup_id" name="playbook_setup_id">
-                                        <option value="">None</option>
-                                        {% for s in (playbook_setups or []) %}
-                                            <option value="{{ s.id }}">{{ s.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                {% endif %}
                             </div>
                             <h6 class="text-muted text-uppercase small fw-bold mb-3">Psychology</h6>
                             <div class="row g-3 mb-4">
@@ -318,12 +346,6 @@
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="checklist_completed" name="checklist_completed">
                                         <label class="form-check-label small" for="checklist_completed">Pre-trade checklist done</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="playbook_followed" name="playbook_followed" checked>
-                                        <label class="form-check-label small" for="playbook_followed">Followed playbook rules</label>
                                     </div>
                                 </div>
                             </div>
@@ -632,6 +654,8 @@ document.addEventListener('DOMContentLoaded', function () {
         setVal('strategy', d.strategy);
         setVal('session_type', d.session_type);
         setVal('timeframe', d.timeframe);
+        setVal('playbook_setup_id', d.playbook_setup_id);
+        setChecked('playbook_followed', d.playbook_followed);
         setVal('pre_trade_plan', d.pre_trade_plan);
         setVal('post_trade_notes', d.post_trade_notes);
         setVal('entry_date', d.entry_date);
@@ -767,19 +791,57 @@ function calculateRR() {
       if (chkDone) chkDone.dispatchEvent(new Event('change', { bubbles: true }));
       if (chkPb) chkPb.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    if (cbBoth && chkDone && chkPb) {
+    if (cbBoth && chkDone) {
       cbBoth.addEventListener('click', function () {
         chkDone.checked = true;
-        chkPb.checked = true;
+        if (chkPb) chkPb.checked = true;
         bumpCompliance();
       });
     }
-    if (cbClear && chkDone && chkPb) {
+    if (cbClear && chkDone) {
       cbClear.addEventListener('click', function () {
         chkDone.checked = false;
-        chkPb.checked = false;
+        if (chkPb) chkPb.checked = false;
         bumpCompliance();
       });
+    }
+
+    // Playbook setup preview (checklist + entry rules)
+    var pbSelect = document.getElementById('playbook_setup_id');
+    var pbPreview = document.getElementById('tv-playbook-preview');
+    var pbList = document.getElementById('tv-playbook-checklist');
+    var pbEntry = document.getElementById('tv-playbook-entry');
+    function refreshPlaybookPreview() {
+      if (!pbSelect || !pbPreview) return;
+      var opt = pbSelect.options[pbSelect.selectedIndex];
+      var has = !!(opt && opt.value);
+      if (!has) {
+        pbPreview.classList.add('d-none');
+        if (pbList) pbList.innerHTML = '';
+        if (pbEntry) pbEntry.textContent = '';
+        return;
+      }
+      var checklistRaw = opt.getAttribute('data-checklist') || '""';
+      var entryRaw = opt.getAttribute('data-entry') || '""';
+      var checklistText = '';
+      var entryText = '';
+      try { checklistText = JSON.parse(checklistRaw) || ''; } catch (e) { checklistText = checklistRaw; }
+      try { entryText = JSON.parse(entryRaw) || ''; } catch (e) { entryText = entryRaw; }
+      var checklist = String(checklistText).split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (pbList) {
+        pbList.innerHTML = '';
+        checklist.forEach(function (item) {
+          var li = document.createElement('li');
+          li.textContent = item;
+          pbList.appendChild(li);
+        });
+      }
+      if (pbEntry) pbEntry.textContent = entryText;
+      pbPreview.classList.toggle('d-none', checklist.length === 0 && !String(entryText).trim());
+    }
+    if (pbSelect) {
+      pbSelect.addEventListener('change', refreshPlaybookPreview);
+      refreshPlaybookPreview();
     }
 
     var instErr = document.getElementById('tv-instrument-err');

@@ -11,7 +11,8 @@ python -m flask db upgrade || echo "[render-start] flask db upgrade exited non-z
 DATA_DIR="${TRADEVERSE_DATA_DIR:-/var/data}"
 mkdir -p "${DATA_DIR}/uploads/avatars" \
          "${DATA_DIR}/uploads/trade_screenshots" \
-         "${DATA_DIR}/uploads/replay" || true
+         "${DATA_DIR}/uploads/replay" \
+         "${DATA_DIR}/uploads/playbook" || true
 
 # One-time Pro Plus promo grant for existing users (marker file on persistent disk)
 if [[ "${TV_GRANT_PROMO_ON_START:-0}" =~ ^(1|true|yes|on)$ ]]; then

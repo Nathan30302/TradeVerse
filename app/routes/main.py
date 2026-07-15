@@ -167,6 +167,27 @@ def avatar_file(filename):
     return send_from_directory(folder, name)
 
 
+@bp.route('/playbook-image/<path:stored>')
+@login_required
+def playbook_image_file(stored):
+    """Serve playbook example images from persistent storage."""
+    from app.services.uploads_storage import resolve_playbook_file
+
+    rel = (stored or '').replace('\\', '/').strip()
+    prefix = 'uploads/playbook/'
+    if not rel.startswith(prefix):
+        abort(404)
+    fname = rel[len(prefix) :].strip()
+    if not fname or '..' in fname or fname.startswith('/'):
+        abort(404)
+
+    found = resolve_playbook_file(fname)
+    if not found:
+        abort(404)
+    folder, name = found
+    return send_from_directory(folder, name)
+
+
 @bp.route('/planner-screenshot/<path:stored>')
 @login_required
 def planner_screenshot_file(stored):

@@ -41,14 +41,15 @@ def persistent_data_root() -> str:
 
 
 def ensure_upload_dirs() -> dict:
-    """Create avatar + screenshot + replay dirs; return resolved paths."""
+    """Create avatar + screenshot + replay + playbook dirs; return resolved paths."""
     root = persistent_data_root()
     # root is either /var/data or .../static → uploads always under root/uploads
     base_uploads = os.path.join(root, "uploads")
     avatars = os.path.join(base_uploads, "avatars")
     shots = os.path.join(base_uploads, "trade_screenshots")
     replay = os.path.join(base_uploads, "replay")
-    for path in (base_uploads, avatars, shots, replay):
+    playbook = os.path.join(base_uploads, "playbook")
+    for path in (base_uploads, avatars, shots, replay, playbook):
         try:
             os.makedirs(path, exist_ok=True)
         except OSError:
@@ -59,6 +60,7 @@ def ensure_upload_dirs() -> dict:
         "avatars": avatars,
         "trade_screenshots": shots,
         "replay": replay,
+        "playbook": playbook,
     }
 
 
@@ -98,6 +100,18 @@ def replay_dir() -> str:
     return ensure_upload_dirs()["replay"]
 
 
+def playbook_images_dir() -> str:
+    if has_app_context():
+        cfg = current_app.config.get("PLAYBOOK_IMAGES_FOLDER")
+        if cfg:
+            try:
+                os.makedirs(cfg, exist_ok=True)
+            except OSError:
+                pass
+            return str(cfg)
+    return ensure_upload_dirs()["playbook"]
+
+
 def _legacy_avatar_dirs() -> List[str]:
     dirs: List[str] = []
     if has_app_context():
@@ -111,6 +125,14 @@ def _legacy_screenshot_dirs() -> List[str]:
     if has_app_context():
         dirs.append(os.path.join(current_app.root_path, "static", "uploads", "trade_screenshots"))
     dirs.append("/tmp/uploads/trade_screenshots")
+    return dirs
+
+
+def _legacy_playbook_dirs() -> List[str]:
+    dirs: List[str] = []
+    if has_app_context():
+        dirs.append(os.path.join(current_app.root_path, "static", "uploads", "playbook"))
+    dirs.append("/tmp/uploads/playbook")
     return dirs
 
 
@@ -147,6 +169,22 @@ def resolve_screenshot_file(filename: str) -> Optional[Tuple[str, str]]:
     return None
 
 
+def resolve_playbook_file(filename: str) -> Optional[Tuple[str, str]]:
+    name = os.path.basename((filename or "").strip())
+    if not name or ".." in name:
+        return None
+    candidates = [playbook_images_dir(), *_legacy_playbook_dirs()]
+    seen = set()
+    for folder in candidates:
+        if not folder or folder in seen:
+            continue
+        seen.add(folder)
+        full = os.path.join(folder, name)
+        if os.path.isfile(full):
+            return folder, name
+    return None
+
+
 def media_url(stored_path: Optional[str], *, default_static: str = "img/default-avatar.svg") -> str:
     """Public URL for DB paths like uploads/avatars/x.png or uploads/trade_screenshots/y.jpg."""
     if not stored_path:
@@ -168,10 +206,14 @@ def media_url(stored_path: Optional[str], *, default_static: str = "img/default-
             return url_for("main.avatar_file", filename=fname)
         if s.startswith("uploads/trade_screenshots/"):
             return url_for("main.planner_screenshot_file", stored=s)
+        if s.startswith("uploads/playbook/"):
+            return url_for("main.playbook_image_file", stored=s)
         return url_for("static", filename=s)
     except Exception:
         if s.startswith("uploads/avatars/"):
             return f"/avatar/{s.split('/', 2)[-1]}"
         if s.startswith("uploads/trade_screenshots/"):
             return f"/planner-screenshot/{s}"
+        if s.startswith("uploads/playbook/"):
+            return f"/playbook-image/{s}"
         return f"/static/{s}"

@@ -86,6 +86,7 @@ class Config:
     TRADE_SCREENSHOTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'trade_screenshots')
     AVATARS_FOLDER = os.path.join(UPLOAD_FOLDER, 'avatars')
     REPLAY_UPLOADS_FOLDER = os.path.join(UPLOAD_FOLDER, 'replay')
+    PLAYBOOK_IMAGES_FOLDER = os.path.join(UPLOAD_FOLDER, 'playbook')
     # Screenshots use png/jpg/webp/heic; pdf kept for other uploads (e.g. statements).
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'pdf'}
     
@@ -413,12 +414,14 @@ class ProductionConfig(Config):
     TRADE_SCREENSHOTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'trade_screenshots')
     AVATARS_FOLDER = os.path.join(UPLOAD_FOLDER, 'avatars')
     REPLAY_UPLOADS_FOLDER = os.path.join(UPLOAD_FOLDER, 'replay')
+    PLAYBOOK_IMAGES_FOLDER = os.path.join(UPLOAD_FOLDER, 'playbook')
 
     try:
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         os.makedirs(TRADE_SCREENSHOTS_FOLDER, exist_ok=True)
         os.makedirs(AVATARS_FOLDER, exist_ok=True)
         os.makedirs(REPLAY_UPLOADS_FOLDER, exist_ok=True)
+        os.makedirs(PLAYBOOK_IMAGES_FOLDER, exist_ok=True)
     except Exception:
         pass
 
