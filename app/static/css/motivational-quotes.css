@@ -1,7 +1,7 @@
 /* Premium auto-rotating motivational quote widget */
 .tv-quote-widget {
   --tv-quote-radius: 16px;
-  --tv-quote-fill: linear-gradient(90deg, #818cf8 0%, #6366f1 45%, #a78bfa 100%);
+  --tv-quote-fill: linear-gradient(90deg, #0d9488 0%, #14b8a6 45%, #2dd4bf 100%);
   position: relative;
 }
 
@@ -25,7 +25,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 12% 0%, rgba(99, 102, 241, 0.12), transparent 55%);
+  background: radial-gradient(ellipse 80% 60% at 12% 0%, rgba(20, 184, 166, 0.14), transparent 55%);
   pointer-events: none;
 }
 
@@ -37,7 +37,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
   color: #fff;
   font-size: 0.95rem;
   box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);

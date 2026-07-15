@@ -1,27 +1,27 @@
-/* Light theme variables */
+/* Light theme — cool ink + teal accent */
 :root {
-  --primary: #6366f1;
-  --secondary: #8b5cf6;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --info: #3b82f6;
+  --primary: #0f766e;
+  --secondary: #c2410c;
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --info: #0e7490;
 
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
+  --text-primary: #0c1b2a;
+  --text-secondary: #5b6b7c;
+  --bg-primary: #f4f7f6;
+  --bg-secondary: #e8efec;
   --card-bg: #ffffff;
-  --card-border: #e2e8f0;
+  --card-border: #d7e0dc;
   --form-bg: #ffffff;
-  --form-border: #cbd5e1;
-  --form-text: #0f172a;
+  --form-border: #c5d0cb;
+  --form-text: #0c1b2a;
   --form-label: #475569;
-  --table-hover: #f1f5f9;
+  --table-hover: #eef4f1;
   --tab-text: #64748b;
-  --tab-active: #6366f1;
-  --tab-border: #e2e8f0;
-  --sidebar-bg: #0f172a;
-  --sidebar-hover: #1e293b;
+  --tab-active: #0f766e;
+  --tab-border: #d7e0dc;
+  --sidebar-bg: #0c1b2a;
+  --sidebar-hover: #152536;
   --sidebar-text: #ffffff;
 }

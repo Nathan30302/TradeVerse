@@ -8,36 +8,40 @@
 
 {% block content %}
 
-{# ------------------------------------------------------------------ #}
-{# Resolve all template variables safely before rendering             #}
-{# ------------------------------------------------------------------ #}
 {% set ai_setups     = (ai_summary.get('setups')          if ai_summary else {}) or {} %}
 {% set ai_best_strat = ai_setups.get('best_strategy') if ai_setups else none %}
 {% set ai_weaknesses = (ai_summary.get('weaknesses')      if ai_summary else []) or [] %}
 {% set ai_recs       = (ai_summary.get('recommendations') if ai_summary else []) or [] %}
 {% set ai_text       = (ai_summary.get('summary')         if ai_summary else '') or 'Log trades to unlock AI Buddy insights.' %}
 {% set pinned = pinned_note %}
+{% set uname = (current_user.username or 'trader') %}
 
-{# ------------------------------------------------------------------ #}
-{# Page Header                                                         #}
-{# ------------------------------------------------------------------ #}
-<div class="tv-page-hero">
+{# Hero — brand + one job #}
+<div class="tv-page-hero tv-reveal">
     <div class="page-header">
         <div class="row align-items-center">
             <div class="col">
+                <div class="tv-section-kicker">TradeVerse</div>
                 <h1 class="page-title mb-2">
-                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                    Welcome back, {{ uname }}
                 </h1>
                 <p class="page-subtitle mb-0">
-                    Build your edge: keep a tight playbook, trade your best setups, and review weekly.
-                    {% if feature_playbook %}
-                    <a class="ms-1" href="{{ url_for('playbook.index') }}">Open Playbook →</a>
-                    {% endif %}
+                    Plan → log → review. Protect your edge, one disciplined session at a time.
                 </p>
+                <div class="tv-workflow d-none d-md-grid">
+                    <a class="tv-workflow-step" href="{{ url_for('planner.new_plan') }}"><span class="n">1</span> Plan</a>
+                    <a class="tv-workflow-step" href="{{ url_for('trade.add') }}"><span class="n">2</span> Log</a>
+                    <a class="tv-workflow-step" href="{{ url_for('dashboard.eod_ritual') }}"><span class="n">3</span> Review</a>
+                    {% if feature_playbook %}
+                    <a class="tv-workflow-step" href="{{ url_for('playbook.index') }}"><span class="n">4</span> Playbook</a>
+                    {% else %}
+                    <a class="tv-workflow-step" href="{{ url_for('dashboard.weekly_review') }}"><span class="n">4</span> Focus</a>
+                    {% endif %}
+                </div>
             </div>
             <div class="col-auto">
-                <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg shadow-sm" aria-label="Add a new trade">
-                    <i class="fas fa-plus-circle"></i> Add Trade
+                <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg" aria-label="Add a new trade">
+                    <i class="fas fa-plus me-1"></i> Add Trade
                 </a>
             </div>
         </div>
@@ -46,83 +50,59 @@
 
 {% include 'partials/insights_next_action.html' %}
 
-{# ------------------------------------------------------------------ #}
-{# Rotating insight — always at the top so it’s easy to notice         #}
-{# ------------------------------------------------------------------ #}
 {% if stats.total_trades == 0 %}
-<div class="card border-0 mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-    <div class="card-body p-4">
-        <h4 class="mb-3"><i class="fas fa-rocket"></i> Welcome to TradeVerse!</h4>
-        <p class="mb-3">Get started with your trading journal in 3 easy steps:</p>
-        <div class="row text-center">
-            <div class="col-md-4 mb-3 mb-md-0">
-                <div class="bg-white bg-opacity-10 rounded p-3">
-                    <div class="h2 mb-2">1</div>
-                    <strong>Plan Your Trade</strong>
-                    <p class="small mb-0 opacity-75">Use the Trade Planner to set your entry, SL, and TP</p>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3 mb-md-0">
-                <div class="bg-white bg-opacity-10 rounded p-3">
-                    <div class="h2 mb-2">2</div>
-                    <strong>Log Your Trade</strong>
-                    <p class="small mb-0 opacity-75">Record what actually happened</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="bg-white bg-opacity-10 rounded p-3">
-                    <div class="h2 mb-2">3</div>
-                    <strong>Review &amp; Improve</strong>
-                    <p class="small mb-0 opacity-75">Learn from your patterns</p>
-                </div>
-            </div>
+<div class="tv-welcome tv-reveal tv-reveal-2">
+    <h2 class="h3 mb-2">Start your journal in three moves</h2>
+    <p class="tv-muted mb-0">Everything in TradeVerse points here: plan the trade, log what happened, review what you learned.</p>
+    <div class="tv-welcome-steps">
+        <div>
+            <div class="n">1</div>
+            <strong>Plan</strong>
+            <p class="small tv-muted mb-0 mt-1">Entry, stop, and target before you click.</p>
         </div>
-        <div class="text-center mt-4 d-flex flex-wrap justify-content-center gap-2">
-            <a href="{{ url_for('dashboard.getting_started') }}" class="btn btn-light btn-lg">
-                <i class="fas fa-route"></i> Guided setup
-            </a>
-            <a href="{{ url_for('planner.new_plan') }}" class="btn btn-outline-light btn-lg">
-                <i class="fas fa-clipboard-list"></i> Create plan
-            </a>
-            <a href="{{ url_for('trade.add') }}" class="btn btn-outline-light btn-lg">
-                <i class="fas fa-plus"></i> Log a trade
-            </a>
-            <a href="{{ url_for('imports.import_page') }}" class="btn btn-outline-light btn-lg">
-                <i class="fas fa-file-import"></i> Import
-            </a>
+        <div>
+            <div class="n">2</div>
+            <strong>Log</strong>
+            <p class="small tv-muted mb-0 mt-1">Capture the real fill — emotion included.</p>
         </div>
+        <div>
+            <div class="n">3</div>
+            <strong>Review</strong>
+            <p class="small tv-muted mb-0 mt-1">One lesson turns into next week’s rule.</p>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('dashboard.getting_started') }}" class="btn btn-primary">Guided setup</a>
+        <a href="{{ url_for('trade.add') }}" class="btn btn-outline-primary">Log a trade</a>
+        <a href="{{ url_for('imports.import_page') }}" class="btn btn-outline-secondary">Import history</a>
     </div>
 </div>
 {% else %}
+<div class="tv-reveal tv-reveal-2 mb-4">
 {% include 'partials/motivational_quote_card.html' %}
+</div>
 {% endif %}
 
 {% include 'partials/dashboard_trial_banner.html' %}
 
-{# ------------------------------------------------------------------ #}
-{# Daily loop — briefing, streak, review queue, weekly score          #}
-{# ------------------------------------------------------------------ #}
 {% include 'partials/dashboard_daily_loop.html' %}
 
-{# ------------------------------------------------------------------ #}
-{# Pinned coaching note (premium)                                     #}
-{# ------------------------------------------------------------------ #}
 {% if pinned %}
-<div class="card tv-surface mb-4" style="border-left: 4px solid #6366f1;">
+<div class="card tv-surface mb-4 tv-reveal" style="border-left: 4px solid var(--tv-accent-bright, #14b8a6);">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
-            <h5 class="mb-0"><i class="fas fa-thumbtack"></i> Saved coaching note</h5>
-            <div class="small opacity-75 mt-1">Your pinned rule + checklist.</div>
+            <div class="tv-section-kicker mb-0">Coach</div>
+            <h5 class="mb-0">Pinned rule</h5>
         </div>
-        <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-light">Open AI Buddy</a>
+        <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-secondary">AI Buddy</a>
     </div>
     <div class="card-body">
         <div class="fw-semibold mb-2">{{ pinned.pinned_rule }}</div>
         {% set items = pinned.checklist_items() %}
         {% if items %}
-        <div class="small text-muted mb-1">Checklist</div>
+        <div class="small tv-muted mb-1">Checklist</div>
         <ul class="mb-0 ps-3">
-            {% for it in items[:10] %}
+            {% for it in items[:8] %}
             <li class="small">{{ it }}</li>
             {% endfor %}
         </ul>
@@ -131,24 +111,15 @@
 </div>
 {% endif %}
 
-{# ------------------------------------------------------------------ #}
-{# Getting started checklist (hidden when complete)                   #}
-{# ------------------------------------------------------------------ #}
 {% set ob = onboarding if onboarding is defined else {} %}
 {% set done_count = (1 if ob.get('has_plan') else 0) + (1 if ob.get('has_trade') else 0) + (1 if ob.get('has_review') else 0) + (1 if ob.get('analytics_done') else 0) + (1 if ob.get('weekly_focus_set') else 0) %}
 {% if done_count < 5 %}
-<div class="tv-surface soft p-3 p-md-4 mb-4">
-    <div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-3">
-        <div>
-            <div class="tv-section-title mb-1"><i class="fas fa-route me-2 text-primary"></i>Getting started</div>
-            <div class="small tv-muted">Finish these steps to unlock the full TradeVerse workflow.</div>
-        </div>
-        <div class="text-md-end">
-            <span class="tv-chip">{{ done_count }}/5 complete</span>
-        </div>
-    </div>
+<details class="tv-metrics-more tv-reveal mb-4" {% if done_count < 2 %}open{% endif %}>
+    <summary>
+        Getting started · {{ done_count }}/5
+    </summary>
     <div class="progress mb-3" style="height:6px;border-radius:999px;">
-        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ (done_count / 5 * 100)|round(0) }}%;" aria-valuenow="{{ done_count }}" aria-valuemin="0" aria-valuemax="5"></div>
+        <div class="progress-bar" role="progressbar" style="width: {{ (done_count / 5 * 100)|round(0) }}%; background: linear-gradient(90deg,#0f766e,#14b8a6);" aria-valuenow="{{ done_count }}" aria-valuemin="0" aria-valuemax="5"></div>
     </div>
     <div class="row g-2 small">
         <div class="col-md-6 col-lg-4">
@@ -173,7 +144,7 @@
             {% else %}
                 <span class="tv-muted"><i class="far fa-circle me-1"></i>Review a closed trade</span>
                 {% if review_queue is defined and review_queue.get('first_trade_id') %}
-                <a class="d-block mt-1" href="{{ url_for('trade.view', trade_id=review_queue.first_trade_id, review=1) }}">Review next trade →</a>
+                <a class="d-block mt-1" href="{{ url_for('trade.view', trade_id=review_queue.first_trade_id, review=1) }}">Review next →</a>
                 {% else %}
                 <a class="d-block mt-1" href="{{ url_for('trade.list') }}">Open trades →</a>
                 {% endif %}
@@ -197,235 +168,215 @@
                     <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
                     <label class="visually-hidden" for="weekly_focus_dash">Weekly focus</label>
                     <div class="input-group input-group-sm">
-                        <input class="form-control" id="weekly_focus_dash" name="weekly_focus" maxlength="4000" placeholder="One rule for this week (e.g. only trade London open)" autocomplete="off">
+                        <input class="form-control" id="weekly_focus_dash" name="weekly_focus" maxlength="4000" placeholder="One rule for this week" autocomplete="off">
                         <button class="btn btn-primary" type="submit">Save</button>
                     </div>
                 </form>
             {% endif %}
         </div>
     </div>
-</div>
+</details>
 {% endif %}
 
-{# ------------------------------------------------------------------ #}
-{# Stats Cards                                                         #}
-{# ------------------------------------------------------------------ #}
-<div class="row g-4 mb-5">
-    <div class="col-md-3">
-        <div class="stat-card tv-stat-kpi">
-            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-layer-group"></i></div>
-            <div class="tv-stat-kpi-body">
-            <div class="stat-label">Total trades</div>
-            <div class="stat-value">{{ stats.total_trades }}</div>
-            <div class="stat-change text-muted">
-                <i class="fas fa-clock-rotate-left me-1" aria-hidden="true"></i> All time
-            </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card success tv-stat-kpi">
-            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-percent"></i></div>
-            <div class="tv-stat-kpi-body">
-            <div class="stat-label">Win rate <span class="fw-normal opacity-75">· 7d</span></div>
-            <div class="stat-value" id="stat-winrate-7d">—</div>
-            <div class="stat-change text-success" id="stat-wl-7d">
-                <i class="fas fa-scale-balanced me-1" aria-hidden="true"></i> —
-            </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card tv-stat-kpi" id="stat-pnl-7d-card">
-            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-arrow-trend-up"></i></div>
-            <div class="tv-stat-kpi-body">
-            <div class="stat-label"><abbr class="tv-abbr-metric" title="Profit and loss — closed trades, last 7 days">P/L</abbr> <span class="fw-normal opacity-75">· 7d</span></div>
-            <div class="stat-value" id="stat-pnl-7d">—</div>
-            <div class="stat-change text-muted" id="stat-pnl-7d-sub">
-                <i class="fas fa-calendar-week me-1" aria-hidden="true"></i> Rolling week
-            </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card warning tv-stat-kpi">
-            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-scale-balanced"></i></div>
-            <div class="tv-stat-kpi-body">
-            <div class="stat-label"><abbr class="tv-abbr-metric" title="Average risk-to-reward (planned or realized)">Avg R:R</abbr> <span class="fw-normal opacity-75">· 7d</span></div>
-            <div class="stat-value" id="stat-avg-rr-7d">—</div>
-            <div class="stat-change text-warning">
-                <i class="fas fa-crosshairs me-1" aria-hidden="true"></i> Risk vs reward
-            </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{# ------------------------------------------------------------------ #}
-{# AI Buddy Pulse                                                      #}
-{# ------------------------------------------------------------------ #}
-<div class="row g-4 mb-4">
-    <div class="col-12">
-        <div class="card tv-surface">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="mb-0"><i class="fas fa-chalkboard-user"></i> AI Buddy Pulse</h5>
-                    <div class="small opacity-75 mt-1">One strength, one leak, one next action.</div>
-                </div>
-                <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-light">Open AI Buddy</a>
-            </div>
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-md-9">
-                        <p class="mb-2">{{ ai_text }}</p>
-                        {% if last_trade_insight %}
-                        <p class="small text-muted mb-3"><i class="fas fa-bolt text-warning me-1"></i>{{ last_trade_insight }}</p>
-                        {% endif %}
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <div class="small text-muted">Top Strength</div>
-                                <div class="fw-semibold">
-                                    {% if ai_best_strat and ai_best_strat is mapping %}
-                                        {{ ai_best_strat.get('name') or 'No clear leader yet' }}
-                                    {% else %}
-                                        No clear leader yet
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="small text-muted">Biggest Opportunity</div>
-                                <div class="fw-semibold">
-                                    {% if ai_weaknesses %}
-                                        {{ ai_weaknesses[0] }}
-                                    {% else %}
-                                        Keep up the discipline
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="small text-muted">Suggested Action</div>
-                                <div class="fw-semibold">
-                                    {% if ai_recs %}
-                                        {{ ai_recs[0] }}
-                                    {% else %}
-                                        Trade more with a clear plan
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 text-md-end">
-                        <span class="tv-chip"><i class="fas fa-wand-magic-sparkles"></i> Coach</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{# ------------------------------------------------------------------ #}
-{# Additional Stats                                                    #}
-{# ------------------------------------------------------------------ #}
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="stat-card info tv-stat-kpi">
-            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-door-open"></i></div>
-            <div class="tv-stat-kpi-body">
-            <div class="stat-label">Open positions</div>
-            <div class="stat-value">{{ stats.open_trades }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card success tv-stat-kpi">
-            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-arrow-trend-up"></i></div>
-            <div class="tv-stat-kpi-body">
-            <div class="stat-label">Avg winning trade</div>
-            <div class="stat-value profit">{{ stats.avg_win | currency(current_user.preferred_currency) }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card danger tv-stat-kpi">
-            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-arrow-trend-down"></i></div>
-            <div class="tv-stat-kpi-body">
-            <div class="stat-label">Avg losing trade</div>
-            <div class="stat-value loss">{{ stats.avg_loss | currency(current_user.preferred_currency) }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card warning tv-stat-kpi">
-            <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-chart-area"></i></div>
-            <div class="tv-stat-kpi-body">
-            <div class="stat-label">Max drawdown</div>
-            <div class="stat-value text-danger">{{ max_drawdown | currency(current_user.preferred_currency) }}</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{# ------------------------------------------------------------------ #}
-{# Current Streak                                                      #}
-{# ------------------------------------------------------------------ #}
-{% if streak and streak.count and streak.count > 0 %}
-<div class="alert {% if streak.type == 'win' %}alert-success{% else %}alert-danger{% endif %} border-0 mb-4">
-    <div class="d-flex align-items-center">
-        <i class="fas fa-fire fa-2x me-3"></i>
+{# Primary KPIs — last 7 days story #}
+<div class="tv-section tv-reveal tv-reveal-3">
+    <div class="d-flex align-items-end justify-content-between mb-3">
         <div>
-            <strong>Current Streak:</strong> {{ streak.count }} {{ streak.type }}s in a row!
+            <div class="tv-section-kicker">Pulse</div>
+            <div class="tv-section-title">This week at a glance</div>
+        </div>
+        <a class="small" href="{{ url_for('dashboard.analytics') }}">Analytics →</a>
+    </div>
+    <div class="row g-3 mb-2">
+        <div class="col-6 col-md-3">
+            <div class="stat-card tv-stat-kpi tv-lift">
+                <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-layer-group"></i></div>
+                <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Total trades</div>
+                    <div class="stat-value">{{ stats.total_trades }}</div>
+                    <div class="stat-change text-muted small">All time</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card success tv-stat-kpi tv-lift">
+                <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-percent"></i></div>
+                <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Win rate · 7d</div>
+                    <div class="stat-value" id="stat-winrate-7d">—</div>
+                    <div class="stat-change text-success small" id="stat-wl-7d">—</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card tv-stat-kpi tv-lift" id="stat-pnl-7d-card">
+                <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-arrow-trend-up"></i></div>
+                <div class="tv-stat-kpi-body">
+                    <div class="stat-label">P/L · 7d</div>
+                    <div class="stat-value" id="stat-pnl-7d">—</div>
+                    <div class="stat-change text-muted small">Rolling week</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card warning tv-stat-kpi tv-lift">
+                <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-scale-balanced"></i></div>
+                <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Avg R:R · 7d</div>
+                    <div class="stat-value" id="stat-avg-rr-7d">—</div>
+                    <div class="stat-change text-warning small">Risk vs reward</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<details class="tv-metrics-more">
+    <summary>More numbers · open, averages, drawdown</summary>
+    <div class="row g-3 pt-1">
+        <div class="col-6 col-md-3">
+            <div class="stat-card info tv-stat-kpi">
+                <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Open</div>
+                    <div class="stat-value">{{ stats.open_trades }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card success tv-stat-kpi">
+                <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Avg win</div>
+                    <div class="stat-value profit" style="font-size:1.35rem;">{{ stats.avg_win | currency(current_user.preferred_currency) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card danger tv-stat-kpi">
+                <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Avg loss</div>
+                    <div class="stat-value loss" style="font-size:1.35rem;">{{ stats.avg_loss | currency(current_user.preferred_currency) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card warning tv-stat-kpi">
+                <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Max drawdown</div>
+                    <div class="stat-value text-danger" style="font-size:1.35rem;">{{ max_drawdown | currency(current_user.preferred_currency) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</details>
+
+{# AI Buddy — strength / leak / action #}
+<div class="card tv-surface mb-4 tv-reveal tv-reveal-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <div class="tv-section-kicker mb-0">Coach</div>
+            <h5 class="mb-0">AI Buddy pulse</h5>
+            <div class="small tv-muted">One strength, one leak, one next move.</div>
+        </div>
+        <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-secondary">Open</a>
+    </div>
+    <div class="card-body">
+        <p class="mb-3" style="line-height:1.55;">{{ ai_text }}</p>
+        {% if last_trade_insight %}
+        <p class="small tv-muted mb-3"><i class="fas fa-bolt me-1" style="color:var(--warning);"></i>{{ last_trade_insight }}</p>
+        {% endif %}
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="tv-panel p-3 h-100">
+                    <div class="small tv-muted text-uppercase fw-semibold mb-1" style="font-size:0.68rem;letter-spacing:0.08em;">Strength</div>
+                    <div class="fw-semibold">
+                        {% if ai_best_strat and ai_best_strat is mapping %}
+                            {{ ai_best_strat.get('name') or 'Still forming' }}
+                        {% else %}
+                            Still forming
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="tv-panel p-3 h-100">
+                    <div class="small tv-muted text-uppercase fw-semibold mb-1" style="font-size:0.68rem;letter-spacing:0.08em;">Leak</div>
+                    <div class="fw-semibold">
+                        {% if ai_weaknesses %}{{ ai_weaknesses[0] }}{% else %}Keep the discipline{% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="tv-panel p-3 h-100">
+                    <div class="small tv-muted text-uppercase fw-semibold mb-1" style="font-size:0.68rem;letter-spacing:0.08em;">Do this</div>
+                    <div class="fw-semibold">
+                        {% if ai_recs %}{{ ai_recs[0] }}{% else %}Trade only with a clear plan{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if streak and streak.count and streak.count > 0 %}
+<div class="tv-streak {% if streak.type == 'win' %}win{% else %}loss{% endif %}">
+    <i class="fas fa-fire fa-lg" aria-hidden="true"></i>
+    <div>
+        <strong>{{ streak.count }} {{ streak.type }}{% if streak.count != 1 %}s{% endif %} in a row</strong>
+        <div class="small tv-muted mb-0">
             {% if streak.type == 'win' %}
-                Keep up the great work! &#128293;
+                Protect the streak — size down if emotion rises.
             {% else %}
-                Stay disciplined and follow your plan! &#128170;
+                Slow down. Follow the plan; one clean trade resets the tone.
             {% endif %}
         </div>
     </div>
 </div>
 {% endif %}
 
-{# ------------------------------------------------------------------ #}
-{# Charts                                                              #}
-{# ------------------------------------------------------------------ #}
-<div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-chart-line"></i> Equity Curve</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="equityChart" height="80"></canvas>
+{# Charts + journal #}
+<div class="tv-section">
+    <div class="mb-3">
+        <div class="tv-section-kicker">Performance</div>
+        <div class="tv-section-title">Equity &amp; results</div>
+    </div>
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card tv-surface h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Equity curve</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="equityChart" height="80"></canvas>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Win/Loss Distribution</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="winLossChart"></canvas>
+        <div class="col-lg-4">
+            <div class="card tv-surface h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Win / loss</h5>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <canvas id="winLossChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-{# ------------------------------------------------------------------ #}
-{# Recent Trades + Side Panel                                         #}
-{# ------------------------------------------------------------------ #}
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card tv-surface">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-history"></i> Recent Trades</h5>
-                <a href="{{ url_for('trade.list') }}" class="btn btn-sm btn-outline-light">
-                    View All <i class="fas fa-arrow-right"></i>
-                </a>
+                <div>
+                    <div class="tv-section-kicker mb-0">Journal</div>
+                    <h5 class="mb-0">Recent trades</h5>
+                </div>
+                <a href="{{ url_for('trade.list') }}" class="btn btn-sm btn-outline-secondary">View all</a>
             </div>
             <div class="card-body p-0">
                 {% if recent_trades %}
                     <div class="table-responsive-mobile">
-                        <div class="scroll-hint"><i class="fas fa-arrows-left-right"></i> Scroll to view</div>
+                        <div class="scroll-hint"><i class="fas fa-arrows-left-right"></i> Scroll</div>
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
@@ -455,10 +406,10 @@
                                     <td>
                                         {% if trade.profit_loss is not none %}
                                             <span class="{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-                                                {{ trade.get_result_emoji() }} {{ trade.profit_loss | currency(current_user.preferred_currency) }}
+                                                {{ trade.profit_loss | currency(current_user.preferred_currency) }}
                                             </span>
                                         {% else %}
-                                            <span class="text-muted">&mdash;</span>
+                                            <span class="tv-muted">&mdash;</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -472,110 +423,100 @@
                         </table>
                     </div>
                 {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">No trades yet</h5>
-                        <p class="text-muted">Start by adding your first trade!</p>
-                        <a href="{{ url_for('trade.add') }}" class="btn btn-primary">
-                            <i class="fas fa-plus-circle"></i> Add Trade
-                        </a>
+                    <div class="tv-empty-well m-3">
+                        <div class="tv-empty-icon"><i class="fas fa-book-open"></i></div>
+                        <h5 class="mb-2">No trades yet</h5>
+                        <p class="tv-muted mb-3">Your journal starts with one honest log.</p>
+                        <a href="{{ url_for('trade.add') }}" class="btn btn-primary">Add Trade</a>
                     </div>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <div class="col-md-4">
-
-        {# Mini Live Board #}
-        <div class="card mb-3" id="mini-live-board">
+    <div class="col-lg-4">
+        <div class="card tv-surface mb-3" id="mini-live-board">
             <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-broadcast-tower"></i> Market Snapshot</h6>
-                <small class="text-muted d-block mt-1">Your stats only — not a broker feed.</small>
+                <h6 class="mb-0">Snapshot</h6>
+                <small class="tv-muted d-block mt-1">Your journal stats — not a live broker feed.</small>
             </div>
             <div class="card-body">
-                <div class="d-flex flex-column gap-2">
+                <div class="d-flex flex-column gap-3">
                     <div>
-                        <div class="small text-muted">Today P/L</div>
-                        <div class="h4 mb-0" id="mini-pnl">{{ stats.total_pnl | default(0) }}</div>
+                        <div class="small tv-muted">All-time P/L</div>
+                        <div class="h4 mb-0 tv-display" id="mini-pnl">{{ stats.total_pnl | default(0) }}</div>
                     </div>
-                    <div>
-                        <div class="small text-muted">Win Rate</div>
-                        <div class="h5 mb-0" id="mini-win">{{ stats.win_rate | default(0) }}</div>
-                    </div>
-                    <div>
-                        <div class="small text-muted">Trades Today</div>
-                        <div class="h5 mb-0" id="mini-trades">{{ stats.trades_today | default(0) }}</div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="small tv-muted">Win rate</div>
+                            <div class="h5 mb-0" id="mini-win">{{ stats.win_rate | default(0) }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small tv-muted">Trades</div>
+                            <div class="h5 mb-0" id="mini-trades">{{ stats.total_trades | default(0) }}</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {# Best Trade #}
-        {% if best_trade %}
-        <div class="card mb-3">
+        {% if week_performance and week_performance.trades and week_performance.trades > 0 %}
+        <div class="card tv-surface mb-3">
             <div class="card-body">
-                <h6 class="text-success mb-3">
-                    <i class="fas fa-trophy"></i> Best Trade
-                </h6>
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="tv-section-kicker">7 days</div>
+                <h6 class="mb-3">This week</h6>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="small tv-muted">Trades</span>
+                    <strong>{{ week_performance.trades }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="small tv-muted">Win rate</span>
+                    <strong>{{ week_performance.win_rate | percentage(1) }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="small tv-muted">P/L</span>
+                    <strong class="{% if week_performance.pnl >= 0 %}profit{% else %}loss{% endif %}">
+                        {{ week_performance.pnl | currency(current_user.preferred_currency) }}
+                    </strong>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if best_trade %}
+        <div class="card tv-surface mb-3">
+            <div class="card-body">
+                <div class="small text-success fw-semibold mb-2"><i class="fas fa-trophy me-1"></i> Best trade</div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
                     <strong>{{ best_trade.symbol }}</strong>
                     <span class="badge bg-success">{{ best_trade.trade_type }}</span>
                 </div>
-                <div class="h4 profit mb-0">{{ best_trade.profit_loss | currency(current_user.preferred_currency) }}</div>
-                <small class="text-muted">{{ best_trade.entry_date | datetime('%B %d, %Y') }}</small>
+                <div class="h5 profit mb-0">{{ best_trade.profit_loss | currency(current_user.preferred_currency) }}</div>
+                <small class="tv-muted">{{ best_trade.entry_date | datetime('%B %d, %Y') }}</small>
             </div>
         </div>
         {% endif %}
 
-        {# Worst Trade #}
         {% if worst_trade %}
-        <div class="card mb-3">
+        <div class="card tv-surface mb-3">
             <div class="card-body">
-                <h6 class="text-danger mb-3">
-                    <i class="fas fa-exclamation-triangle"></i> Worst Trade
-                </h6>
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="small text-danger fw-semibold mb-2"><i class="fas fa-triangle-exclamation me-1"></i> Worst trade</div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
                     <strong>{{ worst_trade.symbol }}</strong>
                     <span class="badge bg-danger">{{ worst_trade.trade_type }}</span>
                 </div>
-                <div class="h4 loss mb-0">{{ worst_trade.profit_loss | currency(current_user.preferred_currency) }}</div>
-                <small class="text-muted">{{ worst_trade.entry_date | datetime('%B %d, %Y') }}</small>
+                <div class="h5 loss mb-0">{{ worst_trade.profit_loss | currency(current_user.preferred_currency) }}</div>
+                <small class="tv-muted">{{ worst_trade.entry_date | datetime('%B %d, %Y') }}</small>
             </div>
         </div>
         {% endif %}
-
-        {# This Week #}
-        {% if week_performance and week_performance.trades and week_performance.trades > 0 %}
-        <div class="card mt-3">
-            <div class="card-body">
-                <h6 class="mb-3"><i class="fas fa-calendar-week"></i> This Week</h6>
-                <div class="mb-2">
-                    <small class="text-muted">Total Trades</small>
-                    <div class="h5">{{ week_performance.trades }}</div>
-                </div>
-                <div class="mb-2">
-                    <small class="text-muted">Win Rate</small>
-                    <div class="h5">{{ week_performance.win_rate | percentage(1) }}</div>
-                </div>
-                <div>
-                    <small class="text-muted">P/L</small>
-                    <div class="h5 {% if week_performance.pnl >= 0 %}profit{% else %}loss{% endif %}">
-                        {{ week_performance.pnl | currency(current_user.preferred_currency) }}
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
     </div>
 </div>
 
-{# Data bridge for JS — Jinja values go into data attributes, never into JS source #}
 <div id="dashboard-data"
      data-equity-url="{{ url_for('dashboard.equity_curve_api') }}"
      data-winloss-url="{{ url_for('dashboard.win_rate_chart_api') }}"
-    data-stats-url="{{ url_for('dashboard.stats_api') }}"
+     data-stats-url="{{ url_for('dashboard.stats_api') }}"
      style="display:none;"></div>
 
 {% endblock %}
@@ -585,17 +526,11 @@
 (function () {
     "use strict";
 
-    /* ----------------------------------------------------------------
-       Read all config from data attributes — no raw Jinja in JS
-    ---------------------------------------------------------------- */
     var dataEl       = document.getElementById("dashboard-data");
     var EQUITY_URL   = dataEl ? dataEl.getAttribute("data-equity-url")  : "";
     var WINLOSS_URL  = dataEl ? dataEl.getAttribute("data-winloss-url") : "";
     var STATS_URL    = "/dashboard/api/stats";
 
-    /* ----------------------------------------------------------------
-       Utility: simple number animator
-    ---------------------------------------------------------------- */
     function animateNumber(el, startVal, endVal, durationMs) {
         if (!el) { return; }
         var startTime = null;
@@ -611,9 +546,6 @@
         requestAnimationFrame(step);
     }
 
-    /* ----------------------------------------------------------------
-       Equity Curve chart
-    ---------------------------------------------------------------- */
     function buildEquityChart(data) {
         var canvas = document.getElementById("equityChart");
         if (!canvas || !window.Chart) { return; }
@@ -632,12 +564,12 @@
                 datasets: [{
                     label: "Equity",
                     data: values,
-                    borderColor: "#6366f1",
-                    backgroundColor: "rgba(99,102,241,0.1)",
+                    borderColor: "#14b8a6",
+                    backgroundColor: "rgba(20,184,166,0.12)",
                     tension: 0.4,
                     fill: true,
-                    pointRadius: 3,
-                    pointHoverRadius: 6
+                    pointRadius: 2,
+                    pointHoverRadius: 5
                 }]
             },
             options: {
@@ -646,17 +578,17 @@
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: "rgba(0,0,0,0.8)",
+                        backgroundColor: "rgba(11,18,32,0.92)",
                         padding: 12,
                         callbacks: {
                             label: function (context) {
-                                return "Equity: $" + context.parsed.y.toFixed(2);
+                                return "Equity: " + context.parsed.y.toFixed(2);
                             }
                         }
                     }
                 },
                 scales: {
-                    y: { beginAtZero: false, grid: { color: "rgba(0,0,0,0.05)" } },
+                    y: { beginAtZero: false, grid: { color: "rgba(148,163,184,0.12)" } },
                     x: { grid: { display: false } }
                 }
             }
@@ -676,9 +608,6 @@
         xhr.send();
     }
 
-    /* ----------------------------------------------------------------
-       Win/Loss doughnut chart
-    ---------------------------------------------------------------- */
     function buildWinLossChart(data) {
         var canvas = document.getElementById("winLossChart");
         if (!canvas || !window.Chart) { return; }
@@ -696,10 +625,11 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
+                cutout: "68%",
                 plugins: {
                     legend: {
                         position: "bottom",
-                        labels: { padding: 15, font: { size: 12, weight: "600" } }
+                        labels: { padding: 14, font: { size: 12, weight: "600" } }
                     }
                 }
             }
@@ -719,9 +649,6 @@
         xhr.send();
     }
 
-    /* ----------------------------------------------------------------
-       Mini live board polling
-    ---------------------------------------------------------------- */
     function refreshMiniBoard() {
         var xhr = new XMLHttpRequest();
         xhr.open("GET", STATS_URL, true);
@@ -740,7 +667,6 @@
             var newWin    = Math.round(parseFloat(data.win_rate    || 0));
             var newTrades = parseInt(data.total_trades || 0, 10);
 
-            // New: 7D stats cards
             var win7El = document.getElementById("stat-winrate-7d");
             var wl7El  = document.getElementById("stat-wl-7d");
             var pnl7El = document.getElementById("stat-pnl-7d");
@@ -754,9 +680,9 @@
             var rr7 = parseFloat(data.avg_rr_7d || 0);
 
             if (win7El) { win7El.textContent = (isFinite(win7) ? win7.toFixed(1) : "0.0") + "%"; }
-            if (wl7El)  { wl7El.innerHTML = '<i class="fas fa-chart-pie me-1" aria-hidden="true"></i> ' + wins7 + 'W / ' + losses7 + 'L'; }
-            if (pnl7El) { pnl7El.textContent = (pnl7 >= 0 ? '+' : '') + pnl7.toFixed(2); }
-            if (rr7El)  { rr7El.textContent = '1:' + (isFinite(rr7) ? rr7.toFixed(2) : '0.00'); }
+            if (wl7El)  { wl7El.innerHTML = wins7 + "W / " + losses7 + "L"; }
+            if (pnl7El) { pnl7El.textContent = (pnl7 >= 0 ? "+" : "") + pnl7.toFixed(2); }
+            if (rr7El)  { rr7El.textContent = "1:" + (isFinite(rr7) ? rr7.toFixed(2) : "0.00"); }
             if (pnl7Card) {
                 pnl7Card.classList.remove("success", "danger");
                 pnl7Card.classList.add(pnl7 >= 0 ? "success" : "danger");
@@ -782,9 +708,6 @@
         xhr.send();
     }
 
-    /* ----------------------------------------------------------------
-       Boot
-    ---------------------------------------------------------------- */
     document.addEventListener("DOMContentLoaded", function () {
         loadEquityChart();
         loadWinLossChart();

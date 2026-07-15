@@ -1,16 +1,16 @@
-{# Single next-action strip for Insights pages — pass insights_next_action dict #}
+{# Single next-action strip — one clear move for the trader #}
 {% if insights_next_action %}
 {% set na = insights_next_action %}
-<div class="card tv-surface mb-4" style="border-left: 4px solid #0ea5e9;">
-    <div class="card-body py-3">
+<div class="card tv-surface tv-next-action tv-reveal mb-4">
+    <div class="card-body py-3 px-3 px-md-4">
         <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
             <div>
-                <div class="small text-uppercase fw-semibold text-info mb-1">{{ na.eyebrow }}</div>
-                <div class="fw-semibold">{{ na.title }}</div>
-                <div class="small text-muted mb-0">{{ na.body }}</div>
+                <div class="tv-next-eyebrow mb-1">{{ na.eyebrow }}</div>
+                <div class="fw-semibold" style="font-size:1.05rem;letter-spacing:-0.02em;">{{ na.title }}</div>
+                <div class="small tv-muted mb-0">{{ na.body }}</div>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-primary btn-sm" href="{{ na.cta_url }}">{{ na.cta_label }}</a>
+                <a class="btn btn-primary btn-sm px-3" href="{{ na.cta_url }}">{{ na.cta_label }}</a>
                 {% if na.secondary_url %}
                 <a class="btn btn-outline-secondary btn-sm" href="{{ na.secondary_url }}">{{ na.secondary_label }}</a>
                 {% endif %}

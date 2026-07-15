@@ -1,27 +1,27 @@
-/* Dark theme variables */
+/* Dark theme — deep slate + teal */
 :root {
-  --primary: #6366f1;
-  --secondary: #8b5cf6;
+  --primary: #14b8a6;
+  --secondary: #ea580c;
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
-  --info: #3b82f6;
+  --info: #22d3ee;
 
-  --text-primary: #e6eef8;
-  --text-secondary: #cbd5e1;
-  --bg-primary: #0f0f0f;
-  --bg-secondary: #1a202c;
-  --card-bg: #1a202c;
-  --card-border: #374151;
-  --form-bg: #111827;
-  --form-border: #4b5563;
-  --form-text: #e6eef8;
+  --text-primary: #e8eef7;
+  --text-secondary: #94a3b8;
+  --bg-primary: #0b1220;
+  --bg-secondary: #121a2a;
+  --card-bg: #111827;
+  --card-border: #243044;
+  --form-bg: #0b1220;
+  --form-border: #334155;
+  --form-text: #e8eef7;
   --form-label: #cbd5e1;
-  --table-hover: #1f2937;
-  --tab-text: #9ca3af;
-  --tab-active: #60a5fa;
-  --tab-border: #374151;
-  --sidebar-bg: #111827;
-  --sidebar-hover: #1f2937;
-  --sidebar-text: #f3f4f6;
+  --table-hover: #1a2438;
+  --tab-text: #94a3b8;
+  --tab-active: #2dd4bf;
+  --tab-border: #243044;
+  --sidebar-bg: #080e18;
+  --sidebar-hover: #121a2a;
+  --sidebar-text: #e8eef7;
 }

@@ -1,0 +1,483 @@
+/**
+ * TradeVerse premium UI layer
+ * Calm trading-journal aesthetic: teal ink, warm amber focus, clear rhythm.
+ * Layers on Bootstrap + theme tokens without fighting them.
+ */
+
+:root {
+  --tv-font: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --tv-display: "Fraunces", "Times New Roman", serif;
+  --tv-radius: 18px;
+  --tv-radius-sm: 12px;
+  --tv-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --tv-accent: #0f766e;
+  --tv-accent-bright: #14b8a6;
+  --tv-focus: #c2410c;
+  --tv-ink: var(--text-primary);
+  --tv-muted: var(--text-secondary);
+  --tv-space: 1.25rem;
+  --tv-glow: rgba(15, 118, 110, 0.18);
+}
+
+body {
+  font-family: var(--tv-font) !important;
+  letter-spacing: -0.011em;
+}
+
+.page-title,
+.tv-page-hero .page-title,
+.tv-display,
+.tv-section-kicker + .tv-section-title,
+h1.page-title {
+  font-family: var(--tv-display);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+/* Atmosphere — subtle paper grain / depth (not flat) */
+body:not([data-tv-landing="1"]) .main-content {
+  position: relative;
+  background:
+    radial-gradient(1200px 520px at 8% -10%, var(--tv-glow), transparent 55%),
+    radial-gradient(900px 480px at 100% 0%, rgba(194, 65, 12, 0.06), transparent 50%),
+    var(--bg-primary);
+}
+
+body:not([data-tv-landing="1"]) .main-content::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 0;
+}
+
+body:not([data-tv-landing="1"]) .main-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Section rhythm */
+.tv-section {
+  margin-bottom: 1.75rem;
+}
+
+.tv-section-kicker {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tv-accent-bright);
+  margin-bottom: 0.35rem;
+}
+
+.tv-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.tv-muted {
+  color: var(--tv-muted) !important;
+}
+
+/* Surfaces */
+.tv-surface,
+.main-content .card {
+  border-radius: var(--tv-radius) !important;
+  border: 1px solid color-mix(in srgb, var(--card-border) 85%, transparent);
+  background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 40px rgba(0, 0, 0, 0.12);
+  transition: transform 0.35s var(--tv-ease), box-shadow 0.35s var(--tv-ease), border-color 0.25s ease;
+}
+
+.tv-surface.soft {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 28px rgba(0, 0, 0, 0.08);
+}
+
+.tv-panel {
+  border-radius: var(--tv-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--card-border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
+}
+
+.tv-lift:hover,
+.stat-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--tv-accent-bright) 35%, var(--card-border));
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.16);
+}
+
+/* Page hero — teal ink, not purple */
+.tv-page-hero {
+  border-radius: 22px !important;
+  border: 1px solid color-mix(in srgb, var(--tv-accent) 28%, var(--card-border)) !important;
+  background:
+    radial-gradient(900px 420px at 10% 0%, color-mix(in srgb, var(--tv-accent-bright) 22%, transparent), transparent 55%),
+    radial-gradient(700px 380px at 95% 20%, rgba(194, 65, 12, 0.12), transparent 50%),
+    linear-gradient(145deg, color-mix(in srgb, var(--card-bg) 88%, #0f172a), color-mix(in srgb, var(--bg-secondary) 70%, transparent)) !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2) !important;
+  padding: 1.5rem 1.6rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.tv-page-hero::before {
+  opacity: 0.22 !important;
+  background-size: 32px 32px !important;
+}
+
+body[data-theme="light"] .tv-page-hero,
+body[data-theme="sand"] .tv-page-hero {
+  background:
+    radial-gradient(900px 420px at 8% 0%, rgba(15, 118, 110, 0.12), transparent 55%),
+    radial-gradient(700px 380px at 100% 20%, rgba(194, 65, 12, 0.07), transparent 50%),
+    linear-gradient(145deg, #f7faf9 0%, #eef5f3 100%) !important;
+  border-color: rgba(15, 118, 110, 0.18) !important;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.07) !important;
+}
+
+body[data-theme="light"] .tv-page-hero a,
+body[data-theme="sand"] .tv-page-hero a {
+  color: #0f766e !important;
+}
+
+/* Next action — magnetic primary CTA */
+.tv-next-action {
+  border-left: 4px solid var(--tv-accent-bright) !important;
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--tv-accent) 14%, transparent), transparent 55%),
+    var(--card-bg) !important;
+}
+
+.tv-next-action .tv-next-eyebrow {
+  color: var(--tv-accent-bright);
+  letter-spacing: 0.1em;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tv-next-action .btn-primary {
+  background: linear-gradient(135deg, #0f766e, #0d9488);
+  border-color: transparent;
+  box-shadow: 0 8px 24px rgba(15, 118, 110, 0.35);
+  animation: tv-cta-breathe 3.2s var(--tv-ease) infinite;
+}
+
+@keyframes tv-cta-breathe {
+  0%, 100% { box-shadow: 0 8px 24px rgba(15, 118, 110, 0.32); }
+  50% { box-shadow: 0 10px 32px rgba(15, 118, 110, 0.48); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-next-action .btn-primary { animation: none; }
+  .tv-reveal { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+/* Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  border-color: transparent !important;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(15, 118, 110, 0.28);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: linear-gradient(135deg, #0d9488, #2dd4bf);
+  filter: brightness(1.03);
+}
+
+.btn-outline-primary {
+  border-color: color-mix(in srgb, var(--tv-accent-bright) 55%, var(--card-border));
+  color: var(--tv-accent-bright);
+}
+
+.btn-outline-primary:hover {
+  background: color-mix(in srgb, var(--tv-accent) 16%, transparent);
+  border-color: var(--tv-accent-bright);
+  color: var(--text-primary);
+}
+
+/* KPI cards */
+.stat-card {
+  border-radius: var(--tv-radius) !important;
+  background: color-mix(in srgb, var(--card-bg) 94%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--card-border) 80%, transparent) !important;
+}
+
+.stat-card .stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--tv-muted);
+}
+
+.stat-card .stat-value {
+  font-family: var(--tv-display);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.tv-stat-kpi-icon {
+  background: color-mix(in srgb, var(--tv-accent) 16%, transparent) !important;
+  color: var(--tv-accent-bright) !important;
+  border-radius: 14px !important;
+}
+
+/* Chips — slightly less pill-blob */
+.tv-chip {
+  border-radius: 10px !important;
+  border-color: color-mix(in srgb, var(--tv-accent) 30%, transparent) !important;
+  background: color-mix(in srgb, var(--tv-accent) 12%, transparent) !important;
+  font-family: var(--tv-font);
+}
+
+/* Sidebar polish */
+.sidebar .nav-link {
+  border-radius: 12px !important;
+  margin: 0.15rem 0.55rem;
+  transition: background 0.2s var(--tv-ease), transform 0.2s var(--tv-ease);
+}
+
+.sidebar .nav-link:hover {
+  transform: translateX(2px);
+}
+
+.sidebar .nav-link.active {
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.35), rgba(15, 118, 110, 0.12)) !important;
+  box-shadow: inset 3px 0 0 #14b8a6;
+}
+
+.sidebar .tv-nav-group-label,
+.tv-nav-section-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  padding: 0.85rem 1.1rem 0.25rem;
+  font-weight: 700;
+}
+
+/* Dashboard workflow strip */
+.tv-workflow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.tv-workflow-step {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none !important;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.tv-workflow-step:hover {
+  border-color: color-mix(in srgb, var(--tv-accent-bright) 40%, var(--card-border));
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--tv-accent) 12%, transparent);
+}
+
+.tv-workflow-step .n {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--tv-accent) 20%, transparent);
+  color: var(--tv-accent-bright);
+}
+
+@media (max-width: 991px) {
+  .tv-workflow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 575px) {
+  .tv-workflow {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Welcome / empty */
+.tv-welcome {
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--tv-accent) 25%, var(--card-border));
+  background:
+    radial-gradient(700px 280px at 0% 0%, color-mix(in srgb, var(--tv-accent-bright) 18%, transparent), transparent 60%),
+    var(--card-bg);
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.tv-welcome h2 {
+  font-family: var(--tv-display);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.tv-welcome-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.tv-welcome-steps > div {
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 65%, transparent);
+  background: color-mix(in srgb, var(--bg-secondary) 45%, transparent);
+}
+
+.tv-welcome-steps .n {
+  font-family: var(--tv-display);
+  font-size: 1.5rem;
+  color: var(--tv-accent-bright);
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+@media (max-width: 767px) {
+  .tv-welcome-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Streak banner */
+.tv-streak {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.15rem;
+  border-radius: var(--tv-radius-sm);
+  border: 1px solid transparent;
+  margin-bottom: 1.25rem;
+}
+
+.tv-streak.win {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--success) 28%, transparent);
+}
+
+.tv-streak.loss {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+/* Reveal motion */
+.tv-reveal {
+  animation: tv-rise 0.55s var(--tv-ease) both;
+}
+
+.tv-reveal-2 { animation-delay: 0.06s; }
+.tv-reveal-3 { animation-delay: 0.12s; }
+.tv-reveal-4 { animation-delay: 0.18s; }
+
+@keyframes tv-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Compact secondary metrics */
+.tv-metrics-more {
+  border-radius: var(--tv-radius);
+  border: 1px dashed color-mix(in srgb, var(--card-border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-secondary) 35%, transparent);
+  padding: 0.35rem 1rem 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.tv-metrics-more > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.65rem 0;
+  font-weight: 650;
+  font-size: 0.9rem;
+  color: var(--tv-muted);
+}
+
+.tv-metrics-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tv-metrics-more > summary::after {
+  content: "Show";
+  float: right;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.tv-metrics-more[open] > summary::after {
+  content: "Hide";
+}
+
+/* Tables */
+.main-content .table thead th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--tv-muted);
+  border-bottom-color: color-mix(in srgb, var(--card-border) 80%, transparent) !important;
+}
+
+.main-content .table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.main-content .card-header {
+  background: transparent !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--card-border) 70%, transparent);
+  padding-top: 1rem;
+  padding-bottom: 0.85rem;
+}
+
+.main-content .card-header h5,
+.main-content .card-header h6 {
+  font-family: var(--tv-display);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+/* Empty well */
+.tv-empty-well {
+  border-color: color-mix(in srgb, var(--tv-accent) 30%, transparent) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tv-accent) 8%, transparent), transparent) !important;
+}
+
+.tv-empty-well .tv-empty-icon {
+  color: var(--tv-accent-bright) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--tv-accent) 22%, transparent), color-mix(in srgb, var(--tv-focus) 10%, transparent)) !important;
+  border-color: color-mix(in srgb, var(--tv-accent) 25%, transparent) !important;
+}

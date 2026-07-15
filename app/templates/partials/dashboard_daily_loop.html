@@ -6,11 +6,12 @@
 {% set j_streak = daily.get('journaling_streak') or 0 %}
 {% set wf = daily.get('weekly_focus') or '' %}
 
-<div class="tv-surface soft p-3 p-md-4 mb-4">
+<div class="tv-surface soft p-3 p-md-4 mb-4 tv-reveal tv-reveal-2">
     <div class="d-flex flex-column flex-lg-row align-items-start justify-content-between gap-3 mb-3">
         <div>
-            <div class="tv-section-title mb-1"><i class="fas fa-sun me-2 text-warning"></i>Today</div>
-            <div class="small tv-muted">Your daily loop — briefing, reviews, and focus.</div>
+            <div class="tv-section-kicker">Session</div>
+            <div class="tv-section-title mb-1">Today's loop</div>
+            <div class="small tv-muted">Brief → review → focus. One rhythm for every trading day.</div>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.weekly_review') }}">
@@ -25,14 +26,14 @@
     <div class="row g-3">
         <div class="col-lg-6">
             <div class="tv-panel h-100 p-3">
-                <div class="small tv-muted text-uppercase fw-semibold mb-2">Morning briefing</div>
+                <div class="small tv-muted text-uppercase fw-semibold mb-2" style="letter-spacing:0.08em;font-size:0.68rem;">Morning briefing</div>
                 {% if lines %}
                     {% for line in lines[:3] %}
-                    <div class="small mb-2">{{ line }}</div>
+                    <div class="small mb-2" style="line-height:1.5;">{{ line }}</div>
                     {% endfor %}
                 {% else %}
                     <p class="small tv-muted mb-2">Log closed trades to unlock a personalized briefing.</p>
-                    <a href="{{ url_for('trade.add') }}" class="btn btn-sm btn-primary">Log first trade</a>
+                    <a href="{{ url_for('trade.add') }}" class="btn btn-sm btn-primary">Log a trade</a>
                 {% endif %}
                 <a class="small d-inline-block mt-2" href="{{ url_for('dashboard.ai') }}">Open AI Buddy →</a>
             </div>
@@ -40,16 +41,16 @@
 
         <div class="col-md-6 col-lg-3">
             <div class="tv-panel h-100 p-3 text-center">
-                <div class="small tv-muted text-uppercase fw-semibold mb-1">Journal streak</div>
-                <div class="display-6 fw-bold mb-0">{{ j_streak }}</div>
+                <div class="small tv-muted text-uppercase fw-semibold mb-1" style="letter-spacing:0.08em;font-size:0.68rem;">Journal streak</div>
+                <div class="display-6 fw-bold mb-0 tv-display">{{ j_streak }}</div>
                 <div class="small tv-muted">day{% if j_streak != 1 %}s{% endif %} active</div>
             </div>
         </div>
 
         <div class="col-md-6 col-lg-3">
             <div class="tv-panel h-100 p-3 text-center">
-                <div class="small tv-muted text-uppercase fw-semibold mb-1">Review queue</div>
-                <div class="display-6 fw-bold mb-0">{{ rq.get('total', 0) }}</div>
+                <div class="small tv-muted text-uppercase fw-semibold mb-1" style="letter-spacing:0.08em;font-size:0.68rem;">Review queue</div>
+                <div class="display-6 fw-bold mb-0 tv-display">{{ rq.get('total', 0) }}</div>
                 <div class="small tv-muted mb-2">need attention</div>
                 {% if rq.get('first_trade_id') %}
                 <a class="btn btn-sm btn-outline-primary" href="{{ url_for('trade.view', trade_id=rq.first_trade_id, review=1) }}">Review next</a>
@@ -63,27 +64,27 @@
     <div class="row g-3 mt-1">
         <div class="col-md-6">
             <div class="tv-panel p-3 h-100">
-                <div class="small tv-muted text-uppercase fw-semibold mb-1">Weekly performance</div>
+                <div class="small tv-muted text-uppercase fw-semibold mb-1" style="letter-spacing:0.08em;font-size:0.68rem;">Weekly score</div>
                 {% if ws %}
                 <div class="d-flex align-items-baseline gap-2">
-                    <span class="h3 fw-bold mb-0">{{ '%.0f'|format(ws.overall_score) }}</span>
-                    <span class="badge bg-primary">{{ ws.grade }}</span>
+                    <span class="h3 fw-bold mb-0 tv-display">{{ '%.0f'|format(ws.overall_score) }}</span>
+                    <span class="tv-chip">{{ ws.grade }}</span>
                 </div>
-                <a class="small" href="{{ url_for('dashboard.performance') }}">See full score →</a>
+                <a class="small" href="{{ url_for('dashboard.performance') }}">Full score →</a>
                 {% else %}
-                <p class="small tv-muted mb-0">Scores appear after you log a few closed trades this week.</p>
+                <p class="small tv-muted mb-0">Scores appear after a few closed trades this week.</p>
                 {% endif %}
             </div>
         </div>
         <div class="col-md-6">
             <div class="tv-panel p-3 h-100">
-                <div class="small tv-muted text-uppercase fw-semibold mb-1">This week's focus</div>
+                <div class="small tv-muted text-uppercase fw-semibold mb-1" style="letter-spacing:0.08em;font-size:0.68rem;">This week's focus</div>
                 {% if wf %}
                 <p class="small mb-2">{{ wf }}</p>
                 {% else %}
-                <p class="small tv-muted mb-2">One rule keeps your week disciplined.</p>
+                <p class="small tv-muted mb-2">One rule keeps the week disciplined.</p>
                 {% endif %}
-                <a class="small" href="{{ url_for('dashboard.ai') }}#ai-section-setup">Set focus in AI Buddy →</a>
+                <a class="small" href="{{ url_for('dashboard.weekly_review') }}">Set in weekly review →</a>
             </div>
         </div>
     </div>
