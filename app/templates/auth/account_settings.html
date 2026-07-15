@@ -422,25 +422,39 @@
             btn.appendChild(i);
             btn.appendChild(document.createTextNode(active ? 'Selected' : 'Select'));
         });
+        document.querySelectorAll('.theme-card').forEach(c => {
+            c.classList.toggle('active', c.getAttribute('data-theme') === theme);
+        });
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const allowed = ['light','dark','blue','midnight','sand'];
-        let currentTheme = document.body.getAttribute('data-server-theme') || '';
-        if (!allowed.includes(currentTheme)) {
-            currentTheme = localStorage.getItem('tv_theme') || '';
-        }
+        const allowed = {{ ui_theme_choices|list|tojson }};
+        let currentTheme = document.body.getAttribute('data-theme')
+            || document.body.getAttribute('data-server-theme')
+            || localStorage.getItem('tv_theme')
+            || 'dark';
         if (!allowed.includes(currentTheme)) currentTheme = 'dark';
         updateThemeUI(currentTheme);
 
-        document.querySelectorAll('.theme-select-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const t = this.getAttribute('data-theme');
-                if (!allowed.includes(t)) return;
+        document.querySelectorAll('.theme-select-btn, .theme-card').forEach(el => {
+            el.addEventListener('click', function (ev) {
+                const btn = this.classList.contains('theme-select-btn')
+                    ? this
+                    : this.querySelector('.theme-select-btn');
+                const t = (btn && btn.getAttribute('data-theme')) || this.getAttribute('data-theme');
+                if (!t || !allowed.includes(t)) return;
+                ev.preventDefault();
                 if (window.applyTheme) window.applyTheme(t, true, true);
                 const fi = document.getElementById('form-theme');
                 if (fi) fi.value = t;
                 updateThemeUI(t);
+            });
+        });
+
+        document.querySelectorAll('.font-option').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const f = this.getAttribute('data-font');
+                if (window.applyFont) window.applyFont(f, true, true);
             });
         });
     });

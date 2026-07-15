@@ -155,14 +155,24 @@ def get_effective_subscription_state(user) -> SubscriptionState:
         days = int(os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL_DAYS", "60") or "60")
         created = _as_utc_aware(_safe_getattr(user, "created_at", None)) or now
         promo_until = _parse_promo_access_until()
+
+        # Effective end = longest *future* window among:
+        # persisted trial, hard promo end, signup+days.
+        # If the DB trial already expired (common for early accounts), extend
+        # from now by `days` so the UI does not show "0 days left" while the
+        # launch promo is still on.
         candidates = []
-        if promo_until:
-            candidates.append(promo_until)
-        if trial_ends_at:
+        if trial_ends_at and trial_ends_at >= now:
             candidates.append(trial_ends_at)
-        else:
-            candidates.append(created + timedelta(days=days))
-        trial_end = max(candidates) if candidates else (created + timedelta(days=days))
+        if promo_until and promo_until >= now:
+            candidates.append(promo_until)
+        created_window = created + timedelta(days=days)
+        if created_window >= now:
+            candidates.append(created_window)
+        if not candidates:
+            candidates.append(now + timedelta(days=days))
+
+        trial_end = max(candidates)
         if trial_end >= now:
             return SubscriptionState(
                 tier="pro_plus",
@@ -207,7 +217,11 @@ def get_trial_days_remaining(user) -> Optional[int]:
     if not end:
         return None
     delta = end - _utcnow()
-    return max(0, int(delta.total_seconds() // 86400))
+    secs = delta.total_seconds()
+    if secs <= 0:
+        return 0
+    # Round up partial days so "23 hours left" shows as 1 day, not 0.
+    return max(1, int((secs + 86399) // 86400))
 
 
 def user_has_feature(user, feature: str) -> bool:

@@ -183,10 +183,17 @@
             color: #e8eef7 !important;
         }
 
-        /* BLUE THEME */
-        body[data-theme="blue"],
-        [data-server-theme="blue"] body {
-            --primary: #0ea5e9 !important;
+        /* New themes: ensure body canvas follows theme tokens */
+        body[data-theme="ember"],
+        body[data-theme="forest"],
+        body[data-theme="midnight"],
+        body[data-theme="pearl"],
+        body[data-theme="sand"],
+        body[data-theme="light"] {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
             --secondary: #06b6d4 !important;
             --text-primary: #f0f9ff !important;
             --text-secondary: #bae6fd !important;
@@ -2832,16 +2839,24 @@
             window.applyTheme = applyTheme;
             window.applyFont = applyFont;
 
-            document.querySelectorAll('.theme-option').forEach(btn => {
-                btn.addEventListener('click', function(){
-                    applyTheme(this.getAttribute('data-theme'), true, true);
-                });
-            });
-
-            document.querySelectorAll('.font-option').forEach(btn => {
-                btn.addEventListener('click', function(){
-                    applyFont(this.getAttribute('data-font'), true, true);
-                });
+            // Event delegation so dropdown / dynamic theme controls always work
+            document.addEventListener('click', function(ev) {
+                const themeBtn = ev.target && ev.target.closest && ev.target.closest('.theme-option[data-theme], .swatch[data-theme]');
+                if (themeBtn) {
+                    const theme = themeBtn.getAttribute('data-theme');
+                    if (!theme) return;
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    applyTheme(theme, true, true);
+                    return;
+                }
+                const fontBtn = ev.target && ev.target.closest && ev.target.closest('.font-option[data-font]');
+                if (fontBtn) {
+                    const font = fontBtn.getAttribute('data-font');
+                    if (!font) return;
+                    ev.preventDefault();
+                    applyFont(font, true, true);
+                }
             });
 
             function resolveInitialTheme() {

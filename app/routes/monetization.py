@@ -639,20 +639,24 @@ def trial_info():
     created_at = current_user.created_at
     created = (
         created_at.replace(tzinfo=timezone.utc)
-        if created_at.tzinfo is None
-        else created_at
+        if created_at and created_at.tzinfo is None
+        else (created_at or now)
     )
 
-    trial_end = _safe_getattr(current_user, 'trial_ends_at', None)
+    # Prefer effective trial end (promo / extended window), not a stale DB stamp.
+    trial_end = state.trial_ends_at
     if trial_end is not None:
-        if trial_end.tzinfo is None:
+        if getattr(trial_end, 'tzinfo', None) is None:
             trial_end = trial_end.replace(tzinfo=timezone.utc)
-        days_remaining = max(0, (trial_end - now).days)
-        trial_days = max(1, (trial_end - created).days)
+        secs = (trial_end - now).total_seconds()
+        days_remaining = max(0, int((secs + 86399) // 86400)) if secs > 0 else 0
+        if secs > 0 and days_remaining == 0:
+            days_remaining = 1
+        span = max(1, (trial_end - created).days)
+        trial_days = max(span, days_remaining)
         days_used = max(0, min((now - created).days, trial_days))
     else:
-        # Marketing window when no Stripe trial date is stored yet (informational only).
-        trial_days = 60
+        trial_days = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
         days_used = max(0, (now - created).days)
         days_remaining = max(0, trial_days - days_used)
 
@@ -661,7 +665,7 @@ def trial_info():
     if trial_end is not None:
         trial_calendar_end = trial_end
     else:
-        trial_calendar_end = created + timedelta(days=60)
+        trial_calendar_end = created + timedelta(days=trial_days)
 
     return render_template('monetization/trial_info.html',
                          trial_days=trial_days,
