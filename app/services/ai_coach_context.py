@@ -14,6 +14,12 @@ def _safe_getattr(obj, name: str, default=None):
     try:
         return getattr(obj, name, default)
     except Exception:
+        try:
+            from app import db
+
+            db.session.rollback()
+        except Exception:
+            pass
         return default
 
 
@@ -31,6 +37,12 @@ def get_active_pinned_note(user_id: int) -> Optional[AICoachingNote]:
             .first()
         )
     except Exception:
+        try:
+            from app import db
+
+            db.session.rollback()
+        except Exception:
+            pass
         return None
 
 
@@ -66,7 +78,12 @@ def get_recent_journal_snippets(user_id: int, limit: int = 5) -> List[Dict[str, 
             if len(snippets) >= limit:
                 break
     except Exception:
-        pass
+        try:
+            from app import db
+
+            db.session.rollback()
+        except Exception:
+            pass
     return snippets
 
 

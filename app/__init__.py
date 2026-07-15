@@ -89,10 +89,9 @@ def create_app(config_name='default'):
         from app import schema_compat
 
         schema_compat.refresh(app)
-        # Playbook is a core feature — create missing table/columns if migrations lagged.
-        if not (app.extensions.get("tradeverse_schema") or {}).get("playbook_ready"):
-            schema_compat.ensure_playbook_schema(app)
-            schema_compat.refresh(app)
+        # Alembic often lags on Render (missing role/weekly_focus/playbook/etc.).
+        # Create critical columns/tables so requests don't abort the transaction.
+        schema_compat.ensure_lagging_schema(app)
 
         from app.models import user, trade
         from app.models.user_login_event import UserLoginEvent  # noqa: F401 — register table
@@ -116,7 +115,12 @@ def create_app(config_name='default'):
             last_exc = None
             for attempt in range(2):
                 try:
-                    return db.session.get(user.User, uid)
+                    u = db.session.get(user.User, uid)
+                    if u is not None:
+                        from app.services.user_db_compat import stamp_omitted_user_columns
+
+                        stamp_omitted_user_columns(u)
+                    return u
                 except (OperationalError, DisconnectionError) as exc:
                     last_exc = exc
                     try:

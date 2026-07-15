@@ -85,6 +85,45 @@ def _stamp_missing_deferred_columns(UserModel, u, row_keys: set) -> None:
             _stamp(name, None)
 
 
+def stamp_omitted_user_columns(u, omit_cols=None) -> None:
+    """
+    Mark missing deferred User columns as loaded with safe defaults.
+
+    Prevents SQLAlchemy from issuing ``SELECT users.role ...`` (etc.) when those
+    columns are absent on a lagging production database.
+    """
+    if u is None:
+        return
+    try:
+        from flask import current_app, has_app_context
+
+        if omit_cols is None and has_app_context():
+            omit_cols = (current_app.extensions.get("tradeverse_schema") or {}).get("omit_user_cols")
+    except Exception:
+        omit_cols = omit_cols
+    omit_cols = set(omit_cols or ())
+    if not omit_cols:
+        return
+
+    from sqlalchemy.orm.attributes import set_committed_value
+
+    defaults = dict(_DEFERRED_DEFAULTS)
+    for name in _DEFERRED_NONE:
+        defaults.setdefault(name, None)
+
+    for name in omit_cols:
+        if name not in defaults and name not in _DEFERRED_DEFAULTS and name not in _DEFERRED_NONE:
+            continue
+        value = defaults.get(name)
+        try:
+            set_committed_value(u, name, value)
+        except Exception:
+            try:
+                object.__setattr__(u, name, value)
+            except Exception:
+                pass
+
+
 def hydrate_user_from_db(session, UserModel, *, user_id: int | None = None, username: str | None = None):
     """
     Return a User instance populated from a row, or None.

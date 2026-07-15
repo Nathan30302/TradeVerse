@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.." || exit 1
 export FLASK_APP="${FLASK_APP:-app.wsgi:app}"
 echo "[render-start] $(date -u +%Y-%m-%dT%H:%M:%SZ) flask db upgrade (non-fatal if DB is behind)"
 python -m flask db upgrade || echo "[render-start] flask db upgrade exited non-zero — continuing boot"
+# If multiple Alembic heads exist, try upgrading all of them.
+python -m flask db upgrade heads || echo "[render-start] flask db upgrade heads exited non-zero — continuing boot"
 
 # Ensure durable upload dirs exist on the persistent disk
 DATA_DIR="${TRADEVERSE_DATA_DIR:-/var/data}"
