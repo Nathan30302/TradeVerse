@@ -127,7 +127,7 @@
                                 <div class="col-auto">
                                     {% set av = current_user.avatar_url %}
                                     <img src="{% if av %}{% if av.startswith('http://') or av.startswith('https://') or av.startswith('/static/') %}{{ av }}{% else %}{{ url_for('static', filename=av) }}{% endif %}{% else %}{{ url_for('static', filename='img/default-avatar.svg') }}{% endif %}"
-                                         alt="" class="rounded-circle border border-secondary border-opacity-50" style="width:72px;height:72px;object-fit:cover;">
+                                         alt="" class="rounded-circle border border-secondary border-opacity-50" style="width:72px;height:72px;object-fit:cover;" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';">
                                 </div>
                                 <div class="col">
                                     <label class="form-label fw-semibold" for="settings-avatar">Profile photo</label>
