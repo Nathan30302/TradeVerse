@@ -2346,6 +2346,7 @@
                     </li>
                     {% endif %}
                     <li><a class="dropdown-item" href="{{ url_for('trade.list') }}"><i class="fas fa-list me-2"></i> Trades taken <span class="badge bg-secondary ms-2">{{ current_user.safe_trade_count() }}</span></a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('playbook.index') }}"><i class="fas fa-book-open me-2"></i> Playbook</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('auth.settings') }}"><i class="fas fa-cog me-2"></i> Settings</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li class="dropdown-item section-label">Appearance</li>
@@ -2414,6 +2415,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('playbook.') %}active{% endif %}"
+                   href="{{ url_for('playbook.index') }}">
+                    <i class="fas fa-book-open"></i> Playbook
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}"
                    href="{{ url_for('trade.add') }}">
                     <i class="fas fa-plus-circle"></i> Add Trade
@@ -2470,14 +2477,6 @@
                     <i class="fas fa-clipboard-list"></i> Trade Planner
                 </a>
             </li>
-            {% if feature_playbook %}
-            <li class="nav-item">
-                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('playbook.') %}active{% endif %}"
-                   href="{{ url_for('playbook.index') }}">
-                    <i class="fas fa-book-open"></i> Playbook
-                </a>
-            </li>
-            {% endif %}
             {% if feature_replay %}
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint and request.endpoint.startswith('replay.') %}active{% endif %}"
@@ -2583,6 +2582,13 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('playbook.') %}active{% endif %}"
+                               href="{{ url_for('playbook.index') }}">
+                                <i class="fas fa-book-open"></i>
+                                <span>Playbook</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}" 
                                href="{{ url_for('trade.add') }}">
                                 <i class="fas fa-plus-circle"></i>
@@ -2648,15 +2654,6 @@
                                 <span>Trade Planner</span>
                             </a>
                         </li>
-                        {% if feature_playbook %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('playbook.') %}active{% endif %}"
-                               href="{{ url_for('playbook.index') }}">
-                                <i class="fas fa-book-open"></i>
-                                <span>Playbook</span>
-                            </a>
-                        </li>
-                        {% endif %}
                         {% if feature_replay %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint and request.endpoint.startswith('replay.') %}active{% endif %}"

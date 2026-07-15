@@ -89,6 +89,10 @@ def create_app(config_name='default'):
         from app import schema_compat
 
         schema_compat.refresh(app)
+        # Playbook is a core feature — create missing table/columns if migrations lagged.
+        if not (app.extensions.get("tradeverse_schema") or {}).get("playbook_ready"):
+            schema_compat.ensure_playbook_schema(app)
+            schema_compat.refresh(app)
 
         from app.models import user, trade
         from app.models.user_login_event import UserLoginEvent  # noqa: F401 — register table
@@ -596,13 +600,12 @@ def register_context_processors(app):
 
     @app.context_processor
     def inject_tradeverse_optional_features():
-        """Expose feature flags when Playbook/Replay migrations are not applied yet."""
+        """Expose feature flags for Playbook/Replay in templates."""
         tv = app.extensions.get("tradeverse_schema") or {}
-        # Require blueprint + schema so url_for(playbook.index) can't run when routes were not registered at boot.
+        # Always show Playbook in nav when the blueprint is registered (core feature).
+        # Schema readiness still gates DB writes inside routes if needed.
         return {
-            'feature_playbook': bool(
-                tv.get('playbook_ready') and ('playbook' in app.blueprints)
-            ),
+            'feature_playbook': bool('playbook' in app.blueprints),
             'feature_replay': bool(tv.get('replay_ready') and ('replay' in app.blueprints)),
         }
 
