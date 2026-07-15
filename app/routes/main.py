@@ -116,7 +116,17 @@ def index():
 
     hero_image_url = url_for('static', filename=hero_images[idx])
 
-    return render_template('main/index.html', hero_image_url=hero_image_url)
+    trial_days_new_accounts = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
+    extended_promo = (os.environ.get('TV_ALL_USERS_PROPLUS_TRIAL', '1') or '1').strip().lower() in {
+        '1', 'true', 'yes', 'on',
+    }
+
+    return render_template(
+        'main/index.html',
+        hero_image_url=hero_image_url,
+        trial_days_new_accounts=trial_days_new_accounts,
+        extended_promo_active=extended_promo,
+    )
 
 @bp.route('/about')
 def about():

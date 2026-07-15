@@ -2,7 +2,7 @@
 
 {% block title %}{{ app_name }} - Professional Trading Journal{% endblock %}
 
-{% set page_desc = "TradeVerse is the trader operating system: plan, log, and review with AI Buddy, playbooks, Strategy Lab backtests, and weekly focus rules." %}
+{% set page_desc = "TradeVerse is an affordable trading journal: plan, log, and review with playbooks, analytics, AI Buddy, and Strategy Lab — Free, Pro ($5), or Pro Plus ($15)." %}
 {% block meta_description %}{{ page_desc }}{% endblock %}
 {% block og_description %}{{ page_desc }}{% endblock %}
 {% block twitter_description %}{{ page_desc }}{% endblock %}
@@ -326,14 +326,14 @@
   }
 
   .landing-explore-auth .btn-signup-pill {
-    background: linear-gradient(135deg, #7c3aed, #6366f1);
+    background: linear-gradient(135deg, #0f766e, #14b8a6);
     border: none;
     color: #fff !important;
     font-weight: 700;
     border-radius: 999px;
     padding: 0.4rem 1rem;
     font-size: 0.8125rem;
-    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 6px 18px rgba(20, 184, 166, 0.35);
   }
 
   .landing-explore-inner .landing-explore-sep {
@@ -498,12 +498,145 @@
   }
 
   .landing-gradient-panel {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0f766e 0%, #134e4a 55%, #1e293b 100%);
     border-radius: clamp(18px, 2.5vw, 24px);
     color: white;
     box-shadow: 0 18px 55px rgba(2,6,23,0.20);
     border: 1px solid rgba(255,255,255,0.14);
     padding: clamp(2rem, 4vw, 3.25rem) clamp(1.25rem, 4vw, 2.75rem);
+  }
+
+  /* Education / learn blocks */
+  .landing-learn-card {
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: linear-gradient(180deg, rgba(15,23,42,0.72) 0%, rgba(15,23,42,0.48) 100%);
+    padding: 1.35rem 1.4rem;
+    height: 100%;
+  }
+  .landing-learn-card h3 {
+    color: #f8fafc;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.55rem;
+  }
+  .landing-learn-card p {
+    color: rgba(148,163,184,0.95);
+    font-size: 0.9rem;
+    margin-bottom: 0;
+  }
+  .landing-learn-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 10px;
+    background: rgba(20,184,166,0.18);
+    color: #5eead4;
+    font-weight: 800;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Pricing on landing */
+  .landing-price-card {
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: linear-gradient(180deg, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.55) 100%);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.28);
+    height: 100%;
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  }
+  .landing-price-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(45,212,191,0.35);
+    box-shadow: 0 22px 56px rgba(0,0,0,0.38);
+  }
+  .landing-price-card.is-recommended {
+    border-color: rgba(45,212,191,0.55);
+    box-shadow: 0 18px 52px rgba(20,184,166,0.22);
+  }
+  .landing-price-card .card-body {
+    padding: 1.65rem 1.5rem;
+  }
+  .landing-price-amount {
+    font-size: clamp(2.1rem, 4vw, 2.75rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #f8fafc;
+    line-height: 1;
+  }
+  .landing-price-amount span {
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(148,163,184,0.95);
+  }
+  .landing-compare-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(15,23,42,0.55);
+  }
+  .landing-compare-table th,
+  .landing-compare-table td {
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    color: rgba(226,232,240,0.92);
+    font-size: 0.9rem;
+  }
+  .landing-compare-table th {
+    background: rgba(15,23,42,0.75);
+    font-weight: 700;
+    color: #fff;
+  }
+  .landing-compare-table tr:last-child td {
+    border-bottom: none;
+  }
+  .landing-compare-table .tv-yes {
+    color: #34d399;
+    font-weight: 700;
+  }
+  .landing-faq-item {
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 14px;
+    background: rgba(15,23,42,0.55);
+    padding: 1.15rem 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+  .landing-faq-item h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 0.4rem;
+  }
+  .landing-faq-item p {
+    color: rgba(148,163,184,0.95);
+    font-size: 0.9rem;
+    margin-bottom: 0;
+  }
+  .landing-audience-card {
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(15,23,42,0.55);
+    padding: 1.4rem;
+    height: 100%;
+  }
+  .landing-audience-card h3 {
+    color: #f8fafc;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .landing-audience-card p {
+    color: rgba(148,163,184,0.95);
+    font-size: 0.9rem;
+    margin-bottom: 0;
+  }
+  .landing-section-muted {
+    color: rgba(148, 163, 184, 0.95) !important;
   }
 
   .landing-quote-card {
@@ -593,9 +726,15 @@
                     Plan. Log. <span class="hero-accent">Review.</span>
                 </h1>
 
-                <p class="lead mb-4 hero-subtitle" style="max-width: 38rem;">
+                <p class="lead mb-3 hero-subtitle" style="max-width: 38rem;">
                     A trading journal is your private record of every trade — what you planned, what you did, and what you learned.
                     TradeVerse makes that record easy to keep, so years later you can open a random Tuesday and still see the truth.
+                </p>
+                <p class="landing-trial-note small mb-4" style="max-width: 36rem;">
+                    Free forever to start · Pro from <strong>$5/mo</strong> · Pro Plus <strong>$15/mo</strong>
+                    {% if trial_days_new_accounts %}
+                    · New accounts get <strong>{{ trial_days_new_accounts }} days of Pro Plus</strong>
+                    {% endif %}
                 </p>
 
                 <div class="landing-hero-actions">
@@ -603,8 +742,8 @@
                         <a href="{{ url_for('auth.register') }}" class="btn btn-landing-primary btn-lg">
                             <i class="fas fa-rocket me-2"></i> Start free — build your edge
                         </a>
-                        <a href="{{ url_for('auth.login') }}" class="landing-hero-signin">
-                            Sign In <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                        <a href="#pricing" class="landing-hero-signin">
+                            See plans <i class="fas fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     {% else %}
                         <a href="{{ url_for('dashboard.index') }}" class="btn btn-landing-primary btn-lg">
@@ -711,7 +850,10 @@
         <div class="landing-explore-links">
             <span class="landing-explore-label">EXPLORE</span>
             <span class="landing-explore-sep d-none d-sm-inline" aria-hidden="true"></span>
-            <a href="{{ url_for('main.features') }}"><i class="fas fa-star me-1 text-primary"></i>Features</a>
+            <a href="#learn"><i class="fas fa-graduation-cap me-1 text-primary"></i>Learn</a>
+            <a href="#features"><i class="fas fa-star me-1 text-primary"></i>Features</a>
+            <a href="#pricing"><i class="fas fa-tags me-1 text-primary"></i>Pricing</a>
+            <a href="#faq"><i class="fas fa-question-circle me-1 text-primary"></i>FAQ</a>
             <a href="{{ url_for('main.contact') }}"><i class="fas fa-envelope me-1 text-primary"></i>Contact</a>
         </div>
         <div class="landing-explore-auth">
@@ -804,8 +946,71 @@
     </div>
 </div>
 
+<!-- Education — what to track -->
+<div id="learn" class="container landing-section">
+    <div class="landing-section-head text-center mb-4 mb-lg-5">
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Learn</span>
+        <h2 class="display-5 fw-bold mb-3">What a good journal actually tracks</h2>
+        <p class="lead landing-section-muted mb-0">
+            Brokers keep fills. You need the story behind them — so patterns stop hiding in memory.
+        </p>
+    </div>
+    <div class="row g-3 g-lg-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="landing-learn-card">
+                <div class="landing-learn-num">1</div>
+                <h3>The plan</h3>
+                <p>Entry, stop, target, and why this setup fits your playbook — before the click.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="landing-learn-card">
+                <div class="landing-learn-num">2</div>
+                <h3>The fill</h3>
+                <p>What actually happened: size, slippage, result, and whether you followed the rules.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="landing-learn-card">
+                <div class="landing-learn-num">3</div>
+                <h3>The mind</h3>
+                <p>Emotion tags (FOMO, revenge, calm) turn soft feelings into data you can filter later.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="landing-learn-card">
+                <div class="landing-learn-num">4</div>
+                <h3>The review</h3>
+                <p>One weekly focus rule + AI Buddy notes so next week is different on purpose.</p>
+            </div>
+        </div>
+    </div>
+    <div class="row g-4 mt-2 mt-lg-4">
+        <div class="col-lg-6">
+            <div class="landing-learn-card">
+                <h3 class="mb-2"><i class="fas fa-lightbulb me-2" style="color:#fbbf24;"></i>Why traders quit journaling</h3>
+                <p>
+                    Spreadsheets feel like homework. Screenshots live in chat folders. Reviews never happen.
+                    TradeVerse is built as a daily loop — plan → log → review → prove — so the habit sticks
+                    instead of becoming another abandoned file.
+                </p>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="landing-learn-card">
+                <h3 class="mb-2"><i class="fas fa-route me-2" style="color:#2dd4bf;"></i>Your first week on TradeVerse</h3>
+                <p>
+                    Day 1: create a playbook and log 3 trades. Day 3: check the calendar for red/green patterns.
+                    Day 7: set one weekly focus rule. That is enough to feel the product working —
+                    before you even think about upgrading.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Features Section -->
-<div class="container landing-section">
+<div id="features" class="container landing-section">
     <div class="landing-section-head text-center mb-4 mb-lg-5">
         <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Inside the journal</span>
         <h2 class="display-5 fw-bold mb-3">Built as one system — not scattered tools</h2>
@@ -853,13 +1058,13 @@
                         </div>
                     </div>
                     <p class="card-text text-muted">
-                        AI-powered mistake detection identifies trading errors and provides actionable feedback 
-                        to help you maintain discipline and improve decision-making.
+                        AI Buddy spots repeating mistakes from your journal and turns them into plain-English
+                        feedback — so reviews become rules, not guilt.
                     </p>
                     <ul class="list-unstyled mt-3">
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Automated mistake detection</li>
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Personalized improvement suggestions</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Pattern recognition and analysis</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Pattern recognition from your trades</li>
                     </ul>
                 </div>
             </div>
@@ -957,13 +1162,13 @@
                         </div>
                     </div>
                     <p class="card-text text-muted">
-                        Access your trading journal from any device - desktop, tablet, or smartphone - 
-                        with a fully responsive design that adapts to any screen size.
+                        Access your journal from phone or desktop after the session — log fills, attach notes,
+                        and check the calendar without waiting to get home.
                     </p>
                     <ul class="list-unstyled mt-3">
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Cross-device synchronization</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Touch-friendly interface</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Offline capability</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Responsive on phone &amp; desktop</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Touch-friendly logging</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Installable as a web app (PWA)</li>
                     </ul>
                 </div>
             </div>
@@ -1087,102 +1292,186 @@
 </div>
 </div>
 
-<!-- Testimonials -->
+<!-- Who it's for + honest positioning (replace fake testimonials) -->
 <div class="container landing-section">
     <div class="landing-section-head text-center mb-4 mb-lg-5">
-        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">From the desk</span>
-        <h2 class="display-5 fw-bold mb-3">Traders who journal improve faster</h2>
-        <p class="lead text-muted mb-0">Discipline compounds when you can see your own patterns.</p>
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Built for</span>
+        <h2 class="display-5 fw-bold mb-3">Who TradeVerse is for</h2>
+        <p class="lead landing-section-muted mb-0">Serious process — without Western SaaS prices.</p>
     </div>
-    
-    <div class="row g-4">
+    <div class="row g-3 g-lg-4">
+        <div class="col-md-6 col-lg-4">
+            <div class="landing-audience-card">
+                <div class="mb-3" style="color:#2dd4bf;font-size:1.35rem;"><i class="fas fa-chart-line"></i></div>
+                <h3 class="mb-2">Forex &amp; CFD traders</h3>
+                <p>London/NY sessions, playbook checklists, and emotion tags so revenge trading shows up in the data — not just in your gut.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="landing-audience-card">
+                <div class="mb-3" style="color:#fb923c;font-size:1.35rem;"><i class="fas fa-flag-checkered"></i></div>
+                <h3 class="mb-2">Prop-firm challenge traders</h3>
+                <p>Track drawdown, rule breaks, and daily risk before a blown account. Journaling is how you survive evaluation rules.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="landing-audience-card">
+                <div class="mb-3" style="color:#a78bfa;font-size:1.35rem;"><i class="fas fa-seedling"></i></div>
+                <h3 class="mb-2">Traders who outgrew notebooks</h3>
+                <p>You already know journaling matters. You need something faster than Excel and cheaper than $30–50/mo tools.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Compare vs expensive journals -->
+<div class="container landing-section">
+    <div class="landing-section-head text-center mb-4 mb-lg-5">
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Value</span>
+        <h2 class="display-5 fw-bold mb-3">Serious tools. Fair price.</h2>
+        <p class="lead landing-section-muted mb-0">
+            Many popular journals charge <strong class="text-white">$24–$50/month</strong>. TradeVerse keeps the core loop affordable.
+        </p>
+    </div>
+    <div class="table-responsive">
+        <table class="landing-compare-table">
+            <thead>
+                <tr>
+                    <th scope="col">What you need</th>
+                    <th scope="col">Typical paid journals</th>
+                    <th scope="col">TradeVerse</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Trade logging + history</td>
+                    <td>Included</td>
+                    <td class="tv-yes">Free</td>
+                </tr>
+                <tr>
+                    <td>Playbooks &amp; plan → review loop</td>
+                    <td>Often Pro tier</td>
+                    <td class="tv-yes">Free</td>
+                </tr>
+                <tr>
+                    <td>Advanced analytics &amp; CSV export</td>
+                    <td>~$30+/mo</td>
+                    <td class="tv-yes">Pro · $5/mo</td>
+                </tr>
+                <tr>
+                    <td>AI coach + Strategy Lab</td>
+                    <td>Top tier / add-on</td>
+                    <td class="tv-yes">Pro Plus · $15/mo</td>
+                </tr>
+                <tr>
+                    <td>Trial to try everything</td>
+                    <td>Varies / card required</td>
+                    <td class="tv-yes">{{ trial_days_new_accounts|default(60) }} days Pro Plus · no card</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pricing -->
+<div id="pricing" class="container landing-section">
+    <div class="landing-section-head text-center mb-4 mb-lg-5">
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">Pricing</span>
+        <h2 class="display-5 fw-bold mb-3">Simple plans. Clear upgrades.</h2>
+        <p class="lead landing-section-muted mb-0">
+            Start free. Upgrade when exports, deeper analytics, or AI coaching matter.
+            {% if extended_promo_active %}
+            Launch promo: new accounts get <strong class="text-white">{{ trial_days_new_accounts }} days of Pro Plus</strong>.
+            {% endif %}
+        </p>
+    </div>
+    <div class="row g-4 justify-content-center">
         <div class="col-lg-4 col-md-6">
-            <div class="card border-0 h-100 landing-quote-card">
-                <div class="card-body p-4">
-                    <div class="mb-3">
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                    </div>
-                    <blockquote class="blockquote mb-4">
-                        <p class="mb-0">
-                            "TradeVerse helped me identify my biggest trading mistakes. My win rate improved 
-                            from 45% to 68% in just 3 months! The AI insights are incredibly accurate and actionable."
-                        </p>
-                    </blockquote>
-                    <div class="d-flex align-items-center">
-                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
-                             style="width: 50px; height: 50px; font-size: 1.5rem;">
-                            J
-                        </div>
-                        <div class="ms-3">
-                            <h6 class="mb-0 fw-bold">John D.</h6>
-                            <small class="text-muted">Day Trader • 6 months</small>
-                        </div>
-                    </div>
+            <div class="landing-price-card">
+                <div class="card-body d-flex flex-column">
+                    <h3 class="h5 text-white fw-bold mb-1">Free</h3>
+                    <p class="small landing-section-muted mb-3">Journal trades with core dashboard stats</p>
+                    <div class="landing-price-amount mb-1">$0 <span>/month</span></div>
+                    <ul class="list-unstyled my-4 flex-grow-1 small">
+                        <li class="mb-2 text-white-50"><i class="fas fa-check text-success me-2"></i>Trading journal &amp; history</li>
+                        <li class="mb-2 text-white-50"><i class="fas fa-check text-success me-2"></i>Playbook setups &amp; checklists</li>
+                        <li class="mb-2 text-white-50"><i class="fas fa-check text-success me-2"></i>Dashboard overview &amp; core stats</li>
+                        <li class="mb-0 text-white-50"><i class="fas fa-check text-success me-2"></i>Basic analytics views</li>
+                    </ul>
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light w-100 fw-semibold">Start free</a>
                 </div>
             </div>
         </div>
-
         <div class="col-lg-4 col-md-6">
-            <div class="card border-0 h-100 landing-quote-card">
-                <div class="card-body p-4">
-                    <div class="mb-3">
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                    </div>
-                    <blockquote class="blockquote mb-4">
-                        <p class="mb-0">
-                            "The analytics dashboard is incredible. I can finally see which strategies work best 
-                            and when to trade. The calendar view helped me identify my most profitable trading days."
-                        </p>
-                    </blockquote>
-                    <div class="d-flex align-items-center">
-                        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" 
-                             style="width: 50px; height: 50px; font-size: 1.5rem;">
-                            S
-                        </div>
-                        <div class="ms-3">
-                            <h6 class="mb-0 fw-bold">Sarah M.</h6>
-                            <small class="text-muted">Swing Trader • 4 months</small>
-                        </div>
-                    </div>
+            <div class="landing-price-card is-recommended position-relative">
+                <span class="badge position-absolute top-0 end-0 m-3" style="background:#14b8a6;color:#042f2e;">Most popular</span>
+                <div class="card-body d-flex flex-column">
+                    <h3 class="h5 text-white fw-bold mb-1">Pro</h3>
+                    <p class="small landing-section-muted mb-3">Advanced analytics, exports, broker API imports</p>
+                    <div class="landing-price-amount mb-1">$5 <span>/month</span></div>
+                    <ul class="list-unstyled my-4 flex-grow-1 small">
+                        <li class="mb-2 text-white-50"><i class="fas fa-check text-success me-2"></i>Everything in Free</li>
+                        <li class="mb-2 text-white-50"><i class="fas fa-check text-success me-2"></i>Advanced metrics (expectancy, drawdown, R)</li>
+                        <li class="mb-2 text-white-50"><i class="fas fa-check text-success me-2"></i>Export trades (CSV / JSON)</li>
+                        <li class="mb-0 text-white-50"><i class="fas fa-check text-success me-2"></i>Broker API imports</li>
+                    </ul>
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-landing-primary w-100">Get Pro</a>
                 </div>
             </div>
         </div>
-
         <div class="col-lg-4 col-md-6">
-            <div class="card border-0 h-100 landing-quote-card">
-                <div class="card-body p-4">
-                    <div class="mb-3">
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                        <i class="fas fa-star text-warning"></i>
-                    </div>
-                    <blockquote class="blockquote mb-4">
-                        <p class="mb-0">
-                            "Best trading journal I've used. Clean interface, powerful features, and helps me stay 
-                            disciplined. The risk management tools alone make the workflow worth it."
-                        </p>
-                    </blockquote>
-                    <div class="d-flex align-items-center">
-                        <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" 
-                             style="width: 50px; height: 50px; font-size: 1.5rem;">
-                            M
-                        </div>
-                        <div class="ms-3">
-                            <h6 class="mb-0 fw-bold">Mike T.</h6>
-                            <small class="text-muted">Forex Trader • 8 months</small>
-                        </div>
-                    </div>
+            <div class="landing-price-card">
+                <div class="card-body d-flex flex-column">
+                    <h3 class="h5 text-white fw-bold mb-1">Pro Plus</h3>
+                    <p class="small landing-section-muted mb-3">Full Pro set plus coach-mode tier</p>
+                    <div class="landing-price-amount mb-1">$15 <span>/month</span></div>
+                    <ul class="list-unstyled my-4 flex-grow-1 small">
+                        <li class="mb-2 text-white-50"><i class="fas fa-check text-success me-2"></i>Everything in Pro</li>
+                        <li class="mb-2 text-white-50"><i class="fas fa-check text-success me-2"></i>AI Buddy / coach mode (web)</li>
+                        <li class="mb-2 text-white-50"><i class="fas fa-check text-success me-2"></i>Strategy Lab setup scoring</li>
+                        <li class="mb-0 text-white-50"><i class="fas fa-check text-success me-2"></i>Best for traders who want a weekly coach loop</li>
+                    </ul>
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light w-100 fw-semibold">Try Pro Plus</a>
                 </div>
+            </div>
+        </div>
+    </div>
+    <p class="text-center small landing-section-muted mt-4 mb-0">
+        Cancel anytime after paid billing is live. Feature access matches <strong class="text-white-50">Settings → Billing</strong> inside the app.
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('main.pricing') }}" class="ms-1">Open full pricing</a>
+        {% endif %}
+    </p>
+</div>
+
+<!-- FAQ -->
+<div id="faq" class="container landing-section">
+    <div class="landing-section-head text-center mb-4 mb-lg-5">
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">FAQ</span>
+        <h2 class="display-5 fw-bold mb-3">Questions traders ask</h2>
+        <p class="lead landing-section-muted mb-0">Straight answers before you create an account.</p>
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="landing-faq-item">
+                <h3>Do I need a credit card to start?</h3>
+                <p>No. Create a free account and journal immediately. New accounts also get a {{ trial_days_new_accounts|default(60) }}-day Pro Plus trial so you can try advanced features before paying.</p>
+            </div>
+            <div class="landing-faq-item">
+                <h3>Is TradeVerse a broker or signal service?</h3>
+                <p>No. TradeVerse is a trading journal and review system. We do not execute trades, sell signals, or give financial advice. Your broker stays your broker.</p>
+            </div>
+            <div class="landing-faq-item">
+                <h3>What makes this different from a spreadsheet?</h3>
+                <p>Playbooks, planner → execution → review flow, calendar heatmaps, emotion tags, weekly focus rules, and AI Buddy insights — designed so the habit stays, not just the data dump.</p>
+            </div>
+            <div class="landing-faq-item">
+                <h3>Can I import trades?</h3>
+                <p>Yes. Upload statements on supported flows; broker API imports unlock on Pro. Keep your journal accurate without typing every fill by hand.</p>
+            </div>
+            <div class="landing-faq-item">
+                <h3>Who is behind TradeVerse?</h3>
+                <p>TradeVerse is built by an independent founder for traders who want discipline tools without $30–50/mo SaaS pricing. Questions? Email <a href="mailto:{{ support_email }}">{{ support_email }}</a> or use <a href="{{ url_for('main.contact') }}">Contact</a>.</p>
             </div>
         </div>
     </div>
@@ -1196,7 +1485,7 @@
             <h2 class="landing-cta-headline fw-bold mb-3 mb-lg-4">Your next winning week starts with one honest log</h2>
             <p class="lead mb-4 mb-lg-5 opacity-95">
                 Open TradeVerse, set a weekly focus rule, and let AI Buddy + your playbook keep you accountable.
-                Sign up in minutes — the journal does the heavy lifting after that.
+                Free to start{% if trial_days_new_accounts %} · {{ trial_days_new_accounts }}-day Pro Plus trial{% endif %} · Pro from $5.
             </p>
             <div class="row g-3 justify-content-center mb-4 mb-lg-5">
                 <div class="col-12 col-sm-4">
@@ -1208,7 +1497,7 @@
                 <div class="col-12 col-sm-4">
                     <div class="d-flex align-items-center justify-content-center text-white opacity-90 small">
                         <i class="fas fa-check-circle me-2 flex-shrink-0"></i>
-                        <span>Analytics dashboard</span>
+                        <span>Plans from $0 / $5 / $15</span>
                     </div>
                 </div>
                 <div class="col-12 col-sm-4">
@@ -1222,6 +1511,9 @@
             <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-4 px-md-5 py-3 shadow-lg fw-bold rounded-3">
                 <i class="fas fa-rocket me-2"></i> Create your account
             </a>
+            <div class="mt-3">
+                <a href="#pricing" class="text-white text-decoration-underline small opacity-90">Compare plans</a>
+            </div>
             {% else %}
             <a href="{{ url_for('dashboard.index') }}" class="btn btn-light btn-lg px-5 py-3 shadow-lg fw-bold rounded-3">
                 <i class="fas fa-tachometer-alt me-2"></i> Go to your dashboard
