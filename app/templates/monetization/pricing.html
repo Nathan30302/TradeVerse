@@ -32,6 +32,12 @@
 </div>
 
 <div class="container py-5">
+    {% if extended_promo_active %}
+    <div class="alert alert-success border-0 shadow-sm mb-4">
+        <strong>Launch promo:</strong> current accounts keep <strong>Pro Plus for {{ trial_days_new_accounts }} days</strong>
+        while we finish paid checkout. No card required during the promo — then choose Free, Pro ($5), or Pro Plus ($15).
+    </div>
+    {% endif %}
     <div class="row g-4 justify-content-center">
         {% for plan in plans %}
         <div class="col-lg-4 col-md-6">
@@ -108,7 +114,10 @@
                     <p class="text-body-secondary mb-0">
                         New accounts get a <strong>{{ trial_days_new_accounts }}-day Pro Plus trial</strong> (no payment required at signup). Your <strong>Settings → Billing</strong> page shows trial dates and tier.
                         {% if extended_promo_active %}
-                        <span class="d-block mt-2">We sometimes run a platform-wide access promotion — Billing still shows what applies to your account.</span>
+                        <span class="d-block mt-2">
+                            <strong>Right now:</strong> we’re giving existing users the same {{ trial_days_new_accounts }}-day Pro Plus window
+                            so everyone can use advanced analytics, exports, and Strategy Lab before paid plans go live.
+                        </span>
                         {% endif %}
                     </p>
                 </div>

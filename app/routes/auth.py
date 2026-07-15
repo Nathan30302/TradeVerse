@@ -472,13 +472,17 @@ def _unlink_user_avatar_file(avatar_url):
         rel_name = s[len('uploads/avatars/') :]
     if not rel_name or '..' in rel_name or '/' in rel_name or '\\' in rel_name:
         return
-    folder = os.path.join(current_app.root_path, 'static', 'uploads', 'avatars')
-    full = os.path.join(folder, rel_name)
-    if os.path.isfile(full):
-        try:
-            os.remove(full)
-        except OSError:
-            current_app.logger.debug('avatar unlink failed', exc_info=True)
+    from app.services.uploads_storage import resolve_avatar_file
+
+    found = resolve_avatar_file(rel_name)
+    if not found:
+        return
+    folder, name = found
+    full = os.path.join(folder, name)
+    try:
+        os.remove(full)
+    except OSError:
+        current_app.logger.debug('avatar unlink failed', exc_info=True)
 
 
 def _read_avatar_upload_bytes(storage) -> tuple[bytes | None, str | None]:
@@ -518,12 +522,13 @@ def _read_avatar_upload_bytes(storage) -> tuple[bytes | None, str | None]:
 
 def _save_avatar_for_user(user, storage):
     """
-    Validate and store an avatar image under static/uploads/avatars/.
+    Validate and store an avatar under the persistent avatars directory.
 
     Returns:
-        tuple[str | None, str | None, str | None]: (error, static_relative_path, full_disk_path)
+        tuple[str | None, str | None, str | None]: (error, relative_path, full_disk_path)
     """
     from werkzeug.utils import secure_filename
+    from app.services.uploads_storage import avatars_dir
 
     if not storage or not storage.filename:
         return (None, None, None)
@@ -541,7 +546,7 @@ def _save_avatar_for_user(user, storage):
     if not safe or safe != out_name:
         return ('Invalid file name.', None, None)
 
-    dest_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'avatars')
+    dest_dir = avatars_dir()
     full_path = os.path.join(dest_dir, safe)
     try:
         os.makedirs(dest_dir, exist_ok=True)

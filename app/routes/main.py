@@ -154,16 +154,30 @@ def privacy():
     return render_template('main/privacy.html')
 
 
+@bp.route('/avatar/<path:filename>')
+@login_required
+def avatar_file(filename):
+    """Serve profile photos from the persistent avatars directory (or legacy paths)."""
+    from app.services.uploads_storage import resolve_avatar_file
+
+    found = resolve_avatar_file(filename)
+    if not found:
+        abort(404)
+    folder, name = found
+    return send_from_directory(folder, name)
+
+
 @bp.route('/planner-screenshot/<path:stored>')
 @login_required
 def planner_screenshot_file(stored):
     """
     Serve Trade Planner before/after images.
 
-    Files may live under TRADE_SCREENSHOTS_FOLDER (production volume / tmp) or
-    app/static/uploads/trade_screenshots (development). DB stores paths like
-    uploads/trade_screenshots/name.png.
+    Files live under TRADE_SCREENSHOTS_FOLDER (persistent disk in production) or
+    legacy static/tmp paths. DB stores paths like uploads/trade_screenshots/name.png.
     """
+    from app.services.uploads_storage import resolve_screenshot_file
+
     rel = (stored or '').replace('\\', '/').strip()
     prefix = 'uploads/trade_screenshots/'
     if not rel.startswith(prefix):
@@ -172,16 +186,11 @@ def planner_screenshot_file(stored):
     if not fname or '..' in fname or fname.startswith('/'):
         abort(404)
 
-    cfg_dir = current_app.config.get('TRADE_SCREENSHOTS_FOLDER')
-    static_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'trade_screenshots')
-
-    for folder in (cfg_dir, static_dir):
-        if not folder:
-            continue
-        full = os.path.join(folder, fname)
-        if os.path.isfile(full):
-            return send_from_directory(folder, fname)
-    abort(404)
+    found = resolve_screenshot_file(fname)
+    if not found:
+        abort(404)
+    folder, name = found
+    return send_from_directory(folder, name)
 
 
 @bp.route('/api/calculate-pnl', methods=['POST'])

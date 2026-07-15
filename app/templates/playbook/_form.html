@@ -1,11 +1,17 @@
 <div class="row g-3">
     <div class="col-12">
+        <div class="alert alert-secondary small mb-0">
+            <strong>Structure:</strong> Name the setup → market/symbol/timeframe → entry (objective) → invalidation → management → checklist.
+            Tag concepts like <code>fvg</code>, <code>sweep</code>, <code>bos</code> so Strategy Lab can match your journal.
+        </div>
+    </div>
+    <div class="col-12">
         <label class="form-label">Name *</label>
         <input class="form-control" name="name" required value="{{ (setup.name if setup else '')|e }}" placeholder="Example: London Open pullback (A+)">
     </div>
     <div class="col-12 col-md-4">
         <label class="form-label">Market</label>
-        <input class="form-control" name="market" value="{{ (setup.market if setup else '')|e }}" placeholder="Forex / Indices / Crypto">
+        <input class="form-control" name="market" value="{{ (setup.market if setup else '')|e }}" placeholder="Forex / Indices / Crypto / Metals">
     </div>
     <div class="col-12 col-md-4">
         <label class="form-label">Symbol (optional)</label>
@@ -18,11 +24,11 @@
 
     <div class="col-12">
         <label class="form-label">Entry criteria</label>
-        <textarea class="form-control" name="entry_criteria" rows="4" placeholder="What must be true to enter? Keep it objective.">{{ (setup.entry_criteria if setup else '')|e }}</textarea>
+        <textarea class="form-control" name="entry_criteria" rows="4" placeholder="What must be true to enter? Keep it objective (sweep → displacement/FVG → retest).">{{ (setup.entry_criteria if setup else '')|e }}</textarea>
     </div>
     <div class="col-12">
         <label class="form-label">Invalidation (where you are wrong)</label>
-        <textarea class="form-control" name="invalidation" rows="3" placeholder="Example: Break + close beyond the swing level; no retest within X candles.">{{ (setup.invalidation if setup else '')|e }}</textarea>
+        <textarea class="form-control" name="invalidation" rows="3" placeholder="Example: Break + close beyond the swept extreme; no retest within X candles.">{{ (setup.invalidation if setup else '')|e }}</textarea>
     </div>
     <div class="col-12">
         <label class="form-label">Management plan</label>
@@ -31,13 +37,13 @@
 
     <div class="col-12">
         <label class="form-label">Checklist (one per line)</label>
-        <textarea class="form-control" name="checklist_text" rows="6" placeholder="Setup matches playbook\nSL placed and sized\nNo news risk\nEntry reason written">{{ (setup.checklist_text if setup else '')|e }}</textarea>
+        <textarea class="form-control" name="checklist_text" rows="6" placeholder="HTF bias clear&#10;Liquidity sweep occurred&#10;FVG / zone present&#10;SL beyond invalidation&#10;No news risk">{{ (setup.checklist_text if setup else '')|e }}</textarea>
     </div>
 
     <div class="col-12 col-md-8">
         <label class="form-label">Tags</label>
-        <input class="form-control" name="tags" value="{{ (setup.tags if setup else '')|e }}" placeholder="pullback, trend, london">
-        <div class="form-text">Comma-separated. Useful for filtering later.</div>
+        <input class="form-control" name="tags" value="{{ (setup.tags if setup else '')|e }}" placeholder="fvg, sweep, london, a+">
+        <div class="form-text">Comma-separated. Useful for Strategy Lab + filtering later.</div>
     </div>
     <div class="col-12 col-md-4 d-flex align-items-end">
         <div class="form-check">

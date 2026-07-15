@@ -112,6 +112,21 @@ def _as_utc_aware(dt: Optional[datetime]) -> Optional[datetime]:
     return dt.astimezone(timezone.utc)
 
 
+def _parse_promo_access_until() -> Optional[datetime]:
+    """Optional global promo end (ISO date/datetime). Applies to current and new users."""
+    raw = (os.environ.get("TV_PROMO_ACCESS_UNTIL") or "").strip()
+    if not raw:
+        return None
+    try:
+        # Allow date-only (YYYY-MM-DD) or full ISO
+        if len(raw) <= 10:
+            raw = raw + "T23:59:59+00:00"
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return _as_utc_aware(dt)
+    except ValueError:
+        return None
+
+
 def get_effective_subscription_state(user) -> SubscriptionState:
     """
     Compute an effective state based on persisted columns.
@@ -133,15 +148,21 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     # This avoids forcing immediate payment setup and keeps the platform fully usable.
     #
     # Turn off by setting: TV_ALL_USERS_PROPLUS_TRIAL=0
+    # Optional hard end date (ISO): TV_PROMO_ACCESS_UNTIL=2026-09-15T00:00:00+00:00
+    #   — current + new users stay on Pro Plus until that date regardless of old trial_ends_at.
     force_all_trial = (os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL", "1") or "1").strip().lower() in {"1", "true", "yes", "on"}
     if force_all_trial:
         days = int(os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL_DAYS", "60") or "60")
         created = _as_utc_aware(_safe_getattr(user, "created_at", None)) or now
-        # Anchor trial end to signup (DB column or created_at), not "now + N days" per request.
+        promo_until = _parse_promo_access_until()
+        candidates = []
+        if promo_until:
+            candidates.append(promo_until)
         if trial_ends_at:
-            trial_end = trial_ends_at
+            candidates.append(trial_ends_at)
         else:
-            trial_end = created + timedelta(days=days)
+            candidates.append(created + timedelta(days=days))
+        trial_end = max(candidates) if candidates else (created + timedelta(days=days))
         if trial_end >= now:
             return SubscriptionState(
                 tier="pro_plus",

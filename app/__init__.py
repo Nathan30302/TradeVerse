@@ -50,14 +50,24 @@ def create_app(config_name='default'):
     except (OSError, PermissionError):
         pass
 
-    # Ensure upload folder exists (skip if path is in /tmp or read-only)
+    # Ensure upload folder exists
     upload_folder = app.config.get('UPLOAD_FOLDER')
-    if upload_folder and not upload_folder.startswith('/tmp'):
+    if upload_folder:
         try:
             os.makedirs(upload_folder, exist_ok=True)
+            for key in ('AVATARS_FOLDER', 'TRADE_SCREENSHOTS_FOLDER', 'REPLAY_UPLOADS_FOLDER'):
+                path = app.config.get(key)
+                if path:
+                    os.makedirs(path, exist_ok=True)
         except (OSError, PermissionError):
             pass
-    
+    try:
+        from app.services.uploads_storage import ensure_upload_dirs
+
+        ensure_upload_dirs()
+    except Exception:
+        pass
+
     # Initialize extensions with app
     db.init_app(app)
     bcrypt.init_app(app)
@@ -136,6 +146,9 @@ def create_app(config_name='default'):
     # Register unconditionally (like replay) so routes never 404 when migrations lag.
     app.register_blueprint(playbook.bp)
     app.register_blueprint(replay.bp)
+
+    from app.routes import lab
+    app.register_blueprint(lab.bp)
 
     # Register admin blueprint
     from app.routes import admin
@@ -561,7 +574,7 @@ def register_context_processors(app):
 
     @app.context_processor
     def inject_planner_screenshot_url():
-        """URLs for planner images (works when files live on TRADE_SCREENSHOTS_FOLDER or under static/)."""
+        """URLs for planner images and profile media (persistent disk or static/)."""
 
         def planner_screenshot_url(stored_path):
             from flask import url_for
@@ -573,7 +586,20 @@ def register_context_processors(app):
             except Exception:
                 return ''
 
-        return {'planner_screenshot_url': planner_screenshot_url}
+        def media_url(stored_path, default_static='img/default-avatar.svg'):
+            from app.services.uploads_storage import media_url as _media_url
+
+            try:
+                return _media_url(stored_path, default_static=default_static)
+            except Exception:
+                from flask import url_for
+
+                return url_for('static', filename=default_static)
+
+        return {
+            'planner_screenshot_url': planner_screenshot_url,
+            'media_url': media_url,
+        }
 
     @app.context_processor
     def inject_owner_platform():

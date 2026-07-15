@@ -2314,7 +2314,7 @@
                 <a class="nav-link dropdown-toggle d-flex align-items-center justify-content-center tv-nav-account-toggle"
                    href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" aria-haspopup="true"
                    aria-label="Open account menu for {{ current_user.username }}">
-                    <img src="{% if current_user.avatar_url %}{% if current_user.avatar_url.startswith('http://') or current_user.avatar_url.startswith('https://') or current_user.avatar_url.startswith('/static/') %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename=current_user.avatar_url) }}{% endif %}{% else %}{{ url_for('static', filename='img/default-avatar.svg') }}{% endif %}" alt="" class="rounded-circle flex-shrink-0" width="32" height="32" style="width:32px;height:32px;object-fit:cover;" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';">
+                    <img src="{{ media_url(current_user.avatar_url) }}" alt="" class="rounded-circle flex-shrink-0" width="32" height="32" style="width:32px;height:32px;object-fit:cover;" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';">
                     <span class="visually-hidden">{{ current_user.username }}{% if sub.tier == 'owner' %}, Owner{% elif owner_platform_session_only %}, Admin{% elif sub.status == 'trialing' %}, Trial{% elif sub.tier == 'pro_plus' %}, Pro Plus{% elif sub.tier == 'pro' %}, Pro{% else %}, Free{% endif %}</span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="userDropdown">
@@ -2399,6 +2399,12 @@
                 <a class="nav-link {% if request.endpoint == 'dashboard.eod_ritual' %}active{% endif %}"
                    href="{{ url_for('dashboard.eod_ritual') }}">
                     <i class="fas fa-moon"></i> End of session
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('lab.') %}active{% endif %}"
+                   href="{{ url_for('lab.index') }}">
+                    <i class="fas fa-flask"></i> Strategy Lab
                 </a>
             </li>
             <li class="nav-item">
@@ -2560,6 +2566,13 @@
                                href="{{ url_for('dashboard.eod_ritual') }}">
                                 <i class="fas fa-moon"></i>
                                 <span>End of session</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('lab.') %}active{% endif %}" 
+                               href="{{ url_for('lab.index') }}">
+                                <i class="fas fa-flask"></i>
+                                <span>Strategy Lab</span>
                             </a>
                         </li>
                         <li class="nav-item">

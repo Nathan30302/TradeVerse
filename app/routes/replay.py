@@ -29,8 +29,9 @@ def _allowed_file(filename: str) -> bool:
 
 
 def _replay_upload_dir() -> str:
-    base = current_app.config.get("TRADE_SCREENSHOTS_FOLDER") or current_app.config.get("UPLOAD_FOLDER") or "/tmp"
-    path = os.path.join(base, "replay")
+    from app.services.uploads_storage import replay_dir
+
+    path = replay_dir()
     os.makedirs(path, exist_ok=True)
     return path
 

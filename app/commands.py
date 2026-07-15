@@ -159,6 +159,52 @@ def register_commands(app):
             db.session.commit()
         click.echo(f'Downgraded {changed} expired trials.')
 
+    @app.cli.command('grant-promo-trial')
+    @click.option('--days', default=60, show_default=True, help='Days of Pro Plus access from now')
+    @click.option(
+        '--only-active/--all-users',
+        default=True,
+        show_default=True,
+        help='Limit to is_active users (default) or update every row',
+    )
+    def grant_promo_trial(days: int, only_active: bool):
+        """
+        Give existing accounts a fresh Pro Plus trial window (e.g. before paid billing).
+
+        Sets subscription_tier=pro_plus, subscription_status=trialing, and
+        trial_ends_at = now + days for each user. Keep TV_ALL_USERS_PROPLUS_TRIAL=1
+        so the entitlements overlay stays aligned with the DB.
+        """
+        from app.models.user import User
+
+        if days < 1 or days > 366:
+            click.echo('days must be between 1 and 366')
+            return
+
+        now = datetime.now(timezone.utc)
+        ends = now + timedelta(days=int(days))
+        q = User.query
+        if only_active:
+            q = q.filter(User.is_active.is_(True))
+        users = q.all()
+        changed = 0
+        for u in users:
+            u.subscription_tier = 'pro_plus'
+            u.subscription_status = 'trialing'
+            u.trial_ends_at = ends
+            # Clear paid expiry so promo trial is not overridden by an old stamp.
+            try:
+                u.subscription_expires_at = None
+            except Exception:
+                pass
+            changed += 1
+        if changed:
+            db.session.commit()
+        click.echo(
+            f'Granted Pro Plus trial to {changed} user(s) until {ends.isoformat()} '
+            f'({days} days). Ensure TV_ALL_USERS_PROPLUS_TRIAL=1 on the host.'
+        )
+
     @app.cli.command('send-trial-reminders')
     @click.option(
         '--days-left',

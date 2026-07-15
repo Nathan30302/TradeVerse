@@ -13,6 +13,7 @@ from app import db
 from app.models.playbook_setup import PlaybookSetup
 from app.models.trade import Trade
 from app.services.retention import setup_letter_grade
+from app.services.strategy_lab import PLAYBOOK_STARTERS
 from sqlalchemy import case, func
 
 
@@ -79,7 +80,38 @@ def index():
                 "grade_color": grade_color,
             }
 
-    return render_template("playbook/index.html", setups=setups, stats_by_setup=stats_by_setup)
+    return render_template("playbook/index.html", setups=setups, stats_by_setup=stats_by_setup, starters=PLAYBOOK_STARTERS)
+
+
+@bp.route("/from-starter/<key>", methods=["POST"])
+@login_required
+def from_starter(key: str):
+    """Create a playbook setup from a curated starter template."""
+    if not _playbook_ready():
+        return _playbook_unavailable_response()
+
+    tmpl = next((t for t in PLAYBOOK_STARTERS if t.get("key") == key), None)
+    if not tmpl:
+        flash("Unknown starter template.", "warning")
+        return redirect(url_for("playbook.index"))
+
+    setup = PlaybookSetup(
+        user_id=current_user.id,
+        name=tmpl["name"],
+        market=tmpl.get("market") or "",
+        symbol_hint=tmpl.get("symbol_hint") or "",
+        timeframe=tmpl.get("timeframe") or "",
+        entry_criteria=tmpl.get("entry_criteria") or "",
+        invalidation=tmpl.get("invalidation") or "",
+        management_plan=tmpl.get("management_plan") or "",
+        checklist_text=tmpl.get("checklist_text") or "",
+        tags=tmpl.get("tags") or "",
+        is_active=True,
+    )
+    db.session.add(setup)
+    db.session.commit()
+    flash("Starter playbook saved — edit it to match your edge.", "success")
+    return redirect(url_for("playbook.view", setup_id=setup.id))
 
 
 @bp.route("/new", methods=["GET", "POST"])

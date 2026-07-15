@@ -7,6 +7,10 @@ services:
     # Migrate before workers start so new tables/columns exist (avoids 500s after deploy).
     startCommand: bash scripts/render-start.sh
     healthCheckPath: /
+    disk:
+      name: tradeverse-uploads
+      mountPath: /var/data
+      sizeGB: 10
     envVars:
       - key: FLASK_ENV
         value: production
@@ -18,6 +22,22 @@ services:
           property: connectionString
       - key: PYTHONUNBUFFERED
         value: 'true'
+      # Persistent uploads (avatars, before/after trade screenshots)
+      - key: TRADEVERSE_DATA_DIR
+        value: /var/data
+      # 2-month Pro Plus for current + new users
+      - key: TV_TRIAL_DAYS_PRO_PLUS
+        value: '60'
+      - key: TV_ALL_USERS_PROPLUS_TRIAL
+        value: '1'
+      - key: TV_ALL_USERS_PROPLUS_TRIAL_DAYS
+        value: '60'
+      # Hard promo end so expired trials still get access until this date
+      - key: TV_PROMO_ACCESS_UNTIL
+        value: '2026-09-15'
+      # One-time DB grant of fresh trial_ends_at on boot (marker on disk)
+      - key: TV_GRANT_PROMO_ON_START
+        value: '1'
     databases:
       - name: tradeverse-db
         databaseName: tradeverse

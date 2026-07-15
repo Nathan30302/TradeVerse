@@ -44,8 +44,7 @@
 
                     <div class="row g-3 align-items-center mb-4 pb-3 border-bottom border-secondary">
                         <div class="col-auto">
-                            {% set av = current_user.avatar_url %}
-                            <img src="{% if av %}{% if av.startswith('http://') or av.startswith('https://') or av.startswith('/static/') %}{{ av }}{% else %}{{ url_for('static', filename=av) }}{% endif %}{% else %}{{ url_for('static', filename='img/default-avatar.svg') }}{% endif %}"
+                            <img src="{{ media_url(current_user.avatar_url) }}"
                                  alt="" class="rounded-circle border border-secondary" style="width:88px;height:88px;object-fit:cover;" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';">
                         </div>
                         <div class="col">

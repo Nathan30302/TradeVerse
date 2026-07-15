@@ -14,6 +14,30 @@
         </a>
     </div>
 
+    <div class="card tv-surface mb-4">
+        <div class="card-body">
+            <div class="fw-semibold mb-1">Recommended playbook structure</div>
+            <p class="small text-muted mb-2">
+                Keep 1–3 A+ setups. Each needs: market + session, objective entry, clear invalidation, management, and a short checklist.
+                Then score the language in <a href="{{ url_for('lab.index') }}">Strategy Lab</a>.
+            </p>
+            <div class="row g-2">
+                {% for st in starters|default([]) %}
+                <div class="col-md-4">
+                    <div class="border rounded p-3 h-100">
+                        <div class="fw-semibold small">{{ st.name }}</div>
+                        <div class="text-muted small mb-2">{{ st.symbol_hint }} · {{ st.timeframe }}</div>
+                        <form method="POST" action="{{ url_for('playbook.from_starter', key=st.key) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Use this starter</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
     {% if setups %}
     <div class="row g-3">
         {% for s in setups %}

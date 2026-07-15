@@ -88,6 +88,7 @@ def render_pricing_page():
             'features': [
                 'Everything in Pro',
                 'Coach mode & premium coaching track (rolled out in-app)',
+                'Strategy Lab (plain-English setup scoring)',
             ],
             'cta': 'Upgrade Now',
             'cta_disabled': current_user.is_authenticated and current_tier == 'pro_plus',

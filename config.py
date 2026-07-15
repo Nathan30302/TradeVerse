@@ -80,7 +80,12 @@ class Config:
     
     # File Upload Configuration
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
-    UPLOAD_FOLDER = os.path.join('app', 'static', 'uploads')
+    # Local/dev: keep files under static so url_for('static') still works as fallback.
+    TRADEVERSE_DATA_DIR = os.environ.get('TRADEVERSE_DATA_DIR') or os.path.join('app', 'static')
+    UPLOAD_FOLDER = os.path.join(TRADEVERSE_DATA_DIR, 'uploads')
+    TRADE_SCREENSHOTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'trade_screenshots')
+    AVATARS_FOLDER = os.path.join(UPLOAD_FOLDER, 'avatars')
+    REPLAY_UPLOADS_FOLDER = os.path.join(UPLOAD_FOLDER, 'replay')
     # Screenshots use png/jpg/webp/heic; pdf kept for other uploads (e.g. statements).
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'pdf'}
     
@@ -397,14 +402,23 @@ class ProductionConfig(Config):
         '1', 'true', 'yes'
     )
 
-    # Use /tmp for ephemeral file uploads in cloud environments
-    UPLOAD_FOLDER = '/tmp/uploads'
-    TRADE_SCREENSHOTS_FOLDER = '/tmp/uploads/trade_screenshots'
-    
-    # Ensure /tmp directories exist
+    # Durable uploads: attach a Render disk and set TRADEVERSE_DATA_DIR=/var/data
+    # Never use /tmp for avatars or trade screenshots — those vanish on restart.
+    TRADEVERSE_DATA_DIR = (
+        os.environ.get('TRADEVERSE_DATA_DIR')
+        or os.environ.get('PERSISTENT_DISK_PATH')
+        or '/var/data'
+    )
+    UPLOAD_FOLDER = os.path.join(TRADEVERSE_DATA_DIR, 'uploads')
+    TRADE_SCREENSHOTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'trade_screenshots')
+    AVATARS_FOLDER = os.path.join(UPLOAD_FOLDER, 'avatars')
+    REPLAY_UPLOADS_FOLDER = os.path.join(UPLOAD_FOLDER, 'replay')
+
     try:
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         os.makedirs(TRADE_SCREENSHOTS_FOLDER, exist_ok=True)
+        os.makedirs(AVATARS_FOLDER, exist_ok=True)
+        os.makedirs(REPLAY_UPLOADS_FOLDER, exist_ok=True)
     except Exception:
         pass
 

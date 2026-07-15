@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Strategy Lab - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="tv-page-hero">
+    <div class="page-header">
+        <h1 class="page-title mb-2"><i class="fas fa-flask"></i> Strategy Lab</h1>
+        <p class="page-subtitle mb-0">
+            Describe your setup in plain English. We score it against your journal and show annotated trades —
+            sweep, FVG, entry — not just a black-box win rate.
+        </p>
+    </div>
+</div>
+
+<div class="alert alert-info border-0 shadow-sm mb-4">
+    <strong>Today:</strong> journal matching + annotated demo trades.
+    <strong>Next:</strong> multi-year OHLC market engine with chart drawings (no Pine Script).
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card tv-surface h-100">
+            <div class="card-header"><h5 class="mb-0">Your setup</h5></div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="description">Plain English</label>
+                        <textarea class="form-control" id="description" name="description" rows="8"
+                                  placeholder="Example: On XAUUSD 15M in London, wait for a liquidity sweep of the prior high, then a displacement that leaves an FVG. Enter on the retest of the FVG. Invalidation: close beyond the swept extreme." required>{{ description|e }}</textarea>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="symbol">Symbol (optional)</label>
+                            <input class="form-control" id="symbol" name="symbol" value="{{ symbol|e }}" placeholder="XAUUSD">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="timeframe">Timeframe</label>
+                            <input class="form-control" id="timeframe" name="timeframe" value="{{ timeframe|e }}" placeholder="15M">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="mode">Mode</label>
+                        <select class="form-select" id="mode" name="mode">
+                            <option value="auto" {% if mode == 'auto' %}selected{% endif %}>Auto (journal, else demo)</option>
+                            <option value="journal" {% if mode == 'journal' %}selected{% endif %}>Journal only</option>
+                            <option value="demo" {% if mode == 'demo' %}selected{% endif %}>Demo annotations</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-play me-1"></i> Run lab
+                    </button>
+                </form>
+                <div class="small tv-muted mt-3">
+                    Tip: save the same rules in
+                    <a href="{{ url_for('playbook.index') }}">Playbook</a>
+                    and tag trades when you log them — journal scoring gets sharper.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        {% if result %}
+        <div class="card tv-surface mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Results · {{ result.mode }}</h5>
+                <span class="badge bg-secondary">{{ result.stats.matched }} trades</span>
+            </div>
+            <div class="card-body">
+                <p class="small tv-muted">{{ result.disclaimer }}</p>
+                <div class="row g-2 text-center mb-3">
+                    <div class="col-3">
+                        <div class="tv-panel p-2">
+                            <div class="small tv-muted">Win rate</div>
+                            <div class="fw-bold">{{ result.stats.win_rate }}%</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="tv-panel p-2">
+                            <div class="small tv-muted">Wins</div>
+                            <div class="fw-bold text-success">{{ result.stats.wins }}</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="tv-panel p-2">
+                            <div class="small tv-muted">Losses</div>
+                            <div class="fw-bold text-danger">{{ result.stats.losses }}</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="tv-panel p-2">
+                            <div class="small tv-muted">Net</div>
+                            <div class="fw-bold">{{ result.stats.net_pnl }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% set rules = result.rules or {} %}
+                <div class="mb-3">
+                    <div class="small tv-muted text-uppercase fw-semibold mb-1">Detected concepts</div>
+                    {% for c in rules.get('concepts', []) %}
+                    <span class="badge bg-dark me-1">{{ c }}</span>
+                    {% endfor %}
+                    {% if rules.get('direction_hint') %}
+                    <span class="badge bg-primary">{{ rules.direction_hint }}</span>
+                    {% endif %}
+                    {% if rules.get('symbol_hint') %}
+                    <span class="badge bg-secondary">{{ rules.symbol_hint }}</span>
+                    {% endif %}
+                </div>
+
+                {% for t in result.trades %}
+                <div class="tv-panel p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <strong>{{ t.symbol }}</strong>
+                            <span class="badge bg-{% if t.direction == 'BUY' %}success{% else %}danger{% endif %} ms-1">{{ t.direction }}</span>
+                            <span class="badge bg-{% if t.result == 'win' %}success{% elif t.result == 'loss' %}danger{% else %}secondary{% endif %}">{{ t.result }}</span>
+                            <span class="badge bg-outline-secondary border">{{ t.source }}</span>
+                        </div>
+                        <div class="text-end">
+                            {% if t.pnl is not none %}
+                            <div class="fw-bold {% if t.pnl >= 0 %}text-success{% else %}text-danger{% endif %}">{{ '%+.2f'|format(t.pnl) }}</div>
+                            {% endif %}
+                            {% if t.trade_id %}
+                            <a class="small" href="{{ url_for('trade.view', trade_id=t.trade_id) }}">Open trade →</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if t.entry_price is not none %}
+                    <div class="small tv-muted mt-1">Entry {{ t.entry_price }}{% if t.exit_price is not none %} · Exit {{ t.exit_price }}{% endif %}</div>
+                    {% endif %}
+                    <ol class="small mb-0 mt-2 ps-3">
+                        {% for line in t.narrative %}
+                        <li>{{ line }}</li>
+                        {% endfor %}
+                    </ol>
+                    {# Simple visual strip: sweep → fvg → entry #}
+                    <div class="d-flex flex-wrap gap-2 mt-3 small">
+                        <span class="px-2 py-1 rounded" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);">1 Sweep</span>
+                        <span class="align-self-center">→</span>
+                        <span class="px-2 py-1 rounded" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.35);">2 FVG / zone</span>
+                        <span class="align-self-center">→</span>
+                        <span class="px-2 py-1 rounded" style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.35);">3 Entry</span>
+                    </div>
+                </div>
+                {% else %}
+                <p class="tv-muted mb-0">No trades to show. Try demo mode or log more tagged trades.</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card tv-surface">
+            <div class="card-body">
+                <h5>What you’ll get</h5>
+                <ul class="mb-0">
+                    <li>Concept detection (FVG, sweep, BOS, retest, session…)</li>
+                    <li>Win/loss breakdown from <em>your</em> journal when data exists</li>
+                    <li>Step-by-step narrative per trade — not only a win rate</li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
