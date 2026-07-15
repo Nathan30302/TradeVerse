@@ -28,7 +28,8 @@ _MID_SELECT = (
 
 _MIN_SELECT = (
     "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
-    "timezone, preferred_currency, theme FROM users WHERE {where} LIMIT 1"
+    "timezone, preferred_currency, theme, avatar_url, full_name, bio "
+    "FROM users WHERE {where} LIMIT 1"
 )
 
 _DEFERRED_DEFAULTS = {

@@ -522,13 +522,16 @@ def _read_avatar_upload_bytes(storage) -> tuple[bytes | None, str | None]:
 
 def _save_avatar_for_user(user, storage):
     """
-    Validate and store an avatar under the persistent avatars directory.
+    Validate and store an avatar under a writable avatars directory.
+
+    Also mirrors a copy into ``static/uploads/avatars`` when that path differs,
+    so the photo still serves if the primary durable disk is unavailable later.
 
     Returns:
         tuple[str | None, str | None, str | None]: (error, relative_path, full_disk_path)
     """
     from werkzeug.utils import secure_filename
-    from app.services.uploads_storage import avatars_dir
+    from app.services.uploads_storage import avatars_dir, static_avatars_mirror_dir, resolve_avatar_file
 
     if not storage or not storage.filename:
         return (None, None, None)
@@ -555,6 +558,25 @@ def _save_avatar_for_user(user, storage):
     except OSError as e:
         current_app.logger.warning('avatar save failed: %s', e)
         return ('Could not save the image. Please try again.', None, None)
+
+    # Mirror into static tree when primary is elsewhere (e.g. /var/data).
+    mirror = static_avatars_mirror_dir()
+    if mirror and os.path.abspath(mirror) != os.path.abspath(dest_dir):
+        try:
+            mirror_path = os.path.join(mirror, safe)
+            with open(mirror_path, 'wb') as out_f:
+                out_f.write(data)
+        except OSError:
+            current_app.logger.debug('avatar static mirror skipped', exc_info=True)
+
+    if not resolve_avatar_file(safe):
+        current_app.logger.warning('avatar saved but not resolvable: %s', full_path)
+        try:
+            if os.path.isfile(full_path):
+                os.remove(full_path)
+        except OSError:
+            pass
+        return ('Photo was written but could not be verified. Please try again.', None, None)
 
     rel = f'uploads/avatars/{safe}'
     return (None, rel, full_path)
@@ -601,20 +623,33 @@ def profile():
         if theme not in allowed:
             theme = 'dark'
 
-        old_avatar_url = current_user.avatar_url
+        # Always mutate a session-bound User. Flask-Login may hand us a detached
+        # schema-compat hydrate; assigning on that object and commit() is a no-op
+        # (file written, avatar_url never persisted) — the profile photo bug.
+        from app.models.user import User as UserModel
+
+        user = db.session.get(UserModel, current_user.id)
+        if user is None:
+            flash('Could not load your account to save. Please sign in again.', 'danger')
+            after = (request.form.get('after_save') or '').strip().lower()
+            if after == 'settings':
+                return redirect(url_for('auth.settings'))
+            return redirect(url_for('auth.profile'))
+
+        old_avatar_url = user.avatar_url
         uploaded_disk_path = None
         pending_avatar = ('noop', None)  # ('clear', None) | ('set', rel_path) | noop
-        if request.form.get('remove_avatar'):
+        # Prefer a new upload over "remove" if both are submitted.
+        avatar_storage = request.files.get('avatar')
+        if avatar_storage and avatar_storage.filename:
+            aerr, rel_path, full_disk = _save_avatar_for_user(user, avatar_storage)
+            if aerr:
+                field_msgs.append(aerr)
+            elif rel_path:
+                pending_avatar = ('set', rel_path)
+                uploaded_disk_path = full_disk
+        elif request.form.get('remove_avatar'):
             pending_avatar = ('clear', None)
-        else:
-            avatar_storage = request.files.get('avatar')
-            if avatar_storage and avatar_storage.filename:
-                aerr, rel_path, full_disk = _save_avatar_for_user(current_user, avatar_storage)
-                if aerr:
-                    field_msgs.append(aerr)
-                elif rel_path:
-                    pending_avatar = ('set', rel_path)
-                    uploaded_disk_path = full_disk
 
         def _rollback_new_avatar_file():
             if uploaded_disk_path and os.path.isfile(uploaded_disk_path):
@@ -625,31 +660,33 @@ def profile():
 
         # Update profile
         try:
-            current_user.full_name = full_name if full_name else None
-            current_user.bio = bio if bio else None
-            current_user.timezone = timezone
-            current_user.preferred_currency = preferred_currency
-            current_user.theme = theme
+            user.full_name = full_name if full_name else None
+            user.bio = bio if bio else None
+            user.timezone = timezone
+            user.preferred_currency = preferred_currency
+            user.theme = theme
             if 'country_code' in request.form and not cerr:
                 try:
-                    current_user.country_code = country_code
+                    user.country_code = country_code
                 except Exception:
                     pass
             if 'phone_number' in request.form and not perr:
                 try:
-                    current_user.phone_number = phone_number
+                    user.phone_number = phone_number
                 except Exception:
                     pass
 
             if pending_avatar[0] == 'clear':
-                current_user.avatar_url = None
+                user.avatar_url = None
             elif pending_avatar[0] == 'set':
-                current_user.avatar_url = pending_avatar[1]
+                user.avatar_url = pending_avatar[1]
 
             db.session.commit()
             if pending_avatar[0] in ('clear', 'set'):
                 _unlink_user_avatar_file(old_avatar_url)
-            if field_msgs:
+            if pending_avatar[0] == 'set':
+                flash('✅ Profile photo saved.', 'success')
+            elif field_msgs:
                 flash('✅ Profile saved. ' + ' '.join(field_msgs), 'warning')
             else:
                 flash('✅ Profile updated successfully!', 'success')

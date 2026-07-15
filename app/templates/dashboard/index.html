@@ -44,42 +44,8 @@
     </div>
 </div>
 
-{% include 'partials/dashboard_trial_banner.html' %}
-
 {# ------------------------------------------------------------------ #}
-{# Daily loop — briefing, streak, review queue, weekly score          #}
-{# ------------------------------------------------------------------ #}
-{% include 'partials/dashboard_daily_loop.html' %}
-
-{# ------------------------------------------------------------------ #}
-{# Pinned coaching note (premium)                                     #}
-{# ------------------------------------------------------------------ #}
-{% if pinned %}
-<div class="card tv-surface mb-4" style="border-left: 4px solid #6366f1;">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="mb-0"><i class="fas fa-thumbtack"></i> Saved coaching note</h5>
-            <div class="small opacity-75 mt-1">Your pinned rule + checklist.</div>
-        </div>
-        <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-light">Open AI Buddy</a>
-    </div>
-    <div class="card-body">
-        <div class="fw-semibold mb-2">{{ pinned.pinned_rule }}</div>
-        {% set items = pinned.checklist_items() %}
-        {% if items %}
-        <div class="small text-muted mb-1">Checklist</div>
-        <ul class="mb-0 ps-3">
-            {% for it in items[:10] %}
-            <li class="small">{{ it }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
-
-{# ------------------------------------------------------------------ #}
-{# Rotating quote OR new-user quick-start (above Getting started)      #}
+{# Rotating insight — always at the top so it’s easy to notice         #}
 {# ------------------------------------------------------------------ #}
 {% if stats.total_trades == 0 %}
 <div class="card border-0 mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
@@ -127,6 +93,40 @@
 </div>
 {% else %}
 {% include 'partials/motivational_quote_card.html' %}
+{% endif %}
+
+{% include 'partials/dashboard_trial_banner.html' %}
+
+{# ------------------------------------------------------------------ #}
+{# Daily loop — briefing, streak, review queue, weekly score          #}
+{# ------------------------------------------------------------------ #}
+{% include 'partials/dashboard_daily_loop.html' %}
+
+{# ------------------------------------------------------------------ #}
+{# Pinned coaching note (premium)                                     #}
+{# ------------------------------------------------------------------ #}
+{% if pinned %}
+<div class="card tv-surface mb-4" style="border-left: 4px solid #6366f1;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0"><i class="fas fa-thumbtack"></i> Saved coaching note</h5>
+            <div class="small opacity-75 mt-1">Your pinned rule + checklist.</div>
+        </div>
+        <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-light">Open AI Buddy</a>
+    </div>
+    <div class="card-body">
+        <div class="fw-semibold mb-2">{{ pinned.pinned_rule }}</div>
+        {% set items = pinned.checklist_items() %}
+        {% if items %}
+        <div class="small text-muted mb-1">Checklist</div>
+        <ul class="mb-0 ps-3">
+            {% for it in items[:10] %}
+            <li class="small">{{ it }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
 {% endif %}
 
 {# ------------------------------------------------------------------ #}

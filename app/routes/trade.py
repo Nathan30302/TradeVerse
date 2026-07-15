@@ -477,9 +477,14 @@ def add():
             flash(ok_msg, 'success')
             if cooldown_note:
                 flash(cooldown_note, 'warning')
-            if trade.status == 'CLOSED' and trade_needs_review(trade):
-                flash('Add a one-line lesson while it is fresh — it powers AI Buddy and your review queue.', 'info')
-                return redirect(url_for('trade.view', trade_id=trade.id, review=1))
+            if trade.status == 'CLOSED':
+                try:
+                    generate_trade_feedback(trade)
+                except Exception:
+                    current_app.logger.debug('auto feedback skipped', exc_info=True)
+                if trade_needs_review(trade):
+                    flash('Add a one-line lesson while it is fresh — it powers AI Buddy and your review queue.', 'info')
+                    return redirect(url_for('trade.view', trade_id=trade.id, review=1))
             return redirect(url_for('trade.view', trade_id=trade.id))
             
         except ValueError as e:
@@ -961,6 +966,12 @@ def edit(trade_id):
             flash('✅ Trade updated successfully!', 'success')
             if cooldown_note:
                 flash(cooldown_note, 'warning')
+            if trade.status == 'CLOSED':
+                try:
+                    # Refresh coaching signals when a trade is closed/updated.
+                    generate_trade_feedback(trade)
+                except Exception:
+                    current_app.logger.debug('auto feedback on edit skipped', exc_info=True)
             return redirect(url_for('trade.view', trade_id=trade.id))
             
         except ValueError as e:

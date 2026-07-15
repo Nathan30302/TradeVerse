@@ -26,6 +26,22 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('planner', __name__, url_prefix='/planner')
 
 
+def _playbook_setups_for_planner():
+    """Active playbook setups for linking when starting execution."""
+    if not current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready'):
+        return []
+    try:
+        from app.models.playbook_setup import PlaybookSetup
+
+        return (
+            PlaybookSetup.query.filter_by(user_id=current_user.id, is_active=True)
+            .order_by(PlaybookSetup.updated_at.desc().nullslast(), PlaybookSetup.created_at.desc())
+            .all()
+        )
+    except Exception:
+        return []
+
+
 # ==================== Internal helpers ====================
 
 def _allowed_file(filename):
@@ -135,7 +151,8 @@ def index():
     return render_template('planner/index.html',
                            plans=plans,
                            status_filter=status_filter,
-                           stats=stats)
+                           stats=stats,
+                           playbook_setups=_playbook_setups_for_planner())
 
 
 # ==================== Step 1 — Create Plan ====================
@@ -206,7 +223,7 @@ def view_plan(plan_id):
     except Exception:
         db.session.rollback()
 
-    return render_template('planner/view_plan.html', plan=plan)
+    return render_template('planner/view_plan.html', plan=plan, playbook_setups=_playbook_setups_for_planner())
 
 
 # ==================== Step 2 — Execute Plan (create Trade) ====================
@@ -257,8 +274,24 @@ def start_execution(plan_id):
             status='OPEN',
             # Populate extra fields so dashboard analytics are richer
             checklist_completed=bool(plan.get_checklist_score() == 4),
-            playbook_followed=True,
+            playbook_followed=False,
         )
+
+        # Optional playbook link from execute form
+        if current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready'):
+            pb_raw = (request.form.get('playbook_setup_id') or '').strip()
+            if pb_raw:
+                try:
+                    from app.models.playbook_setup import PlaybookSetup
+
+                    pb_id = int(pb_raw)
+                    setup = PlaybookSetup.query.filter_by(id=pb_id, user_id=current_user.id).first()
+                    if setup:
+                        trade.playbook_setup_id = pb_id
+                        followed = (request.form.get('playbook_followed') or '').strip().lower()
+                        trade.playbook_followed = followed in ('1', 'on', 'true', 'yes')
+                except (TypeError, ValueError):
+                    pass
 
         # Calculate R:R on the Trade if levels are available
         if trade.stop_loss and trade.take_profit and trade.entry_price:

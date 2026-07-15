@@ -44,17 +44,17 @@
                     </div>
                     {% endif %}
 
-                    <div class="fw-semibold mb-2">How the strategy works</div>
+                    <div class="fw-semibold mb-2">When do you enter?</div>
                     <div class="small text-muted" style="white-space:pre-wrap">{{ setup.entry_criteria or "—" }}</div>
 
                     <hr class="my-3">
 
-                    <div class="fw-semibold mb-2">Invalidation (where you are wrong)</div>
+                    <div class="fw-semibold mb-2">Where are you wrong? (stop)</div>
                     <div class="small text-muted" style="white-space:pre-wrap">{{ setup.invalidation or "—" }}</div>
 
                     <hr class="my-3">
 
-                    <div class="fw-semibold mb-2">Management plan</div>
+                    <div class="fw-semibold mb-2">How do you manage winners?</div>
                     <div class="small text-muted" style="white-space:pre-wrap">{{ setup.management_plan or "—" }}</div>
 
                     {% set imgs = setup.example_image_list() %}
@@ -105,8 +105,11 @@
                         <li>Only take the trade when every checklist item is “yes”.</li>
                         <li>Review linked trades here to refine rules — don’t tweak mid-week.</li>
                     </ul>
-                    <a class="btn btn-sm btn-primary mt-3" href="{{ url_for('trade.add') }}?playbook_setup_id={{ setup.id }}">
+                    <a class="btn btn-sm btn-primary mt-3 me-2" href="{{ url_for('trade.add') }}?playbook_setup_id={{ setup.id }}">
                         <i class="fas fa-plus"></i> Log a trade with this setup
+                    </a>
+                    <a class="btn btn-sm btn-outline-secondary mt-3" href="{{ url_for('lab.index') }}">
+                        <i class="fas fa-flask"></i> Test in Strategy Lab
                     </a>
                 </div>
             </div>

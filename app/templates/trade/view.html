@@ -411,7 +411,11 @@
                 {% else %}
                     <p class="text-muted text-center mb-2">No feedback yet.</p>
                     <p class="text-center mb-0">
-                        <small>Click "Analyze" to generate AI feedback for this trade.</small>
+                        {% if trade.status == 'CLOSED' %}
+                        <small>Feedback is generated when you close a trade. Click Analyze to refresh coaching notes.</small>
+                        {% else %}
+                        <small>Close the trade (or click Analyze) to get coaching on this entry.</small>
+                        {% endif %}
                     </p>
                 {% endif %}
             </div>

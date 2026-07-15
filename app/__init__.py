@@ -156,7 +156,20 @@ def create_app(config_name='default'):
                 from app.models.user import User as UserModel
                 from app.services.user_db_compat import hydrate_user_from_db
 
-                return hydrate_user_from_db(db.session, UserModel, user_id=uid)
+                hydrated = hydrate_user_from_db(db.session, UserModel, user_id=uid)
+                if hydrated is None:
+                    return None
+                # Prefer a session-bound instance so profile / settings commits persist.
+                try:
+                    managed = db.session.get(UserModel, uid)
+                    if managed is not None:
+                        from app.services.user_db_compat import stamp_omitted_user_columns
+
+                        stamp_omitted_user_columns(managed)
+                        return managed
+                except Exception:
+                    pass
+                return hydrated
             except Exception:
                 app.logger.exception("load_user compat fallback failed (prior=%r)", last_exc)
                 return None

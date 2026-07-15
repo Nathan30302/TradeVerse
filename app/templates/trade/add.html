@@ -250,12 +250,13 @@
                         </select>
                         <div id="tv-playbook-preview" class="small d-none">
                             <div class="fw-semibold mb-1">Checklist before entry</div>
-                            <ul id="tv-playbook-checklist" class="mb-2 ps-3"></ul>
+                            <div id="tv-playbook-checklist" class="mb-2"></div>
                             <div id="tv-playbook-entry" class="text-muted" style="white-space:pre-wrap"></div>
+                            <p id="tv-playbook-check-hint" class="small text-muted mb-0 d-none">Check each item you actually confirmed — then you can mark “followed”.</p>
                         </div>
                         <div class="form-check mt-2">
-                            <input class="form-check-input" type="checkbox" id="playbook_followed" name="playbook_followed">
-                            <label class="form-check-label small" for="playbook_followed">I followed this setup’s rules (checklist was yes)</label>
+                            <input class="form-check-input" type="checkbox" id="playbook_followed" name="playbook_followed" disabled>
+                            <label class="form-check-label small" for="playbook_followed">I followed this setup’s rules (all checklist items checked)</label>
                         </div>
                         {% else %}
                         <p class="small text-muted mb-2">You don’t have an active playbook yet. Create one so you can tag trades to a defined strategy.</p>
@@ -336,11 +337,7 @@
                                 <div id="tv-post-notes-hint" class="form-text">Required when position is <strong>Closed</strong> (min. 8 characters).</div>
                             </div>
                             <h6 class="text-muted text-uppercase small fw-bold mb-2">Compliance</h6>
-                            <p class="small text-muted mb-2">Optional honesty checks — use the shortcuts if you have already done this elsewhere.</p>
-                            <div class="d-flex flex-wrap gap-2 align-items-center mb-2 small">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="tv-compliance-both" aria-label="Mark both compliance items done">Mark both done</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="tv-compliance-clear" aria-label="Clear both compliance checkboxes">Clear both</button>
-                            </div>
+                            <p class="small text-muted mb-2">Honesty checks for score &amp; coaching — don’t game these; they only help you if they’re real.</p>
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <div class="form-check">
@@ -655,7 +652,9 @@ document.addEventListener('DOMContentLoaded', function () {
         setVal('session_type', d.session_type);
         setVal('timeframe', d.timeframe);
         setVal('playbook_setup_id', d.playbook_setup_id);
+        if (typeof refreshPlaybookPreview === 'function') refreshPlaybookPreview();
         setChecked('playbook_followed', d.playbook_followed);
+        if (typeof syncPlaybookFollowedGate === 'function') syncPlaybookFollowedGate();
         setVal('pre_trade_plan', d.pre_trade_plan);
         setVal('post_trade_notes', d.post_trade_notes);
         setVal('entry_date', d.entry_date);
@@ -783,34 +782,40 @@ function calculateRR() {
       });
     });
 
-    var cbBoth = document.getElementById('tv-compliance-both');
-    var cbClear = document.getElementById('tv-compliance-clear');
     var chkDone = document.getElementById('checklist_completed');
     var chkPb = document.getElementById('playbook_followed');
-    function bumpCompliance() {
-      if (chkDone) chkDone.dispatchEvent(new Event('change', { bubbles: true }));
-      if (chkPb) chkPb.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    if (cbBoth && chkDone) {
-      cbBoth.addEventListener('click', function () {
-        chkDone.checked = true;
-        if (chkPb) chkPb.checked = true;
-        bumpCompliance();
-      });
-    }
-    if (cbClear && chkDone) {
-      cbClear.addEventListener('click', function () {
-        chkDone.checked = false;
-        if (chkPb) chkPb.checked = false;
-        bumpCompliance();
-      });
-    }
 
-    // Playbook setup preview (checklist + entry rules)
+    // Playbook setup preview (interactive checklist + entry rules)
     var pbSelect = document.getElementById('playbook_setup_id');
     var pbPreview = document.getElementById('tv-playbook-preview');
     var pbList = document.getElementById('tv-playbook-checklist');
     var pbEntry = document.getElementById('tv-playbook-entry');
+    var pbHint = document.getElementById('tv-playbook-check-hint');
+    function syncPlaybookFollowedGate() {
+      if (!chkPb) return;
+      var boxes = pbList ? pbList.querySelectorAll('input[type="checkbox"].tv-pb-item') : [];
+      var need = boxes.length;
+      var done = 0;
+      boxes.forEach(function (b) { if (b.checked) done += 1; });
+      var allOk = need > 0 && done === need;
+      var hasSetup = !!(pbSelect && pbSelect.value);
+      if (!hasSetup) {
+        chkPb.checked = false;
+        chkPb.disabled = true;
+        if (pbHint) pbHint.classList.add('d-none');
+        return;
+      }
+      if (need === 0) {
+        // No checklist text — allow honest self-report.
+        chkPb.disabled = false;
+        if (pbHint) pbHint.classList.add('d-none');
+        return;
+      }
+      chkPb.disabled = !allOk;
+      if (!allOk) chkPb.checked = false;
+      if (pbHint) pbHint.classList.toggle('d-none', allOk);
+      if (allOk && chkDone) chkDone.checked = true;
+    }
     function refreshPlaybookPreview() {
       if (!pbSelect || !pbPreview) return;
       var opt = pbSelect.options[pbSelect.selectedIndex];
@@ -819,6 +824,7 @@ function calculateRR() {
         pbPreview.classList.add('d-none');
         if (pbList) pbList.innerHTML = '';
         if (pbEntry) pbEntry.textContent = '';
+        syncPlaybookFollowedGate();
         return;
       }
       var checklistRaw = opt.getAttribute('data-checklist') || '""';
@@ -830,14 +836,27 @@ function calculateRR() {
       var checklist = String(checklistText).split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
       if (pbList) {
         pbList.innerHTML = '';
-        checklist.forEach(function (item) {
-          var li = document.createElement('li');
-          li.textContent = item;
-          pbList.appendChild(li);
+        checklist.forEach(function (item, idx) {
+          var wrap = document.createElement('div');
+          wrap.className = 'form-check mb-1';
+          var id = 'tv-pb-item-' + idx;
+          var input = document.createElement('input');
+          input.type = 'checkbox';
+          input.className = 'form-check-input tv-pb-item';
+          input.id = id;
+          input.addEventListener('change', syncPlaybookFollowedGate);
+          var label = document.createElement('label');
+          label.className = 'form-check-label';
+          label.setAttribute('for', id);
+          label.textContent = item;
+          wrap.appendChild(input);
+          wrap.appendChild(label);
+          pbList.appendChild(wrap);
         });
       }
       if (pbEntry) pbEntry.textContent = entryText;
       pbPreview.classList.toggle('d-none', checklist.length === 0 && !String(entryText).trim());
+      syncPlaybookFollowedGate();
     }
     if (pbSelect) {
       pbSelect.addEventListener('change', refreshPlaybookPreview);

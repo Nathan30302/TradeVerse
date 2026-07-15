@@ -4,10 +4,15 @@ Strategy Lab routes — plain-English setup testing (journal + demo).
 
 from __future__ import annotations
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, render_template, request
 from flask_login import current_user, login_required
 
-from app.services.strategy_lab import run_strategy_lab
+from app.services.strategy_lab import (
+    CONCEPT_LABELS,
+    LAB_GLOSSARY,
+    LAB_PRESETS,
+    run_strategy_lab,
+)
 
 bp = Blueprint('lab', __name__, url_prefix='/lab')
 
@@ -45,4 +50,7 @@ def index():
         symbol=symbol,
         timeframe=timeframe,
         mode=mode,
+        presets=LAB_PRESETS,
+        glossary=LAB_GLOSSARY,
+        concept_labels=CONCEPT_LABELS,
     )

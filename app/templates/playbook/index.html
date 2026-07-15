@@ -7,7 +7,7 @@
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
             <h1 class="h3 mb-1"><i class="fas fa-book-open"></i> Playbook</h1>
-            <div class="text-muted small">Define your setups with rules and example charts. Select the setup every time you trade so you follow the system—not impulse.</div>
+            <div class="text-muted small">Your rulebook for A+ setups — when to enter, where you’re wrong, and what to check every time. Pick the setup on Add Trade so you trade the plan, not the feeling.</div>
         </div>
         <a class="btn btn-primary" href="{{ url_for('playbook.new') }}">
             <i class="fas fa-plus"></i> New setup
@@ -16,10 +16,10 @@
 
     <div class="card tv-surface mb-4">
         <div class="card-body">
-            <div class="fw-semibold mb-1">Recommended playbook structure</div>
+            <div class="fw-semibold mb-1">Start fast with a ready-made setup</div>
             <p class="small text-muted mb-2">
-                Keep 1–3 A+ setups. Each needs: market + session, objective entry, clear invalidation, management, and a short checklist.
-                Then score the language in <a href="{{ url_for('lab.index') }}">Strategy Lab</a>.
+                Keep 1–3 A+ setups. Each needs: market + session, clear entry, clear stop, management, and a short checklist.
+                Then test the wording in <a href="{{ url_for('lab.index') }}">Strategy Lab</a>.
             </p>
             <div class="row g-2">
                 {% for st in starters|default([]) %}

@@ -65,15 +65,53 @@ def ensure_upload_dirs() -> dict:
 
 
 def avatars_dir() -> str:
+    """
+    Writable absolute directory for avatars.
+
+    Prefer configured durable disk; if it is missing or not writable (common when
+    Render has no disk mounted), fall back to ``app/static/uploads/avatars``.
+    """
+    candidates: List[str] = []
     if has_app_context():
         cfg = current_app.config.get("AVATARS_FOLDER")
         if cfg:
-            try:
-                os.makedirs(cfg, exist_ok=True)
-            except OSError:
-                pass
-            return str(cfg)
-    return ensure_upload_dirs()["avatars"]
+            candidates.append(os.path.abspath(str(cfg)))
+        candidates.append(
+            os.path.abspath(os.path.join(current_app.root_path, "static", "uploads", "avatars"))
+        )
+    env_root = _env_data_dir()
+    if env_root:
+        candidates.append(os.path.join(env_root, "uploads", "avatars"))
+    candidates.append(os.path.abspath(os.path.join("app", "static", "uploads", "avatars")))
+
+    seen = set()
+    for folder in candidates:
+        if not folder or folder in seen:
+            continue
+        seen.add(folder)
+        try:
+            os.makedirs(folder, exist_ok=True)
+            probe = os.path.join(folder, ".tv_write_probe")
+            with open(probe, "wb") as fh:
+                fh.write(b"ok")
+            os.remove(probe)
+            return folder
+        except OSError:
+            continue
+    # Last resort — may still fail on write; caller handles errors.
+    return candidates[0] if candidates else os.path.abspath("uploads/avatars")
+
+
+def static_avatars_mirror_dir() -> Optional[str]:
+    """Secondary location under the app static tree (survives some deploys / helps serve)."""
+    if has_app_context():
+        path = os.path.abspath(os.path.join(current_app.root_path, "static", "uploads", "avatars"))
+        try:
+            os.makedirs(path, exist_ok=True)
+            return path
+        except OSError:
+            return None
+    return None
 
 
 def screenshots_dir() -> str:

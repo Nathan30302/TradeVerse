@@ -22,14 +22,86 @@ from app.models.trade import Trade
 
 
 CONCEPT_PATTERNS = (
+    ('support', re.compile(r'\b(support|demand\s*zone|floor)\b', re.I)),
+    ('resistance', re.compile(r'\b(resistance|supply\s*zone|ceiling)\b', re.I)),
+    ('breakout', re.compile(r'\b(break\s*out|breakout|broke\s*(above|below)|acceptance)\b', re.I)),
     ('fvg', re.compile(r'\b(fvg|fair\s*value\s*gap|imbalance)\b', re.I)),
     ('sweep', re.compile(r'\b(sweep|liquidity\s*grab|stop\s*hunt|raid)\b', re.I)),
     ('bos', re.compile(r'\b(bos|break\s*of\s*structure|choch|change\s*of\s*character)\b', re.I)),
     ('ob', re.compile(r'\b(order\s*block|\bob\b)\b', re.I)),
-    ('retest', re.compile(r'\b(retest|pullback|mitigation)\b', re.I)),
-    ('session', re.compile(r'\b(london|new\s*york|ny\s*open|asian|killzone)\b', re.I)),
+    ('retest', re.compile(r'\b(retest|pullback|bounce|reject(ion)?|mitigation)\b', re.I)),
+    ('session', re.compile(r'\b(london|new\s*york|ny\s*open|asian|killzone|session)\b', re.I)),
     ('trend', re.compile(r'\b(trend|htf|higher\s*time\s*frame|bias)\b', re.I)),
 )
+
+# Friendly labels for UI badges (jargon → everyday language)
+CONCEPT_LABELS = {
+    'support': 'Support (buy zone)',
+    'resistance': 'Resistance (sell zone)',
+    'breakout': 'Breakout',
+    'fvg': 'Fair value gap (price gap)',
+    'sweep': 'Liquidity sweep (stop run)',
+    'bos': 'Break of structure',
+    'ob': 'Order block',
+    'retest': 'Retest / pullback',
+    'session': 'Session timing',
+    'trend': 'Trend / higher-timeframe bias',
+    'discretionary': 'Discretionary (rules unclear)',
+}
+
+LAB_GLOSSARY = [
+    ('Support', 'A price area where buyers often step in — price tends to bounce up from here.'),
+    ('Resistance', 'A price area where sellers often step in — price tends to stall or reverse down.'),
+    ('Breakout', 'Price pushes through support or resistance and stays beyond it.'),
+    ('Retest', 'After a breakout or bounce, price returns to the level to confirm it still holds.'),
+    ('Stop loss', 'Where you exit if the idea is wrong — protects the account.'),
+    ('Take profit', 'Where you lock in gains — often the next clear level.'),
+    ('Session', 'When the market is most active (London, New York, Asia).'),
+    ('FVG / imbalance', 'A sharp move that leaves a “gap” on the chart; price often revisits it.'),
+]
+
+LAB_PRESETS = [
+    {
+        'label': 'Support bounce',
+        'symbol': 'EURUSD',
+        'timeframe': '1H',
+        'description': (
+            'On EURUSD 1-hour, wait for price to tap a clear support level with a rejection wick. '
+            'Enter long on the bounce. Stop loss goes below support. Target the next resistance. '
+            'Only trade when the higher timeframe bias is not strongly bearish.'
+        ),
+    },
+    {
+        'label': 'Resistance rejection',
+        'symbol': 'XAUUSD',
+        'timeframe': '15M',
+        'description': (
+            'On gold (XAUUSD) 15-minute during London, wait for price to hit resistance and reject '
+            '(long upper wick). Enter short on confirmation. Stop above the wick high. '
+            'Target the nearest support. Skip if high-impact news is due.'
+        ),
+    },
+    {
+        'label': 'Breakout + retest',
+        'symbol': 'NAS100',
+        'timeframe': '5M',
+        'description': (
+            'On NAS100 5-minute at New York open, wait for a breakout above resistance with momentum. '
+            'Enter on the first clean retest of the broken level. Stop below the retest low. '
+            'Take partial profits at 1.5R and let a runner go to the session high.'
+        ),
+    },
+    {
+        'label': 'Sweep → FVG (ICT)',
+        'symbol': 'XAUUSD',
+        'timeframe': '15M',
+        'description': (
+            'On XAUUSD 15M in London, wait for a liquidity sweep of the prior high or low, then a '
+            'displacement that leaves an FVG. Enter on the retest of the FVG. '
+            'Invalidation: close beyond the swept extreme.'
+        ),
+    },
+]
 
 
 @dataclass
@@ -103,27 +175,49 @@ def parse_plain_english_setup(text: str, *, symbol: str = '', timeframe: str = '
 def _trade_matches_rules(trade: Trade, rules: ParsedRules) -> bool:
     if rules.symbol_hint:
         if (trade.symbol or '').upper() != rules.symbol_hint.upper():
-            # soft match: allow if symbol empty on rule
             if rules.symbol_hint and trade.symbol:
                 return False
     if rules.direction_hint and (trade.trade_type or '').upper() != rules.direction_hint:
         return False
     # Prefer tagged strategy / notes that mention concepts
-    blob = ' '.join(
-        filter(
-            None,
-            [
-                trade.strategy or '',
-                trade.post_trade_notes or '',
-                trade.lessons_learned or '',
-                trade.emotion or '',
-            ],
-        )
-    ).lower()
+    blob_parts = [
+        trade.strategy or '',
+        trade.pre_trade_plan or '',
+        trade.post_trade_notes or '',
+        trade.lessons_learned or '',
+        trade.emotion or '',
+    ]
+    try:
+        setup = getattr(trade, 'playbook_setup', None)
+        if setup is not None:
+            blob_parts.extend(
+                [
+                    getattr(setup, 'name', '') or '',
+                    getattr(setup, 'tags', '') or '',
+                    getattr(setup, 'entry_criteria', '') or '',
+                    getattr(setup, 'checklist_text', '') or '',
+                ]
+            )
+    except Exception:
+        pass
+    blob = ' '.join(filter(None, blob_parts)).lower()
     if rules.concepts and rules.concepts != ['discretionary']:
         if any(c in blob for c in rules.concepts):
             return True
-        # Still include symbol/direction-matched closed trades as candidates
+        # Everyday synonyms in trader notes
+        synonyms = {
+            'support': ('support', 'demand', 'floor', 'bounce'),
+            'resistance': ('resistance', 'supply', 'ceiling', 'reject'),
+            'breakout': ('breakout', 'broke', 'break out'),
+            'retest': ('retest', 'pullback', 'bounce'),
+            'sweep': ('sweep', 'liquidity', 'stop hunt'),
+            'fvg': ('fvg', 'imbalance', 'gap'),
+            'session': ('london', 'new york', 'ny', 'asia', 'asian'),
+        }
+        for c in rules.concepts:
+            for syn in synonyms.get(c, ()):
+                if syn in blob:
+                    return True
         return bool(rules.symbol_hint or rules.direction_hint)
     return True
 
@@ -131,25 +225,40 @@ def _trade_matches_rules(trade: Trade, rules: ParsedRules) -> bool:
 def _narrative_for_journal(trade: Trade, rules: ParsedRules) -> List[str]:
     lines = []
     concepts = rules.concepts
+    direction = (trade.trade_type or '').upper() or 'the'
+    if 'support' in concepts:
+        lines.append(
+            f"Support: confirm price held a buy zone before the {direction} entry near {trade.entry_price}."
+        )
+    if 'resistance' in concepts:
+        lines.append(
+            f"Resistance: confirm price rejected a sell zone before the {direction} entry near {trade.entry_price}."
+        )
+    if 'breakout' in concepts:
+        lines.append("Breakout: price should have pushed through a level and held beyond it.")
     if 'sweep' in concepts:
         lines.append(
-            f"Sweep context: look for liquidity raid before {trade.trade_type} entry "
+            f"Liquidity sweep: look for a stop-run beyond a level, then reversal into the {direction} entry "
             f"near {trade.entry_price}."
         )
     if 'fvg' in concepts:
         lines.append(
-            "FVG / imbalance: confirm price left a gap that price returned into before entry."
+            "Fair value gap: confirm a sharp move left a gap that price returned into before entry."
         )
     if 'bos' in concepts:
-        lines.append("Structure: require break of structure in the trade direction first.")
+        lines.append("Structure shift: require a clear break of structure in the trade direction first.")
     if 'retest' in concepts:
-        lines.append("Retest: entry on return to broken level / mitigated zone.")
+        lines.append("Retest / pullback: entry on the return to the broken level or zone.")
+    if 'session' in concepts:
+        lines.append("Session: confirm this happened in your allowed window (e.g. London or New York).")
     if not lines:
-        lines.append("Matched from your journal by symbol/direction/notes — review the chart manually.")
+        lines.append(
+            "Matched from your journal by symbol, direction, or notes — open the trade and review the chart."
+        )
     if trade.stop_loss is not None:
-        lines.append(f"Invalidation / SL logged at {trade.stop_loss}.")
+        lines.append(f"Your stop (where you're wrong) was logged at {trade.stop_loss}.")
     if trade.take_profit is not None:
-        lines.append(f"Target / TP logged at {trade.take_profit}.")
+        lines.append(f"Your target was logged at {trade.take_profit}.")
     return lines
 
 
@@ -173,6 +282,7 @@ def run_journal_backtest(
                 Trade.take_profit,
                 Trade.profit_loss,
                 Trade.strategy,
+                Trade.pre_trade_plan,
                 Trade.post_trade_notes,
                 Trade.lessons_learned,
                 Trade.emotion,
@@ -242,8 +352,9 @@ def run_journal_backtest(
             'scanned': len(candidates),
         },
         'disclaimer': (
-            'Journal mode scores your logged trades against the setup language. '
-            'It is not a multi-year OHLC market backtest — that engine is next.'
+            'This scores trades you already logged against the words in your setup. '
+            'It is not a full chart backtest on years of market candles yet — use it to check '
+            'whether your real journal matches the idea.'
         ),
     }
 
@@ -266,10 +377,10 @@ def run_demo_backtest(rules: ParsedRules) -> Dict[str, Any]:
             entry_price=2345.2 if direction == 'BUY' else 2362.5,
             exit_price=2358.0 if direction == 'BUY' else 2348.0,
             narrative=[
-                '1) Sweep: liquidity taken beyond prior swing.',
-                '2) FVG: displacement leaves an imbalance.',
-                '3) Entry: rebalance into FVG with confirmation candle.',
-                '4) Invalidation: close beyond swept extreme.',
+                '1) Trigger: price sweeps beyond a prior high/low (stops taken).',
+                '2) Zone: a sharp move leaves a gap / imbalance.',
+                '3) Entry: price returns into that zone with a confirmation candle.',
+                '4) Stop: exit if price closes beyond the sweep extreme (idea is wrong).',
             ],
             concepts=concepts,
             source='demo',
@@ -283,9 +394,9 @@ def run_demo_backtest(rules: ParsedRules) -> Dict[str, Any]:
             entry_price=2348.0 if direction == 'BUY' else 2355.0,
             exit_price=2340.0 if direction == 'BUY' else 2365.0,
             narrative=[
-                '1) Sweep present but shallow.',
-                '2) FVG filled mid-way — entry early.',
-                '3) Structure failed; stop hit at invalidation.',
+                '1) Trigger was weak — the sweep barely took liquidity.',
+                '2) Entry came too early before the zone was respected.',
+                '3) Level failed; stop hit — treat as a clean loss, not a revenge trade.',
             ],
             concepts=concepts,
             source='demo',
@@ -299,9 +410,9 @@ def run_demo_backtest(rules: ParsedRules) -> Dict[str, Any]:
             entry_price=2338.5 if direction == 'BUY' else 2370.0,
             exit_price=2355.0 if direction == 'BUY' else 2348.0,
             narrative=[
-                '1) HTF bias aligned.',
-                '2) Sweep + BOS in session window.',
-                '3) Entry on FVG retest; partial at 1R, runner to target.',
+                '1) Higher-timeframe bias agreed with the trade direction.',
+                '2) Sweep + structure break happened in the planned session.',
+                '3) Entry on the retest; banked part at 1R, left a runner to target.',
             ],
             concepts=concepts,
             source='demo',
@@ -322,8 +433,8 @@ def run_demo_backtest(rules: ParsedRules) -> Dict[str, Any]:
             'scanned': len(samples),
         },
         'disclaimer': (
-            'Demo mode shows how annotated setups will look. '
-            'Live multi-year market data + chart drawings ship in a later release.'
+            'Demo examples show the format: trigger → level → entry → stop. '
+            'When you log matching trades (or we add market-data backtesting), results use your real history.'
         ),
     }
 
@@ -363,25 +474,50 @@ def run_strategy_lab(
 # Starter playbook templates (no migration — creates PlaybookSetup rows)
 PLAYBOOK_STARTERS: List[Dict[str, Any]] = [
     {
-        'key': 'london_fvg',
-        'name': 'London FVG continuation (A+)',
+        'key': 'support_bounce',
+        'name': 'Support bounce (A+)',
         'market': 'Forex / Metals',
         'symbol_hint': 'XAUUSD',
         'timeframe': '15M',
         'entry_criteria': (
-            'HTF bullish/bearish bias.\n'
-            'London killzone: sweep of prior liquidity, then displacement leaving an FVG.\n'
-            'Enter on rebalance into FVG with confirmation candle.'
+            'Mark a clear support (buy zone) on your chart.\n'
+            'Wait for price to tap support and reject (bounce wick).\n'
+            'Enter long after confirmation. Prefer London or New York session.'
         ),
-        'invalidation': 'Candle close beyond the swept extreme / opposite side of FVG.',
-        'management_plan': 'Partial at 1R, move SL to BE, trail under structure.',
+        'invalidation': 'Candle closes clearly below support — idea is wrong; exit.',
+        'management_plan': 'Take partial profit at 1R, move stop to break-even, trail under higher lows.',
         'checklist_text': '\n'.join(
             [
-                'HTF bias clear',
+                'Support level clearly marked',
+                'Rejection / bounce at support',
+                'Higher timeframe not strongly against you',
+                'Stop placed below support',
+                'Target at next resistance',
+                'No high-impact news in the next hour',
+            ]
+        ),
+        'tags': 'support,bounce,a+',
+    },
+    {
+        'key': 'london_fvg',
+        'name': 'London sweep → gap retest (A+)',
+        'market': 'Forex / Metals',
+        'symbol_hint': 'XAUUSD',
+        'timeframe': '15M',
+        'entry_criteria': (
+            'Higher-timeframe bias agrees with the trade.\n'
+            'During London: price sweeps stops beyond a level, then leaves a fair value gap.\n'
+            'Enter when price returns into that gap with a confirmation candle.'
+        ),
+        'invalidation': 'Candle close beyond the sweep extreme (the idea failed).',
+        'management_plan': 'Partial at 1R, move stop to break-even, trail under structure.',
+        'checklist_text': '\n'.join(
+            [
+                'Higher-timeframe bias clear',
                 'Liquidity sweep occurred',
-                'Displacement + FVG present',
-                'Entry inside FVG / retest',
-                'SL beyond invalidation',
+                'Fair value gap present',
+                'Entry on gap retest',
+                'Stop beyond invalidation',
                 'No high-impact news in window',
             ]
         ),
@@ -389,49 +525,49 @@ PLAYBOOK_STARTERS: List[Dict[str, Any]] = [
     },
     {
         'key': 'ny_bos_retest',
-        'name': 'NY open BOS retest',
+        'name': 'NY breakout + retest',
         'market': 'Indices',
         'symbol_hint': 'NAS100',
         'timeframe': '5M',
         'entry_criteria': (
-            'Asia range mapped.\n'
-            'NY open breaks structure (BOS) with momentum.\n'
-            'Enter on first clean retest of broken level.'
+            'Mark the overnight / Asia range.\n'
+            'At New York open, wait for a breakout through resistance (or support) with momentum.\n'
+            'Enter on the first clean retest of the broken level.'
         ),
-        'invalidation': 'Failure to hold BOS level; close back inside prior range.',
-        'management_plan': 'Scale 50% at 1.5R; runner to session high/low.',
+        'invalidation': 'Price fails to hold the breakout level and closes back inside the range.',
+        'management_plan': 'Take 50% at 1.5R; let a runner go toward the session high/low.',
         'checklist_text': '\n'.join(
             [
-                'Asia range marked',
-                'BOS confirmed',
+                'Asia / overnight range marked',
+                'Breakout confirmed',
                 'Retest holds',
-                'Risk ≤ 0.5% account',
+                'Risk ≤ 0.5% of account',
                 'Max 2 trades this session',
             ]
         ),
-        'tags': 'bos,retest,ny,indices',
+        'tags': 'breakout,retest,ny,indices',
     },
     {
         'key': 'asian_range_fade',
-        'name': 'Asian range fade (selective)',
+        'name': 'Range fade at extremes',
         'market': 'Forex',
         'symbol_hint': 'EURUSD',
         'timeframe': '1H',
         'entry_criteria': (
-            'Clear Asian range.\n'
-            'Fade false break that reclaims range with rejection wick.\n'
-            'Only when ADX/volatility is quiet and no London expansion yet.'
+            'Clear sideways range (support at bottom, resistance at top).\n'
+            'Fade a false break that quickly reclaims the range with a rejection wick.\n'
+            'Only when the market is quiet — skip if London is about to expand hard.'
         ),
-        'invalidation': 'Accepted break and hold outside range.',
-        'management_plan': 'Target opposite range side; scratch if mid-range stall.',
+        'invalidation': 'Price accepts and holds outside the range (true breakout).',
+        'management_plan': 'Target the opposite side of the range; exit early if price stalls mid-range.',
         'checklist_text': '\n'.join(
             [
-                'Range well defined',
+                'Range well defined (support + resistance)',
                 'False break + reclaim',
                 'No pending news',
-                'Position size reduced (mean-reversion)',
+                'Smaller size (mean-reversion risk)',
             ]
         ),
-        'tags': 'range,fade,asia',
+        'tags': 'range,support,resistance,asia',
     },
 ]

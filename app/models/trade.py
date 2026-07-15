@@ -86,7 +86,7 @@ class Trade(db.Model):
     
     # ==================== Checklist Compliance ====================
     checklist_completed = db.Column(db.Boolean, default=False)
-    playbook_followed = db.Column(db.Boolean, default=True)
+    playbook_followed = db.Column(db.Boolean, default=False)
     rule_violations = db.Column(db.Text)  # Which rules were broken?
     
     # ==================== Additional Metadata ====================

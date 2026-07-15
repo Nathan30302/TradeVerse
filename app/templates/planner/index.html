@@ -323,6 +323,25 @@
                                            value="{{ plan.strategy or '' }}">
                                 </div>
 
+                                {% if playbook_setups %}
+                                <div class="mt-2">
+                                    <label class="form-label small fw-bold">Playbook setup</label>
+                                    <select name="playbook_setup_id" class="form-select form-select-sm">
+                                        <option value="">— None —</option>
+                                        {% for s in playbook_setups %}
+                                        <option value="{{ s.id }}">{{ s.name }}{% if s.playbook %} · {{ s.playbook.name }}{% endif %}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="playbook_followed" value="1"
+                                           id="execPlaybookFollowed{{ plan.id }}">
+                                    <label class="form-check-label small" for="execPlaybookFollowed{{ plan.id }}">
+                                        I followed my playbook rules on this trade
+                                    </label>
+                                </div>
+                                {% endif %}
+
                                 <div class="mt-2">
                                     <label class="form-label small fw-bold">Pre-Trade Notes</label>
                                     <textarea name="pre_trade_plan"

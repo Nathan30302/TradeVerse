@@ -90,8 +90,9 @@ class Config:
     
     # File Upload Configuration
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
-    # Local/dev: keep files under static so url_for('static') still works as fallback.
-    TRADEVERSE_DATA_DIR = os.environ.get('TRADEVERSE_DATA_DIR') or os.path.join('app', 'static')
+    # Absolute paths avoid cwd-dependent saves (avatar "saved then gone").
+    _PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
+    TRADEVERSE_DATA_DIR = os.environ.get('TRADEVERSE_DATA_DIR') or os.path.join(_PROJECT_ROOT, 'app', 'static')
     UPLOAD_FOLDER = os.path.join(TRADEVERSE_DATA_DIR, 'uploads')
     TRADE_SCREENSHOTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'trade_screenshots')
     AVATARS_FOLDER = os.path.join(UPLOAD_FOLDER, 'avatars')
