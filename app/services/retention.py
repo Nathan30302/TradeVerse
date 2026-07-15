@@ -7,7 +7,8 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import load_only
 
 from app import db
 from app.models.trade import Trade
@@ -16,6 +17,14 @@ from app.models.performance_score import PerformanceScore
 from app.services.ai_insights import AIAnalyzer
 from app.services.performance_calculator import calculate_weekly_score
 from app.utils.timeutil import utc_now
+
+
+def _rollback_quietly() -> None:
+    """Clear an aborted Postgres transaction so later queries can proceed."""
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
 
 
 def trade_needs_review(trade: Trade) -> bool:
@@ -42,6 +51,7 @@ def count_pending_trade_reviews(user_id: int) -> int:
             or 0
         )
     except Exception:
+        _rollback_quietly()
         return 0
 
 
@@ -51,13 +61,17 @@ def get_today_strip_context(user) -> Dict[str, Any]:
     trades_pending = count_pending_trade_reviews(uid)
     plans_count = 0
     try:
-        plans_count = (
-            TradePlan.query.filter(
+        plans_count = int(
+            db.session.query(func.count(TradePlan.id))
+            .filter(
                 TradePlan.user_id == uid,
                 TradePlan.status == 'EXECUTED',
-            ).count()
+            )
+            .scalar()
+            or 0
         )
     except Exception:
+        _rollback_quietly()
         plans_count = 0
     tz = getattr(user, 'timezone', None) or 'UTC'
     return {
@@ -71,7 +85,16 @@ def get_review_queue(user_id: int) -> Dict[str, Any]:
     pending_trades: List[Trade] = []
     try:
         rows = (
-            Trade.query.filter(
+            Trade.query.options(
+                load_only(
+                    Trade.id,
+                    Trade.status,
+                    Trade.post_trade_notes,
+                    Trade.lessons_learned,
+                    Trade.exit_date,
+                )
+            )
+            .filter(
                 Trade.user_id == user_id,
                 Trade.status == 'CLOSED',
             )
@@ -81,17 +104,22 @@ def get_review_queue(user_id: int) -> Dict[str, Any]:
         )
         pending_trades = [t for t in rows if trade_needs_review(t)]
     except Exception:
+        _rollback_quietly()
         pending_trades = []
 
     plans_count = 0
     try:
-        plans_count = (
-            TradePlan.query.filter(
+        plans_count = int(
+            db.session.query(func.count(TradePlan.id))
+            .filter(
                 TradePlan.user_id == user_id,
                 TradePlan.status == 'EXECUTED',
-            ).count()
+            )
+            .scalar()
+            or 0
         )
     except Exception:
+        _rollback_quietly()
         plans_count = 0
 
     first_id = pending_trades[0].id if pending_trades else None
@@ -123,34 +151,49 @@ def _activity_dates_for_user(user_id: int, tz_name: str = 'UTC') -> set[date]:
     cutoff = utc_now() - timedelta(days=120)
 
     try:
-        trades = (
-            Trade.query.filter(Trade.user_id == user_id, Trade.created_at >= cutoff)
-            .all()
-        )
-        for t in trades:
-            for dt in (t.entry_date, t.exit_date, t.created_at, t.updated_at):
+        rows = db.session.execute(
+            select(
+                Trade.entry_date,
+                Trade.exit_date,
+                Trade.created_at,
+                Trade.updated_at,
+                Trade.post_trade_notes,
+                Trade.lessons_learned,
+            ).where(
+                Trade.user_id == user_id,
+                Trade.created_at >= cutoff,
+            )
+        ).all()
+        for entry_date, exit_date, created_at, updated_at, notes, lessons in rows:
+            for dt in (entry_date, exit_date, created_at, updated_at):
                 d = _to_local_day(dt)
                 if d:
                     days.add(d)
-            if (t.post_trade_notes or '').strip() or (t.lessons_learned or '').strip():
-                d = _to_local_day(t.updated_at or t.exit_date or t.created_at)
+            if (notes or '').strip() or (lessons or '').strip():
+                d = _to_local_day(updated_at or exit_date or created_at)
                 if d:
                     days.add(d)
     except Exception:
-        pass
+        _rollback_quietly()
 
     try:
-        plans = (
-            TradePlan.query.filter(TradePlan.user_id == user_id, TradePlan.created_at >= cutoff)
-            .all()
-        )
-        for p in plans:
-            for dt in (p.created_at, p.updated_at, p.reviewed_at):
+        plan_rows = db.session.execute(
+            select(
+                TradePlan.created_at,
+                TradePlan.updated_at,
+                TradePlan.reviewed_at,
+            ).where(
+                TradePlan.user_id == user_id,
+                TradePlan.created_at >= cutoff,
+            )
+        ).all()
+        for created_at, updated_at, reviewed_at in plan_rows:
+            for dt in (created_at, updated_at, reviewed_at):
                 d = _to_local_day(dt)
                 if d:
                     days.add(d)
     except Exception:
-        pass
+        _rollback_quietly()
 
     return days
 
@@ -181,12 +224,13 @@ def ensure_weekly_performance_score(user_id: int):
     """Calculate this week's score once if missing."""
     today = utc_now().date()
     week_start = today - timedelta(days=today.weekday())
-    existing = PerformanceScore.query.filter_by(user_id=user_id, week_start=week_start).first()
-    if existing:
-        return existing
     try:
+        existing = PerformanceScore.query.filter_by(user_id=user_id, week_start=week_start).first()
+        if existing:
+            return existing
         return calculate_weekly_score(user_id, week_start=week_start)
     except Exception:
+        _rollback_quietly()
         return None
 
 
@@ -208,6 +252,7 @@ def get_morning_briefing(user_id: int, user_name: str = '') -> Dict[str, Any]:
     try:
         return AIAnalyzer(user_id).get_morning_briefing(user_name=user_name)
     except Exception:
+        _rollback_quietly()
         return {'lines': [], 'has_data': False}
 
 
@@ -218,10 +263,12 @@ def get_weekly_review_payload(user_id: int, user_name: str = '') -> Dict[str, An
     try:
         weekly = analyzer.get_weekly_review() or {}
     except Exception:
+        _rollback_quietly()
         weekly = {}
     try:
         suggested = analyzer.suggest_weekly_focus_rule()
     except Exception:
+        _rollback_quietly()
         suggested = ''
     return {
         'weekly': weekly,
@@ -242,6 +289,7 @@ def build_dashboard_daily_context(user, *, user_name: str = '') -> Dict[str, Any
     try:
         wf = (getattr(user, 'weekly_focus_rule', None) or '').strip()
     except Exception:
+        _rollback_quietly()
         wf = ''
 
     return {
@@ -255,7 +303,13 @@ def build_dashboard_daily_context(user, *, user_name: str = '') -> Dict[str, Any
 
 def create_sample_trades(user_id: int) -> int:
     """Create a small demo dataset for onboarding (idempotent if trades exist)."""
-    existing = db.session.query(func.count(Trade.id)).filter(Trade.user_id == user_id).scalar() or 0
+    try:
+        existing = (
+            db.session.query(func.count(Trade.id)).filter(Trade.user_id == user_id).scalar() or 0
+        )
+    except Exception:
+        _rollback_quietly()
+        existing = 0
     if existing:
         return 0
 
@@ -275,29 +329,33 @@ def create_sample_trades(user_id: int) -> int:
              post_trade_notes='Followed plan. Held to target.'),
     ]
     created = 0
-    for i, row in enumerate(samples):
-        entry = now - timedelta(days=7 - i)
-        exit_d = entry + timedelta(hours=4)
-        t = Trade(
-            user_id=user_id,
-            symbol=row['symbol'],
-            trade_type=row['trade_type'],
-            lot_size=row['lot_size'],
-            entry_price=row['entry_price'],
-            exit_price=row['exit_price'],
-            stop_loss=row['stop_loss'],
-            take_profit=row['take_profit'],
-            entry_date=entry,
-            exit_date=exit_d,
-            status='CLOSED',
-            profit_loss=row['profit_loss'],
-            risk_reward=row['risk_reward'],
-            emotion=row['emotion'],
-            strategy=row['strategy'],
-            post_trade_notes=row.get('post_trade_notes'),
-            lessons_learned=row.get('lessons_learned'),
-        )
-        db.session.add(t)
-        created += 1
-    db.session.commit()
+    try:
+        for i, row in enumerate(samples):
+            entry = now - timedelta(days=7 - i)
+            exit_d = entry + timedelta(hours=4)
+            t = Trade(
+                user_id=user_id,
+                symbol=row['symbol'],
+                trade_type=row['trade_type'],
+                lot_size=row['lot_size'],
+                entry_price=row['entry_price'],
+                exit_price=row['exit_price'],
+                stop_loss=row['stop_loss'],
+                take_profit=row['take_profit'],
+                entry_date=entry,
+                exit_date=exit_d,
+                status='CLOSED',
+                profit_loss=row['profit_loss'],
+                risk_reward=row['risk_reward'],
+                emotion=row['emotion'],
+                strategy=row['strategy'],
+                post_trade_notes=row.get('post_trade_notes'),
+                lessons_learned=row.get('lessons_learned'),
+            )
+            db.session.add(t)
+            created += 1
+        db.session.commit()
+    except Exception:
+        _rollback_quietly()
+        return 0
     return created

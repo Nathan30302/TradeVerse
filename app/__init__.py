@@ -222,6 +222,16 @@ def create_app(config_name='default'):
         response.headers.setdefault('X-Request-ID', rid)
         return response
 
+    @app.teardown_request
+    def _rollback_failed_db_session(exc):
+        """If a request ends with an error, clear an aborted Postgres transaction."""
+        if exc is None:
+            return
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
     @app.before_request
     def _assign_request_id():
         from uuid import uuid4
@@ -514,6 +524,10 @@ def register_context_processors(app):
             from app.services.retention import get_today_strip_context
             return {'today_strip': get_today_strip_context(current_user)}
         except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
             return {'today_strip': {'reviews': 0, 'streak': 0}}
 
     @app.context_processor
@@ -526,6 +540,10 @@ def register_context_processors(app):
         try:
             cd = get_active_cooldown(current_user.id)
         except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
             cd = None
         return {'global_active_cooldown': cd}
 
