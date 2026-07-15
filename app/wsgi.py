@@ -2,7 +2,8 @@
 WSGI entry point for production servers (Gunicorn).
 
 Runs Alembic upgrades here (with a process lock) so the schema stays current even if
-the platform start command omitted `flask db upgrade`.
+the platform start command omitted `flask db upgrade`. Then applies schema_compat
+ensures for columns/tables Alembic may have skipped.
 """
 
 import logging
@@ -42,13 +43,34 @@ def _migrate_production_locked(flask_app) -> None:
         if fcntl:
             fcntl.flock(fp.fileno(), fcntl.LOCK_EX)
 
-        # upgrade() attaches to app's alembic config via Flask-Migrate
         try:
             with flask_app.app_context():
-                alembic_upgrade()
+                from app import schema_compat
+
+                # If alembic_version is empty/stuck on early branches while users exists,
+                # stamp forward so we stop replaying initial schema every boot.
+                schema_compat.repair_alembic_version(flask_app)
+                try:
+                    alembic_upgrade()
+                except Exception:
+                    _logger.warning(
+                        "Alembic upgrade skipped or failed — applying schema_compat ensures",
+                        exc_info=True,
+                    )
+                # Always ensure critical columns/tables exist (raw SQL, idempotent).
+                schema_compat.ensure_lagging_schema(flask_app)
         except Exception:
-            # Don’t block boot if the DB can’t be migrated yet (legacy / locked DB).
-            _logger.warning("Alembic upgrade skipped or failed — run `flask db upgrade` when ready", exc_info=True)
+            _logger.warning(
+                "Alembic upgrade skipped or failed — run `flask db upgrade` when ready",
+                exc_info=True,
+            )
+            try:
+                with flask_app.app_context():
+                    from app import schema_compat
+
+                    schema_compat.ensure_lagging_schema(flask_app)
+            except Exception:
+                _logger.warning("schema_compat ensure after migrate failure also failed", exc_info=True)
     finally:
         if fp is not None:
             try:
@@ -64,4 +86,14 @@ app = create_app(config_name)
 try:
     _migrate_production_locked(app)
 except Exception:
-    _logger.warning("Startup migration hook failed (non-fatal); app will load without upgraded schema", exc_info=True)
+    _logger.warning(
+        "Startup migration hook failed (non-fatal); app will load without upgraded schema",
+        exc_info=True,
+    )
+    try:
+        with app.app_context():
+            from app import schema_compat
+
+            schema_compat.ensure_lagging_schema(app)
+    except Exception:
+        _logger.warning("Post-boot schema_compat ensure failed", exc_info=True)

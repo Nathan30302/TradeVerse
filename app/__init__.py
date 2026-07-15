@@ -89,8 +89,7 @@ def create_app(config_name='default'):
         from app import schema_compat
 
         schema_compat.refresh(app)
-        # Alembic often lags on Render (missing role/weekly_focus/playbook/etc.).
-        # Create critical columns/tables so requests don't abort the transaction.
+        # Idempotent: fill gaps Alembic may have skipped (safe raw SQL).
         schema_compat.ensure_lagging_schema(app)
 
         from app.models import user, trade

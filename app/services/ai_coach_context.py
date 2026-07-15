@@ -25,6 +25,15 @@ def _safe_getattr(obj, name: str, default=None):
 
 def get_active_pinned_note(user_id: int) -> Optional[AICoachingNote]:
     try:
+        from flask import current_app, has_app_context
+
+        if has_app_context():
+            tv = current_app.extensions.get("tradeverse_schema") or {}
+            if tv.get("ai_coaching_ready") is False:
+                return None
+    except Exception:
+        pass
+    try:
         return (
             AICoachingNote.query.filter(
                 AICoachingNote.user_id == user_id,

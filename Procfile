@@ -1,1 +1,1 @@
-web: gunicorn -w 4 -b 0.0.0.0:$PORT app.wsgi:app
+web: bash scripts/render-start.sh
