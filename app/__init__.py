@@ -100,25 +100,59 @@ def create_app(config_name='default'):
         # User loader callback for Flask-Login
         @login_manager.user_loader
         def load_user(user_id):
-            try:
-                return db.session.get(user.User, int(user_id))
-            except Exception:
-                # Protect active sessions if DB is in a partial-migration state where
-                # ORM selects columns that don't exist yet.
-                app.logger.warning("load_user ORM failed (likely schema drift); using compat fallback", exc_info=True)
-                try:
-                    db.session.rollback()
-                except Exception:
-                    pass
-                try:
-                    from app.models.user import User as UserModel
-                    from app.services.user_db_compat import hydrate_user_from_db
+            """
+            Load the session user.
 
-                    u = hydrate_user_from_db(db.session, UserModel, user_id=int(user_id))
-                    return u
-                except Exception:
-                    app.logger.exception("load_user compat fallback failed")
-                    return None
+            Render/Postgres often closes idle SSL connections (``SSL SYSCALL error: EOF``).
+            Retry once with a fresh session before falling back to the schema-compat hydrate.
+            """
+            from sqlalchemy.exc import OperationalError, DisconnectionError
+
+            uid = int(user_id)
+            last_exc = None
+            for attempt in range(2):
+                try:
+                    return db.session.get(user.User, uid)
+                except (OperationalError, DisconnectionError) as exc:
+                    last_exc = exc
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
+                    try:
+                        db.session.remove()
+                    except Exception:
+                        pass
+                    if attempt == 0:
+                        app.logger.warning(
+                            "load_user: DB connection dropped (attempt %s); retrying",
+                            attempt + 1,
+                        )
+                        continue
+                    app.logger.warning(
+                        "load_user ORM failed after retry (likely dead connection); using compat fallback",
+                        exc_info=True,
+                    )
+                except Exception as exc:
+                    last_exc = exc
+                    app.logger.warning(
+                        "load_user ORM failed (likely schema drift); using compat fallback",
+                        exc_info=True,
+                    )
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
+                    break
+
+            try:
+                from app.models.user import User as UserModel
+                from app.services.user_db_compat import hydrate_user_from_db
+
+                return hydrate_user_from_db(db.session, UserModel, user_id=uid)
+            except Exception:
+                app.logger.exception("load_user compat fallback failed (prior=%r)", last_exc)
+                return None
 
         # Seed instruments from EXNESS catalog on startup (dev/test only).
         # Schema is managed by Alembic migrations; if the DB hasn't been upgraded yet,

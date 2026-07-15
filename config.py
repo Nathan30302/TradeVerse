@@ -32,14 +32,24 @@ def sqlalchemy_engine_options_for_uri(uri: str) -> dict:
     if not (u.startswith('postgres') or u.startswith('postgresql')):
         return {}
     try:
-        recycle = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', '280'))
+        recycle = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', '120'))
     except ValueError:
-        recycle = 280
+        recycle = 120
     recycle = max(60, min(recycle, 3600))
-    return {
+    opts = {
         'pool_pre_ping': True,
         'pool_recycle': recycle,
     }
+    # Keep the pool small on free-tier Postgres (fewer stale SSL sockets).
+    try:
+        opts['pool_size'] = max(1, int(os.environ.get('SQLALCHEMY_POOL_SIZE', '2')))
+    except ValueError:
+        opts['pool_size'] = 2
+    try:
+        opts['max_overflow'] = max(0, int(os.environ.get('SQLALCHEMY_MAX_OVERFLOW', '3')))
+    except ValueError:
+        opts['max_overflow'] = 3
+    return opts
 
 
 class Config:

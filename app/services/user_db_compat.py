@@ -10,6 +10,7 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
+
 _FULL_SELECT = (
     "SELECT id, username, email, password_hash, is_active, is_verified, is_premium, "
     "timezone, preferred_currency, theme, created_at, last_login, avatar_url, full_name, bio, "
@@ -53,15 +54,35 @@ def _stamp_missing_deferred_columns(UserModel, u, row_keys: set) -> None:
 
     Without this, accessing e.g. country_code on Postgres after a MIN/MID hydrate issues
     ``SELECT users.country_code ...`` and crashes if the column does not exist yet.
+
+    ``set_committed_value`` expects the *string* attribute name (not the InstrumentedAttribute).
     """
     from sqlalchemy.orm.attributes import set_committed_value
 
+    mapped_names = set()
+    try:
+        mapped_names = {p.key for p in UserModel.__mapper__.iterate_properties}
+    except Exception:
+        mapped_names = set(_DEFERRED_DEFAULTS) | set(_DEFERRED_NONE)
+
+    def _stamp(name: str, value) -> None:
+        if name not in mapped_names:
+            return
+        try:
+            set_committed_value(u, name, value)
+        except Exception:
+            # Never let stamping break login after a successful row fetch.
+            try:
+                object.__setattr__(u, name, value)
+            except Exception:
+                pass
+
     for name, default in _DEFERRED_DEFAULTS.items():
         if name not in row_keys:
-            set_committed_value(u, getattr(UserModel, name), default)
+            _stamp(name, default)
     for name in _DEFERRED_NONE:
         if name not in row_keys:
-            set_committed_value(u, getattr(UserModel, name), None)
+            _stamp(name, None)
 
 
 def hydrate_user_from_db(session, UserModel, *, user_id: int | None = None, username: str | None = None):
