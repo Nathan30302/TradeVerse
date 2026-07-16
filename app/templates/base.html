@@ -442,23 +442,38 @@
             flex: 0 0 auto;
         }
         
-        /* Top bar: one row, no overlap — market strip shrinks; account stays a compact chip on the right. */
+        /* Top bar: brand left, account right, Dynamic Island dead-center (iPhone-style). */
         .tv-nav-bar-inner {
             display: flex;
             flex-wrap: nowrap;
             align-items: center;
             gap: 0.5rem;
             width: 100%;
+            position: relative;
+            min-height: 3rem;
         }
         .tv-nav-bar-inner > .navbar-brand {
             margin-right: 0;
+            position: relative;
+            z-index: 2;
+        }
+        .tv-di-center-host {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            max-width: min(92vw, 440px);
+        }
+        .tv-di-center-host .dynamic-island {
+            pointer-events: auto;
         }
         .tv-nav-bar-inner > .tv-navbar-market-strip {
-            min-width: 0;
-            flex: 1 1 auto;
-            overflow: hidden;
-            gap: 0.65rem;
-            align-items: center;
+            display: none !important;
         }
         #instrument-rotator.instrument-rotator {
             flex-shrink: 1;
@@ -590,14 +605,6 @@
         body[data-tv-landing="1"] .landing-hero .landing-trial-note {
             color: rgba(255, 255, 255, 0.78) !important;
         }
-        body[data-tv-landing="1"] .tv-navbar-market-strip {
-            gap: 0.55rem;
-        }
-        body[data-tv-landing="1"] #dynamic-island {
-            flex-shrink: 1;
-            min-width: 0;
-            max-width: min(420px, 42vw);
-        }
         body[data-tv-landing="1"] .tv-nav-bar-inner {
             flex-wrap: nowrap;
             align-items: center;
@@ -610,8 +617,8 @@
         body[data-tv-landing="1"] .navbar-brand {
             font-size: 1.05rem;
         }
-        @media (max-width: 1199.98px) {
-            body[data-tv-landing="1"] #dynamic-island {
+        @media (max-width: 991.98px) {
+            .tv-di-center-host {
                 display: none !important;
             }
         }
@@ -1723,175 +1730,271 @@
             100% { opacity: 1; transform: translateY(0); }
         }
 
-        /* Live pulse (kept after removing simulated market ticker) */
+        /* Green live pulse — feels active, not static */
         .tv-live-pulse {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             flex-shrink: 0;
             position: relative;
+            width: 14px;
+            height: 14px;
         }
         .tv-live-pulse .live-dot {
             width: 8px;
             height: 8px;
             border-radius: 999px;
-            background: rgba(239, 68, 68, 0.95);
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
-            animation: tvPulse 1.4s ease-out infinite;
-        }
-
-        /* Dynamic Island styling - Theme aware using CSS variables */
-        .dynamic-island {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            /* Dark theme default - darker background for contrast */
-            background: rgba(30, 30, 30, 0.85);
-            border: 1px solid rgba(255,255,255,0.15);
-            /* Shorter height, original width feel */
-            padding: 0.28rem 0.85rem;
-            border-radius: 999px; /* pill shape */
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            min-height: 34px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.08) inset, 0 0 1px rgba(255,255,255,0.1);
-            transform: translateZ(0);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #22c55e;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+            animation: tvLivePulse 1.6s ease-out infinite;
             position: relative;
-            color: #f1f5f9;
+            z-index: 1;
+        }
+        .tv-live-pulse::before,
+        .tv-live-pulse::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 999px;
+            border: 1.5px solid rgba(34, 197, 94, 0.55);
+            animation: tvLiveRing 2s ease-out infinite;
+        }
+        .tv-live-pulse::after {
+            animation-delay: 0.7s;
+        }
+        @keyframes tvLivePulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.12); opacity: 0.85; }
+        }
+        @keyframes tvLiveRing {
+            0% { transform: scale(0.55); opacity: 0.75; }
+            100% { transform: scale(1.65); opacity: 0; }
         }
 
+        /* iPhone-style journal Dynamic Island — centered, morphing, mood-aware */
+        .dynamic-island {
+            --di-ease: cubic-bezier(0.22, 1, 0.36, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
+            background: rgba(10, 12, 16, 0.92);
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 0.32rem 0.7rem;
+            border-radius: 999px;
+            backdrop-filter: blur(18px) saturate(1.2);
+            -webkit-backdrop-filter: blur(18px) saturate(1.2);
+            min-height: 34px;
+            min-width: min(92vw, 300px);
+            max-width: min(92vw, 420px);
+            box-shadow:
+                0 10px 32px rgba(0,0,0,0.45),
+                0 1px 0 rgba(255,255,255,0.08) inset,
+                0 0 0 1px rgba(0,0,0,0.25);
+            position: relative;
+            color: #f8fafc;
+            cursor: pointer;
+            overflow: hidden;
+            transition:
+                background 0.45s var(--di-ease),
+                border-color 0.45s var(--di-ease),
+                box-shadow 0.45s var(--di-ease),
+                border-radius 0.4s var(--di-ease),
+                min-width 0.4s var(--di-ease),
+                padding 0.35s var(--di-ease),
+                transform 0.35s var(--di-ease);
+            outline: none;
+        }
+        .dynamic-island:focus-visible {
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.55), 0 12px 36px rgba(0,0,0,0.45);
+        }
         .dynamic-island::before {
             content: '';
             position: absolute;
-            inset: -1px;
-            border-radius: 999px;
-            background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent);
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent 42%);
             pointer-events: none;
-            z-index: -1;
         }
-
+        .dynamic-island .di-compact-row {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            position: relative;
+            z-index: 1;
+            min-height: 28px;
+        }
+        .dynamic-island .di-stats-row {
+            display: flex;
+            align-items: center;
+            gap: 0.15rem;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
         .dynamic-island .di-item {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             justify-content: center;
-            padding: 0 0.4rem;
-            min-width: 58px;
+            padding: 0 0.35rem;
+            min-width: 0;
+            flex: 1 1 0;
             line-height: 1.05;
         }
-
-        .dynamic-island:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.1) inset, 0 0 2px rgba(255,255,255,0.15);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-
-        /* Light theme - high contrast dark charcoal background */
-        body[data-theme="light"] .dynamic-island {
-            background: rgba(15, 23, 42, 0.92);
-            border: 1px solid rgba(51, 65, 85, 0.25);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.5) inset, 0 0 1px rgba(255,255,255,0.15);
-            color: #ffffff;
-        }
-
-        body[data-theme="light"] .dynamic-island:hover {
-            background: rgba(15, 23, 42, 0.96);
-            box-shadow: 0 12px 32px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.6) inset, 0 0 2px rgba(255,255,255,0.2);
-        }
-
-        /* Blue theme - dark navy/black glass, NOT blue */
-        body[data-theme="blue"] .dynamic-island {
-            background: rgba(15, 23, 42, 0.9);
-            border: 1.5px solid rgba(14, 165, 233, 0.25);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.06) inset, 0 0 12px rgba(14, 165, 233, 0.08);
-            color: #f0f9ff;
-        }
-
-        body[data-theme="blue"] .dynamic-island:hover {
-            background: rgba(15, 23, 42, 0.95);
-            border-color: rgba(14, 165, 233, 0.35);
-            box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.08) inset, 0 0 16px rgba(14, 165, 233, 0.12);
-        }
-
         .dynamic-island .di-label {
-            font-size: 0.58rem;
-            font-weight: 600;
-            letter-spacing: 0.03em;
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
             text-transform: uppercase;
-            opacity: 0.9;
+            color: rgba(226, 232, 240, 0.72);
         }
-
-        /* Text colors per theme */
-        body[data-theme="light"] .dynamic-island .di-label,
-        body[data-theme="blue"] .dynamic-island .di-label {
-            color: #cbd5e1;
-        }
-
-        body:not([data-theme="light"]):not([data-theme="blue"]) .dynamic-island .di-label {
-            color: var(--text-secondary);
-        }
-
         .dynamic-island .di-value {
-            font-size: 0.84rem;
+            font-size: 0.82rem;
             font-weight: 800;
-            line-height: 1.1;
-            letter-spacing: -0.01em;
-            max-width: 7.5rem;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            color: #f8fafc;
+            transition: color 0.4s var(--di-ease);
         }
-
-        /* Value colors per theme */
-        body[data-theme="light"] .dynamic-island .di-value,
-        body[data-theme="blue"] .dynamic-island .di-value {
-            color: #f1f5f9;
-        }
-
-        body:not([data-theme="light"]):not([data-theme="blue"]) .dynamic-island .di-value {
-            color: var(--text-primary);
-        }
-
         .dynamic-island .di-divider {
             width: 1px;
-            height: 20px;
+            height: 18px;
             background: rgba(255,255,255,0.12);
-            margin: 0 2px;
+            flex-shrink: 0;
+        }
+        .dynamic-island .di-value.profit {
+            color: #4ade80;
+            text-shadow: 0 0 10px rgba(34,197,94,0.35);
+        }
+        .dynamic-island .di-value.loss {
+            color: #f87171;
+            text-shadow: 0 0 10px rgba(239,68,68,0.3);
         }
 
-        /* Theme-aware divider - lighter for readability */
-        body[data-theme="light"] .dynamic-island .di-divider,
-        body[data-theme="blue"] .dynamic-island .di-divider {
-            background: rgba(255,255,255,0.15);
+        /* Expanded “notification” panel */
+        .dynamic-island .di-expand-panel {
+            position: relative;
+            z-index: 1;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transform: translateY(-4px);
+            transition:
+                max-height 0.4s var(--di-ease),
+                opacity 0.3s var(--di-ease),
+                transform 0.35s var(--di-ease),
+                margin 0.35s var(--di-ease);
+            margin-top: 0;
+        }
+        .dynamic-island.is-expanded {
+            border-radius: 22px;
+            min-width: min(92vw, 360px);
+            padding: 0.55rem 0.85rem 0.7rem;
+            box-shadow:
+                0 18px 48px rgba(0,0,0,0.5),
+                0 1px 0 rgba(255,255,255,0.1) inset;
+        }
+        .dynamic-island.is-expanded .di-expand-panel {
+            max-height: 120px;
+            opacity: 1;
+            transform: translateY(0);
+            margin-top: 0.55rem;
+            padding-top: 0.55rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .dynamic-island .di-moment-kicker {
+            display: block;
+            font-size: 0.58rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(148, 163, 184, 0.95);
+            margin-bottom: 0.2rem;
+        }
+        .dynamic-island .di-moment-text {
+            display: block;
+            font-size: 0.92rem;
+            font-weight: 650;
+            letter-spacing: -0.02em;
+            line-height: 1.25;
+            color: #f8fafc;
+        }
+        .dynamic-island .di-expand-meta {
+            margin-top: 0.35rem;
+            font-size: 0.72rem;
+            color: rgba(203, 213, 225, 0.88);
+        }
+        .dynamic-island .di-expand-meta a {
+            color: #86efac;
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .dynamic-island .di-expand-meta a:hover {
+            color: #bbf7d0;
+            text-decoration: underline;
         }
 
-        /* Subtle update animation */
+        /* Mood skins — whole island shifts like Apple DI activity states */
+        .dynamic-island[data-di-mood="calm"] {
+            background: linear-gradient(145deg, rgba(15,23,42,0.96), rgba(2,6,23,0.94));
+            border-color: rgba(255,255,255,0.12);
+        }
+        .dynamic-island[data-di-mood="profit"] {
+            background: linear-gradient(145deg, rgba(6,78,59,0.92), rgba(15,23,42,0.95));
+            border-color: rgba(52, 211, 153, 0.45);
+            box-shadow:
+                0 12px 36px rgba(16,185,129,0.22),
+                0 1px 0 rgba(255,255,255,0.1) inset;
+        }
+        .dynamic-island[data-di-mood="loss"] {
+            background: linear-gradient(145deg, rgba(127,29,29,0.88), rgba(15,23,42,0.95));
+            border-color: rgba(248, 113, 113, 0.4);
+            box-shadow:
+                0 12px 36px rgba(239,68,68,0.2),
+                0 1px 0 rgba(255,255,255,0.08) inset;
+        }
+        .dynamic-island[data-di-mood="alert"] {
+            background: linear-gradient(145deg, rgba(120,53,15,0.9), rgba(15,23,42,0.95));
+            border-color: rgba(251, 191, 36, 0.45);
+            box-shadow:
+                0 12px 36px rgba(245,158,11,0.22),
+                0 1px 0 rgba(255,255,255,0.08) inset;
+        }
+        .dynamic-island[data-di-mood="focus"] {
+            background: linear-gradient(145deg, rgba(13,148,136,0.88), rgba(30,27,75,0.92));
+            border-color: rgba(45, 212, 191, 0.45);
+            box-shadow:
+                0 12px 36px rgba(20,184,166,0.25),
+                0 1px 0 rgba(255,255,255,0.1) inset;
+        }
+        .dynamic-island[data-di-mood="landing"] {
+            background: linear-gradient(145deg, rgba(15,23,42,0.95), rgba(6,78,59,0.55));
+            border-color: rgba(45, 212, 191, 0.35);
+        }
+
         .di-update {
             animation: diPulse 0.9s ease;
         }
-
         @keyframes diPulse {
             0% { transform: scale(1); opacity: 0.95; }
             50% { transform: scale(1.03); opacity: 1; }
             100% { transform: scale(1); opacity: 0.98; }
         }
-
-        /* Profit/Loss color transitions for Dynamic Island P/L value */
-        .dynamic-island .di-value {
-            transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* When profit value is shown */
-        .dynamic-island .di-value.profit {
-            color: var(--success);
-            text-shadow: 0 0 8px rgba(16,185,129,0.3);
-        }
-
-        /* When loss value is shown */
-        .dynamic-island .di-value.loss {
-            color: var(--danger);
-            text-shadow: 0 0 8px rgba(239,68,68,0.3);
+        @media (prefers-reduced-motion: reduce) {
+            .tv-live-pulse .live-dot,
+            .tv-live-pulse::before,
+            .tv-live-pulse::after,
+            .di-update {
+                animation: none !important;
+            }
+            .dynamic-island,
+            .dynamic-island .di-expand-panel {
+                transition: none !important;
+            }
         }
 
         /* Live Market Ticker Widget */
@@ -2328,36 +2431,46 @@
                 <i class="fas fa-chart-line"></i>
                 <span>{{ app_name }}</span>
             </a>
-            <!-- Live pulse + contextual journal island (tablet+). -->
-            <div class="tv-navbar-market-strip d-none d-md-flex align-items-center ms-1 ms-lg-2 flex-shrink-1 min-w-0" style="gap:0.65rem;">
-                <span class="tv-live-pulse" id="tv-live-pulse" title="Live journal snapshot" aria-hidden="true">
-                    <span class="live-dot"></span>
-                </span>
-
+            {# Centered iPhone-style journal Dynamic Island (lg+) #}
+            <div class="tv-di-center-host d-none d-lg-flex" aria-hidden="false">
                 <div id="dynamic-island"
-                     class="dynamic-island d-none d-lg-flex align-items-center"
-                     role="region"
-                     aria-label="Journal snapshot"
-                     title="Journal snapshot — updates with the page you are on"
-                     data-di-context="{{ di_context|default('home') }}">
-                    <div class="di-item">
-                        <div class="di-label" id="di-label-1">P/L Today</div>
-                        <div class="di-value" id="di-val-1">—</div>
+                     class="dynamic-island"
+                     role="button"
+                     tabindex="0"
+                     aria-expanded="false"
+                     aria-label="Journal Dynamic Island — hover or click to expand"
+                     data-di-context="{{ di_context|default('home') }}"
+                     data-di-mood="calm">
+                    <div class="di-compact-row">
+                        <span class="tv-live-pulse" id="tv-live-pulse" title="Live" aria-hidden="true">
+                            <span class="live-dot"></span>
+                        </span>
+                        <div class="di-stats-row">
+                            <div class="di-item">
+                                <div class="di-label" id="di-label-1">P/L Today</div>
+                                <div class="di-value" id="di-val-1">—</div>
+                            </div>
+                            <div class="di-divider" aria-hidden="true"></div>
+                            <div class="di-item">
+                                <div class="di-label" id="di-label-2">Open</div>
+                                <div class="di-value" id="di-val-2">—</div>
+                            </div>
+                            <div class="di-divider" aria-hidden="true"></div>
+                            <div class="di-item">
+                                <div class="di-label" id="di-label-3">Avg R</div>
+                                <div class="di-value" id="di-val-3">—</div>
+                            </div>
+                            <div class="di-divider" aria-hidden="true"></div>
+                            <div class="di-item">
+                                <div class="di-label" id="di-label-4">Win% 7d</div>
+                                <div class="di-value" id="di-val-4">—</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="di-divider"></div>
-                    <div class="di-item">
-                        <div class="di-label" id="di-label-2">Open</div>
-                        <div class="di-value" id="di-val-2">—</div>
-                    </div>
-                    <div class="di-divider"></div>
-                    <div class="di-item">
-                        <div class="di-label" id="di-label-3">Avg R</div>
-                        <div class="di-value" id="di-val-3">—</div>
-                    </div>
-                    <div class="di-divider"></div>
-                    <div class="di-item">
-                        <div class="di-label" id="di-label-4">Win% 7d</div>
-                        <div class="di-value" id="di-val-4">—</div>
+                    <div class="di-expand-panel">
+                        <span class="di-moment-kicker" id="di-moment-kicker">Journal</span>
+                        <span class="di-moment-text" id="di-moment-text">Your trading desk snapshot</span>
+                        <div class="di-expand-meta" id="di-expand-meta"></div>
                     </div>
                 </div>
             </div>
@@ -2948,20 +3061,26 @@
     </script>
 
     <script>
-        // Contextual Dynamic Island — journal stats that shift with the current feature
+        // Centered journal Dynamic Island — morphs, moods, and contextual moments
         (function(){
             const island = document.getElementById('dynamic-island');
             if (!island) return;
 
             const ctx = (island.getAttribute('data-di-context') || 'home').toLowerCase();
             const userId = document.body.getAttribute('data-user-id');
+            const kickerEl = document.getElementById('di-moment-kicker');
+            const momentEl = document.getElementById('di-moment-text');
+            const metaEl = document.getElementById('di-expand-meta');
+            let lastData = null;
+            let collapseTimer = null;
+            let pinned = false;
 
             const PRESETS = {
                 landing: [
-                    { label: 'Plan', value: 'Lock', tone: null },
-                    { label: 'Log', value: 'Truth', tone: null },
-                    { label: 'Review', value: 'Rules', tone: null },
-                    { label: 'From', value: '$5', tone: null },
+                    { label: 'Plan', value: 'Lock' },
+                    { label: 'Log', value: 'Truth' },
+                    { label: 'Review', value: 'Rules' },
+                    { label: 'From', value: '$5' },
                 ],
                 home: [
                     { label: 'P/L Today', key: 'pnl_today', type: 'money' },
@@ -3007,37 +3126,118 @@
                 ],
             };
 
+            const CTX_LABEL = {
+                landing: 'TradeVerse',
+                home: 'Journal',
+                dashboard: 'Dashboard',
+                trades: 'Trades',
+                planner: 'Planner',
+                playbook: 'Playbook',
+                lab: 'Strategy Lab',
+                ai: 'AI Buddy',
+            };
+
             function presetFor() {
                 if (!userId || ctx === 'landing') return PRESETS.landing;
                 return PRESETS[ctx] || PRESETS.home;
             }
 
             function formatSlot(slot, data) {
-                if (slot.value != null) {
-                    return { text: String(slot.value), tone: slot.tone };
-                }
+                if (slot.value != null) return { text: String(slot.value), tone: null };
                 const raw = data ? data[slot.key] : null;
                 if (slot.type === 'money') {
                     const n = Number(raw || 0);
-                    return {
-                        text: (n >= 0 ? '+' : '') + n.toFixed(2),
-                        tone: n >= 0 ? 'profit' : 'loss',
-                    };
+                    return { text: (n >= 0 ? '+' : '') + n.toFixed(2), tone: n > 0 ? 'profit' : (n < 0 ? 'loss' : null) };
                 }
                 if (slot.type === 'pct') {
-                    const n = Number(raw || 0);
-                    return { text: n.toFixed(1) + '%', tone: null };
+                    return { text: Number(raw || 0).toFixed(1) + '%', tone: null };
                 }
                 if (slot.type === 'rr') {
                     const n = Number(raw);
                     return { text: Number.isFinite(n) && n ? n.toFixed(2) : '—', tone: null };
                 }
                 if (slot.type === 'text') {
-                    const t = (raw == null || raw === '') ? 'Set rule' : String(raw);
-                    return { text: t, tone: null };
+                    return { text: (raw == null || raw === '') ? 'Set rule' : String(raw), tone: null };
                 }
                 const n = parseInt(raw, 10);
                 return { text: Number.isFinite(n) ? String(n) : '0', tone: null };
+            }
+
+            function buildMoment(data) {
+                if (!userId || ctx === 'landing') {
+                    return {
+                        kicker: 'Start here',
+                        text: 'Plan → log → review. Your edge compounds.',
+                        metaHtml: '<a href="/auth/register">Create a free account</a>',
+                        mood: 'landing',
+                    };
+                }
+                const d = data || {};
+                const pnl = Number(d.pnl_today || 0);
+                const review = parseInt(d.review_queue, 10) || 0;
+                const open = parseInt(d.open_trades, 10) || 0;
+                const planning = parseInt(d.plans_planning, 10) || 0;
+                const focus = (d.weekly_focus_short || '').trim();
+                const tradesToday = parseInt(d.trades_today, 10) || 0;
+
+                if (review > 0) {
+                    return {
+                        kicker: 'Needs attention',
+                        text: review === 1 ? '1 trade waiting for review' : (review + ' items waiting in your review queue'),
+                        metaHtml: '<a href="/dashboard/weekly-review">Open weekly review</a>',
+                        mood: 'alert',
+                    };
+                }
+                if (ctx === 'ai' || focus) {
+                    return {
+                        kicker: 'Weekly focus',
+                        text: focus ? ('Rule: ' + focus) : 'Set one focus rule for this week',
+                        metaHtml: '<a href="/dashboard/ai">Open AI Buddy</a>',
+                        mood: 'focus',
+                    };
+                }
+                if (ctx === 'planner' && planning > 0) {
+                    return {
+                        kicker: 'Planner',
+                        text: planning === 1 ? '1 plan ready to execute' : (planning + ' plans still in Planning'),
+                        metaHtml: '<a href="/planner/">Open planner</a>',
+                        mood: 'focus',
+                    };
+                }
+                if (pnl > 0) {
+                    return {
+                        kicker: 'Green session',
+                        text: 'Today is up ' + pnl.toFixed(2) + (open ? (' · ' + open + ' open') : ''),
+                        metaHtml: tradesToday ? (tradesToday + ' trade' + (tradesToday === 1 ? '' : 's') + ' logged today') : 'Keep following the playbook',
+                        mood: 'profit',
+                    };
+                }
+                if (pnl < 0) {
+                    return {
+                        kicker: 'Protect the edge',
+                        text: 'Today is down ' + Math.abs(pnl).toFixed(2) + ' — review before the next click',
+                        metaHtml: '<a href="/dashboard/weekly-review">Review losing patterns</a>',
+                        mood: 'loss',
+                    };
+                }
+                if (open > 0) {
+                    return {
+                        kicker: CTX_LABEL[ctx] || 'Journal',
+                        text: open === 1 ? '1 open trade on the desk' : (open + ' open trades on the desk'),
+                        metaHtml: 'Stay with your plan until exit',
+                        mood: 'calm',
+                    };
+                }
+                return {
+                    kicker: CTX_LABEL[ctx] || 'Journal',
+                    text: tradesToday ? 'Solid logging day — keep the loop tight' : 'Desk is clear. Plan the next A+ setup.',
+                    metaHtml: '<a href="/trade/add">Log a trade</a> · <a href="/planner/new">New plan</a>',
+                    mood: 'calm',
+                };
+            }
+
+            function setMood(mood) {
+                island.setAttribute('data-di-mood', mood || 'calm');
             }
 
             function renderSlots(data) {
@@ -3056,34 +3256,78 @@
                     valEl.classList.add('di-update');
                     setTimeout(() => valEl.classList.remove('di-update'), 900);
                 }
+                const moment = buildMoment(data);
+                if (kickerEl) kickerEl.textContent = moment.kicker;
+                if (momentEl) momentEl.textContent = moment.text;
+                if (metaEl) metaEl.innerHTML = moment.metaHtml || '';
+                setMood(moment.mood);
+            }
+
+            function expand() {
+                clearTimeout(collapseTimer);
+                island.classList.add('is-expanded');
+                island.setAttribute('aria-expanded', 'true');
+            }
+            function collapse() {
+                if (pinned) return;
+                island.classList.remove('is-expanded');
+                island.setAttribute('aria-expanded', 'false');
+            }
+            function scheduleCollapse() {
+                clearTimeout(collapseTimer);
+                collapseTimer = setTimeout(collapse, 220);
             }
 
             async function refresh() {
                 if (!userId || ctx === 'landing') {
+                    lastData = null;
                     renderSlots(null);
                     return;
                 }
                 try {
                     const resp = await fetch('/dashboard/api/stats');
                     if (!resp.ok) {
-                        renderSlots(null);
+                        renderSlots(lastData);
                         return;
                     }
-                    const data = await resp.json();
-                    renderSlots(data || {});
+                    lastData = await resp.json();
+                    renderSlots(lastData || {});
                 } catch (e) {
-                    renderSlots(null);
+                    renderSlots(lastData);
                 }
             }
 
             function init() {
                 refresh();
+                island.addEventListener('mouseenter', expand);
+                island.addEventListener('mouseleave', scheduleCollapse);
+                island.addEventListener('focus', expand);
+                island.addEventListener('blur', scheduleCollapse);
+                island.addEventListener('click', function(ev) {
+                    // Don't steal clicks on expand links
+                    if (ev.target && ev.target.closest && ev.target.closest('a')) return;
+                    pinned = !pinned;
+                    if (pinned) expand();
+                    else collapse();
+                    refresh();
+                });
+                island.addEventListener('keydown', function(ev) {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                        ev.preventDefault();
+                        pinned = !pinned;
+                        if (pinned) expand();
+                        else collapse();
+                    }
+                    if (ev.key === 'Escape') {
+                        pinned = false;
+                        collapse();
+                    }
+                });
                 if (userId && ctx !== 'landing') {
-                    island.style.cursor = 'pointer';
-                    island.title = 'Click to refresh journal snapshot';
-                    island.addEventListener('click', () => refresh());
                     if (!String(window.location.pathname || '').startsWith('/dashboard')) {
                         setInterval(refresh, 30000);
+                    } else {
+                        setInterval(refresh, 60000);
                     }
                 }
             }
