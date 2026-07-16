@@ -33,13 +33,19 @@ _PHONE_CHARS = re.compile(r"^\+?[0-9()\s.\-]{8,32}$")
 
 def _signup_country_codes() -> set:
     ch = current_app.config.get("REGISTER_COUNTRY_CHOICES") or ()
-    return {str(c[0]).strip().upper() for c in ch if c and len(c) > 0}
+    return {
+        str(c[0]).strip().upper()
+        for c in ch
+        if c and len(c) > 0 and str(c[0]).strip()
+    }
 
 
-def _parse_signup_country(raw: str) -> tuple:
+def _parse_signup_country(raw: str, *, required: bool = False) -> tuple:
     """Return (code_or_None, error_message_or_None)."""
     c = (raw or "").strip().upper()
     if not c:
+        if required:
+            return None, "Please select your country."
         return None, None
     if c not in _signup_country_codes():
         return None, "Invalid country selection."
@@ -196,7 +202,7 @@ def register():
         if User.query.filter_by(email=email).first():
             errors.append('Email already registered. Please log in or use another email.')
 
-        country_code, cerr = _parse_signup_country(country_raw)
+        country_code, cerr = _parse_signup_country(country_raw, required=True)
         if cerr:
             errors.append(cerr)
         phone_number, perr = _parse_signup_phone(phone_raw)

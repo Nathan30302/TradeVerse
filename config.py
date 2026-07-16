@@ -279,9 +279,9 @@ class Config:
     # Allowed preferred_currency values (3-letter ISO for DB column)
     DISPLAY_CURRENCIES = ('USD', 'ZAR', 'ZMW', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD')
 
-    # Registration / profile: ISO 3166-1 alpha-2 (first element '' = prefer not to say)
+    # Registration / profile: ISO 3166-1 alpha-2 (first element '' = placeholder; required on signup)
     REGISTER_COUNTRY_CHOICES = (
-        ('', 'Prefer not to say'),
+        ('', 'Select your country'),
         ('ZM', 'Zambia'),
         ('ZA', 'South Africa'),
         ('US', 'United States'),
