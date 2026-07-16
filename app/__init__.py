@@ -492,10 +492,29 @@ def register_context_processors(app):
     def inject_globals():
         import json
         from datetime import datetime, timezone
+        from flask import request
         from app.content.motivational_quotes import MOTIVATIONAL_QUOTES, QUOTE_ROTATION_MS
 
         _mq = MOTIVATIONAL_QUOTES
         _mq_texts = [q['text'] for q in _mq] if _mq else app.config.get('QUOTES', [])
+
+        endpoint = (getattr(request, 'endpoint', None) or '') if request else ''
+        if not current_user.is_authenticated and endpoint == 'main.index':
+            di_context = 'landing'
+        elif endpoint.startswith('trade.'):
+            di_context = 'trades'
+        elif endpoint.startswith('planner.'):
+            di_context = 'planner'
+        elif endpoint.startswith('playbook.'):
+            di_context = 'playbook'
+        elif endpoint.startswith('lab.') or endpoint.startswith('replay.'):
+            di_context = 'lab'
+        elif endpoint in ('dashboard.ai', 'dashboard.weekly_review') or endpoint.endswith('.ai'):
+            di_context = 'ai'
+        elif endpoint.startswith('dashboard.'):
+            di_context = 'dashboard'
+        else:
+            di_context = 'home'
 
         return {
             'app_name': app.config.get('APP_NAME'),
@@ -512,6 +531,7 @@ def register_context_processors(app):
             'ui_font_labels': dict(app.config.get('UI_FONT_LABELS') or {}),
             'current_year': datetime.now(timezone.utc).year,
             'voice_transcribe_enabled': bool(os.environ.get('OPENAI_API_KEY', '').strip()),
+            'di_context': di_context,
         }
 
     @app.context_processor

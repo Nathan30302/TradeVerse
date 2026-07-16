@@ -558,6 +558,42 @@ def stats_api():
         Trade.entry_date >= start_today,
         Trade.entry_date < end_today,
     ).with_entities(Trade.id).count()
+
+    # Extra island context (planner / playbook / review / focus)
+    plans_planning = 0
+    playbook_setups = 0
+    review_queue_total = 0
+    weekly_focus_short = ''
+    try:
+        from app.models.trade_plan import TradePlan
+        plans_planning = (
+            TradePlan.query.filter_by(user_id=current_user.id, status='PLANNING')
+            .with_entities(TradePlan.id)
+            .count()
+        )
+    except Exception:
+        plans_planning = 0
+    try:
+        from app.models.playbook_setup import PlaybookSetup
+        playbook_setups = (
+            PlaybookSetup.query.filter_by(user_id=current_user.id)
+            .with_entities(PlaybookSetup.id)
+            .count()
+        )
+    except Exception:
+        playbook_setups = 0
+    try:
+        from app.services.retention import get_review_queue
+        review_queue_total = int((get_review_queue(current_user.id) or {}).get('total') or 0)
+    except Exception:
+        review_queue_total = 0
+    try:
+        from app.services.entitlements import _safe_getattr
+        wf = (_safe_getattr(current_user, 'weekly_focus_rule', None) or '').strip()
+        weekly_focus_short = (wf[:18] + '…') if len(wf) > 18 else wf
+    except Exception:
+        weekly_focus_short = ''
+
     # Ensure numeric fields are serializable
     safe = {
         'total_trades': stats.get('total_trades', 0),
@@ -577,6 +613,10 @@ def stats_api():
         'avg_rr_7d': float(avg_rr_7d),
         'wins_7d': int(wins_7d),
         'losses_7d': int(losses_7d),
+        'plans_planning': int(plans_planning or 0),
+        'playbook_setups': int(playbook_setups or 0),
+        'review_queue': int(review_queue_total or 0),
+        'weekly_focus_short': weekly_focus_short or '',
     }
     return jsonify(safe)
 
