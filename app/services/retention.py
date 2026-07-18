@@ -294,12 +294,21 @@ def build_dashboard_daily_context(user, *, user_name: str = '') -> Dict[str, Any
         _rollback_quietly()
         wf = ''
 
+    focus_compliance = {}
+    try:
+        from app.services.focus_compliance import measure_focus_compliance
+        focus_compliance = measure_focus_compliance(user, last_n=10)
+    except Exception:
+        _rollback_quietly()
+        focus_compliance = {}
+
     return {
         'review_queue': review_queue,
         'journaling_streak': get_journaling_streak(uid, tz),
         'morning_briefing': briefing,
         'weekly_score': weekly_score,
         'weekly_focus': wf,
+        'focus_compliance': focus_compliance,
     }
 
 

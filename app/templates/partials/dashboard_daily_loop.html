@@ -78,13 +78,22 @@
         </div>
         <div class="col-md-6">
             <div class="tv-panel p-3 h-100">
-                <div class="small tv-muted text-uppercase fw-semibold mb-1" style="letter-spacing:0.08em;font-size:0.68rem;">This week's focus</div>
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                    <div class="small tv-muted text-uppercase fw-semibold" style="letter-spacing:0.08em;font-size:0.68rem;">This week's focus</div>
+                    {% set fc = daily.get('focus_compliance') if daily is defined else none %}
+                    {% if fc and fc.rate is not none %}
+                    <span class="badge" style="background:rgba(20,184,166,0.18);color:#0f766e;">{{ fc.rate }}% · {{ fc.followed }}/{{ fc.sample_size }}</span>
+                    {% endif %}
+                </div>
                 {% if wf %}
                 <p class="small mb-2">{{ wf }}</p>
+                {% if fc and fc.detail %}
+                <p class="small tv-muted mb-2">{{ fc.detail }}</p>
+                {% endif %}
                 {% else %}
                 <p class="small tv-muted mb-2">One rule keeps the week disciplined.</p>
                 {% endif %}
-                <a class="small" href="{{ url_for('dashboard.weekly_review') }}">Set in weekly review →</a>
+                <a class="small" href="{{ url_for('dashboard.ai') }}">Coach adherence →</a>
             </div>
         </div>
     </div>

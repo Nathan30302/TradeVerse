@@ -27,6 +27,11 @@
         <div class="card tv-surface h-100">
             <div class="card-header"><h5 class="mb-0">Describe your setup</h5></div>
             <div class="card-body">
+                {% if from_buddy and description %}
+                <div class="alert alert-info border-0 small mb-3 py-2">
+                    Prefilled from AI Buddy — tweak the wording, then run the test.
+                </div>
+                {% endif %}
                 <form method="POST" id="tv-lab-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
@@ -107,6 +112,19 @@
             </div>
             <div class="card-body">
                 <p class="small tv-muted">{{ result.disclaimer }}</p>
+                {% if suggested_focus %}
+                <div class="alert alert-success border-0 mb-3 py-2">
+                    <div class="small fw-semibold mb-1"><i class="fas fa-chalkboard-user me-1"></i> Send to AI Buddy</div>
+                    <p class="small mb-2">{{ suggested_focus }}</p>
+                    <form method="POST" action="{{ url_for('dashboard.save_weekly_focus') }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="weekly_focus" value="{{ suggested_focus }}">
+                        <input type="hidden" name="next" value="{{ url_for('dashboard.ai') }}">
+                        <button type="submit" class="btn btn-sm btn-primary">Set as weekly focus</button>
+                    </form>
+                    <a class="btn btn-sm btn-outline-secondary ms-1" href="{{ url_for('dashboard.ai') }}">Open AI Buddy</a>
+                </div>
+                {% endif %}
                 <div class="row g-2 text-center mb-3">
                     <div class="col-3">
                         <div class="tv-panel p-2">

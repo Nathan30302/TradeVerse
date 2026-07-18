@@ -269,18 +269,31 @@
     </div>
 </details>
 
-{# AI Buddy — strength / leak / action #}
+{# AI Buddy — unified narrative (Doctor / weekly / patterns) #}
+{% set cn = coach_narrative or {} %}
 <div class="card tv-surface mb-4 tv-reveal tv-reveal-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
             <div class="tv-section-kicker mb-0">Coach</div>
             <h5 class="mb-0">AI Buddy pulse</h5>
-            <div class="small tv-muted">One strength, one leak, one next move.</div>
+            <div class="small tv-muted">
+                One story
+                {% if cn.source %}· {{ cn.source|replace('_', ' ') }}{% endif %}
+                {% if cn.compliance and cn.compliance.rate is not none %}
+                · focus {{ cn.compliance.rate }}%
+                {% endif %}
+            </div>
         </div>
-        <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-secondary">Open</a>
+        <div class="d-flex flex-wrap gap-2">
+            {% if cn.lab_prompt %}
+            <a href="{{ url_for('lab.index', description=cn.lab_prompt, mode='journal') }}&from=ai"
+               class="btn btn-sm btn-outline-secondary">Stress-test in Lab</a>
+            {% endif %}
+            <a href="{{ url_for('dashboard.ai') }}" class="btn btn-sm btn-outline-primary">Open AI Buddy</a>
+        </div>
     </div>
     <div class="card-body">
-        <p class="mb-3" style="line-height:1.55;">{{ ai_text }}</p>
+        <p class="mb-3" style="line-height:1.55;">{{ cn.summary or ai_text }}</p>
         {% if last_trade_insight %}
         <p class="small tv-muted mb-3"><i class="fas fa-bolt me-1" style="color:var(--warning);"></i>{{ last_trade_insight }}</p>
         {% endif %}
@@ -289,11 +302,7 @@
                 <div class="tv-panel p-3 h-100">
                     <div class="small tv-muted text-uppercase fw-semibold mb-1" style="font-size:0.68rem;letter-spacing:0.08em;">Strength</div>
                     <div class="fw-semibold">
-                        {% if ai_best_strat and ai_best_strat is mapping %}
-                            {{ ai_best_strat.get('name') or 'Still forming' }}
-                        {% else %}
-                            Still forming
-                        {% endif %}
+                        {{ cn.strength or (ai_best_strat.get('name') if ai_best_strat and ai_best_strat is mapping else 'Still forming') }}
                     </div>
                 </div>
             </div>
@@ -301,7 +310,7 @@
                 <div class="tv-panel p-3 h-100">
                     <div class="small tv-muted text-uppercase fw-semibold mb-1" style="font-size:0.68rem;letter-spacing:0.08em;">Leak</div>
                     <div class="fw-semibold">
-                        {% if ai_weaknesses %}{{ ai_weaknesses[0] }}{% else %}Keep the discipline{% endif %}
+                        {{ cn.leak or (ai_weaknesses[0] if ai_weaknesses else 'Keep the discipline') }}
                     </div>
                 </div>
             </div>
@@ -309,7 +318,7 @@
                 <div class="tv-panel p-3 h-100">
                     <div class="small tv-muted text-uppercase fw-semibold mb-1" style="font-size:0.68rem;letter-spacing:0.08em;">Do this</div>
                     <div class="fw-semibold">
-                        {% if ai_recs %}{{ ai_recs[0] }}{% else %}Trade only with a clear plan{% endif %}
+                        {{ cn.next_action or (ai_recs[0] if ai_recs else 'Trade only with a clear plan') }}
                     </div>
                 </div>
             </div>

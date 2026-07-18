@@ -3091,7 +3091,7 @@
                 dashboard: [
                     { label: 'P/L Today', key: 'pnl_today', type: 'money' },
                     { label: 'Trades', key: 'trades_today', type: 'int' },
-                    { label: 'Open', key: 'open_trades', type: 'int' },
+                    { label: 'Adhere', key: 'focus_adherence_rate', type: 'pct_or_dash' },
                     { label: 'Win% 7d', key: 'win_rate_7d', type: 'pct' },
                 ],
                 trades: [
@@ -3120,9 +3120,9 @@
                 ],
                 ai: [
                     { label: 'Focus', key: 'weekly_focus_short', type: 'text' },
+                    { label: 'Adhere', key: 'focus_adherence_rate', type: 'pct_or_dash' },
                     { label: 'Review', key: 'review_queue', type: 'int' },
                     { label: 'P/L Today', key: 'pnl_today', type: 'money' },
-                    { label: 'Win% 7d', key: 'win_rate_7d', type: 'pct' },
                 ],
             };
 
@@ -3151,6 +3151,11 @@
                 }
                 if (slot.type === 'pct') {
                     return { text: Number(raw || 0).toFixed(1) + '%', tone: null };
+                }
+                if (slot.type === 'pct_or_dash') {
+                    if (raw == null || raw === '') return { text: '—', tone: null };
+                    const n = Number(raw);
+                    return { text: Number.isFinite(n) ? (n.toFixed(0) + '%') : '—', tone: null };
                 }
                 if (slot.type === 'rr') {
                     const n = Number(raw);
@@ -3189,9 +3194,15 @@
                     };
                 }
                 if (ctx === 'ai' || focus) {
+                    const adhere = d.focus_adherence_rate;
+                    const adhereTxt = (adhere == null || adhere === '')
+                        ? ''
+                        : (' · ' + Number(adhere).toFixed(0) + '% adherence');
                     return {
                         kicker: 'Weekly focus',
-                        text: focus ? ('Rule: ' + focus) : 'Set one focus rule for this week',
+                        text: focus
+                            ? ('Rule: ' + focus + adhereTxt)
+                            : 'Set one focus rule for this week',
                         metaHtml: '<a href="/dashboard/ai">Open AI Buddy</a>',
                         mood: 'focus',
                     };

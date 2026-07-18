@@ -179,6 +179,14 @@ def index():
     except Exception:
         last_trade_insight = ''
 
+    coach_narrative = {}
+    try:
+        from app.services.ai_coach_context import get_coach_narrative
+        coach_narrative = get_coach_narrative(current_user)
+    except Exception as exc:
+        current_app.logger.warning('coach narrative failed: %s', exc)
+        coach_narrative = {}
+
     # Best / worst closed trades in one round-trip each with narrow columns
     from sqlalchemy.orm import load_only
 
@@ -269,6 +277,7 @@ def index():
                            onboarding=onboarding,
                            pinned_note=pinned_note,
                            last_trade_insight=last_trade_insight,
+                           coach_narrative=coach_narrative,
                            daily=daily,
                            review_queue=daily.get('review_queue') or {},
                            insights_next_action=insights_next_action)
@@ -290,11 +299,12 @@ def getting_started():
 def getting_started_sample_data():
     """Optional demo trades so AI Buddy and analytics are not empty."""
     created = create_sample_trades(current_user.id)
+    next_url = _safe_same_site_redirect(request.form.get('next'))
     if created:
-        flash(f'Added {created} sample trades. Explore your dashboard and AI Buddy.', 'success')
+        flash(f'Added {created} sample trades. Run Trade Doctor next for your first leak.', 'success')
     else:
-        flash('You already have trades — sample data was not added.', 'info')
-    return redirect(url_for('dashboard.index'))
+        flash('You already have trades — sample data was not added. Run Trade Doctor instead.', 'info')
+    return redirect(next_url)
 
 
 @bp.route('/weekly-review')
@@ -594,6 +604,18 @@ def stats_api():
     except Exception:
         weekly_focus_short = ''
 
+    focus_adherence_rate = None
+    focus_adherence_label = ''
+    try:
+        from app.services.focus_compliance import measure_focus_compliance
+        fc = measure_focus_compliance(current_user, last_n=10)
+        if fc.get('has_focus') and fc.get('rate') is not None:
+            focus_adherence_rate = float(fc['rate'])
+            focus_adherence_label = str(fc.get('label') or '')
+    except Exception:
+        focus_adherence_rate = None
+        focus_adherence_label = ''
+
     # Ensure numeric fields are serializable
     safe = {
         'total_trades': stats.get('total_trades', 0),
@@ -617,6 +639,8 @@ def stats_api():
         'playbook_setups': int(playbook_setups or 0),
         'review_queue': int(review_queue_total or 0),
         'weekly_focus_short': weekly_focus_short or '',
+        'focus_adherence_rate': focus_adherence_rate,
+        'focus_adherence_label': focus_adherence_label or '',
     }
     return jsonify(safe)
 
@@ -1194,6 +1218,15 @@ def ai():
     except Exception:
         focus_compliance = {}
 
+    coach_narrative = {}
+    try:
+        from app.services.ai_coach_context import get_coach_narrative
+        coach_narrative = get_coach_narrative(current_user)
+        if coach_narrative.get('suggested_focus') and not suggested_focus:
+            suggested_focus = coach_narrative.get('suggested_focus') or ''
+    except Exception:
+        coach_narrative = {}
+
     return render_template('dashboard/ai.html',
                            weekly_review=weekly_review,
                            monthly_review=monthly_review,
@@ -1206,7 +1239,8 @@ def ai():
                            suggested_weekly_focus=suggested_focus,
                            has_ai_web=has_ai_web,
                            last_trade_insight=last_trade_insight,
-                           focus_compliance=focus_compliance)
+                           focus_compliance=focus_compliance,
+                           coach_narrative=coach_narrative)
 
 
 @bp.route('/ai/notes/save', methods=['POST'])

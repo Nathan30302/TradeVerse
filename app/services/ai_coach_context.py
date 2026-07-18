@@ -237,6 +237,162 @@ def build_coach_context_dict(user, weekly_stats: Optional[Dict[str, Any]] = None
     }
 
 
+def get_coach_narrative(user) -> Dict[str, Any]:
+    """
+    One ranked coach story: leak + strength + next action.
+
+    Priority: Trade Doctor → weekly review alerts → pattern warnings → empty first-win.
+    """
+    uid = getattr(user, "id", None)
+    empty = {
+        "source": "empty",
+        "has_data": False,
+        "leak": "Not enough trades yet",
+        "strength": "Journal is ready",
+        "next_action": "Log 3 closed trades with SL, strategy tag, and a one-line note",
+        "summary": (
+            "AI Buddy needs a few closed trades before it can diagnose a leak. "
+            "Take the 10-minute first win: sample data or real logs → Trade Doctor → one weekly rule."
+        ),
+        "suggested_focus": "Max 2 trades per day; stop after 2 losses.",
+        "lab_prompt": (
+            "Only trade A+ setups with a clear stop loss under invalidation and a target at least "
+            "1.5R. Skip FOMO entries after a loss."
+        ),
+        "compliance": measure_focus_compliance(user, last_n=10) if uid else {},
+    }
+    if not uid:
+        return empty
+
+    try:
+        from app.services.ai_insights import AIAnalyzer
+
+        analyzer = AIAnalyzer(uid)
+        weekly = analyzer.get_weekly_review() or {}
+        stats = weekly.get("stats") or {}
+        total = int(stats.get("total_trades") or 0)
+        strengths = weekly.get("strengths") or []
+        alerts = weekly.get("alerts") or []
+        weaknesses = weekly.get("weaknesses") or []
+        recs = weekly.get("recommendations") or []
+        setups = weekly.get("setups") or {}
+        best = setups.get("best_strategy") if isinstance(setups, dict) else None
+        strength = "Still forming"
+        if isinstance(best, dict) and best.get("name"):
+            strength = str(best.get("name"))
+        elif strengths:
+            strength = str(strengths[0])[:120]
+
+        td = analyzer.trade_doctor(last_n=10)
+        leak = (td.get("leak") or "").strip()
+        usable_doctor = leak and leak not in ("No recent closed trades", "Need more signal")
+        compliance = td.get("compliance") or measure_focus_compliance(user, last_n=10)
+
+        if usable_doctor and total >= 1:
+            plan = td.get("plan") or []
+            next_action = ""
+            for p in plan:
+                pl = (p or "").strip()
+                if pl.lower().startswith("rule:"):
+                    next_action = pl.split(":", 1)[-1].strip()
+                    break
+            if not next_action and plan:
+                next_action = str(plan[0])[:160]
+            suggested = (td.get("suggested_focus") or next_action or "").strip()
+            evidence = td.get("evidence") or []
+            summary = (
+                f"Trade Doctor: {leak}. "
+                + (evidence[0] if evidence else "Follow the strict plan for the next 10 trades.")
+            )
+            lab_prompt = (
+                f"Only take setups that avoid this leak: {leak}. "
+                "Require a stop at invalidation, planned R:R at least 1.5, and skip revenge entries after a loss."
+            )
+            return {
+                "source": "trade_doctor",
+                "has_data": True,
+                "leak": leak,
+                "strength": strength,
+                "next_action": next_action or suggested or "Set one weekly focus from Trade Doctor",
+                "summary": summary[:320],
+                "suggested_focus": suggested or empty["suggested_focus"],
+                "lab_prompt": lab_prompt[:500],
+                "compliance": compliance,
+            }
+
+        if total >= 1 and (alerts or weaknesses or recs):
+            leak_txt = (alerts[0] if alerts else (weaknesses[0] if weaknesses else "Process drift"))[:160]
+            next_txt = (recs[0] if recs else "Set one weekly focus rule and follow it for 10 trades")[:160]
+            return {
+                "source": "weekly",
+                "has_data": True,
+                "leak": leak_txt,
+                "strength": strength,
+                "next_action": next_txt,
+                "summary": (weekly.get("summary") or f"Last 7 days show a leak around: {leak_txt}")[:320],
+                "suggested_focus": analyzer.suggest_weekly_focus_rule() or next_txt,
+                "lab_prompt": (
+                    f"Trade only when this is true: {next_txt}. "
+                    "Skip anything that looks like FOMO or undefined risk."
+                )[:500],
+                "compliance": compliance,
+            }
+
+        # Patterns as tertiary signal
+        try:
+            from app.services.pattern_detector import detect_patterns
+
+            patterns = detect_patterns(uid, days=90) or []
+            warnings = [
+                p
+                for p in patterns
+                if isinstance(p, dict) and str(p.get("type") or "").lower() in ("warning", "danger", "alert")
+            ]
+            warnings.sort(key=lambda p: float(p.get("confidence") or 0), reverse=True)
+            if warnings:
+                w = warnings[0]
+                leak_txt = str(w.get("title") or w.get("message") or "Behavioral pattern")[:160]
+                next_txt = str(w.get("message") or "Turn this pattern into one weekly rule")[:160]
+                return {
+                    "source": "patterns",
+                    "has_data": True,
+                    "leak": leak_txt,
+                    "strength": strength,
+                    "next_action": next_txt,
+                    "summary": f"Pattern alert: {leak_txt}. {next_txt}"[:320],
+                    "suggested_focus": next_txt[:200],
+                    "lab_prompt": (
+                        f"Only trade setups that avoid: {leak_txt}. "
+                        "Require playbook checklist and stop loss before entry."
+                    )[:500],
+                    "compliance": compliance,
+                }
+        except Exception:
+            pass
+
+        if total >= 1:
+            return {
+                "source": "weekly",
+                "has_data": True,
+                "leak": "Need more tagged data",
+                "strength": strength,
+                "next_action": "Tag strategy + emotion on the next 10 trades, then re-run Trade Doctor",
+                "summary": weekly.get("summary") or "Keep logging with structure so AI Buddy can isolate one leak.",
+                "suggested_focus": analyzer.suggest_weekly_focus_rule() or empty["suggested_focus"],
+                "lab_prompt": empty["lab_prompt"],
+                "compliance": compliance,
+            }
+    except Exception:
+        try:
+            from app import db
+
+            db.session.rollback()
+        except Exception:
+            pass
+
+    return empty
+
+
 def format_coach_context_block(ctx: Dict[str, Any], *, include_stats: bool = True) -> str:
     """Plain-text block injected into local coach and web LLM."""
     lines: List[str] = []

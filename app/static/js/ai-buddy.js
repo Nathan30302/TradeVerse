@@ -500,8 +500,15 @@
               applyWeeklyFocus(rule);
               if (rule) showSuggestedFocus(rule);
             });
+            var labBtn = document.createElement('a');
+            labBtn.className = 'btn btn-sm btn-outline-secondary';
+            labBtn.textContent = 'Stress-test in Lab';
+            var labPrompt = 'Only take setups that avoid this leak: ' + d.leak +
+              '. Require a stop at invalidation, planned R:R at least 1.5, and skip revenge entries after a loss.';
+            labBtn.href = '/lab/?description=' + encodeURIComponent(labPrompt) + '&mode=journal&from=ai';
             actions.appendChild(pinBtn);
             actions.appendChild(focusBtn);
+            actions.appendChild(labBtn);
             var log = document.getElementById('aiChatLog');
             if (log && log.lastChild) log.lastChild.appendChild(actions);
             if (d.suggested_focus) showSuggestedFocus(d.suggested_focus);
@@ -669,6 +676,32 @@
       if (e.key === 'Enter') onAskClick();
     });
     if (tdBtn) tdBtn.addEventListener('click', runTradeDoctor);
+
+    var narrativeFocusBtn = document.getElementById('narrativeFocusBtn');
+    var narrativeDoctorBtn = document.getElementById('narrativeDoctorBtn');
+    var firstWinDoctorBtn = document.getElementById('firstWinDoctorBtn');
+    if (narrativeFocusBtn) {
+      narrativeFocusBtn.addEventListener('click', function () {
+        var rule = (narrativeFocusBtn.getAttribute('data-rule') || '').trim();
+        if (!rule) return;
+        applyWeeklyFocus(rule);
+        showSuggestedFocus(rule);
+        ensureChatTab();
+      });
+    }
+    if (narrativeDoctorBtn) {
+      narrativeDoctorBtn.addEventListener('click', function () {
+        ensureChatTab();
+        runTradeDoctor();
+      });
+    }
+    if (firstWinDoctorBtn) {
+      firstWinDoctorBtn.addEventListener('click', function () {
+        ensureChatTab();
+        runTradeDoctor();
+      });
+    }
+
     if (coachBtn) coachBtn.addEventListener('click', function () {
       var SR = global.SpeechRecognition || global.webkitSpeechRecognition;
       if (!SR) {
