@@ -131,16 +131,19 @@ def answer_with_web(
     user_context: str,
     history: Optional[List[Dict[str, str]]] = None,
     is_personal: bool = False,
+    allow_web_search: bool = True,
 ) -> WebAIResult:
     """
-    Use Tavily search results as additional context and ask OpenAI to answer.
-    Returns an answer and follow-ups; callers should handle exceptions and fallback.
+    Ask OpenAI to answer. Personal journal questions use evidence-only grounding
+    (no web search). General questions may use Tavily summaries.
     """
     q = (question or "").strip()
     if not q:
         return WebAIResult(answer="Ask a question and I’ll help.", follow_ups=[])
 
-    results = _tavily_search(q, max_results=5)
+    results: List[Dict[str, Any]] = []
+    if allow_web_search and not is_personal:
+        results = _tavily_search(q, max_results=5)
     sources_txt = ""
     if results:
         sources_txt = "\n\nWeb sources (summaries):\n" + "\n".join(
@@ -156,20 +159,31 @@ def answer_with_web(
             hist_lines.append(f"{role.upper()}: {content}")
     hist_txt = ("\n\nConversation context:\n" + "\n".join(hist_lines)) if hist_lines else ""
 
-    system = (
-        "You are TradeVerse AI Buddy: a professional trading coach inside a trading journal app.\n"
-        "Rules:\n"
-        "1) Answer the user's exact question first — do not change the topic or give a generic lecture.\n"
-        "2) When user context includes journal stats, cite those numbers; never invent trades or P/L.\n"
-        "3) Be practical, risk-first, and concise (bullets + one clear next action).\n"
-        "4) For general education you may use web source summaries; do not hallucinate live prices or news.\n"
-        "5) If you cannot answer from context/sources, say what is missing and ask one clarifying question.\n"
-    )
-    personal_note = (
-        "This question is about the user's own journal — prioritize their stats from User context.\n"
-        if is_personal
-        else ""
-    )
+    if is_personal:
+        system = (
+            "You are TradeVerse AI Buddy: a personal trading coach inside a trading journal.\n"
+            "EVIDENCE-ONLY MODE for this question:\n"
+            "1) Answer using ONLY the User context block (stats, focus rule, playbook adherence, plans, snippets).\n"
+            "2) Cite specific numbers from context (win rate, P/L, compliance counts). Never invent trades or P/L.\n"
+            "3) If context lacks the answer, say what data is missing and give one logging action — do not guess.\n"
+            "4) Be practical and risk-first: end with ONE concrete next-week rule the trader can follow.\n"
+            "5) Keep it concise: short paragraphs or bullets. No generic trading lectures.\n"
+        )
+        personal_note = (
+            "This is about the user's own journal. Do not use outside market knowledge. "
+            "Prioritize focus compliance and playbook adherence when present.\n"
+        )
+    else:
+        system = (
+            "You are TradeVerse AI Buddy: a professional trading coach inside a trading journal app.\n"
+            "Rules:\n"
+            "1) Answer the user's exact question first — do not change the topic or give a generic lecture.\n"
+            "2) When user context includes journal stats, cite those numbers; never invent trades or P/L.\n"
+            "3) Be practical, risk-first, and concise (bullets + one clear next action).\n"
+            "4) For general education you may use web source summaries; do not hallucinate live prices or news.\n"
+            "5) If you cannot answer from context/sources, say what is missing and ask one clarifying question.\n"
+        )
+        personal_note = ""
     user = (
         f"User context:\n{user_context}\n"
         f"{hist_txt}\n\n"

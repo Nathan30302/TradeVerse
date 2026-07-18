@@ -1073,10 +1073,10 @@ def save_weekly_focus():
         db.session.execute(
             update(User)
             .where(User.id == current_user.id)
-            .values(weekly_focus_rule=text)
+            .values(weekly_focus_rule=text, weekly_focus_set_at=utc_now())
         )
         db.session.commit()
-        flash('Weekly focus saved. AI Buddy will use this as context.', 'success')
+        flash('Weekly focus saved. AI Buddy will track adherence on your next trades.', 'success')
     except Exception as exc:
         db.session.rollback()
         current_app.logger.warning('save_weekly_focus failed: %s', exc)
@@ -1187,6 +1187,13 @@ def ai():
     except Exception:
         pass
 
+    focus_compliance = {}
+    try:
+        from app.services.focus_compliance import measure_focus_compliance
+        focus_compliance = measure_focus_compliance(current_user, last_n=10)
+    except Exception:
+        focus_compliance = {}
+
     return render_template('dashboard/ai.html',
                            weekly_review=weekly_review,
                            monthly_review=monthly_review,
@@ -1198,7 +1205,8 @@ def ai():
                            morning_briefing=morning_briefing,
                            suggested_weekly_focus=suggested_focus,
                            has_ai_web=has_ai_web,
-                           last_trade_insight=last_trade_insight)
+                           last_trade_insight=last_trade_insight,
+                           focus_compliance=focus_compliance)
 
 
 @bp.route('/ai/notes/save', methods=['POST'])
@@ -1324,16 +1332,17 @@ def ai_query():
             ctx_all = ""
         ctx = f"username={current_user.username or ''}\n{coach_block}\n{ctx_all}"
 
-        # Journal-grounded questions stay on the local coach so answers match the user's data.
+        # Personal journal questions use the LLM with evidence-only grounding when Pro Plus web is on.
         is_personal = AIAnalyzer._is_personal_performance_question(question)
 
-        if use_web and not is_personal:
+        if use_web:
             try:
                 web = answer_with_web(
                     question=question,
                     user_context=ctx,
                     history=history[-12:],
-                    is_personal=False,
+                    is_personal=is_personal,
+                    allow_web_search=not is_personal,
                 )
                 web_answer = (web.answer or "").strip()
                 if web_answer and "couldn't generate" not in web_answer.lower():
@@ -1422,13 +1431,27 @@ def apply_weekly_focus_json():
     if len(text) > 4000:
         text = text[:4000]
     try:
+        values = {
+            'weekly_focus_rule': text if text else None,
+            'weekly_focus_set_at': utc_now() if text else None,
+        }
         db.session.execute(
             update(User)
             .where(User.id == current_user.id)
-            .values(weekly_focus_rule=text if text else None)
+            .values(**values)
         )
         db.session.commit()
-        return jsonify({'ok': True, 'weekly_focus_rule': text})
+        compliance = {}
+        try:
+            from app.services.focus_compliance import measure_focus_compliance
+            compliance = measure_focus_compliance(current_user, last_n=10)
+        except Exception:
+            compliance = {}
+        return jsonify({
+            'ok': True,
+            'weekly_focus_rule': text,
+            'compliance': compliance,
+        })
     except Exception as exc:
         db.session.rollback()
         current_app.logger.warning('apply_weekly_focus_json failed: %s', exc)

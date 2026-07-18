@@ -53,6 +53,41 @@
 </div>
 {% endif %}
 
+{% if post_close_coach %}
+<div class="card mb-4 border-0 shadow-sm" style="border-left: 4px solid {% if post_close_coach.pnl > 0 %}#22c55e{% elif post_close_coach.pnl < 0 %}#ef4444{% else %}#14b8a6{% endif %} !important;">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+            <div>
+                <div class="small text-uppercase fw-bold text-muted mb-1"><i class="fas fa-chalkboard-user me-1"></i> AI Buddy · post-close</div>
+                <h5 class="mb-1">{{ post_close_coach.headline }}</h5>
+                <p class="mb-0 text-body">{{ post_close_coach.lesson }}</p>
+            </div>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dashboard.ai') }}">Open AI Buddy</a>
+        </div>
+        {% if post_close_coach.compliance and post_close_coach.compliance.has_focus and post_close_coach.compliance.sample_size %}
+        <div class="small mt-2 p-2 rounded" style="background: rgba(15,23,42,0.06);">
+            <strong>Focus adherence:</strong> {{ post_close_coach.compliance.label }}
+            {% if post_close_coach.focus_followed is not none %}
+            · this trade: {% if post_close_coach.focus_followed %}<span class="text-success">followed</span>{% else %}<span class="text-danger">broke rule</span>{% endif %}
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if post_close_coach.suggested_rule %}
+        <form class="mt-3" method="POST" action="{{ url_for('dashboard.save_weekly_focus') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="weekly_focus" value="{{ post_close_coach.suggested_rule }}">
+            <input type="hidden" name="next" value="{{ url_for('trade.view', trade_id=trade.id, review=1) }}">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="small text-muted">Suggested rule:</span>
+                <span class="small fw-semibold">{{ post_close_coach.suggested_rule }}</span>
+                <button type="submit" class="btn btn-sm btn-primary">Set as this week’s focus</button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 {% if request.args.get('review') %}
 <div class="card mb-4">
     <div class="card-body">

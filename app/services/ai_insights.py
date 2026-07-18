@@ -1418,6 +1418,33 @@ class AIAnalyzer:
             ]
             candidates.append((65 + low_quality, "Execution errors (chasing / poor entries)", evidence, plan, checklist))
 
+        # Leak 6: playbook not followed (off-system trading)
+        pb_broken = sum(1 for t in trades if not bool(getattr(t, "playbook_followed", False)))
+        pb_broken_losses = sum(
+            1
+            for t in trades
+            if (not bool(getattr(t, "playbook_followed", False))) and float(t.profit_loss or 0) < 0
+        )
+        if pb_broken >= 4 and pb_broken_losses >= 2:
+            evidence = [
+                f"{pb_broken}/{len(trades)} of your last {len(trades)} trades were not marked playbook-followed;",
+                f"{pb_broken_losses} of those were losers.",
+            ]
+            plan = [
+                "Rule: A+ playbook setups only for the next 10 trades.",
+                "If it is not in your playbook, skip — no FOMO entries.",
+                "After each close, tick “playbook followed” honestly.",
+            ]
+            checklist = [
+                "Setup matches an active playbook",
+                "Checklist completed before entry",
+                "Playbook followed = yes (or skip trade)",
+                "No off-system revenge entries",
+            ]
+            candidates.append(
+                (70 + pb_broken_losses, "Off-system trading (playbook not followed)", evidence, plan, checklist)
+            )
+
         if not candidates:
             # Default: use “one rule” framing
             total_pnl = sum(pnl)
@@ -1438,6 +1465,16 @@ class AIAnalyzer:
             candidates.sort(key=lambda x: x[0], reverse=True)
             _score, leak, evidence, plan, checklist = candidates[0]
 
+        # Suggested weekly focus = first concrete plan line (or leak-framed)
+        suggested_focus = ""
+        for p in plan:
+            pl = (p or "").strip()
+            if pl.lower().startswith("rule:"):
+                suggested_focus = pl.split(":", 1)[-1].strip()
+                break
+        if not suggested_focus and leak and leak not in ("No recent closed trades", "Need more signal"):
+            suggested_focus = f"Trade Doctor focus: {leak}"
+
         # Strict plan wrapper
         strict = [
             f"**Trade Doctor diagnosis:** {leak}",
@@ -1448,12 +1485,34 @@ class AIAnalyzer:
             "**Strict plan (follow exactly for next 10 trades)**",
             *[f"- {p}" for p in plan],
         ]
+        if suggested_focus:
+            strict.extend(["", f"**Suggested weekly focus:** {suggested_focus}"])
+
+        compliance = {}
+        try:
+            from app.models.user import User
+            from app.services.focus_compliance import measure_focus_compliance
+
+            u = User.query.filter_by(id=self.user_id).first()
+            if u:
+                compliance = measure_focus_compliance(u, last_n=10)
+                if compliance.get("sample_size"):
+                    strict.extend(
+                        [
+                            "",
+                            f"**Current focus adherence:** {compliance.get('label')} — {compliance.get('detail')}",
+                        ]
+                    )
+        except Exception:
+            compliance = {}
 
         return {
             "leak": leak,
             "evidence": evidence,
             "plan": plan,
             "checklist": checklist,
+            "suggested_focus": suggested_focus,
+            "compliance": compliance,
             "text": "\n".join(strict),
         }
  

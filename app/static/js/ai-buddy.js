@@ -366,7 +366,13 @@
           if (d && d.ok) {
             var inp = document.getElementById('weekly_focus_ai');
             if (inp) inp.value = rule;
-            appendChat('assistant', 'Saved your weekly focus: **' + rule + '**');
+            var msg = 'Saved your weekly focus: **' + rule + '**. AI Buddy will score the next trades against this rule.';
+            if (d.compliance && d.compliance.sample_size) {
+              msg += '\n\nCurrent adherence: **' + (d.compliance.label || '') + '**';
+            } else {
+              msg += '\n\nClose a few trades under this rule to unlock adherence %.';
+            }
+            appendChat('assistant', msg);
           }
           if (onDone) onDone(d);
         })
@@ -490,12 +496,21 @@
             focusBtn.className = 'btn btn-sm btn-outline-primary';
             focusBtn.textContent = 'Use as weekly focus';
             focusBtn.addEventListener('click', function () {
-              applyWeeklyFocus('Trade Doctor: ' + d.leak);
+              var rule = (d.suggested_focus || ('Trade Doctor: ' + d.leak) || '').trim();
+              applyWeeklyFocus(rule);
+              if (rule) showSuggestedFocus(rule);
             });
             actions.appendChild(pinBtn);
             actions.appendChild(focusBtn);
             var log = document.getElementById('aiChatLog');
             if (log && log.lastChild) log.lastChild.appendChild(actions);
+            if (d.suggested_focus) showSuggestedFocus(d.suggested_focus);
+            if (d.compliance && d.compliance.sample_size) {
+              appendChat(
+                'assistant',
+                '**Focus adherence:** ' + (d.compliance.label || '') + ' — ' + (d.compliance.detail || '')
+              );
+            }
           }
         })
         .catch(function () {

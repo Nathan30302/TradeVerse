@@ -834,6 +834,14 @@ def view(trade_id):
                 ).first()
         except Exception:
             current_app.logger.debug('playbook setup load skipped', exc_info=True)
+
+        post_close_coach = None
+        if trade.status == 'CLOSED' and trade.profit_loss is not None:
+            try:
+                from app.services.focus_compliance import build_post_close_coach_card
+                post_close_coach = build_post_close_coach_card(current_user, trade)
+            except Exception:
+                current_app.logger.debug('post_close_coach skipped', exc_info=True)
         
         return render_template(
             'trade/view.html',
@@ -842,6 +850,7 @@ def view(trade_id):
             feedbacks=feedbacks,
             linked_plans=linked_plans,
             playbook_setup=playbook_setup,
+            post_close_coach=post_close_coach,
         )
 
     except HTTPException:

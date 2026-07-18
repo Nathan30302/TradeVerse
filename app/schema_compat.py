@@ -22,6 +22,7 @@ USER_OPTIONAL_COLUMNS: FrozenSet[str] = frozenset(
         "subscription_expires_at",
         "stripe_customer_id",
         "weekly_focus_rule",
+        "weekly_focus_set_at",
         "signup_utm_source",
         "exports_blocked",
         "country_code",
@@ -39,6 +40,7 @@ _USER_COLUMN_DDL: Dict[str, Tuple[str, Optional[str]]] = {
     "subscription_expires_at": ("TIMESTAMP", None),
     "stripe_customer_id": ("VARCHAR(255)", None),
     "weekly_focus_rule": ("TEXT", None),
+    "weekly_focus_set_at": ("TIMESTAMP", None),
     "signup_utm_source": ("VARCHAR(255)", None),
     "exports_blocked": ("BOOLEAN", "FALSE"),
     "country_code": ("VARCHAR(2)", None),
@@ -49,7 +51,7 @@ _USER_COLUMN_DDL: Dict[str, Tuple[str, Optional[str]]] = {
 TRADE_OPTIONAL_COLUMNS: FrozenSet[str] = frozenset({"playbook_setup_id"})
 
 # Stamp target when the live DB already has app tables but alembic_version is empty/stuck.
-_TARGET_ALEMBIC_REV = "20260715_user_ui_font"
+_TARGET_ALEMBIC_REV = "20260718_focus_set_at"
 _EARLY_ALEMBIC_REVS = frozenset(
     {
         "07e766313e36",

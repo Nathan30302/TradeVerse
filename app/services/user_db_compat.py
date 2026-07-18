@@ -44,6 +44,7 @@ _DEFERRED_NONE = (
     "subscription_expires_at",
     "stripe_customer_id",
     "weekly_focus_rule",
+    "weekly_focus_set_at",
     "signup_utm_source",
     "country_code",
     "phone_number",
