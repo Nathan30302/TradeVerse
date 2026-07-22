@@ -16,8 +16,13 @@
 {% set pinned = pinned_note %}
 {% set uname = (current_user.username or 'trader') %}
 
+{# Motivational quote — first thing on the dashboard #}
+<div class="tv-reveal mb-4">
+{% include 'partials/motivational_quote_card.html' %}
+</div>
+
 {# Hero — brand + one job #}
-<div class="tv-page-hero tv-reveal">
+<div class="tv-page-hero tv-reveal tv-reveal-2">
     <div class="page-header">
         <div class="row align-items-center">
             <div class="col">
@@ -76,10 +81,6 @@
         <a href="{{ url_for('trade.add') }}" class="btn btn-outline-primary">Log a trade</a>
         <a href="{{ url_for('imports.import_page') }}" class="btn btn-outline-secondary">Import history</a>
     </div>
-</div>
-{% else %}
-<div class="tv-reveal tv-reveal-2 mb-4">
-{% include 'partials/motivational_quote_card.html' %}
 </div>
 {% endif %}
 
