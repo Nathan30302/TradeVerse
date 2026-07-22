@@ -28,10 +28,11 @@ bp = Blueprint('monetization', __name__, url_prefix='/monetization')
 
 def render_pricing_page():
     """
-    Authenticated pricing page HTML.
+    Pricing page HTML (public).
 
     Canonical URL is ``/pricing`` (``main.pricing``). The legacy URL
     ``/monetization/pricing`` issues a 301 for old internal links.
+    Checkout CTAs still require login.
     """
     current_tier = "free"
     if current_user.is_authenticated:
@@ -228,6 +229,13 @@ def subscribe(plan):
             "customer": {"email": current_user.email, "name": current_user.username},
             "meta": {"user_id": current_user.id, "plan": plan.lower()},
             "customizations": {"title": "TradeVerse", "description": f"TradeVerse {plan.lower()} subscription"},
+            # Surface cards + African mobile money (MTN / Airtel where Flutterwave supports the market).
+            "payment_options": (
+                current_app.config.get("FLW_PAYMENT_OPTIONS")
+                or os.environ.get("FLW_PAYMENT_OPTIONS")
+                or "card,mobilemoney,ussd,mpesa,mobilemoneyzambia,mobilemoneyuganda,"
+                   "mobilemoneytanzania,mobilemoneyghana,account,banktransfer"
+            ),
         }
 
         # Optional recurring payment plan IDs set in Flutterwave dashboard.

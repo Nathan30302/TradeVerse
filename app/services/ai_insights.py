@@ -1286,14 +1286,18 @@ class AIAnalyzer:
         This is deterministic and avoids generic advice.
         """
         try:
+            from sqlalchemy import func
+
             trades = (
                 Trade.query.filter(
                     Trade.user_id == self.user_id,
                     Trade.status == "CLOSED",
                     Trade.profit_loss.isnot(None),
-                    Trade.exit_date.isnot(None),
                 )
-                .order_by(Trade.exit_date.desc())
+                .order_by(
+                    func.coalesce(Trade.exit_date, Trade.entry_date).desc(),
+                    Trade.id.desc(),
+                )
                 .limit(int(last_n))
                 .all()
             )
@@ -1323,6 +1327,7 @@ class AIAnalyzer:
                     "Stop rule defined for the day (ex: −2R / 2 losses)",
                 ],
                 "text": text,
+                "sample_size": 0,
             }
 
         # Metrics
@@ -1513,6 +1518,7 @@ class AIAnalyzer:
             "checklist": checklist,
             "suggested_focus": suggested_focus,
             "compliance": compliance,
+            "sample_size": len(trades),
             "text": "\n".join(strict),
         }
  

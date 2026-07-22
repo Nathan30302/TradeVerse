@@ -16,18 +16,34 @@
 </div>
 <style>
   .tv-mobile-today-strip {
-    position: sticky;
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: 0;
-    z-index: 1040;
+    z-index: 1020;
     padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(180deg, transparent, rgba(2, 6, 23, 0.92) 24%);
+    background: transparent;
     pointer-events: none;
+  }
+  /* Keep page actions (table Close Trade, etc.) clickable above the strip */
+  @media (max-width: 767.98px) {
+    body.modal-open .tv-mobile-today-strip {
+      display: none !important;
+    }
+    body {
+      padding-bottom: 5.25rem;
+    }
+  }
+  @media (min-width: 768px) {
+    .tv-mobile-today-strip { display: none !important; }
   }
   .tv-mobile-today-inner {
     pointer-events: auto;
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    max-width: 28rem;
+    margin: 0 auto;
     padding: 0.55rem 0.75rem;
     border-radius: 14px;
     border: 1px solid rgba(148, 163, 184, 0.25);

@@ -242,6 +242,7 @@ def get_coach_narrative(user) -> Dict[str, Any]:
     One ranked coach story: leak + strength + next action.
 
     Priority: Trade Doctor → weekly review alerts → pattern warnings → empty first-win.
+    Uses lifetime closed trades for “has data” (not only the last-7-day weekly window).
     """
     uid = getattr(user, "id", None)
     empty = {
@@ -265,12 +266,13 @@ def get_coach_narrative(user) -> Dict[str, Any]:
         return empty
 
     try:
+        from app.models.trade import Trade
         from app.services.ai_insights import AIAnalyzer
 
         analyzer = AIAnalyzer(uid)
         weekly = analyzer.get_weekly_review() or {}
         stats = weekly.get("stats") or {}
-        total = int(stats.get("total_trades") or 0)
+        weekly_total = int(stats.get("total_trades") or 0)
         strengths = weekly.get("strengths") or []
         alerts = weekly.get("alerts") or []
         weaknesses = weekly.get("weaknesses") or []
@@ -283,12 +285,26 @@ def get_coach_narrative(user) -> Dict[str, Any]:
         elif strengths:
             strength = str(strengths[0])[:120]
 
+        lifetime_closed = 0
+        try:
+            lifetime_closed = int(
+                Trade.query.filter(
+                    Trade.user_id == uid,
+                    Trade.status == "CLOSED",
+                    Trade.profit_loss.isnot(None),
+                ).count()
+            )
+        except Exception:
+            lifetime_closed = weekly_total
+
         td = analyzer.trade_doctor(last_n=10)
         leak = (td.get("leak") or "").strip()
-        usable_doctor = leak and leak not in ("No recent closed trades", "Need more signal")
+        doctor_n = int(td.get("sample_size") or 0)
+        usable_doctor = bool(leak and leak != "No recent closed trades" and doctor_n >= 1)
         compliance = td.get("compliance") or measure_focus_compliance(user, last_n=10)
 
-        if usable_doctor and total >= 1:
+        # Trade Doctor wins even when the last-7-day weekly window is empty.
+        if usable_doctor:
             plan = td.get("plan") or []
             next_action = ""
             for p in plan:
@@ -300,10 +316,20 @@ def get_coach_narrative(user) -> Dict[str, Any]:
                 next_action = str(plan[0])[:160]
             suggested = (td.get("suggested_focus") or next_action or "").strip()
             evidence = td.get("evidence") or []
-            summary = (
-                f"Trade Doctor: {leak}. "
-                + (evidence[0] if evidence else "Follow the strict plan for the next 10 trades.")
-            )
+            if leak == "Need more signal":
+                summary = (
+                    f"You have {doctor_n} closed trade(s) on file. "
+                    + (
+                        evidence[0]
+                        if evidence
+                        else "Tag strategy, emotion, and SL so the next diagnosis is sharp."
+                    )
+                )
+            else:
+                summary = (
+                    f"Trade Doctor: {leak}. "
+                    + (evidence[0] if evidence else "Follow the strict plan for the next 10 trades.")
+                )
             lab_prompt = (
                 f"Only take setups that avoid this leak: {leak}. "
                 "Require a stop at invalidation, planned R:R at least 1.5, and skip revenge entries after a loss."
@@ -312,7 +338,7 @@ def get_coach_narrative(user) -> Dict[str, Any]:
                 "source": "trade_doctor",
                 "has_data": True,
                 "leak": leak,
-                "strength": strength,
+                "strength": strength if weekly_total else "Building from your journal history",
                 "next_action": next_action or suggested or "Set one weekly focus from Trade Doctor",
                 "summary": summary[:320],
                 "suggested_focus": suggested or empty["suggested_focus"],
@@ -320,7 +346,7 @@ def get_coach_narrative(user) -> Dict[str, Any]:
                 "compliance": compliance,
             }
 
-        if total >= 1 and (alerts or weaknesses or recs):
+        if weekly_total >= 1 and (alerts or weaknesses or recs):
             leak_txt = (alerts[0] if alerts else (weaknesses[0] if weaknesses else "Process drift"))[:160]
             next_txt = (recs[0] if recs else "Set one weekly focus rule and follow it for 10 trades")[:160]
             return {
@@ -338,7 +364,6 @@ def get_coach_narrative(user) -> Dict[str, Any]:
                 "compliance": compliance,
             }
 
-        # Patterns as tertiary signal
         try:
             from app.services.pattern_detector import detect_patterns
 
@@ -370,14 +395,22 @@ def get_coach_narrative(user) -> Dict[str, Any]:
         except Exception:
             pass
 
-        if total >= 1:
+        if lifetime_closed >= 1 or weekly_total >= 1:
             return {
-                "source": "weekly",
+                "source": "journal",
                 "has_data": True,
                 "leak": "Need more tagged data",
-                "strength": strength,
+                "strength": strength if weekly_total else "History on file — keep tagging",
                 "next_action": "Tag strategy + emotion on the next 10 trades, then re-run Trade Doctor",
-                "summary": weekly.get("summary") or "Keep logging with structure so AI Buddy can isolate one leak.",
+                "summary": (
+                    weekly.get("summary")
+                    if weekly_total
+                    else (
+                        f"You have {lifetime_closed} closed trade(s). "
+                        "Most sit outside this week’s window — keep logging with SL and tags "
+                        "so AI Buddy can isolate one leak."
+                    )
+                )[:320],
                 "suggested_focus": analyzer.suggest_weekly_focus_rule() or empty["suggested_focus"],
                 "lab_prompt": empty["lab_prompt"],
                 "compliance": compliance,

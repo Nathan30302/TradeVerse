@@ -1,4 +1,4 @@
-"""SEO routes: public marketing pages and authenticated pricing."""
+"""SEO routes: public marketing pages and public pricing."""
 
 import pytest
 
@@ -27,27 +27,26 @@ def test_monetization_pricing_redirects_to_canonical(client):
     assert r.headers.get("Location", "").endswith("/pricing")
 
 
-def test_main_pricing_requires_login(client):
+def test_main_pricing_is_public(client):
     r = client.get("/pricing", follow_redirects=False)
-    assert r.status_code == 302
-    assert "/login" in r.headers.get("Location", "")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "pricing" in body.lower() or "Pro" in body
 
 
 @pytest.mark.parametrize("path", ["/", "/about", "/features"])
-def test_public_marketing_pages_do_not_show_pricing(client, path):
+def test_public_marketing_pages_load(client, path):
     r = client.get(path, follow_redirects=False)
     assert r.status_code == 200
     body = r.get_data(as_text=True)
-    assert 'href="/pricing"' not in body
-    assert ">Pricing<" not in body
-    assert "View Pricing" not in body
+    assert "TradeVerse" in body
 
 
 def test_sitemap_xml_ok(client):
     r = client.get("/sitemap.xml", follow_redirects=False)
     assert r.status_code == 200
     assert b"<urlset" in r.data
-    assert b"/pricing" not in r.data
+    assert b"/pricing" in r.data
 
 
 def test_robots_txt_has_sitemap(client):

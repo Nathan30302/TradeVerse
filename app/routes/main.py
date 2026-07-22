@@ -73,6 +73,7 @@ def sitemap():
         base + url_for('main.index'),
         base + url_for('main.about'),
         base + url_for('main.features'),
+        base + url_for('main.pricing'),
         base + url_for('main.contact'),
         base + url_for('main.terms'),
         base + url_for('main.privacy'),
@@ -139,9 +140,8 @@ def features():
     return render_template('main/features.html')
 
 @bp.route('/pricing')
-@login_required
 def pricing():
-    """Pricing page for authenticated users inside the app."""
+    """Public pricing page — guests can compare plans; checkout still requires login."""
     from app.routes.monetization import render_pricing_page
 
     return render_pricing_page()
