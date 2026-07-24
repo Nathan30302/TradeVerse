@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/trade_marks.html' import pnl_chip %}
 
 {% block title %}Replay - {{ app_name }}{% endblock %}
 
@@ -44,11 +45,9 @@
                 </td>
                 <td class="text-end">
                   {% if t.profit_loss is not none %}
-                    <span class="fw-bold {{ 'text-success' if t.profit_loss > 0 else ('text-danger' if t.profit_loss < 0 else '') }}">
-                      {{ '%+.2f'|format(t.profit_loss) }}
-                    </span>
+                    {{ pnl_chip(t.profit_loss, current_user.preferred_currency) }}
                   {% else %}
-                    <span class="text-muted">—</span>
+                    {{ pnl_chip(none) }}
                   {% endif %}
                 </td>
                 <td class="text-end">

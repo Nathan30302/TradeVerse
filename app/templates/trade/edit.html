@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/trade_marks.html' import pnl_chip %}
 
 {% block title %}Edit Trade - {{ app_name }}{% endblock %}
 
@@ -112,12 +113,10 @@
                             </div>
                             <div class="col-md-4">
                                 <small class="text-muted d-block">P/L</small>
-                                {% if trade.profit_loss %}
-                                    <strong class="h5 {% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-                                        {{ trade.profit_loss|currency(current_user.preferred_currency) }}
-                                    </strong>
+                                {% if trade.profit_loss is not none %}
+                                    {{ pnl_chip(trade.profit_loss, current_user.preferred_currency, 'lg', true) }}
                                 {% else %}
-                                    <strong class="h5 text-muted">—</strong>
+                                    {{ pnl_chip(none, size='lg') }}
                                 {% endif %}
                             </div>
                         </div>

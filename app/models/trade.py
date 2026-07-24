@@ -277,15 +277,28 @@ class Trade(db.Model):
         return self.profit_loss == 0
     
     def get_result_emoji(self):
-        """Get emoji representing trade result"""
-        if not self.profit_loss:
-            return '⏳'
-        elif self.is_winner():
-            return '✅'
-        elif self.is_loser():
-            return '❌'
-        else:
-            return '➖'
+        """Legacy helper — prefer professional marks (▲/▼/◆) over emoji."""
+        return self.get_result_mark()
+
+    def get_result_mark(self):
+        """Industry-style result glyph for flashes / plain text."""
+        if self.profit_loss is None:
+            return '●'
+        if self.is_winner():
+            return '▲'
+        if self.is_loser():
+            return '▼'
+        return '◆'
+
+    def get_result_label(self):
+        """Short plain-language result for messages."""
+        if self.profit_loss is None:
+            return 'Open'
+        if self.is_winner():
+            return 'Win'
+        if self.is_loser():
+            return 'Loss'
+        return 'BE'
     
     # ==================== Mistake Detection ====================
     def detect_mistakes(self):

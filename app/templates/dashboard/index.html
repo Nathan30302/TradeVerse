@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/trade_marks.html' import pnl_chip, side_chip %}
 
 {% block title %}Dashboard - {{ app_name }}{% endblock %}
 
@@ -409,17 +410,13 @@
                                     <td>{{ trade.entry_date | datetime('%m/%d %H:%M') }}</td>
                                     <td><strong>{{ trade.symbol }}</strong></td>
                                     <td>
-                                        <span class="badge bg-{% if trade.trade_type == 'BUY' %}success{% else %}danger{% endif %}">
-                                            {{ trade.trade_type }}
-                                        </span>
+                                        {{ side_chip(trade.trade_type) }}
                                     </td>
                                     <td>
                                         {% if trade.profit_loss is not none %}
-                                            <span class="{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-                                                {{ trade.profit_loss | currency(current_user.preferred_currency) }}
-                                            </span>
+                                            {{ pnl_chip(trade.profit_loss, current_user.preferred_currency) }}
                                         {% else %}
-                                            <span class="tv-muted">&mdash;</span>
+                                            {{ pnl_chip(none) }}
                                         {% endif %}
                                     </td>
                                     <td>
@@ -499,9 +496,9 @@
                 <div class="small text-success fw-semibold mb-2"><i class="fas fa-trophy me-1"></i> Best trade</div>
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <strong>{{ best_trade.symbol }}</strong>
-                    <span class="badge bg-success">{{ best_trade.trade_type }}</span>
+                    {{ side_chip(best_trade.trade_type) }}
                 </div>
-                <div class="h5 profit mb-0">{{ best_trade.profit_loss | currency(current_user.preferred_currency) }}</div>
+                <div class="mb-0">{{ pnl_chip(best_trade.profit_loss, current_user.preferred_currency, 'lg', true) }}</div>
                 <small class="tv-muted">{{ best_trade.entry_date | datetime('%B %d, %Y') }}</small>
             </div>
         </div>
@@ -513,9 +510,9 @@
                 <div class="small text-danger fw-semibold mb-2"><i class="fas fa-triangle-exclamation me-1"></i> Worst trade</div>
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <strong>{{ worst_trade.symbol }}</strong>
-                    <span class="badge bg-danger">{{ worst_trade.trade_type }}</span>
+                    {{ side_chip(worst_trade.trade_type) }}
                 </div>
-                <div class="h5 loss mb-0">{{ worst_trade.profit_loss | currency(current_user.preferred_currency) }}</div>
+                <div class="mb-0">{{ pnl_chip(worst_trade.profit_loss, current_user.preferred_currency, 'lg', true) }}</div>
                 <small class="tv-muted">{{ worst_trade.entry_date | datetime('%B %d, %Y') }}</small>
             </div>
         </div>

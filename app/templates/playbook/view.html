@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/trade_marks.html' import pnl_chip, side_chip %}
 
 {% block title %}Playbook - {{ setup.name }}{% endblock %}
 
@@ -49,7 +50,7 @@
                         {% if setup_stats.get('avg_rr') is not none %}
                         <span class="badge bg-secondary">Avg R:R {{ '%.2f'|format(setup_stats.avg_rr) }}</span>
                         {% endif %}
-                        <span class="badge bg-{{ 'success' if setup_stats.pnl > 0 else ('danger' if setup_stats.pnl < 0 else 'secondary') }}">{{ '%+.2f'|format(setup_stats.pnl) }} P/L</span>
+                        {{ pnl_chip(setup_stats.pnl, current_user.preferred_currency) }}
                     </div>
                     {% endif %}
 
@@ -149,13 +150,16 @@
                                     <tr>
                                         <td>
                                             <div class="fw-semibold">{{ t.symbol }}</div>
-                                            <div class="small text-muted">{{ t.trade_type }} · {{ t.entry_date.strftime('%Y-%m-%d %H:%M') if t.entry_date else '' }}</div>
+                                            <div class="small text-muted d-flex align-items-center gap-2 flex-wrap">
+                                              {{ side_chip(t.trade_type) }}
+                                              <span>{{ t.entry_date.strftime('%Y-%m-%d %H:%M') if t.entry_date else '' }}</span>
+                                            </div>
                                         </td>
                                         <td class="text-end">
                                             {% if t.profit_loss is not none %}
-                                                <span class="fw-bold {{ 'text-success' if t.profit_loss > 0 else ('text-danger' if t.profit_loss < 0 else '') }}">{{ '%+.2f'|format(t.profit_loss) }}</span>
+                                                {{ pnl_chip(t.profit_loss, current_user.preferred_currency) }}
                                             {% else %}
-                                                <span class="text-muted">—</span>
+                                                {{ pnl_chip(none) }}
                                             {% endif %}
                                         </td>
                                         {% if feature_replay %}

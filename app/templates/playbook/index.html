@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/trade_marks.html' import pnl_chip %}
 
 {% block title %}Playbook - {{ app_name }}{% endblock %}
 
@@ -122,7 +123,7 @@
                         <span class="badge bg-dark">{{ st.count }} trade{{ '' if st.count == 1 else 's' }}</span>
                         <span class="badge bg-{{ 'success' if st.win_rate >= 55 else ('warning' if st.win_rate >= 45 else 'danger') }}">{{ '%.0f'|format(st.win_rate) }}% WR</span>
                         <span class="badge bg-secondary">Avg R:R {{ '%.2f'|format(st.avg_rr) }}</span>
-                        <span class="badge bg-{{ 'success' if st.pnl > 0 else ('danger' if st.pnl < 0 else 'secondary') }}">{{ '%+.2f'|format(st.pnl) }} P/L</span>
+                        {{ pnl_chip(st.pnl, current_user.preferred_currency) }}
                     </div>
                     {% else %}
                     <div class="small text-muted mt-3">No trades linked to this setup yet.</div>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/trade_marks.html' import pnl_chip, wl_tally %}
 
 {% block title %}Performance Score - {{ app_name }}{% endblock %}
 
@@ -41,11 +42,11 @@
                     <!-- Trend -->
                     <div class="mt-3">
                         {% if trend > 0 %}
-                            <span class="badge bg-success"><i class="fas fa-arrow-up"></i> +{{ trend|round(1) }} vs prior weeks</span>
+                            <span class="tv-result tv-result--win"><span class="tv-result__mark" aria-hidden="true">▲</span> +{{ trend|round(1) }} vs prior weeks</span>
                         {% elif trend < 0 %}
-                            <span class="badge bg-danger"><i class="fas fa-arrow-down"></i> {{ trend|round(1) }} vs prior weeks</span>
+                            <span class="tv-result tv-result--loss"><span class="tv-result__mark" aria-hidden="true">▼</span> {{ trend|round(1) }} vs prior weeks</span>
                         {% else %}
-                            <span class="badge bg-secondary"><i class="fas fa-minus"></i> No change</span>
+                            <span class="tv-result tv-result--be"><span class="tv-result__mark" aria-hidden="true">◆</span> No change</span>
                         {% endif %}
                     </div>
                 {% else %}
@@ -153,7 +154,7 @@
             <div class="tv-stat-kpi-body">
             <div class="stat-label">Win rate</div>
             <div class="stat-value">{{ current_score.win_rate|round(1) }}%</div>
-            <div class="stat-change">{{ current_score.winning_trades }}W / {{ current_score.losing_trades }}L</div>
+            <div class="stat-change">{{ wl_tally(current_score.winning_trades, current_score.losing_trades) }}</div>
             </div>
         </div>
     </div>
@@ -162,7 +163,7 @@
             <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-sack-dollar"></i></div>
             <div class="tv-stat-kpi-body">
             <div class="stat-label"><abbr class="tv-abbr-metric" title="Profit and loss this week (closed)">Week P/L</abbr></div>
-            <div class="stat-value">{{ current_score.total_pnl|currency(current_user.preferred_currency) }}</div>
+            <div class="stat-value">{{ pnl_chip(current_score.total_pnl, current_user.preferred_currency, 'lg') }}</div>
             </div>
         </div>
     </div>
@@ -224,8 +225,8 @@
                         <td><strong>{{ score.overall_score|round(1) }}</strong></td>
                         <td>{{ score.total_trades }}</td>
                         <td>{{ score.win_rate|round(1) }}%</td>
-                        <td class="{% if score.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
-                            {{ score.total_pnl|currency(current_user.preferred_currency) }}
+                        <td>
+                            {{ pnl_chip(score.total_pnl, current_user.preferred_currency) }}
                         </td>
                         <td>{{ score.rule_compliance_score|round(0) }}%</td>
                         <td>{{ score.rr_quality_score|round(0) }}%</td>

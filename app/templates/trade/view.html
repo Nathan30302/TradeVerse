@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/trade_marks.html' import pnl_chip, side_chip, result_badge %}
 
 {% block title %}Trade Details - {{ app_name }}{% endblock %}
 
@@ -7,8 +8,14 @@
 <div class="page-header mb-4">
     <div class="row align-items-center">
         <div class="col">
-            <h1 class="page-title">
-                {{ trade.get_result_emoji() }} {{ trade.symbol }} {{ trade.trade_type }}
+            <h1 class="page-title d-flex flex-wrap align-items-center gap-2">
+                <span>{{ trade.symbol }}</span>
+                {{ side_chip(trade.trade_type, 'lg') }}
+                {% if trade.profit_loss is not none %}
+                  {{ result_badge(trade, size='lg') }}
+                {% elif trade.status == 'OPEN' %}
+                  {{ result_badge(trade, size='lg') }}
+                {% endif %}
             </h1>
             <p class="page-subtitle">Trade #{{ trade.id }} • {{ trade.entry_date|datetime('%B %d, %Y at %H:%M') }}</p>
         </div>
@@ -24,18 +31,12 @@
 </div>
 
 <!-- Status Badge -->
-<div class="mb-4">
+<div class="mb-4 d-flex flex-wrap align-items-center gap-2">
     <span class="badge bg-{% if trade.status == 'OPEN' %}warning{% elif trade.status == 'CLOSED' %}secondary{% else %}info{% endif %} p-3 fs-6">
         {{ trade.status }}
     </span>
-    {% if trade.profit_loss %}
-        {% if trade.is_winner() %}
-            <span class="badge bg-success p-3 fs-6">WINNER ✅</span>
-        {% elif trade.is_loser() %}
-            <span class="badge bg-danger p-3 fs-6">LOSER ❌</span>
-        {% else %}
-            <span class="badge bg-secondary p-3 fs-6">BREAK EVEN ➖</span>
-        {% endif %}
+    {% if trade.profit_loss is not none or trade.status == 'OPEN' %}
+        {{ result_badge(trade, size='lg') }}
     {% endif %}
 </div>
 
@@ -145,11 +146,11 @@
             <div class="tv-stat-kpi-icon" aria-hidden="true"><i class="fas fa-sack-dollar"></i></div>
             <div class="tv-stat-kpi-body">
             <div class="stat-label"><abbr class="tv-abbr-metric" title="Realized profit or loss">P/L</abbr></div>
-            <div class="stat-value {% if trade.profit_loss %}{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}{% endif %}">
-                {% if trade.profit_loss %}
-                    {{ trade.profit_loss|currency(current_user.preferred_currency) }}
+            <div class="stat-value">
+                {% if trade.profit_loss is not none %}
+                    {{ pnl_chip(trade.profit_loss, current_user.preferred_currency, 'xl', true) }}
                 {% else %}
-                    <span class="text-muted">Open</span>
+                    {{ pnl_chip(none, size='xl') }}
                 {% endif %}
             </div>
             {% if trade.profit_loss_pips %}

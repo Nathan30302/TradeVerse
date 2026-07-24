@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/trade_marks.html' import pnl_chip, side_chip %}
 
 {% block title %}Calendar - {{ app_name }}{% endblock %}
 
@@ -220,9 +221,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <span class="badge bg-{% if trade.trade_type == 'BUY' %}success{% else %}danger{% endif %}">
-                                            {{ trade.trade_type }}
-                                        </span>
+                                        {{ side_chip(trade.trade_type) }}
                                     </td>
                                     <td>
                                         {% if trade.entry_price %}
@@ -262,15 +261,12 @@
                                     </td>
                                     <td>
                                         {% if trade.profit_loss is not none %}
-                                            <span class="{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %} fw-bold">
-                                                {{ trade.get_result_emoji() }}
-                                                {{ trade.profit_loss|currency(current_user.preferred_currency) }}
-                                            </span>
+                                            {{ pnl_chip(trade.profit_loss, current_user.preferred_currency) }}
                                             {% if trade.profit_loss_pips %}
                                                 <br><small class="text-muted">{{ trade.profit_loss_pips }} pips</small>
                                             {% endif %}
                                         {% else %}
-                                            <span class="text-muted">Open</span>
+                                            {{ pnl_chip(none) }}
                                         {% endif %}
                                     </td>
                                     <td>
@@ -294,8 +290,8 @@
                                 <tr>
                                     <td colspan="9"><strong>Daily Total</strong></td>
                                     <td>
-                                        <strong class="{% if daily_pnl.get(day, 0) >= 0 %}profit{% else %}loss{% endif %}">
-                                            {{ daily_pnl.get(day, 0)|currency(current_user.preferred_currency) }}
+                                        <strong>
+                                            {{ pnl_chip(daily_pnl.get(day, 0), current_user.preferred_currency) }}
                                         </strong>
                                     </td>
                                     <td colspan="2"></td>

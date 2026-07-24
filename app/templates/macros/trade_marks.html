@@ -1,0 +1,80 @@
+{# Professional trade marks — win/loss triangles, Long/Short chips (journal standard). #}
+
+{% macro pnl_chip(value, currency='USD', size='', show_tag=false, open_label='Open') -%}
+{%- if value is none -%}
+<span class="tv-pnl tv-pnl--open{% if size %} tv-pnl--{{ size }}{% endif %}" title="{{ open_label }}">
+  <span class="tv-pnl__glyph" aria-hidden="true"></span>
+  <span class="tv-pnl__value">{{ open_label }}</span>
+  {% if show_tag or size in ('lg', 'xl') %}<span class="tv-pnl__tag">Pending</span>{% endif %}
+</span>
+{%- else -%}
+{%- set v = value|float -%}
+{%- if v > 0 -%}
+{%- set kind = 'win' -%}
+{%- set label = 'Win' -%}
+{%- elif v < 0 -%}
+{%- set kind = 'loss' -%}
+{%- set label = 'Loss' -%}
+{%- else -%}
+{%- set kind = 'be' -%}
+{%- set label = 'BE' -%}
+{%- endif -%}
+<span class="tv-pnl tv-pnl--{{ kind }}{% if size %} tv-pnl--{{ size }}{% endif %}" title="{{ label }}">
+  <span class="tv-pnl__glyph" aria-hidden="true"></span>
+  <span class="tv-pnl__value">{{ value|currency(currency) }}</span>
+  {% if show_tag or size in ('lg', 'xl') %}<span class="tv-pnl__tag">{{ label }}</span>{% endif %}
+</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro side_chip(trade_type, size='') -%}
+{%- set t = (trade_type or '')|string|upper -%}
+{%- if t in ('BUY', 'LONG', 'B') -%}
+<span class="tv-side tv-side--long{% if size %} tv-side--{{ size }}{% endif %}" title="Long · Buy">
+  <span class="tv-side__mark" aria-hidden="true">▲</span>
+  <span>Long</span>
+</span>
+{%- elif t in ('SELL', 'SHORT', 'S') -%}
+<span class="tv-side tv-side--short{% if size %} tv-side--{{ size }}{% endif %}" title="Short · Sell">
+  <span class="tv-side__mark" aria-hidden="true">▼</span>
+  <span>Short</span>
+</span>
+{%- else -%}
+<span class="tv-side" title="{{ t }}">{{ t or '—' }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro result_badge(trade=none, pnl=none, size='') -%}
+{%- if trade is not none -%}
+  {%- set v = trade.profit_loss -%}
+  {%- set status = (trade.status or '')|string|upper -%}
+{%- else -%}
+  {%- set v = pnl -%}
+  {%- set status = '' -%}
+{%- endif -%}
+{%- if v is none or status == 'OPEN' -%}
+<span class="tv-result tv-result--open{% if size %} tv-result--{{ size }}{% endif %}">
+  <span class="tv-result__mark" aria-hidden="true">●</span> Open
+</span>
+{%- elif v > 0 -%}
+<span class="tv-result tv-result--win{% if size %} tv-result--{{ size }}{% endif %}">
+  <span class="tv-result__mark" aria-hidden="true">▲</span> Win
+</span>
+{%- elif v < 0 -%}
+<span class="tv-result tv-result--loss{% if size %} tv-result--{{ size }}{% endif %}">
+  <span class="tv-result__mark" aria-hidden="true">▼</span> Loss
+</span>
+{%- else -%}
+<span class="tv-result tv-result--be{% if size %} tv-result--{{ size }}{% endif %}">
+  <span class="tv-result__mark" aria-hidden="true">◆</span> BE
+</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro wl_tally(wins, losses) -%}
+<span class="tv-wl" title="Wins / Losses">
+  <span class="tv-wl__w">{{ wins }}W</span>
+  <span class="text-muted">/</span>
+  <span class="tv-wl__l">{{ losses }}L</span>
+</span>
+{%- endmacro %}

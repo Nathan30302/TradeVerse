@@ -1058,8 +1058,9 @@ def close(trade_id):
         
         cooldown_note = _apply_post_trade_cooldowns(current_user.id, trade.emotion, trade)
 
-        result_emoji = trade.get_result_emoji()
-        base = f'{result_emoji} Trade closed! P/L: {trade.profit_loss:+.2f}'
+        result_mark = trade.get_result_mark()
+        result_label = trade.get_result_label()
+        base = f'{result_mark} {result_label} · Trade closed · P/L: {trade.profit_loss:+.2f}'
         flash(base, 'success')
         try:
             from app.services.ai_insights import AIAnalyzer

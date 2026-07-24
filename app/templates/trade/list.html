@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/trade_marks.html' import pnl_chip, side_chip, result_badge %}
 
 {% block title %}My Trades - {{ app_name }}{% endblock %}
 
@@ -113,9 +114,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="badge bg-{% if trade.trade_type == 'BUY' %}success{% else %}danger{% endif %}">
-                                {{ trade.trade_type }}
-                            </span>
+                            {{ side_chip(trade.trade_type) }}
                         </td>
                         <td>{{ "%.5f"|format(trade.entry_price) }}</td>
                         <td>
@@ -127,13 +126,10 @@
                         </td>
                         <td>{{ trade.lot_size }}</td>
                         <td>
-                            {% if trade.profit_loss %}
-                                <strong class="{% if trade.profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-                                    {{ trade.get_result_emoji() }}
-                                    {{ trade.profit_loss|currency(current_user.preferred_currency) }}
-                                </strong>
+                            {% if trade.profit_loss is not none %}
+                                {{ pnl_chip(trade.profit_loss, current_user.preferred_currency) }}
                             {% else %}
-                                <span class="text-muted">—</span>
+                                {{ pnl_chip(none) }}
                             {% endif %}
                         </td>
                         <td>
