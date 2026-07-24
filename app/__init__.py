@@ -594,14 +594,19 @@ def register_context_processors(app):
     def inject_trial_countdown():
         """Days left in Pro Plus trial + configured trial length (for UI copy)."""
         import os
-        from app.services.entitlements import get_trial_days_remaining
+        from app.services.entitlements import get_personal_trial_end, get_trial_days_remaining
 
         period = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
         if not getattr(current_user, 'is_authenticated', False):
-            return {'trial_days_remaining': None, 'trial_period_days': period}
+            return {
+                'trial_days_remaining': None,
+                'trial_period_days': period,
+                'trial_personal_ends_at': None,
+            }
         return {
             'trial_days_remaining': get_trial_days_remaining(current_user),
             'trial_period_days': period,
+            'trial_personal_ends_at': get_personal_trial_end(current_user),
         }
 
     @app.context_processor

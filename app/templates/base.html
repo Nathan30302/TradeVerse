@@ -2514,12 +2514,13 @@
                         <small class="text-muted">Member since</small>
                         <div style="font-weight:700;">{% if current_user.created_at %}{{ current_user.created_at.strftime('%b %Y') }}{% else %}—{% endif %}</div>
                     </li>
-                    {% if sub.status == 'trialing' and sub.trial_ends_at and sub.tier != 'owner' %}
+                    {% set trial_end_display = trial_personal_ends_at if trial_personal_ends_at is defined and trial_personal_ends_at else sub.trial_ends_at %}
+                    {% if sub.status == 'trialing' and trial_end_display and sub.tier != 'owner' %}
                     <li class="dropdown-item">
                         <small class="text-muted">Pro trial</small>
                         <div style="font-weight:700;">
                             {% if trial_days_remaining is not none %}{{ trial_days_remaining }} day{% if trial_days_remaining != 1 %}s{% endif %} left{% else %}Active trial{% endif %}
-                            <span class="text-muted fw-normal small"> · ends {{ sub.trial_ends_at|datetime('%b %d, %Y') }}</span>
+                            <span class="text-muted fw-normal small"> · ends {{ trial_end_display|datetime('%b %d, %Y') }}</span>
                         </div>
                     </li>
                     {% endif %}

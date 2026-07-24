@@ -169,11 +169,10 @@ def register_commands(app):
     )
     def grant_promo_trial(days: int, only_active: bool):
         """
-        Give existing accounts a fresh Pro Plus trial window (e.g. before paid billing).
+        Give accounts that lack an active trial a Pro Plus window (once).
 
-        Sets subscription_tier=pro_plus, subscription_status=trialing, and
-        trial_ends_at = now + days for each user. Keep TV_ALL_USERS_PROPLUS_TRIAL=1
-        so the entitlements overlay stays aligned with the DB.
+        Anchors trial_ends_at to created_at + days when possible so the countdown
+        declines per user. Does NOT reset users who already have a future trial end.
         """
         from app.models.user import User
 
@@ -182,17 +181,33 @@ def register_commands(app):
             return
 
         now = datetime.now(timezone.utc)
-        ends = now + timedelta(days=int(days))
         q = User.query
         if only_active:
             q = q.filter(User.is_active.is_(True))
         users = q.all()
         changed = 0
+        skipped = 0
         for u in users:
+            existing = u.trial_ends_at
+            if existing is not None:
+                end = existing if getattr(existing, 'tzinfo', None) else existing.replace(tzinfo=timezone.utc)
+                if end > now:
+                    skipped += 1
+                    continue
+
+            created = u.created_at
+            if created is not None:
+                created_aware = created if getattr(created, 'tzinfo', None) else created.replace(tzinfo=timezone.utc)
+                ends = created_aware + timedelta(days=int(days))
+                if ends <= now:
+                    # Account older than the window — optional one-time fresh grant.
+                    ends = now + timedelta(days=int(days))
+            else:
+                ends = now + timedelta(days=int(days))
+
             u.subscription_tier = 'pro_plus'
             u.subscription_status = 'trialing'
             u.trial_ends_at = ends
-            # Clear paid expiry so promo trial is not overridden by an old stamp.
             try:
                 u.subscription_expires_at = None
             except Exception:
@@ -201,8 +216,8 @@ def register_commands(app):
         if changed:
             db.session.commit()
         click.echo(
-            f'Granted Pro Plus trial to {changed} user(s) until {ends.isoformat()} '
-            f'({days} days). Ensure TV_ALL_USERS_PROPLUS_TRIAL=1 on the host.'
+            f'Granted Pro Plus trial to {changed} user(s) ({days} days from signup when possible); '
+            f'skipped {skipped} with an active trial. Ensure TV_ALL_USERS_PROPLUS_TRIAL=1 on the host.'
         )
 
     @app.cli.command('send-trial-reminders')

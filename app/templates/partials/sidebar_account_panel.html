@@ -29,14 +29,15 @@
                     <span class="badge rounded-pill bg-secondary">Free</span>
                 {% endif %}
             </div>
-            {% if sub.trial_ends_at and sub.status == 'trialing' %}
-            <div class="small text-muted mt-1 text-truncate" title="{{ sub.trial_ends_at.isoformat() if sub.trial_ends_at else '' }}">
+            {% set trial_end_display = trial_personal_ends_at if trial_personal_ends_at is defined and trial_personal_ends_at else sub.trial_ends_at %}
+            {% if trial_end_display and sub.status == 'trialing' %}
+            <div class="small text-muted mt-1 text-truncate" title="{{ trial_end_display.isoformat() if trial_end_display else '' }}">
                 <i class="far fa-clock me-1"></i>
                 {% if trial_days_remaining is not none %}
                     <strong>{{ trial_days_remaining }}</strong> day{% if trial_days_remaining != 1 %}s{% endif %} left
-                    <span class="opacity-75">· ends {{ sub.trial_ends_at|datetime('%b %d, %Y') }}</span>
+                    <span class="opacity-75">· ends {{ trial_end_display|datetime('%b %d, %Y') }}</span>
                 {% else %}
-                    Until {{ sub.trial_ends_at|datetime('%b %d, %Y') }}
+                    Until {{ trial_end_display|datetime('%b %d, %Y') }}
                 {% endif %}
             </div>
             {% endif %}

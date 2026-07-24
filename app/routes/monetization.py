@@ -652,17 +652,19 @@ def trial_info():
     )
 
     # Prefer effective trial end (promo / extended window), not a stale DB stamp.
-    trial_end = state.trial_ends_at
+    from app.services.entitlements import get_personal_trial_end, get_trial_days_remaining
+
+    trial_end = get_personal_trial_end(current_user) or state.trial_ends_at
+    days_remaining = get_trial_days_remaining(current_user)
+    if days_remaining is None:
+        days_remaining = 0
+
     if trial_end is not None:
         if getattr(trial_end, 'tzinfo', None) is None:
             trial_end = trial_end.replace(tzinfo=timezone.utc)
-        secs = (trial_end - now).total_seconds()
-        days_remaining = max(0, int((secs + 86399) // 86400)) if secs > 0 else 0
-        if secs > 0 and days_remaining == 0:
-            days_remaining = 1
-        span = max(1, (trial_end - created).days)
-        trial_days = max(span, days_remaining)
-        days_used = max(0, min((now - created).days, trial_days))
+        span = max(1, (trial_end - created).days) if created else int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
+        trial_days = max(span, days_remaining, 1)
+        days_used = max(0, min(trial_days - days_remaining, trial_days))
     else:
         trial_days = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
         days_used = max(0, (now - created).days)

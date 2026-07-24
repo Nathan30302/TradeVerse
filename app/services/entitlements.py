@@ -149,36 +149,49 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     #
     # Turn off by setting: TV_ALL_USERS_PROPLUS_TRIAL=0
     # Optional hard end date (ISO): TV_PROMO_ACCESS_UNTIL=2026-09-15T00:00:00+00:00
-    #   — current + new users stay on Pro Plus until that date regardless of old trial_ends_at.
+    #   — feature access may continue until that date, but the visible countdown
+    #     always follows EACH user's personal trial clock (signup / trial_ends_at).
     force_all_trial = (os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL", "1") or "1").strip().lower() in {"1", "true", "yes", "on"}
     if force_all_trial:
         days = int(os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL_DAYS", "60") or "60")
-        created = _as_utc_aware(_safe_getattr(user, "created_at", None)) or now
+        created = _as_utc_aware(_safe_getattr(user, "created_at", None))
         promo_until = _parse_promo_access_until()
 
-        # Effective end = longest *future* window among:
-        # persisted trial, hard promo end, signup+days.
-        # If the DB trial already expired (common for early accounts), extend
-        # from now by `days` so the UI does not show "0 days left" while the
-        # launch promo is still on.
-        candidates = []
-        if trial_ends_at and trial_ends_at >= now:
-            candidates.append(trial_ends_at)
-        if promo_until and promo_until >= now:
-            candidates.append(promo_until)
-        created_window = created + timedelta(days=days)
-        if created_window >= now:
-            candidates.append(created_window)
-        if not candidates:
-            candidates.append(now + timedelta(days=days))
+        # Personal clock is ALWAYS anchored to this account's signup (created_at + N),
+        # or persisted trial_ends_at when created_at is missing. Never "now + N"
+        # (that froze the UI at 60 forever for older accounts).
+        if created is not None:
+            personal_end = created + timedelta(days=days)
+            # Honor a one-time longer grant only if it was stored and still longer.
+            if trial_ends_at and trial_ends_at > personal_end:
+                # Cap accidental rolling resets: if stored end is > signup+days+1,
+                # prefer signup clock so each user declines from their own day 0.
+                # Allow up to 1 day skew for timezone / grant-at-signup differences.
+                skew = (trial_ends_at - personal_end).total_seconds()
+                if skew <= 86400:
+                    personal_end = trial_ends_at
+                # else: ignore inflated trial_ends_at from rolling promo resets
+        elif trial_ends_at is not None:
+            personal_end = trial_ends_at
+        else:
+            personal_end = now + timedelta(days=days)
 
-        trial_end = max(candidates)
-        if trial_end >= now:
+        if personal_end >= now:
             return SubscriptionState(
                 tier="pro_plus",
                 status="trialing",
                 is_active=True,
-                trial_ends_at=trial_end,
+                trial_ends_at=personal_end,
+                subscription_expires_at=None,
+            )
+        # Personal trial finished — optional global promo can still unlock features,
+        # but do not pretend the user still has a fresh 60-day personal trial.
+        if promo_until and promo_until >= now:
+            return SubscriptionState(
+                tier="pro_plus",
+                status="trialing",
+                is_active=True,
+                trial_ends_at=promo_until,
                 subscription_expires_at=None,
             )
         # Marketing trial window elapsed — use normal tier logic below.
@@ -208,15 +221,42 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     return SubscriptionState(tier=tier, status=status, is_active=False, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
 
 
+def get_personal_trial_end(user) -> Optional[datetime]:
+    """
+    Each user's own trial end anchored to signup (created_at + trial days).
+
+    Ignores global promo_until and inflated rolling trial_ends_at resets so the
+    UI can count down 60→59→… per account.
+    """
+    try:
+        days = int(os.environ.get("TV_TRIAL_DAYS_PRO_PLUS", "60") or "60")
+    except (TypeError, ValueError):
+        days = 60
+    days = max(1, min(days, 366))
+
+    created = _as_utc_aware(_safe_getattr(user, "created_at", None))
+    if created is not None:
+        return created + timedelta(days=days)
+
+    trial_ends_at = _as_utc_aware(_safe_getattr(user, "trial_ends_at", None))
+    return trial_ends_at
+
+
 def get_trial_days_remaining(user) -> Optional[int]:
-    """Whole calendar days left in the effective trial, or None if not trialing."""
+    """Whole calendar days left on THIS user's signup trial clock, or None if not trialing."""
     st = get_effective_subscription_state(user)
-    if st.status != "trialing" or not st.trial_ends_at:
+    if st.status != "trialing":
         return None
-    end = _as_utc_aware(st.trial_ends_at)
+
+    personal_end = get_personal_trial_end(user)
+    now = _utcnow()
+    end = personal_end
+    if end is None or end < now:
+        # Personal window done — fall back to effective end (e.g. global promo date).
+        end = _as_utc_aware(st.trial_ends_at)
     if not end:
         return None
-    delta = end - _utcnow()
+    delta = end - now
     secs = delta.total_seconds()
     if secs <= 0:
         return 0
