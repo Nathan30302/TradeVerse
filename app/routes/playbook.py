@@ -20,6 +20,12 @@ from app.models.playbook_setup import PlaybookSetup
 from app.models.trade import Trade
 from app.services.retention import setup_letter_grade
 from app.services.strategy_lab import PLAYBOOK_STARTERS
+from app.services.playbook_grades import (
+    SETUP_GRADE_OPTIONS,
+    focus_summary,
+    grade_coach_note,
+    is_focus_grade,
+)
 from app.services.uploads_storage import playbook_images_dir, resolve_playbook_file
 
 
@@ -123,6 +129,8 @@ def _apply_example_images_from_request(setup: PlaybookSetup) -> None:
 
 def _form_to_setup_fields(setup: PlaybookSetup) -> str | None:
     """Apply POST fields onto setup. Returns error message or None."""
+    from app.services.playbook_grades import normalize_setup_grade, parse_typical_rr
+
     name = (request.form.get("name") or "").strip()
     if not name:
         return "Name is required."
@@ -136,7 +144,27 @@ def _form_to_setup_fields(setup: PlaybookSetup) -> str | None:
     setup.checklist_text = (request.form.get("checklist_text") or "").strip()
     setup.tags = (request.form.get("tags") or "").strip()
     setup.is_active = (request.form.get("is_active") or "").lower() in ("1", "true", "yes", "on")
+
+    grade = normalize_setup_grade(request.form.get("setup_grade"))
+    setup.setup_grade = grade
+    rr = parse_typical_rr(request.form.get("typical_rr"), grade=grade)
+    if (request.form.get("typical_rr") or "").strip() and rr is None:
+        return "Typical R:R must be a positive number (for example 2.5)."
+    setup.typical_rr = rr
     return None
+
+
+def _grade_badge_color(grade: str) -> str:
+    g = (grade or "").upper()
+    if g in ("A++", "A+"):
+        return "success"
+    if g in ("A-", "B+"):
+        return "primary"
+    if g in ("B-",):
+        return "warning"
+    if g in ("C",):
+        return "secondary"
+    return "secondary"
 
 
 @bp.route("/")
@@ -185,6 +213,8 @@ def index():
         setups=setups,
         stats_by_setup=stats_by_setup,
         starters=PLAYBOOK_STARTERS,
+        focus_summary=focus_summary(setups),
+        grade_badge_color=_grade_badge_color,
     )
 
 
@@ -220,19 +250,29 @@ def from_starter(key: str):
     return redirect(url_for("playbook.edit", setup_id=setup.id))
 
 
+def _grade_form_context():
+    return {
+        "setup_grade_options": SETUP_GRADE_OPTIONS,
+        "is_focus_grade": is_focus_grade,
+        "grade_coach_note": grade_coach_note,
+        "grade_badge_color": _grade_badge_color,
+    }
+
+
 @bp.route("/new", methods=["GET", "POST"])
 @login_required
 def new():
     if not _playbook_ready():
         return _playbook_unavailable_response()
+    ctx = _grade_form_context()
     if request.method == "GET":
-        return render_template("playbook/new.html", setup=None)
+        return render_template("playbook/new.html", setup=None, **ctx)
 
     setup = PlaybookSetup(user_id=current_user.id, example_images="[]")
     err = _form_to_setup_fields(setup)
     if err:
         flash(err, "warning")
-        return render_template("playbook/new.html", setup=setup)
+        return render_template("playbook/new.html", setup=setup, **ctx)
 
     _apply_example_images_from_request(setup)
     db.session.add(setup)
@@ -276,6 +316,7 @@ def view(setup_id: int):
             "grade": grade,
             "grade_color": grade_color,
         },
+        **_grade_form_context(),
     )
 
 
@@ -285,13 +326,14 @@ def edit(setup_id: int):
     if not _playbook_ready():
         return _playbook_unavailable_response()
     setup = _get_setup_or_404(setup_id)
+    ctx = _grade_form_context()
     if request.method == "GET":
-        return render_template("playbook/edit.html", setup=setup)
+        return render_template("playbook/edit.html", setup=setup, **ctx)
 
     err = _form_to_setup_fields(setup)
     if err:
         flash(err, "warning")
-        return render_template("playbook/edit.html", setup=setup)
+        return render_template("playbook/edit.html", setup=setup, **ctx)
 
     _apply_example_images_from_request(setup)
     db.session.commit()

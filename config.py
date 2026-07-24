@@ -115,7 +115,7 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.3.2'
+    APP_VERSION = '2.3.3'
 
     # UI themes (order preserved for pickers)
     UI_THEME_CHOICES = ('light', 'dark', 'blue', 'midnight', 'sand', 'ember', 'forest', 'pearl')

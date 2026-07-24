@@ -6,8 +6,14 @@
 <div class="container py-4">
     <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
         <div>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
                 <h1 class="h4 mb-0">{{ setup.name }}</h1>
+                {% if setup.setup_grade %}
+                <span class="badge bg-{{ grade_badge_color(setup.setup_grade) if grade_badge_color is defined else 'primary' }}">{{ setup.setup_grade }}</span>
+                {% endif %}
+                {% if setup.typical_rr %}
+                <span class="badge bg-dark">Typical ~1:{{ setup.typical_rr }}</span>
+                {% endif %}
                 {% if setup.is_active %}
                 <span class="badge bg-success">Active</span>
                 {% else %}
@@ -19,6 +25,9 @@
                 {% if setup.symbol_hint %}{% if setup.market %} • {% endif %}{{ setup.symbol_hint }}{% endif %}
                 {% if setup.timeframe %}{% if setup.market or setup.symbol_hint %} • {% endif %}{{ setup.timeframe }}{% endif %}
             </div>
+            {% if setup.setup_grade and grade_coach_note is defined %}
+            <p class="small text-muted mt-2 mb-0">{{ grade_coach_note(setup.setup_grade) }}</p>
+            {% endif %}
         </div>
         <div class="d-flex gap-2">
             <a class="btn btn-outline-secondary" href="{{ url_for('playbook.index') }}">Back</a>
@@ -33,7 +42,7 @@
                     {% if setup_stats is defined %}
                     <div class="d-flex flex-wrap gap-2 mb-3">
                         {% if setup_stats.get('grade') and setup_stats.grade != '—' %}
-                        <span class="badge bg-{{ setup_stats.get('grade_color', 'secondary') }} fs-6">Grade {{ setup_stats.grade }}</span>
+                        <span class="badge bg-{{ setup_stats.get('grade_color', 'secondary') }} fs-6">Results {{ setup_stats.grade }}</span>
                         {% endif %}
                         <span class="badge bg-dark">{{ setup_stats.count }} trade{{ '' if setup_stats.count == 1 else 's' }}</span>
                         <span class="badge bg-{{ 'success' if setup_stats.win_rate >= 55 else ('warning' if setup_stats.win_rate >= 45 else 'danger') }}">{{ '%.0f'|format(setup_stats.win_rate) }}% WR</span>

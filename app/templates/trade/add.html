@@ -244,7 +244,7 @@
                                     data-checklist="{{ s.checklist_text|tojson }}"
                                     data-entry="{{ (s.entry_criteria or '')|tojson }}"
                                     {% if prefill and prefill.get('playbook_setup_id')|string == s.id|string %}selected{% endif %}>
-                                {{ s.name }}{% if s.timeframe %} · {{ s.timeframe }}{% endif %}
+                                {{ s.name }}{% if s.setup_grade %} · {{ s.setup_grade }}{% endif %}{% if s.typical_rr %} · ~1:{{ s.typical_rr }}{% endif %}{% if s.timeframe %} · {{ s.timeframe }}{% endif %}
                             </option>
                             {% endfor %}
                         </select>

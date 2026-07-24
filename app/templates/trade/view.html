@@ -390,6 +390,12 @@
                             <a href="{{ url_for('playbook.view', setup_id=playbook_setup.id) }}" class="fw-semibold">
                                 <i class="fas fa-book-open me-1"></i>{{ playbook_setup.name }}
                             </a>
+                            {% if playbook_setup.setup_grade %}
+                            <span class="badge bg-primary ms-1">{{ playbook_setup.setup_grade }}</span>
+                            {% endif %}
+                            {% if playbook_setup.typical_rr %}
+                            <span class="badge bg-dark ms-1">~1:{{ playbook_setup.typical_rr }}</span>
+                            {% endif %}
                         </div>
                     {% elif feature_playbook %}
                         <div class="alert alert-secondary py-2 small mb-3">

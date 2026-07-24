@@ -183,7 +183,7 @@
                                         <option value="{{ s.id }}"
                                                 data-checklist="{{ s.checklist_text|e }}"
                                                 {% if trade.playbook_setup_id == s.id %}selected{% endif %}>
-                                            {{ s.name }}
+                                            {{ s.name }}{% if s.setup_grade %} · {{ s.setup_grade }}{% endif %}{% if s.typical_rr %} · ~1:{{ s.typical_rr }}{% endif %}
                                         </option>
                                     {% endfor %}
                                 </select>

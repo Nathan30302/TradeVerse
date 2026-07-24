@@ -280,6 +280,22 @@ def ensure_playbook_schema(app: Any) -> bool:
                         )
                     )
                 app.logger.warning("schema_compat: added playbook_setups.example_images")
+            if "setup_grade" not in pb_cols:
+                with db.engine.begin() as conn:
+                    conn.execute(
+                        sa.text(
+                            _add_column_sql(dialect, "playbook_setups", "setup_grade", "VARCHAR(8)", "''")
+                        )
+                    )
+                app.logger.warning("schema_compat: added playbook_setups.setup_grade")
+            if "typical_rr" not in pb_cols:
+                with db.engine.begin() as conn:
+                    conn.execute(
+                        sa.text(
+                            _add_column_sql(dialect, "playbook_setups", "typical_rr", "FLOAT", None)
+                        )
+                    )
+                app.logger.warning("schema_compat: added playbook_setups.typical_rr")
 
         _clear_insp(insp)
         insp = sa.inspect(db.engine)

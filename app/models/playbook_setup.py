@@ -30,6 +30,10 @@ class PlaybookSetup(db.Model):
     tags = db.Column(db.String(180), nullable=False, default="")  # comma-separated
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
+    # Trader-assigned quality grade (A++ / A+ / A- / B+ / B- / C) + typical R:R the setup usually pays
+    setup_grade = db.Column(db.String(8), nullable=False, default="")
+    typical_rr = db.Column(db.Float, nullable=True)
+
     # JSON list of relative paths, e.g. ["uploads/playbook/u1_abc.png", ...]
     example_images = db.Column(db.Text, nullable=False, default="[]")
 
