@@ -501,12 +501,12 @@
   .feature-card:hover {
     transform: translateY(-6px);
     box-shadow: 0 18px 46px rgba(2,6,23,0.12);
-    border-color: rgba(99,102,241,0.28);
+    border-color: rgba(20,184,166,0.35);
   }
 
   body[data-theme="dark"] .feature-card:hover {
     box-shadow: 0 22px 62px rgba(0,0,0,0.40);
-    border-color: rgba(99,102,241,0.30);
+    border-color: rgba(45,212,191,0.35);
   }
 
   .icon-box {
@@ -732,6 +732,127 @@
   body[data-tv-landing="1"] .landing-explore {
     margin-top: 0.5rem;
   }
+
+  /* —— Chart Academy–style scroll presence (native, no GSAP) —— */
+  .landing-page .tv-reveal {
+    opacity: 0;
+    transform: translate3d(0, 1.35rem, 0);
+    transition:
+      opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+  }
+  .landing-page .tv-reveal.is-in {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  .landing-page .tv-reveal[data-delay="1"] { transition-delay: 0.08s; }
+  .landing-page .tv-reveal[data-delay="2"] { transition-delay: 0.16s; }
+  .landing-page .tv-reveal[data-delay="3"] { transition-delay: 0.24s; }
+  .landing-page .tv-reveal[data-delay="4"] { transition-delay: 0.32s; }
+
+  .landing-page .tv-split .tv-word {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: top;
+    margin-right: 0.28em;
+  }
+  .landing-page .tv-split .tv-word:last-child { margin-right: 0; }
+  .landing-page .tv-split .tv-word > span {
+    display: inline-block;
+    transform: translate3d(0, 110%, 0);
+    transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .landing-page .tv-split.is-in .tv-word > span {
+    transform: translate3d(0, 0, 0);
+  }
+  .landing-page .tv-split .tv-word:nth-child(1) > span { transition-delay: 0.02s; }
+  .landing-page .tv-split .tv-word:nth-child(2) > span { transition-delay: 0.07s; }
+  .landing-page .tv-split .tv-word:nth-child(3) > span { transition-delay: 0.12s; }
+  .landing-page .tv-split .tv-word:nth-child(4) > span { transition-delay: 0.17s; }
+  .landing-page .tv-split .tv-word:nth-child(5) > span { transition-delay: 0.22s; }
+  .landing-page .tv-split .tv-word:nth-child(6) > span { transition-delay: 0.27s; }
+  .landing-page .tv-split .tv-word:nth-child(7) > span { transition-delay: 0.32s; }
+  .landing-page .tv-split .tv-word:nth-child(8) > span { transition-delay: 0.37s; }
+  .landing-page .tv-split .tv-word:nth-child(9) > span { transition-delay: 0.42s; }
+  .landing-page .tv-split .tv-word:nth-child(n+10) > span { transition-delay: 0.48s; }
+
+  .landing-page .hero-content > .tv-hero-enter {
+    opacity: 0;
+    transform: translate3d(0, 1.1rem, 0);
+    animation: tvHeroIn 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .landing-page .hero-content > .tv-hero-enter:nth-child(1) { animation-delay: 0.05s; }
+  .landing-page .hero-content > .tv-hero-enter:nth-child(2) { animation-delay: 0.18s; }
+  .landing-page .hero-content > .tv-hero-enter:nth-child(3) { animation-delay: 0.32s; }
+  .landing-page .hero-content > .tv-hero-enter:nth-child(4) { animation-delay: 0.44s; }
+  .landing-page .hero-content > .tv-hero-enter:nth-child(5) { animation-delay: 0.56s; }
+  .landing-page .hero-content > .tv-hero-enter:nth-child(6) { animation-delay: 0.68s; }
+  .landing-page .hero-content > .tv-hero-enter:nth-child(7) { animation-delay: 0.8s; }
+  .landing-page .hero-preview-col.tv-hero-enter {
+    opacity: 0;
+    transform: translate3d(0, 1.4rem, 0) scale(0.98);
+    animation: tvHeroIn 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.35s forwards;
+  }
+  @keyframes tvHeroIn {
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  }
+
+  .landing-page .landing-hero .hero-bg {
+    transition: transform 0.1s linear;
+    will-change: transform;
+  }
+
+  .landing-page .tv-rich-band {
+    position: relative;
+    overflow: hidden;
+    border-radius: clamp(20px, 2.5vw, 28px);
+    border: 1px solid rgba(255,255,255,0.10);
+    background:
+      radial-gradient(900px 420px at 12% 0%, rgba(20,184,166,0.16), transparent 55%),
+      radial-gradient(700px 380px at 92% 80%, rgba(251,146,60,0.08), transparent 50%),
+      linear-gradient(180deg, rgba(15,23,42,0.72) 0%, rgba(2,6,23,0.55) 100%);
+    padding: clamp(2.25rem, 5vw, 3.75rem) clamp(1.25rem, 4vw, 2.5rem);
+    margin-bottom: var(--landing-section-y);
+  }
+  .landing-page .tv-rich-band .tv-rich-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #5eead4;
+    margin-bottom: 0.85rem;
+  }
+  .landing-page .tv-rich-band .tv-rich-line {
+    font-family: var(--tv-display, Fraunces, "Times New Roman", serif);
+    font-size: clamp(1.85rem, 4.6vw, 3.1rem);
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    color: #f8fafc;
+    max-width: 18ch;
+  }
+  .landing-page .tv-rich-band .tv-rich-sub {
+    margin-top: 1rem;
+    max-width: 34rem;
+    color: rgba(148,163,184,0.95);
+    font-size: clamp(1rem, 2vw, 1.15rem);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .landing-page .tv-reveal,
+    .landing-page .tv-split .tv-word > span,
+    .landing-page .hero-content > .tv-hero-enter,
+    .landing-page .hero-preview-col.tv-hero-enter {
+      opacity: 1 !important;
+      transform: none !important;
+      animation: none !important;
+      transition: none !important;
+    }
+    .landing-page .landing-hero .hero-bg {
+      transform: none !important;
+    }
+  }
 </style>
 {% endblock %}
 
@@ -745,27 +866,27 @@
       <div class="row align-items-center g-4 g-xl-5 position-relative" style="z-index: 1;">
         <div class="col-lg-7">
             <div class="hero-content pe-lg-2">
-                <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-3 tv-hero-enter">
                     <span class="badge landing-hero-badge fw-semibold px-3 py-2">
                         <i class="fas fa-book-open me-2"></i> The trader&rsquo;s operating system
                     </span>
                 </div>
-                <h1 class="fw-bold mb-3 mb-lg-4 hero-title">
+                <h1 class="fw-bold mb-3 mb-lg-4 hero-title tv-hero-enter tv-split" data-tv-split>
                     Plan. Log. <span class="hero-accent">Review.</span>
                 </h1>
 
-                <p class="lead mb-3 hero-subtitle" style="max-width: 38rem;">
+                <p class="lead mb-3 hero-subtitle tv-hero-enter" style="max-width: 38rem;">
                     A trading journal is your private record of every trade — what you planned, what you did, and what you learned.
                     TradeVerse makes that record easy to keep, so years later you can open a random Tuesday and still see the truth.
                 </p>
-                <p class="landing-trial-note small mb-4" style="max-width: 36rem;">
+                <p class="landing-trial-note small mb-4 tv-hero-enter" style="max-width: 36rem;">
                     Free forever to start · Pro from <strong>$5/mo</strong> · Pro Plus <strong>$15/mo</strong>
                     {% if trial_days_new_accounts %}
                     · New accounts get <strong>{{ trial_days_new_accounts }} days of Pro Plus</strong>
                     {% endif %}
                 </p>
 
-                <div class="landing-hero-actions">
+                <div class="landing-hero-actions tv-hero-enter">
                     {% if not current_user.is_authenticated %}
                         <a href="{{ url_for('auth.register') }}" class="btn-landing-primary">
                             <i class="fas fa-rocket" aria-hidden="true"></i> Start free
@@ -786,7 +907,7 @@
                     {% endif %}
                 </div>
 
-                <div class="landing-hero-connect mt-4">
+                <div class="landing-hero-connect mt-4 tv-hero-enter">
                     {% if discord_community_url %}
                     <a href="{{ discord_community_url }}" class="landing-connect-item" target="_blank" rel="noopener noreferrer">
                         <i class="fab fa-discord" style="color:#5865F2;" aria-hidden="true"></i>
@@ -803,7 +924,7 @@
                     </a>
                 </div>
 
-                <div class="landing-hero-trust row g-2 g-sm-3">
+                <div class="landing-hero-trust row g-2 g-sm-3 tv-hero-enter">
                     <div class="col-12 col-sm-6">
                         <div class="landing-trust-chip h-100">
                             <i class="fas fa-check-circle text-success flex-shrink-0" aria-hidden="true"></i>
@@ -831,7 +952,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-5 hero-preview-col">
+        <div class="col-lg-5 hero-preview-col tv-hero-enter">
             <div class="hero-glass p-4 p-md-4 mx-lg-0 ms-lg-auto">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <h3 class="hero-performance-title mb-0">Today's Performance</h3>
@@ -900,37 +1021,49 @@
 </nav>
 {% endif %}
 
+<!-- Cinematic scroll band — words rise as you scroll -->
+<div class="container">
+  <div class="tv-rich-band tv-reveal">
+    <div class="tv-rich-eyebrow">Built for discipline</div>
+    <h2 class="tv-rich-line tv-split mb-0" data-tv-split>Wait for your A++. Journal everything. Size what earns it.</h2>
+    <p class="tv-rich-sub tv-reveal" data-delay="2">
+      Make the habit feel worth showing up for — plan, log, review, prove —
+      until your playbook grades are earned, not guessed.
+    </p>
+  </div>
+</div>
+
 <!-- Workflow — one product story -->
 <div class="container landing-section">
-    <div class="landing-section-head text-center mb-4 mb-lg-5">
+    <div class="landing-section-head text-center mb-4 mb-lg-5 tv-reveal">
         <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">The loop</span>
-        <h2 class="display-5 fw-bold mb-3">Four moves. One addictive habit.</h2>
+        <h2 class="display-5 fw-bold mb-3 tv-split" data-tv-split>Four moves. One addictive habit.</h2>
         <p class="lead text-muted mb-0">TradeVerse is designed so every feature feeds the next — nothing sits unused.</p>
     </div>
     <div class="row g-3 g-lg-4">
         <div class="col-md-6 col-lg-3">
-            <div class="card feature-card h-100 border-0 p-3">
+            <div class="card feature-card h-100 border-0 p-3 tv-reveal" data-delay="1">
                 <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">01</div>
                 <h5 class="fw-bold">Plan</h5>
                 <p class="text-muted small mb-0">Lock entry, stop, and target in the planner before emotion takes over.</p>
             </div>
         </div>
         <div class="col-md-6 col-lg-3">
-            <div class="card feature-card h-100 border-0 p-3">
+            <div class="card feature-card h-100 border-0 p-3 tv-reveal" data-delay="2">
                 <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">02</div>
                 <h5 class="fw-bold">Log</h5>
                 <p class="text-muted small mb-0">Capture the real fill, emotion, and playbook checklist in seconds.</p>
             </div>
         </div>
         <div class="col-md-6 col-lg-3">
-            <div class="card feature-card h-100 border-0 p-3">
+            <div class="card feature-card h-100 border-0 p-3 tv-reveal" data-delay="3">
                 <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">03</div>
                 <h5 class="fw-bold">Review</h5>
                 <p class="text-muted small mb-0">End-of-session ritual + AI Buddy pulse turns mistakes into rules.</p>
             </div>
         </div>
         <div class="col-md-6 col-lg-3">
-            <div class="card feature-card h-100 border-0 p-3">
+            <div class="card feature-card h-100 border-0 p-3 tv-reveal" data-delay="4">
                 <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">04</div>
                 <h5 class="fw-bold">Prove</h5>
                 <p class="text-muted small mb-0">Strategy Lab backtests ideas on real market history before you size up.</p>
@@ -942,9 +1075,9 @@
 <!-- What a trading journal is -->
 <div class="container landing-section">
     <div class="row align-items-center g-4 g-lg-5">
-        <div class="col-lg-6">
+        <div class="col-lg-6 tv-reveal">
             <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 mb-3">What it is</span>
-            <h2 class="display-5 fw-bold mb-3">A trading journal is memory you can trust</h2>
+            <h2 class="display-5 fw-bold mb-3 tv-split" data-tv-split>A trading journal is memory you can trust</h2>
             <p class="lead text-muted mb-3">
                 Brokers show fills. Charts show price. A journal shows <em>you</em> —
                 why you entered, how you felt, whether you followed your rules, and what to change next time.
@@ -960,7 +1093,7 @@
                 <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Keep one weekly focus rule until it sticks</li>
             </ul>
         </div>
-        <div class="col-lg-6">
+        <div class="col-lg-6 tv-reveal" data-delay="2">
             <div class="card feature-card border-0 h-100 p-4 p-md-5">
                 <div class="tv-section-kicker mb-2" style="color:#14b8a6;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;">Imagine this</div>
                 <h3 class="h4 fw-bold mb-3">Five years from now</h3>
@@ -1561,50 +1694,133 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize hero chart
-    const ctx = document.getElementById('miniChart').getContext('2d');
-    const chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-            datasets: [{
-                label: 'P/L',
-                data: [0.5, 1.2, -0.3, 0.8, 2.1],
-                borderColor: '#22c55e',
-                backgroundColor: function(context) {
-                    const chart = context.chart;
-                    const {ctx, chartArea} = chart;
-                    if (!chartArea) return 'rgba(34, 197, 94, 0.15)';
-                    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.35)');
-                    gradient.addColorStop(1, 'rgba(34, 197, 94, 0.02)');
-                    return gradient;
-                },
-                fill: true,
-                tension: 0.45,
-                borderWidth: 2.5,
-                pointRadius: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const page = document.querySelector('.landing-page');
+
+    // Hero mini chart
+    const canvas = document.getElementById('miniChart');
+    if (canvas && typeof Chart !== 'undefined') {
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                datasets: [{
+                    label: 'P/L',
+                    data: [0.5, 1.2, -0.3, 0.8, 2.1],
+                    borderColor: '#22c55e',
+                    backgroundColor: function(context) {
+                        const chart = context.chart;
+                        const {ctx, chartArea} = chart;
+                        if (!chartArea) return 'rgba(34, 197, 94, 0.15)';
+                        const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                        gradient.addColorStop(0, 'rgba(34, 197, 94, 0.35)');
+                        gradient.addColorStop(1, 'rgba(34, 197, 94, 0.02)');
+                        return gradient;
+                    },
+                    fill: true,
+                    tension: 0.45,
+                    borderWidth: 2.5,
+                    pointRadius: 0
+                }]
             },
-            scales: {
-                x: {
-                    display: false
-                },
-                y: {
-                    display: false
-                }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false }, y: { display: false } }
             }
+        });
+    }
+
+    if (!page) return;
+
+    // Auto-mark section heads / cards for scroll presence
+    page.querySelectorAll('.landing-section-head, .landing-learn-card, .landing-price-card, .landing-faq-item, .landing-audience-card, .landing-gradient-panel').forEach(function(el, i) {
+        if (!el.classList.contains('tv-reveal')) el.classList.add('tv-reveal');
+        if (!el.getAttribute('data-delay') && (el.classList.contains('landing-learn-card') || el.classList.contains('landing-price-card') || el.classList.contains('landing-audience-card') || el.classList.contains('landing-faq-item'))) {
+            el.setAttribute('data-delay', String((i % 4) + 1));
         }
     });
-    
+    page.querySelectorAll('.landing-section-head .display-5, .landing-cta-headline').forEach(function(h) {
+        if (!h.hasAttribute('data-tv-split')) {
+            h.setAttribute('data-tv-split', '');
+            h.classList.add('tv-split');
+        }
+    });
+
+    function splitWords(el) {
+        if (el.dataset.tvSplitDone === '1') return;
+        const accent = el.querySelector('.hero-accent');
+        const accentHtml = accent ? accent.outerHTML : null;
+        if (accent) accent.replaceWith(document.createTextNode('\u0001'));
+        const raw = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!raw) return;
+        el.setAttribute('aria-label', raw.replace('\u0001', accent ? accent.textContent : ''));
+        el.innerHTML = '';
+        raw.split(' ').forEach(function(word) {
+            if (!word) return;
+            const wrap = document.createElement('span');
+            wrap.className = 'tv-word';
+            wrap.setAttribute('aria-hidden', 'true');
+            const inner = document.createElement('span');
+            if (word.indexOf('\u0001') !== -1 && accentHtml) {
+                inner.innerHTML = word.replace('\u0001', accentHtml);
+            } else {
+                inner.textContent = word;
+            }
+            wrap.appendChild(inner);
+            el.appendChild(wrap);
+        });
+        el.dataset.tvSplitDone = '1';
+    }
+
+    page.querySelectorAll('[data-tv-split]').forEach(splitWords);
+
+    if (reduceMotion) {
+        page.querySelectorAll('.tv-reveal, .tv-split').forEach(function(el) {
+            el.classList.add('is-in');
+        });
+        return;
+    }
+
+    const io = ('IntersectionObserver' in window)
+        ? new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add('is-in');
+                io.unobserve(entry.target);
+            });
+        }, { threshold: 0.18, rootMargin: '0px 0px -8% 0px' })
+        : null;
+
+    page.querySelectorAll('.tv-reveal, .tv-split').forEach(function(el) {
+        const rect = el.getBoundingClientRect();
+        const inView = rect.top < (window.innerHeight * 0.92) && rect.bottom > 40;
+        if (inView) {
+            el.classList.add('is-in');
+            return;
+        }
+        if (io) io.observe(el);
+        else el.classList.add('is-in');
+    });
+
+    // Soft hero parallax while scrolling
+    const heroBg = page.querySelector('.landing-hero .hero-bg');
+    const hero = page.querySelector('.landing-hero');
+    if (heroBg && hero) {
+        let ticking = false;
+        window.addEventListener('scroll', function() {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(function() {
+                const rect = hero.getBoundingClientRect();
+                const progress = Math.min(1, Math.max(0, -rect.top / Math.max(rect.height, 1)));
+                heroBg.style.transform = 'translate3d(0,' + (progress * 36) + 'px,0)';
+                ticking = false;
+            });
+        }, { passive: true });
+    }
 });
 </script>
 {% endblock %}
