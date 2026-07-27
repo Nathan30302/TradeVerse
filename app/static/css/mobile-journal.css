@@ -1,0 +1,116 @@
+/**
+ * Mobile journal polish — trade cards, calendar density, hit targets.
+ */
+
+@media (max-width: 767.98px) {
+  .tv-page-hero .btn-lg {
+    padding: 0.45rem 0.85rem;
+    font-size: 0.9rem;
+  }
+
+  .tv-trade-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .tv-trade-card {
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--card-border, #334155) 85%, transparent);
+    background: color-mix(in srgb, var(--card-bg, #0f172a) 94%, transparent);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+    padding: 0.95rem 1rem;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  .tv-trade-card:active {
+    transform: scale(0.99);
+  }
+
+  .tv-trade-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .tv-trade-card__symbol {
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
+  }
+
+  .tv-trade-card__meta {
+    font-size: 0.78rem;
+    color: var(--text-secondary, #94a3b8);
+  }
+
+  .tv-trade-card__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.65rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .tv-trade-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tv-trade-card__actions .btn {
+    min-height: 44px;
+    min-width: 44px;
+    font-weight: 700;
+    border-radius: 12px;
+  }
+
+  .tv-trade-card__actions .btn-close-trade {
+    flex: 1 1 auto;
+  }
+
+  /* Calendar — denser month on phones */
+  .tv-cal-shell__inner {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tv-cal-grid {
+    min-width: 0 !important;
+  }
+
+  .tv-cal-shell__inner .tv-cal-grid {
+    width: 100%;
+  }
+
+  .tv-cal-day {
+    min-height: 72px !important;
+    padding: 0.35rem !important;
+  }
+
+  .tv-cal-daynum {
+    font-size: 0.85rem !important;
+  }
+
+  .tv-cal-chip {
+    font-size: 0.58rem !important;
+    padding: 0.1rem 0.28rem !important;
+  }
+
+  .tv-cal-day__empty {
+    display: none;
+  }
+
+  .tv-cal-detail-btn {
+    min-height: 36px;
+    font-size: 0.7rem;
+  }
+
+  .tv-cal-weekday {
+    font-size: 0.65rem;
+  }
+}

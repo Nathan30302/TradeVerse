@@ -9,6 +9,19 @@
             <span class="label">Streak</span>
             <span class="value" id="tv-mobile-streak">{{ (daily.journaling_streak if daily is defined else (today_strip.streak if today_strip is defined else 0)) }}</span>
         </div>
+        <a class="btn btn-sm btn-outline-light flex-shrink-0" href="{{ url_for('dashboard.calendar') }}" title="Calendar">
+            <i class="fas fa-calendar-alt"></i>
+        </a>
+        {% set first_review = (review_queue.first_trade_id if review_queue is defined else none) %}
+        {% if first_review %}
+        <a class="btn btn-sm btn-outline-light flex-shrink-0" href="{{ url_for('trade.view', trade_id=first_review, review=1) }}" title="Review">
+            <i class="fas fa-clipboard-check"></i>
+        </a>
+        {% else %}
+        <a class="btn btn-sm btn-outline-light flex-shrink-0" href="{{ url_for('dashboard.eod_ritual') }}" title="End of session">
+            <i class="fas fa-moon"></i>
+        </a>
+        {% endif %}
         <a class="btn btn-sm btn-primary flex-shrink-0" href="{{ url_for('trade.add') }}">
             <i class="fas fa-plus"></i> Log
         </a>

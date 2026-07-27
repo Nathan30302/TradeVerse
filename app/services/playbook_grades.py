@@ -112,3 +112,74 @@ def focus_summary(setups: List[Any]) -> Dict[str, Any]:
             )
         ),
     }
+
+
+# Minimum linked closed trades before we suggest a setup grade from data.
+SUGGEST_MIN_TRADES = 5
+
+# Midpoints / floors for mapping realized avg R:R → setup grade (highest first).
+_SUGGEST_RR_BANDS: List[Tuple[str, float]] = [
+    ("A++", 3.6),
+    ("A+", 2.75),
+    ("A-", 2.25),
+    ("B+", 1.9),
+    ("B-", 1.65),
+    ("C", 0.0),
+]
+
+
+def suggest_grade_from_trades(
+    avg_rr: float,
+    *,
+    win_rate: float = 0.0,
+    count: int = 0,
+    current_grade: str = "",
+) -> Optional[Dict[str, Any]]:
+    """
+    Suggest a setup grade (A++–C) from realized avg R:R after enough linked trades.
+
+    Separate from Results letter grade (A–D quality). Returns None until
+    ``SUGGEST_MIN_TRADES`` linked trades exist.
+    """
+    if int(count or 0) < SUGGEST_MIN_TRADES:
+        return None
+    try:
+        rr = float(avg_rr or 0.0)
+    except (TypeError, ValueError):
+        rr = 0.0
+    if rr <= 0:
+        return None
+
+    code = "C"
+    for grade, floor in _SUGGEST_RR_BANDS:
+        if rr >= floor:
+            code = grade
+            break
+
+    # Soft downgrade when win rate is weak — edge may not justify the R:R label.
+    try:
+        wr = float(win_rate or 0.0)
+    except (TypeError, ValueError):
+        wr = 0.0
+    order = ["A++", "A+", "A-", "B+", "B-", "C"]
+    if wr < 40 and code in order:
+        idx = min(len(order) - 1, order.index(code) + 1)
+        code = order[idx]
+    elif wr < 50 and code in ("A++", "A+"):
+        code = "A-" if code == "A+" else "A+"
+
+    typical = default_typical_rr(code) or round(rr, 2)
+    current = normalize_setup_grade(current_grade)
+    return {
+        "grade": code,
+        "typical_rr": typical,
+        "avg_rr": round(rr, 2),
+        "count": int(count),
+        "win_rate": round(wr, 1),
+        "differs_from_current": (not current) or (current != code),
+        "message": (
+            f"From {int(count)} linked trades (avg R:R ~1:{rr:.1f}"
+            + (f", {wr:.0f}% WR" if wr else "")
+            + f"), this setup looks like {code} (~1:{typical:g})."
+        ),
+    }

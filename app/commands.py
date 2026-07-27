@@ -89,7 +89,7 @@ def register_commands(app):
         click.echo(f'Sent {sent} weekly summaries.')
 
     @app.cli.command('send-nudges')
-    @click.option('--inactive-days', default=7, help='Nudge users inactive for N days')
+    @click.option('--inactive-days', default=3, help='Nudge users inactive for N days')
     def send_nudges(inactive_days: int):
         """
         Send a short encouragement email to inactive users.

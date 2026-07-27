@@ -80,8 +80,55 @@
     </div>
 </div>
 
-<!-- Trades Table -->
-<div class="table-container tv-table-premium tv-table-scroll">
+<!-- Trades — mobile cards -->
+{% if trades.items %}
+<div class="tv-trade-cards d-md-none mb-4">
+    {% for trade in trades.items %}
+    <div class="tv-trade-card">
+        <a href="{{ url_for('trade.view', trade_id=trade.id) }}" class="text-decoration-none text-reset d-block">
+            <div class="tv-trade-card__top">
+                <div>
+                    <div class="tv-trade-card__symbol">{{ trade.symbol }}</div>
+                    <div class="tv-trade-card__meta">
+                        {{ trade.entry_date|datetime('%b %d · %H:%M') }}
+                        {% if trade.strategy %} · {{ trade.strategy }}{% endif %}
+                    </div>
+                </div>
+                <span class="badge bg-{% if trade.status == 'OPEN' %}warning{% elif trade.status == 'CLOSED' %}secondary{% else %}info{% endif %}">
+                    {{ trade.status }}
+                </span>
+            </div>
+            <div class="tv-trade-card__row">
+                {{ side_chip(trade.trade_type) }}
+                {% if trade.profit_loss is not none %}
+                    {{ pnl_chip(trade.profit_loss, current_user.preferred_currency) }}
+                {% else %}
+                    {{ pnl_chip(none) }}
+                {% endif %}
+                {% if trade.risk_reward %}
+                <span class="badge bg-secondary">{{ trade.risk_reward|rr_ratio }}</span>
+                {% endif %}
+            </div>
+        </a>
+        <div class="tv-trade-card__actions">
+            <a href="{{ url_for('trade.view', trade_id=trade.id) }}" class="btn btn-outline-primary btn-sm">View</a>
+            <a href="{{ url_for('trade.edit', trade_id=trade.id) }}" class="btn btn-outline-secondary btn-sm">Edit</a>
+            {% if trade.status == 'OPEN' %}
+            <button type="button"
+                    class="btn btn-success btn-sm btn-close-trade"
+                    data-bs-toggle="modal"
+                    data-bs-target="#closeModal{{ trade.id }}">
+                Close trade
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Trades Table (desktop) -->
+<div class="table-container tv-table-premium tv-table-scroll d-none d-md-block">
     {% if trades.items %}
         <div class="table-responsive">
             <table class="table table-hover">
@@ -223,7 +270,10 @@
         </nav>
         {% endif %}
 
-    {% else %}
+    {% endif %}
+</div>
+
+{% if not trades.items %}
         <div class="tv-empty-well py-5 px-3">
             <div class="tv-empty-icon"><i class="fas fa-inbox"></i></div>
             <h4 class="mb-2">No trades found</h4>
@@ -238,8 +288,7 @@
                 <i class="fas fa-plus-circle"></i> Add trade
             </a>
         </div>
-    {% endif %}
-</div>
+{% endif %}
 
 {# Close / delete modals must sit outside overflow:hidden table containers #}
 {% if trades.items %}

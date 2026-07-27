@@ -58,35 +58,35 @@
 
 {% if stats.total_trades == 0 %}
 <div class="tv-welcome tv-reveal tv-reveal-2">
-    <h2 class="h3 mb-2">Start your journal in three moves</h2>
-    <p class="tv-muted mb-0">Everything in TradeVerse points here: plan the trade, log what happened, review what you learned.</p>
+    <h2 class="h3 mb-2">Start with your playbook</h2>
+    <p class="tv-muted mb-0">Create one setup, grade it, log a trade on it — then watch Results unlock as the data builds.</p>
     <div class="tv-welcome-steps">
         <div>
             <div class="n">1</div>
-            <strong>Plan</strong>
-            <p class="small tv-muted mb-0 mt-1">Entry, stop, and target before you click.</p>
+            <strong>Playbook</strong>
+            <p class="small tv-muted mb-0 mt-1">Rules + checklist for one A-worthy setup.</p>
         </div>
         <div>
             <div class="n">2</div>
-            <strong>Log</strong>
-            <p class="small tv-muted mb-0 mt-1">Capture the real fill — emotion included.</p>
+            <strong>Grade</strong>
+            <p class="small tv-muted mb-0 mt-1">A++ ≈ 1:4+ · A+ ≈ 1:3 · A− ≈ 1:2.5</p>
         </div>
         <div>
             <div class="n">3</div>
-            <strong>Review</strong>
-            <p class="small tv-muted mb-0 mt-1">One lesson turns into next week’s rule.</p>
+            <strong>Log &amp; Results</strong>
+            <p class="small tv-muted mb-0 mt-1">Link trades — Results after 3, suggestions after 5.</p>
         </div>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <a href="{{ url_for('dashboard.getting_started') }}" class="btn btn-primary">Guided setup</a>
-        <a href="{{ url_for('trade.add') }}" class="btn btn-outline-primary">Log a trade</a>
-        <a href="{{ url_for('imports.import_page') }}" class="btn btn-outline-secondary">Import history</a>
+        <a href="{{ url_for('playbook.new') }}" class="btn btn-outline-primary">New playbook</a>
+        <a href="{{ url_for('trade.add') }}" class="btn btn-outline-secondary">Log a trade</a>
     </div>
 </div>
 {% endif %}
 
 {% include 'partials/dashboard_trial_banner.html' %}
-
+{% include 'partials/dashboard_retention_nudge.html' %}
 {% include 'partials/dashboard_daily_loop.html' %}
 
 {% if pinned %}
@@ -114,50 +114,46 @@
 {% endif %}
 
 {% set ob = onboarding if onboarding is defined else {} %}
-{% set done_count = (1 if ob.get('has_plan') else 0) + (1 if ob.get('has_trade') else 0) + (1 if ob.get('has_review') else 0) + (1 if ob.get('analytics_done') else 0) + (1 if ob.get('weekly_focus_set') else 0) %}
+{% set done_count = (1 if ob.get('has_playbook') else 0) + (1 if ob.get('has_setup_grade') else 0) + (1 if ob.get('has_linked_trade') else 0) + (1 if ob.get('has_results_grade') else 0) + (1 if ob.get('weekly_focus_set') else 0) %}
 {% if done_count < 5 %}
 <details class="tv-metrics-more tv-reveal mb-4" {% if done_count < 2 %}open{% endif %}>
     <summary>
-        Getting started · {{ done_count }}/5
+        Activation · {{ done_count }}/5 — playbook → grade → log → Results
     </summary>
     <div class="progress mb-3" style="height:6px;border-radius:999px;">
         <div class="progress-bar" role="progressbar" style="width: {{ (done_count / 5 * 100)|round(0) }}%; background: linear-gradient(90deg,#0f766e,#14b8a6);" aria-valuenow="{{ done_count }}" aria-valuemin="0" aria-valuemax="5"></div>
     </div>
     <div class="row g-2 small">
         <div class="col-md-6 col-lg-4">
-            {% if ob.get('has_plan') %}
-                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Create a trade plan</span>
+            {% if ob.get('has_playbook') %}
+                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Create a playbook setup</span>
             {% else %}
-                <span class="tv-muted"><i class="far fa-circle me-1"></i>Create a trade plan</span>
-                <a class="d-block mt-1" href="{{ url_for('planner.new_plan') }}">Open planner →</a>
+                <span class="tv-muted"><i class="far fa-circle me-1"></i>Create a playbook setup</span>
+                <a class="d-block mt-1" href="{{ url_for('playbook.new') }}">New setup →</a>
             {% endif %}
         </div>
         <div class="col-md-6 col-lg-4">
-            {% if ob.get('has_trade') %}
-                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Log a trade</span>
+            {% if ob.get('has_setup_grade') %}
+                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Grade your setup (A++–C)</span>
             {% else %}
-                <span class="tv-muted"><i class="far fa-circle me-1"></i>Log a trade</span>
+                <span class="tv-muted"><i class="far fa-circle me-1"></i>Grade your setup (A++–C)</span>
+                <a class="d-block mt-1" href="{{ url_for('playbook.index') }}">Open playbook →</a>
+            {% endif %}
+        </div>
+        <div class="col-md-6 col-lg-4">
+            {% if ob.get('has_linked_trade') %}
+                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Log a trade on that setup</span>
+            {% else %}
+                <span class="tv-muted"><i class="far fa-circle me-1"></i>Log a trade on that setup</span>
                 <a class="d-block mt-1" href="{{ url_for('trade.add') }}">Add trade →</a>
             {% endif %}
         </div>
         <div class="col-md-6 col-lg-4">
-            {% if ob.get('has_review') %}
-                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Review a closed trade</span>
+            {% if ob.get('has_results_grade') %}
+                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Unlock Results (3+ linked)</span>
             {% else %}
-                <span class="tv-muted"><i class="far fa-circle me-1"></i>Review a closed trade</span>
-                {% if review_queue is defined and review_queue.get('first_trade_id') %}
-                <a class="d-block mt-1" href="{{ url_for('trade.view', trade_id=review_queue.first_trade_id, review=1) }}">Review next →</a>
-                {% else %}
-                <a class="d-block mt-1" href="{{ url_for('trade.list') }}">Open trades →</a>
-                {% endif %}
-            {% endif %}
-        </div>
-        <div class="col-md-6 col-lg-4">
-            {% if ob.get('analytics_done') %}
-                <span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i>Visit Analytics</span>
-            {% else %}
-                <span class="tv-muted"><i class="far fa-circle me-1"></i>Visit Analytics</span>
-                <a class="d-block mt-1" href="{{ url_for('dashboard.analytics') }}">Open analytics →</a>
+                <span class="tv-muted"><i class="far fa-circle me-1"></i>Unlock Results (3+ linked)</span>
+                <a class="d-block mt-1" href="{{ url_for('playbook.index') }}">See playbook →</a>
             {% endif %}
         </div>
         <div class="col-md-6 col-lg-8">
@@ -176,6 +172,9 @@
                 </form>
             {% endif %}
         </div>
+    </div>
+    <div class="mt-3">
+        <a class="small" href="{{ url_for('dashboard.getting_started') }}">Open guided setup →</a>
     </div>
 </details>
 {% endif %}

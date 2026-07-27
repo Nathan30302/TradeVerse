@@ -231,7 +231,56 @@ def index():
     except Exception:
         wf = ''
 
+    # Activation loop: playbook → grade → linked trade → Results grade
+    has_playbook = False
+    has_setup_grade = False
+    has_linked_trade = False
+    has_results_grade = False
+    try:
+        from app.models.playbook_setup import PlaybookSetup
+
+        pb_rows = (
+            PlaybookSetup.query.filter_by(user_id=current_user.id)
+            .with_entities(PlaybookSetup.id, PlaybookSetup.setup_grade)
+            .all()
+        )
+        has_playbook = bool(pb_rows)
+        has_setup_grade = any((g or "").strip() for _, g in pb_rows)
+        linked = (
+            db.session.query(Trade.id)
+            .filter(
+                Trade.user_id == current_user.id,
+                Trade.playbook_setup_id.isnot(None),
+            )
+            .limit(1)
+            .scalar()
+        )
+        has_linked_trade = bool(linked)
+        if pb_rows:
+            for sid, _ in pb_rows:
+                cnt = (
+                    db.session.query(func.count(Trade.id))
+                    .filter(
+                        Trade.user_id == current_user.id,
+                        Trade.playbook_setup_id == sid,
+                    )
+                    .scalar()
+                    or 0
+                )
+                if int(cnt) >= 3:
+                    has_results_grade = True
+                    break
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
     onboarding = {
+        'has_playbook': has_playbook,
+        'has_setup_grade': has_setup_grade,
+        'has_linked_trade': has_linked_trade,
+        'has_results_grade': has_results_grade,
         'has_plan': bool(plan_exists),
         'has_trade': stats['total_trades'] > 0,
         'has_review': bool(review_exists),
@@ -258,9 +307,14 @@ def index():
     )
 
     from app.services.insights_next_action import build_insights_next_action
+    from app.services.retention_nudges import build_retention_nudge
 
     insights_next_action = build_insights_next_action(
         page='dashboard',
+        review_queue=daily.get('review_queue') or {},
+    )
+    retention_nudge = build_retention_nudge(
+        current_user,
         review_queue=daily.get('review_queue') or {},
     )
 
@@ -280,7 +334,8 @@ def index():
                            coach_narrative=coach_narrative,
                            daily=daily,
                            review_queue=daily.get('review_queue') or {},
-                           insights_next_action=insights_next_action)
+                           insights_next_action=insights_next_action,
+                           retention_nudge=retention_nudge)
 
 @bp.route('/getting-started')
 @login_required
@@ -301,10 +356,13 @@ def getting_started_sample_data():
     created = create_sample_trades(current_user.id)
     next_url = _safe_same_site_redirect(request.form.get('next'))
     if created:
-        flash(f'Added {created} sample trades. Run Trade Doctor next for your first leak.', 'success')
+        flash(
+            f'Added {created} sample trades linked to a graded playbook. Open Playbook to see Results.',
+            'success',
+        )
     else:
-        flash('You already have trades — sample data was not added. Run Trade Doctor instead.', 'info')
-    return redirect(next_url)
+        flash('You already have trades — sample data was not added. Open Playbook or Trade Doctor instead.', 'info')
+    return redirect(next_url or url_for('playbook.index'))
 
 
 @bp.route('/weekly-review')

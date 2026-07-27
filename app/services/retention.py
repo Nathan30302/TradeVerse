@@ -325,6 +325,33 @@ def create_sample_trades(user_id: int) -> int:
         return 0
 
     now = utc_now()
+    setup_id = None
+    try:
+        from app.models.playbook_setup import PlaybookSetup
+
+        setup = PlaybookSetup(
+            user_id=user_id,
+            name="Sample · London breakout",
+            market="Forex",
+            symbol_hint="EURUSD",
+            timeframe="15M",
+            entry_criteria="1) Mark London range\n2) Wait for break + retest\n3) Enter with confirmation candle",
+            invalidation="Close back inside range — exit; do not average.",
+            management_plan="Partial at 1R, trail under structure.",
+            checklist_text="Range marked\nBreak + retest visible\nStop beyond invalidation\nNo major news",
+            tags="sample,london,breakout",
+            is_active=True,
+            setup_grade="A-",
+            typical_rr=2.5,
+            example_images="[]",
+        )
+        db.session.add(setup)
+        db.session.flush()
+        setup_id = setup.id
+    except Exception:
+        _rollback_quietly()
+        setup_id = None
+
     samples = [
         dict(symbol='EURUSD', trade_type='BUY', lot_size=0.1, entry_price=1.0850, exit_price=1.0895,
              stop_loss=1.0820, take_profit=1.0920, profit_loss=45.0, risk_reward=1.5,
@@ -362,6 +389,8 @@ def create_sample_trades(user_id: int) -> int:
                 strategy=row['strategy'],
                 post_trade_notes=row.get('post_trade_notes'),
                 lessons_learned=row.get('lessons_learned'),
+                playbook_setup_id=setup_id,
+                playbook_followed=True if setup_id else False,
             )
             db.session.add(t)
             created += 1

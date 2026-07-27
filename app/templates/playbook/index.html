@@ -110,6 +110,9 @@
                         {% else %}
                         <span class="badge bg-success">Active</span>
                         {% endif %}
+                        {% if st and st.get('suggested') and st.suggested.get('differs_from_current') %}
+                        <span class="badge bg-warning text-dark" title="{{ st.suggested.message }}">Suggested {{ st.suggested.grade }}</span>
+                        {% endif %}
                         {% if st and st.get('grade') and st.grade != '—' %}
                         <span class="badge bg-{{ st.get('grade_color', 'secondary') }}" title="Results grade from linked trades (needs 3+)">Results {{ st.grade }}</span>
                         {% elif st and st.get('count', 0) < 3 %}

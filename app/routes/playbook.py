@@ -25,6 +25,8 @@ from app.services.playbook_grades import (
     focus_summary,
     grade_coach_note,
     is_focus_grade,
+    normalize_setup_grade,
+    suggest_grade_from_trades,
 )
 from app.services.uploads_storage import playbook_images_dir, resolve_playbook_file
 
@@ -197,6 +199,14 @@ def index():
             total = int(wins or 0) + int(losses or 0)
             wr = (float(wins) / total * 100.0) if total else 0.0
             grade, grade_color = setup_letter_grade(wr, int(count or 0), float(avg_rr or 0.0))
+            setup_obj = next((s for s in setups if s.id == int(setup_id)), None)
+            current_g = (getattr(setup_obj, "setup_grade", None) or "") if setup_obj else ""
+            suggested = suggest_grade_from_trades(
+                float(avg_rr or 0.0),
+                win_rate=float(wr),
+                count=int(count or 0),
+                current_grade=current_g,
+            )
             stats_by_setup[int(setup_id)] = {
                 "count": int(count or 0),
                 "pnl": float(pnl or 0.0),
@@ -206,6 +216,7 @@ def index():
                 "avg_rr": float(avg_rr or 0.0),
                 "grade": grade,
                 "grade_color": grade_color,
+                "suggested": suggested,
             }
 
     return render_template(
@@ -302,22 +313,77 @@ def view(setup_id: int):
         sum([(t.risk_reward or 0.0) for t in trades]) / len(trades) if trades else 0.0
     )
     grade, grade_color = setup_letter_grade(win_rate, len(trades), avg_rr)
+    # Prefer full linked-trade stats for suggestions (view list is capped at 30).
+    linked_count = (
+        Trade.query.filter_by(user_id=current_user.id, playbook_setup_id=setup.id).count()
+    )
+    avg_rr_all = avg_rr
+    wr_all = win_rate
+    if linked_count > len(trades):
+        row = (
+            db.session.query(
+                func.count(Trade.id),
+                func.coalesce(func.sum(case((Trade.profit_loss > 0, 1), else_=0)), 0),
+                func.coalesce(func.sum(case((Trade.profit_loss < 0, 1), else_=0)), 0),
+                func.coalesce(func.avg(Trade.risk_reward), 0.0),
+            )
+            .filter(Trade.user_id == current_user.id, Trade.playbook_setup_id == setup.id)
+            .first()
+        )
+        if row:
+            linked_count = int(row[0] or 0)
+            wins_all = int(row[1] or 0)
+            losses_all = int(row[2] or 0)
+            total_all = wins_all + losses_all
+            wr_all = (wins_all / total_all * 100.0) if total_all else 0.0
+            avg_rr_all = float(row[3] or 0.0)
+            grade, grade_color = setup_letter_grade(wr_all, linked_count, avg_rr_all)
+
+    suggested = suggest_grade_from_trades(
+        float(avg_rr_all or 0.0),
+        win_rate=float(wr_all),
+        count=int(linked_count or 0),
+        current_grade=setup.setup_grade or "",
+    )
     return render_template(
         "playbook/view.html",
         setup=setup,
         trades=trades,
         setup_stats={
-            "count": len(trades),
+            "count": int(linked_count or len(trades)),
             "pnl": pnl,
             "wins": wins,
             "losses": losses,
-            "win_rate": win_rate,
-            "avg_rr": avg_rr,
+            "win_rate": wr_all,
+            "avg_rr": avg_rr_all,
             "grade": grade,
             "grade_color": grade_color,
+            "suggested": suggested,
         },
         **_grade_form_context(),
     )
+
+
+@bp.route("/<int:setup_id>/apply-suggested-grade", methods=["POST"])
+@login_required
+def apply_suggested_grade(setup_id: int):
+    """Apply data-driven setup grade from linked trades onto the playbook."""
+    if not _playbook_ready():
+        return _playbook_unavailable_response()
+    setup = _get_setup_or_404(setup_id)
+    grade = normalize_setup_grade(request.form.get("setup_grade"))
+    if not grade:
+        flash("Unknown suggested grade.", "warning")
+        return redirect(url_for("playbook.view", setup_id=setup.id))
+
+    from app.services.playbook_grades import parse_typical_rr
+
+    setup.setup_grade = grade
+    rr = parse_typical_rr(request.form.get("typical_rr"), grade=grade)
+    setup.typical_rr = rr
+    db.session.commit()
+    flash(f"Setup grade set to {grade} from your trade data.", "success")
+    return redirect(url_for("playbook.view", setup_id=setup.id))
 
 
 @bp.route("/<int:setup_id>/edit", methods=["GET", "POST"])

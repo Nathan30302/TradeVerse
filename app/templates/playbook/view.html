@@ -52,6 +52,23 @@
                         {% endif %}
                         {{ pnl_chip(setup_stats.pnl, current_user.preferred_currency) }}
                     </div>
+                    {% set sug = setup_stats.get('suggested') %}
+                    {% if sug and sug.get('differs_from_current') %}
+                    <div class="alert alert-secondary border-0 mb-3" style="border-left: 4px solid #14b8a6 !important; background: rgba(20,184,166,0.1);">
+                        <div class="fw-semibold mb-1"><i class="fas fa-lightbulb me-1 text-warning"></i> Suggested from your trades</div>
+                        <p class="small mb-2 mb-md-3">{{ sug.message }}</p>
+                        <p class="small text-muted mb-2">This is your <strong>setup grade</strong> (A++–C by typical R:R) — separate from <strong>Results</strong> (A–D quality).</p>
+                        <form method="POST" action="{{ url_for('playbook.apply_suggested_grade', setup_id=setup.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="setup_grade" value="{{ sug.grade }}">
+                            <input type="hidden" name="typical_rr" value="{{ sug.typical_rr }}">
+                            <button type="submit" class="btn btn-sm btn-primary">Apply {{ sug.grade }} · ~1:{{ sug.typical_rr }}</button>
+                        </form>
+                        <a class="btn btn-sm btn-outline-secondary ms-1" href="{{ url_for('playbook.edit', setup_id=setup.id) }}">Edit manually</a>
+                    </div>
+                    {% elif sug and not sug.get('differs_from_current') %}
+                    <p class="small text-muted mb-3"><i class="fas fa-check me-1 text-success"></i> Your {{ setup.setup_grade }} grade matches what {{ sug.count }} linked trades suggest.</p>
+                    {% endif %}
                     {% endif %}
 
                     <div class="fw-semibold mb-2">When do you enter?</div>
