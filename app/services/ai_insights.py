@@ -615,16 +615,15 @@ class AIAnalyzer:
                 else 'your strongest strategy'
             )
             return (
-                f"Hello trader, this week you took {total} closed trades. "
+                f"Hey trader — this week you closed {total} trades. "
                 f"Your win rate was {win_rate:.0f} percent. "
                 f"Your biggest strength was {strategy_name}. "
-                f"Your biggest opportunity is to improve your risk reward "
-                f"and reduce emotional trades."
+                f"Biggest opportunity: tighten risk to reward and cut emotional trades."
             )
         except Exception:
             return (
-                'AI Buddy has no data to summarise yet. '
-                'Log some trades to get started.'
+                "I don't have enough data to summarise yet. "
+                "Log a few trades and I'll walk you through the week."
             )
  
     def get_voice_review(self, user_name: str = '') -> Dict[str, Any]:
@@ -668,26 +667,30 @@ class AIAnalyzer:
             return rng.choice(options) if options else ''
 
         greet_name = (user_name or '').strip()
-        greet = pick([
-            f"Hey {greet_name}—quick coach brief.",
-            f"Alright {greet_name}, here’s your weekly review.",
-            f"{greet_name}, let’s review your week like a pro.",
-            "Quick coach brief—here’s the week.",
-            "Let’s break down your week."
-        ])
-        greet = greet.replace("—", ",") if not greet_name else greet
+        if greet_name:
+            greet = pick([
+                f"Hey {greet_name}, quick coach brief.",
+                f"Alright {greet_name}, here's your weekly review.",
+                f"{greet_name}, let's walk through your week.",
+            ])
+        else:
+            greet = pick([
+                "Hey — quick coach brief for the week.",
+                "Alright, here's your weekly review.",
+                "Let's break down your week.",
+            ])
 
         if total <= 0:
             segments = [
                 greet,
-                "You don’t have any closed trades logged this week.",
-                "If you want me to coach you properly, log at least your entry, exit, and stop loss—or your risk amount.",
-                "Question: what’s the one setup you’re focusing on next week?"
+                "You don't have any closed trades logged this week.",
+                "If you want me to coach you properly, log at least your entry, exit, and stop loss — or your risk amount.",
+                "One question: what's the one setup you're focusing on next week?"
             ]
             return {
                 'text': ' '.join(segments),
                 'segments': segments,
-                'questions': ["What’s the one setup you’re focusing on next week?"],
+                'questions': ["What's the one setup you're focusing on next week?"],
                 'meta': {'trades': total, 'win_rate': win_rate, 'total_pnl': total_pnl, 'avg_rr': avg_rr}
             }
 
@@ -717,9 +720,9 @@ class AIAnalyzer:
             worst_trade_line = ''
 
         pnl_phrase = pick([
-            f"Net P and L: {total_pnl:.0f}.",
-            f"You’re at {total_pnl:.0f} net for the week.",
-            f"Your week finished at {total_pnl:.0f} total."
+            f"Net P and L sits at {total_pnl:.0f}.",
+            f"You're at {total_pnl:.0f} net for the week.",
+            f"Your week finished around {total_pnl:.0f} total."
         ])
 
         wr_phrase = pick([
@@ -729,7 +732,7 @@ class AIAnalyzer:
         ])
 
         rr_phrase = pick([
-            f"Average R to R: {avg_rr:.2f}.",
+            f"Average risk to reward: {avg_rr:.2f}.",
             f"Your average risk reward was {avg_rr:.2f}.",
             f"Risk reward averaged {avg_rr:.2f}."
         ])
@@ -738,11 +741,11 @@ class AIAnalyzer:
             pick([
                 f"Your strongest edge showed up in {best_name}.",
                 f"Best setup this week was {best_name}.",
-                f"Your best-performing strategy: {best_name}."
+                f"Your best-performing strategy was {best_name}."
             ]) if best_name else pick([
                 "No single strategy dominated this week.",
-                "Your results were spread—no clear best setup yet.",
-                "You don’t have a clear best strategy in this sample."
+                "Your results were spread — no clear best setup yet.",
+                "You don't have a clear best strategy in this sample yet."
             ])
         )
 
@@ -763,9 +766,9 @@ class AIAnalyzer:
         ])
 
         one_rule = pick(recs) if recs else pick([
-            "One rule: only take trades that meet your checklist—no exceptions.",
+            "One rule: only take trades that meet your checklist — no exceptions.",
             "One rule: predefine risk before entry, every single time.",
-            "One rule: if you feel rushed, you don’t trade."
+            "One rule: if you feel rushed, you don't trade."
         ])
 
         follow_up = pick([

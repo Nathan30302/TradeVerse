@@ -330,6 +330,15 @@
     </div>
     <div class="card-body">
         <div id="aiCoachStatus" class="mb-2 tv-muted" role="status" aria-live="polite">Type a question or tap Coach Talk to use your microphone.</div>
+        <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-7 col-lg-6">
+                <label for="aiVoiceSelect" class="form-label small mb-1">Coach voice</label>
+                <select id="aiVoiceSelect" class="form-select form-select-sm" title="Choose how AI Buddy sounds when speaking">
+                    <option value="">Loading voices…</option>
+                </select>
+                <div class="form-text">Prefer voices marked “natural” — they sound more human on most devices.</div>
+            </div>
+        </div>
         <div class="mb-3">
             <label for="aiQuestion" class="form-label">Ask a trading question</label>
             <input id="aiQuestion"

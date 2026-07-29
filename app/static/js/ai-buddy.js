@@ -95,14 +95,163 @@
       if (log) log.scrollTop = log.scrollHeight;
     }
 
-    function pickEnglishVoice() {
+    var VOICE_PREF_KEY = 'tv_ai_buddy_voice';
+    var cachedVoice = null;
+    var speakGeneration = 0;
+
+    /** Score browser voices — prefer neural / natural names over compact robotic ones. */
+    function scoreVoice(v) {
+      if (!v) return -1000;
+      var name = String(v.name || '').toLowerCase();
+      var lang = String(v.lang || '').toLowerCase();
+      if (lang.indexOf('en') !== 0) return -500;
+
+      var score = 10;
+      // Strong preference: modern neural / natural voices
+      if (/neural|natural|premium|enhanced|wavenet|studio|online \(natural\)/.test(name)) score += 120;
+      if (/google/.test(name) && /us|uk|gb|au/.test(lang)) score += 90;
+      if (/microsoft/.test(name) && /(aria|jenny|guy|sara|sonia|natasha|ryan|davis|jane|jason)/.test(name)) score += 100;
+      if (/microsoft/.test(name) && /natural/.test(name)) score += 80;
+      // Classic high-quality system voices
+      if (/(samantha|karen|moira|daniel|alex|victoria|oliver|ava|zoe|allison|susan|tom|fred)/.test(name)) score += 70;
+      if (/siri|premium/.test(name)) score += 60;
+      // Mild preference for US/GB English (most coach-like)
+      if (lang === 'en-us' || lang.indexOf('en-us') === 0) score += 25;
+      if (lang === 'en-gb' || lang.indexOf('en-gb') === 0) score += 20;
+      if (v.localService === false) score += 15; // often cloud neural on Chromium
+      // Penalize known robotic / novelty voices
+      if (/(compact|espeak|robot|whisper|zarvox|trinoids|bad news|good news|bubbles|boing|bells|cellos|pipe organ)/.test(name)) score -= 200;
+      if (/(dummy|silent)/.test(name)) score -= 300;
+      return score;
+    }
+
+    function listEnglishVoices() {
       try {
         var voices = global.speechSynthesis ? global.speechSynthesis.getVoices() : [];
-        for (var i = 0; i < voices.length; i++) {
-          if ((voices[i].lang || '').toLowerCase().indexOf('en') === 0) return voices[i];
+        return voices
+          .filter(function (v) { return (v.lang || '').toLowerCase().indexOf('en') === 0; })
+          .slice()
+          .sort(function (a, b) { return scoreVoice(b) - scoreVoice(a); });
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function pickEnglishVoice(preferredName) {
+      try {
+        var voices = listEnglishVoices();
+        if (!voices.length) return null;
+        var want = (preferredName || '').trim();
+        if (!want) {
+          try { want = localStorage.getItem(VOICE_PREF_KEY) || ''; } catch (e) { want = ''; }
         }
+        if (want) {
+          for (var i = 0; i < voices.length; i++) {
+            if (voices[i].name === want) return voices[i];
+          }
+        }
+        return voices[0];
       } catch (e) {}
       return null;
+    }
+
+    function refreshVoicePicker() {
+      var sel = document.getElementById('aiVoiceSelect');
+      if (!sel || !global.speechSynthesis) return;
+      var voices = listEnglishVoices();
+      var saved = '';
+      try { saved = localStorage.getItem(VOICE_PREF_KEY) || ''; } catch (e) {}
+      var best = pickEnglishVoice(saved);
+      var prev = sel.value;
+      sel.textContent = '';
+      if (!voices.length) {
+        var empty = document.createElement('option');
+        empty.value = '';
+        empty.textContent = 'Default browser voice';
+        sel.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < voices.length; i++) {
+        var v = voices[i];
+        var opt = document.createElement('option');
+        opt.value = v.name;
+        var tag = scoreVoice(v) >= 80 ? ' · natural' : '';
+        opt.textContent = v.name + ' (' + (v.lang || 'en') + ')' + tag;
+        sel.appendChild(opt);
+      }
+      var pick = saved || (best && best.name) || prev || voices[0].name;
+      sel.value = pick;
+      if (sel.value !== pick && best) sel.value = best.name;
+      cachedVoice = pickEnglishVoice(sel.value);
+    }
+
+    function bindVoicePicker() {
+      var sel = document.getElementById('aiVoiceSelect');
+      if (!sel) return;
+      sel.addEventListener('change', function () {
+        try { localStorage.setItem(VOICE_PREF_KEY, sel.value || ''); } catch (e) {}
+        cachedVoice = pickEnglishVoice(sel.value);
+        // Short sample so the trader hears the chosen coach voice
+        speakText("Hey — this is your TradeVerse coach. I'll keep it clear and natural.", { sample: true });
+      });
+      refreshVoicePicker();
+      if (global.speechSynthesis) {
+        global.speechSynthesis.onvoiceschanged = function () {
+          refreshVoicePicker();
+        };
+        // Some browsers load voices asynchronously after a tick
+        setTimeout(refreshVoicePicker, 250);
+        setTimeout(refreshVoicePicker, 1000);
+      }
+    }
+
+    /** Turn chat/markdown copy into something that sounds natural when spoken. */
+    function cleanForSpeech(text) {
+      var s = String(text || '');
+      s = s.replace(/\*\*/g, '').replace(/\*/g, '');
+      s = s.replace(/`+/g, '');
+      s = s.replace(/#{1,6}\s*/g, '');
+      s = s.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+      s = s.replace(/^\s*[-•]\s+/gm, '');
+      s = s.replace(/\bR\s*[:/]\s*R\b/gi, 'risk to reward');
+      s = s.replace(/\bR:R\b/g, 'risk to reward');
+      s = s.replace(/\bP\s*[/&]\s*L\b/gi, 'P and L');
+      s = s.replace(/\bPnL\b/gi, 'P and L');
+      s = s.replace(/\bSL\b/g, 'stop loss');
+      s = s.replace(/\bTP\b/g, 'take profit');
+      s = s.replace(/\bWR\b/g, 'win rate');
+      s = s.replace(/\bFOMO\b/g, 'FOMO');
+      s = s.replace(/(\d+)%/g, '$1 percent');
+      s = s.replace(/—|–/g, ', ');
+      s = s.replace(/\s*\n+\s*/g, '. ');
+      s = s.replace(/\s{2,}/g, ' ');
+      s = s.replace(/\.{2,}/g, '.');
+      s = s.replace(/\s+([,.!?])/g, '$1');
+      return s.trim();
+    }
+
+    function splitSentences(text) {
+      var plain = cleanForSpeech(text);
+      if (!plain) return [];
+      // Prefer sentence boundaries; fall back to clauses for long run-ons
+      var parts = plain.split(/(?<=[.!?])\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      var out = [];
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        if (p.length > 180) {
+          var clauses = p.split(/(?<=[,;:])\s+/).map(function (c) { return c.trim(); }).filter(Boolean);
+          if (clauses.length > 1) {
+            out = out.concat(clauses);
+            continue;
+          }
+        }
+        out.push(p);
+      }
+      return out;
+    }
+
+    function pause(ms) {
+      return new Promise(function (resolve) { setTimeout(resolve, ms); });
     }
 
     function setCoachStatus(state, message) {
@@ -173,45 +322,99 @@
       } catch (e) {}
     }
 
-    function speakText(text) {
+    function speakChunk(text, opts) {
+      opts = opts || {};
       return new Promise(function (resolve) {
         if (!global.speechSynthesis) { resolve(); return; }
-        stopListening();
-        global.speechSynthesis.cancel();
-        var plain = String(text || '').replace(/\*\*/g, '');
+        var plain = cleanForSpeech(text);
+        if (!plain) { resolve(); return; }
         var u = new SpeechSynthesisUtterance(plain);
-        u.rate = 1.02;
-        u.pitch = 1.03;
-        var v = pickEnglishVoice();
-        if (v) u.voice = v;
-        isSpeaking = true;
-        setCoachStatus('speaking', 'Speaking the answer…');
-        var coachBtn = document.getElementById('coachTalkBtn');
-        if (coachBtn) coachBtn.classList.add('tv-speaking');
-        u.onend = u.onerror = function () {
-          isSpeaking = false;
-          if (coachBtn) coachBtn.classList.remove('tv-speaking');
-          if (coachActive && !requestInFlight) {
-            setCoachStatus('listening', 'Listening… speak your next question.');
-          } else if (!coachActive) {
-            setCoachStatus('idle', 'Type a question or tap Coach Talk to use your microphone.');
-          }
+        // Slightly under 1.0 reads warmer; tiny pitch lift avoids flat robot tone
+        u.rate = typeof opts.rate === 'number' ? opts.rate : 0.96;
+        u.pitch = typeof opts.pitch === 'number' ? opts.pitch : 1.02;
+        u.volume = 1;
+        var v = cachedVoice || pickEnglishVoice();
+        cachedVoice = v;
+        if (v) {
+          u.voice = v;
+          u.lang = v.lang || 'en-US';
+        } else {
+          u.lang = 'en-US';
+        }
+        var settled = false;
+        function done() {
+          if (settled) return;
+          settled = true;
           resolve();
-        };
-        global.speechSynthesis.speak(u);
+        }
+        u.onend = done;
+        u.onerror = done;
+        try {
+          global.speechSynthesis.speak(u);
+        } catch (e) {
+          done();
+        }
       });
     }
 
-    function splitSentences(text) {
-      return String(text || '').replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    function finishSpeakingUi() {
+      isSpeaking = false;
+      var coachBtn = document.getElementById('coachTalkBtn');
+      if (coachBtn) coachBtn.classList.remove('tv-speaking');
+      if (coachActive && !requestInFlight) {
+        setCoachStatus('listening', 'Listening… speak your next question.');
+      } else if (!coachActive) {
+        setCoachStatus('idle', 'Type a question or tap Coach Talk to use your microphone.');
+      }
+    }
+
+    /**
+     * Speak naturally: clean copy, prefer neural voices, pause between sentences.
+     * opts.sample — short preview (skips coach listen-loop UI resets lightly)
+     * opts.single — force one utterance (rarely needed)
+     */
+    async function speakText(text, opts) {
+      opts = opts || {};
+      if (!global.speechSynthesis) return;
+      stopListening();
+      speakGeneration += 1;
+      var gen = speakGeneration;
+      try { global.speechSynthesis.cancel(); } catch (e) {}
+      // Chromium sometimes needs a tick after cancel before the next utterance
+      await pause(40);
+      if (gen !== speakGeneration) return;
+
+      var queue = opts.single ? [cleanForSpeech(text)].filter(Boolean) : splitSentences(text);
+      if (!queue.length) return;
+
+      isSpeaking = true;
+      setCoachStatus('speaking', opts.sample ? 'Previewing coach voice…' : 'Speaking…');
+      var coachBtn = document.getElementById('coachTalkBtn');
+      if (coachBtn && !opts.sample) coachBtn.classList.add('tv-speaking');
+
+      try {
+        for (var i = 0; i < queue.length; i++) {
+          if (gen !== speakGeneration) break;
+          await speakChunk(queue[i], opts);
+          if (gen !== speakGeneration) break;
+          // Natural breath between sentences (longer after questions)
+          var gap = /[?]$/.test(queue[i]) ? 280 : (/[!]$/.test(queue[i]) ? 220 : 160);
+          if (i < queue.length - 1) await pause(gap);
+        }
+      } finally {
+        if (gen === speakGeneration) finishSpeakingUi();
+      }
+    }
+
+    function stopSpeaking() {
+      speakGeneration += 1;
+      try { global.speechSynthesis.cancel(); } catch (e) {}
+      finishSpeakingUi();
     }
 
     async function playVoiceReview() {
       if (!VOICE_TEXT || !global.speechSynthesis) return;
-      var queue = splitSentences(VOICE_TEXT);
-      for (var i = 0; i < queue.length; i++) {
-        await speakText(queue[i]);
-      }
+      await speakText(VOICE_TEXT);
     }
 
     function renderFollowUps(items) {
@@ -599,8 +802,7 @@
         coachBtn.classList.remove('tv-coach-active', 'tv-speaking');
       }
       stopListening();
-      try { global.speechSynthesis.cancel(); } catch (e) {}
-      isSpeaking = false;
+      stopSpeaking();
       setCoachStatus('idle', 'Type a question or tap Coach Talk to use your microphone.');
     }
 
@@ -615,8 +817,8 @@
         coachBtn.classList.add('tv-coach-active');
       }
       var intro = USERNAME
-        ? 'Hey ' + USERNAME + '. Ask out loud — I’ll answer, then listen again.'
-        : 'Ask out loud — I’ll answer, then listen again.';
+        ? 'Hey ' + USERNAME + '. Ask out loud — I\'ll answer, then listen again.'
+        : 'Hey — ask out loud. I\'ll answer, then listen again.';
       if (!coachIntroShown) {
         coachIntroShown = true;
         setCoachStatus('speaking', 'Starting Coach Talk…');
@@ -649,8 +851,7 @@
       else global.speechSynthesis.pause();
     });
     if (voiceStopBtn) voiceStopBtn.addEventListener('click', function () {
-      try { global.speechSynthesis.cancel(); } catch (e) {}
-      isSpeaking = false;
+      stopSpeaking();
     });
     if (submitBtn) submitBtn.addEventListener('click', function () { onAskClick(); });
     if (clearBtn) clearBtn.addEventListener('click', function () {
@@ -728,6 +929,7 @@
       onAskClick('Suggest a weekly focus rule for me based on my trading.');
     });
 
+    bindVoicePicker();
     refreshBasis();
     setInterval(refreshBasis, 60000);
 
