@@ -1296,7 +1296,10 @@
     } catch (e) {}
 
     refreshBasis();
-    setInterval(refreshBasis, 60000);
+    setInterval(function () {
+      if (document.hidden) return;
+      refreshBasis();
+    }, 60000);
 
     try {
       var saved = sessionStorage.getItem('tv_ai_history');

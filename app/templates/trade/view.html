@@ -343,16 +343,15 @@
         </div>
 
         {% if coach_grades %}
-        <div class="card mb-4 border-primary border-opacity-25">
+        <div class="card mb-4 border-primary border-opacity-25" id="coachGradesCard"
+             data-grade-url="{{ url_for('dashboard.ai_grade_trade', trade_id=trade.id) }}">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-graduation-cap me-2 text-primary"></i> AI Coach grades</h5>
-                <span class="badge bg-primary fs-6">{{ coach_grades.overall.letter }} · {{ coach_grades.overall.score }}</span>
+                <span class="badge bg-primary fs-6" id="coachGradesOverall">{{ coach_grades.overall.letter }} · {{ coach_grades.overall.score }}</span>
             </div>
             <div class="card-body">
-                {% if coach_grades.narrative %}
-                <div class="small mb-3" style="white-space:pre-wrap;">{{ coach_grades.narrative }}</div>
-                {% endif %}
-                <div class="row g-2 small">
+                <div class="small mb-3 d-none" id="coachGradesNarrative" style="white-space:pre-wrap;"></div>
+                <div class="row g-2 small" id="coachGradesDims">
                     {% for key, label in [
                         ('psychology','Psychology'),('execution','Execution'),('entry','Entry'),
                         ('exit','Exit'),('risk','Risk'),('patience','Patience'),('rules','Rule adherence')
@@ -369,6 +368,24 @@
                 <a class="btn btn-sm btn-outline-primary mt-3" href="{{ url_for('dashboard.ai') }}">Open AI Coach</a>
             </div>
         </div>
+        <script>
+        (function () {
+          var card = document.getElementById('coachGradesCard');
+          if (!card) return;
+          var url = card.getAttribute('data-grade-url');
+          if (!url) return;
+          fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'polish=1', { headers: { Accept: 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+              if (!d || !d.ok || !d.grades || !d.grades.narrative) return;
+              var el = document.getElementById('coachGradesNarrative');
+              if (!el) return;
+              el.textContent = d.grades.narrative;
+              el.classList.remove('d-none');
+            })
+            .catch(function () {});
+        })();
+        </script>
         {% endif %}
 
         <!-- Notes -->

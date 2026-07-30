@@ -846,18 +846,10 @@ def view(trade_id):
         coach_grades = None
         if trade.status == 'CLOSED':
             try:
-                from app.services.trade_coach_grades import grade_trade, polish_grades_with_llm
-                from app.services.entitlements import user_has_feature
-                import os as _os
+                from app.services.trade_coach_grades import grade_trade
 
+                # Heuristic grades only on SSR — LLM polish loads async via /ai/grade-trade
                 coach_grades = grade_trade(trade)
-                if (
-                    coach_grades
-                    and bool(current_app.config.get('FEATURE_AI_WEB'))
-                    and bool(_os.environ.get('OPENAI_API_KEY', '').strip())
-                    and user_has_feature(current_user, 'ai_web')
-                ):
-                    coach_grades = polish_grades_with_llm(trade, coach_grades)
             except Exception:
                 current_app.logger.debug('coach_grades skipped', exc_info=True)
         

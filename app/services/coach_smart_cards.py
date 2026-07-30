@@ -73,9 +73,10 @@ def build_smart_cards(user, *, max_cards: int = 4) -> List[Dict[str, Any]]:
     except Exception:
         pass
 
-    # Latest leak from memory or narrative
+    # Latest leak from memory or narrative (fetch narrative at most once)
     mems = recent_memories(uid, limit=6)
     leak_mem = next((m for m in mems if m.get("kind") == "leak"), None)
+    narrative = None
     if leak_mem:
         cards.append(
             {
@@ -90,19 +91,19 @@ def build_smart_cards(user, *, max_cards: int = 4) -> List[Dict[str, Any]]:
         try:
             from app.services.ai_coach_context import get_coach_narrative
 
-            cn = get_coach_narrative(user)
-            if cn.get("has_data") and cn.get("leak"):
+            narrative = get_coach_narrative(user)
+            if narrative.get("has_data") and narrative.get("leak"):
                 cards.append(
                     {
                         "id": "leak",
                         "title": "Latest Leak",
-                        "body": f"{cn.get('leak')}. {cn.get('summary', '')}"[:240],
+                        "body": f"{narrative.get('leak')}. {narrative.get('summary', '')}"[:240],
                         "tone": "warn",
                         "action": {"label": "Find My Leaks", "type": "leaks"},
                     }
                 )
         except Exception:
-            pass
+            narrative = None
 
     # Recent improvement from memory
     improv = next((m for m in mems if m.get("kind") in ("improvement", "focus")), None)
@@ -156,12 +157,13 @@ def build_smart_cards(user, *, max_cards: int = 4) -> List[Dict[str, Any]]:
     except Exception:
         pass
 
-    # Suggested action from narrative
+    # Suggested action from narrative (reuse if already loaded)
     try:
-        from app.services.ai_coach_context import get_coach_narrative
+        if narrative is None:
+            from app.services.ai_coach_context import get_coach_narrative
 
-        cn = get_coach_narrative(user)
-        next_a = (cn.get("next_action") or "").strip()
+            narrative = get_coach_narrative(user)
+        next_a = ((narrative or {}).get("next_action") or "").strip()
         if next_a and not any(c.get("id") == "action" for c in cards):
             cards.append(
                 {

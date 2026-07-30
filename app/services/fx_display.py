@@ -44,7 +44,7 @@ def _fetch_usd_rates() -> Optional[Dict[str, float]]:
     url = f"{FRANKFURTER_LATEST}?from=USD&to={TARGET_CCYS}"
     req = urllib.request.Request(url, headers={"User-Agent": "TradeVerse/2.0 (FX display)"})
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
         rates = payload.get("rates") or {}
         out: Dict[str, float] = {}
@@ -60,15 +60,34 @@ def _fetch_usd_rates() -> Optional[Dict[str, float]]:
         return None
 
 
+def _refresh_rates_bg() -> None:
+    """Background refresh so page renders never wait on Frankfurter."""
+    try:
+        fresh = _fetch_usd_rates()
+        if not fresh:
+            return
+        with _LOCK:
+            _CACHE["rates"] = _merge_fallback_rates(fresh)
+            _CACHE["ts"] = time.time()
+    except Exception:
+        pass
+
+
 def get_usd_rates_map() -> Dict[str, float]:
-    """Cached USD-based rates; stale cache kept on transient failures."""
+    """Cached USD-based rates; serve stale immediately and refresh in background."""
     now = time.time()
     with _LOCK:
         cached = _CACHE.get("rates")
         ts = float(_CACHE.get("ts") or 0)
-        if isinstance(cached, dict) and cached and now - ts < _CACHE_TTL_SEC:
+        if isinstance(cached, dict) and cached:
+            # Fresh enough — return without network
+            if now - ts < _CACHE_TTL_SEC:
+                return _merge_fallback_rates(dict(cached))
+            # Stale — return stale + kick refresh (non-blocking)
+            threading.Thread(target=_refresh_rates_bg, daemon=True).start()
             return _merge_fallback_rates(dict(cached))
 
+    # Cold start: short blocking fetch, then cache
     fresh = _fetch_usd_rates()
     with _LOCK:
         if fresh:

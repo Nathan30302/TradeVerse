@@ -1176,16 +1176,21 @@ def ai():
     AI Coach Dashboard
 
     Premium coaching built from the trader's real journal — not a generic chatbot.
+    Fast path: cached weekly/briefing, skip duplicate analyzers and write-on-read.
     """
     if not current_app.config.get('FEATURE_AI_BUDDY', True):
         flash('AI Coach is temporarily unavailable.', 'warning')
         return redirect(url_for('dashboard.index'))
 
-    analyzer = AIAnalyzer(current_user.id)
+    from app.services.ai_cache import (
+        get_cached_morning_briefing,
+        get_cached_weekly_review,
+        maybe_record_improvement_snapshot,
+    )
 
-    # Wrap every AI call so a data error never produces a 500
+    # One cached weekly review powers the page (no monthly/behavioral/voice re-fanout).
     try:
-        weekly_review = analyzer.get_weekly_review()
+        weekly_review = get_cached_weekly_review(current_user.id)
         weekly_review.setdefault('summary', '')
         weekly_review.setdefault('stats', _safe_ai_summary()['stats'])
         weekly_review.setdefault('setups', {})
@@ -1202,35 +1207,29 @@ def ai():
         current_app.logger.warning('AI Buddy get_weekly_review failed: %s', exc)
         weekly_review = _safe_ai_summary()
 
-    try:
-        monthly_review = analyzer.get_monthly_review()
-        monthly_review.setdefault('stats', _safe_monthly_review()['stats'])
-        monthly_review.setdefault('summary', '')
-        monthly_review.setdefault('direction', 'needs review')
-    except Exception as exc:
-        current_app.logger.warning('AI Buddy get_monthly_review failed: %s', exc)
-        monthly_review = _safe_monthly_review()
+    # Lightweight placeholders — heavy monthly/behavioral analyses are not needed for SSR.
+    monthly_review = _safe_monthly_review()
+    behavioral_insights = _safe_behavioral_insights()
 
     try:
-        behavioral_insights = analyzer.get_behavioral_insights()
-        behavioral_insights.setdefault('discipline_score', 0.0)
-        behavioral_insights.setdefault('consistency_score', 0.0)
-        behavioral_insights.setdefault('emotional_bias', 'No data')
-        behavioral_insights.setdefault('confidence_trend', None)
-        behavioral_insights.setdefault('risk_behavior', {'avg_rr': 0.0, 'high_risk_trades': 0})
-    except Exception as exc:
-        current_app.logger.warning('AI Buddy get_behavioral_insights failed: %s', exc)
-        behavioral_insights = _safe_behavioral_insights()
+        morning_briefing = get_cached_morning_briefing(
+            current_user.id, user_name=(current_user.username or '')
+        )
+    except Exception:
+        morning_briefing = {'lines': [], 'has_data': False}
 
+    # Voice / proactive lines from briefing or weekly summary (no second weekly analyzer pass).
+    voice_summary = ''
     try:
-        voice_review = analyzer.get_voice_review(user_name=(current_user.username or ''))
-        voice_summary = (voice_review.get('text') if isinstance(voice_review, dict) else '') or ''
-        if not isinstance(voice_summary, str):
-            voice_summary = ''
-        # Strip characters that would break the inline JS string
-        voice_summary = voice_summary.replace('"', "'").replace('\n', ' ').replace('\r', '')
-    except Exception as exc:
-        current_app.logger.warning('AI Buddy get_voice_summary failed: %s', exc)
+        lines = (morning_briefing or {}).get('lines') or []
+        if lines:
+            voice_summary = ' '.join(str(x) for x in lines[:3] if x)
+        if not voice_summary:
+            voice_summary = str(weekly_review.get('summary') or '').strip()
+        if not voice_summary:
+            voice_summary = 'AI Coach has no data to summarise yet. Log some trades to get started.'
+        voice_summary = voice_summary.replace('"', "'").replace('\n', ' ').replace('\r', '')[:800]
+    except Exception:
         voice_summary = 'AI Coach has no data to summarise yet. Log some trades to get started.'
 
     alerts = weekly_review.get('alerts', [])
@@ -1254,36 +1253,15 @@ def ai():
     except Exception:
         pinned_note = None
 
-    morning_briefing = {'lines': [], 'has_data': False}
     suggested_focus = ''
     try:
-        morning_briefing = analyzer.get_morning_briefing(user_name=(current_user.username or ''))
-        suggested_focus = analyzer.suggest_weekly_focus_rule()
+        recs = weekly_review.get('recommendations') or []
+        if recs:
+            suggested_focus = str(recs[0] or '').strip()
     except Exception:
-        pass
+        suggested_focus = ''
 
     has_ai_web = user_has_feature(current_user, 'ai_web')
-    last_trade_insight = ''
-    try:
-        last_trade_insight = analyzer.get_last_trade_insight()
-    except Exception:
-        pass
-
-    focus_compliance = {}
-    try:
-        from app.services.focus_compliance import measure_focus_compliance
-        focus_compliance = measure_focus_compliance(current_user, last_n=10)
-    except Exception:
-        focus_compliance = {}
-
-    coach_narrative = {}
-    try:
-        from app.services.ai_coach_context import get_coach_narrative
-        coach_narrative = get_coach_narrative(current_user)
-        if coach_narrative.get('suggested_focus') and not suggested_focus:
-            suggested_focus = coach_narrative.get('suggested_focus') or ''
-    except Exception:
-        coach_narrative = {}
 
     smart_cards = []
     try:
@@ -1294,23 +1272,37 @@ def ai():
 
     coach_memories = []
     try:
-        from app.services.coach_memory import recent_memories, record_improvement_snapshot
-        record_improvement_snapshot(current_user.id)
+        from app.services.coach_memory import recent_memories
+        maybe_record_improvement_snapshot(current_user.id)
         coach_memories = recent_memories(current_user.id, limit=5)
     except Exception:
         coach_memories = []
 
+    # Prefer performance score already computed inside smart cards; else one calculator call.
     performance_card = None
     try:
-        from app.services.performance_calculator import PerformanceCalculator
-        score_obj = PerformanceCalculator(current_user.id).calculate()
-        if score_obj and getattr(score_obj, 'overall_score', None) is not None:
-            performance_card = {
-                'overall': float(score_obj.overall_score or 0),
-                'grade': score_obj.grade or '—',
-                'discipline': getattr(score_obj, 'discipline_score', None),
-                'rule_compliance': getattr(score_obj, 'rule_compliance_score', None),
-            }
+        perf_card = next((c for c in smart_cards if c.get('id') == 'performance'), None)
+        if perf_card and perf_card.get('body'):
+            # body like "B · 72/100 this week. ..."
+            import re
+            m = re.search(r'([A-F][+-]?)\s*[·.]\s*(\d+(?:\.\d+)?)/100', str(perf_card.get('body') or ''))
+            if m:
+                performance_card = {
+                    'overall': float(m.group(2)),
+                    'grade': m.group(1),
+                    'discipline': None,
+                    'rule_compliance': None,
+                }
+        if performance_card is None:
+            from app.services.performance_calculator import PerformanceCalculator
+            score_obj = PerformanceCalculator(current_user.id).calculate()
+            if score_obj and getattr(score_obj, 'overall_score', None) is not None:
+                performance_card = {
+                    'overall': float(score_obj.overall_score or 0),
+                    'grade': score_obj.grade or '—',
+                    'discipline': getattr(score_obj, 'discipline_score', None),
+                    'rule_compliance': getattr(score_obj, 'rule_compliance_score', None),
+                }
     except Exception:
         performance_card = None
 
@@ -1362,9 +1354,9 @@ def ai():
                            has_neural_voice=has_neural_voice,
                            has_vision=has_vision,
                            proactive_line=proactive_line,
-                           last_trade_insight=last_trade_insight,
-                           focus_compliance=focus_compliance,
-                           coach_narrative=coach_narrative,
+                           last_trade_insight='',
+                           focus_compliance={},
+                           coach_narrative={},
                            smart_cards=smart_cards,
                            coach_memories=coach_memories,
                            performance_card=performance_card,
