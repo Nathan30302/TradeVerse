@@ -48,6 +48,13 @@
     var micStream = null;
     var micAnalyser = null;
     var micAudioCtx = null;
+    var waveMode = 'idle';
+    var waveSmoothed = [];
+    var neuralAnalyser = null;
+    var ttsAudioCtx = null;
+    var VOICE_RMS_ON = 0.048;
+    var VOICE_RMS_OFF = 0.032;
+    var voiceGateOpen = false;
 
     var tvCurrency = root.getAttribute('data-currency') || 'USD';
     var tvFx = parseFloat(root.getAttribute('data-fx') || '1') || 1;
@@ -200,6 +207,31 @@
         try { URL.revokeObjectURL(neuralAudio._tvUrl); } catch (e) {}
         neuralAudio = null;
       }
+      neuralAnalyser = null;
+    }
+
+    function connectNeuralWaveform(audio) {
+      if (!audio) return;
+      try {
+        var AC = global.AudioContext || global.webkitAudioContext;
+        if (!AC) return;
+        if (!ttsAudioCtx) ttsAudioCtx = new AC();
+        if (ttsAudioCtx.state === 'suspended') {
+          try { ttsAudioCtx.resume(); } catch (e) {}
+        }
+        if (!audio._tvSource) {
+          audio._tvSource = ttsAudioCtx.createMediaElementSource(audio);
+          var analyser = ttsAudioCtx.createAnalyser();
+          analyser.fftSize = 256;
+          analyser.smoothingTimeConstant = 0.55;
+          audio._tvSource.connect(analyser);
+          analyser.connect(ttsAudioCtx.destination);
+          audio._tvAnalyser = analyser;
+        }
+        neuralAnalyser = audio._tvAnalyser || null;
+      } catch (e) {
+        neuralAnalyser = null;
+      }
     }
 
     function speakNeural(text) {
@@ -230,6 +262,7 @@
             var audio = new Audio(url);
             audio._tvUrl = url;
             neuralAudio = audio;
+            connectNeuralWaveform(audio);
             audio.onended = audio.onerror = function () {
               isSpeaking = false;
               stopNeuralAudio();
@@ -293,7 +326,7 @@
       overlay.classList.toggle('is-open', !!open);
       overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
       if (!open) {
-        overlay.classList.remove('is-listening', 'is-thinking', 'is-speaking', 'is-error');
+        overlay.classList.remove('is-listening', 'is-thinking', 'is-speaking', 'is-error', 'is-voice-active');
         stopWaveform();
       }
     }
@@ -313,6 +346,11 @@
       if (state === 'listening' || state === 'thinking' || state === 'speaking' || state === 'error') {
         overlay.classList.add('is-' + state);
       }
+      waveMode = state || 'idle';
+      if (state !== 'listening') {
+        voiceGateOpen = false;
+        overlay.classList.remove('is-voice-active');
+      }
       if (label) {
         var map = {
           listening: 'Listening',
@@ -323,6 +361,68 @@
         };
         label.textContent = map[state] || 'Ready';
       }
+    }
+
+    function resetWaveBars() {
+      var bars = document.querySelectorAll('#tvTalkWave span');
+      bars.forEach(function (b) {
+        b.style.height = '12%';
+        b.style.opacity = '';
+      });
+      waveSmoothed = [];
+      for (var i = 0; i < bars.length; i++) waveSmoothed[i] = 0.12;
+      voiceGateOpen = false;
+      var overlay = document.getElementById('tvTalkOverlay');
+      if (overlay) overlay.classList.remove('is-voice-active');
+    }
+
+    function mirrorSpectrumLevels(freqData, barCount) {
+      var out = new Array(barCount);
+      var half = Math.floor(barCount / 2);
+      var usable = Math.max(8, Math.floor(freqData.length * 0.5));
+      var i;
+      for (i = 0; i < half; i++) {
+        var t = half <= 1 ? 0 : i / (half - 1);
+        var idx = Math.min(usable - 1, Math.floor(t * usable));
+        var v = (freqData[idx] || 0) / 255;
+        /* Bass toward center, highs toward edges */
+        out[half - 1 - i] = v;
+        out[half + (barCount % 2) + i] = v;
+      }
+      if (barCount % 2) out[half] = (freqData[0] || 0) / 255;
+      return out;
+    }
+
+    function applyBarHeights(bars, targets, active) {
+      var alpha = active ? 0.42 : 0.18;
+      var i;
+      for (i = 0; i < bars.length; i++) {
+        var target = Math.max(0.08, Math.min(1, targets[i] != null ? targets[i] : 0.12));
+        var prev = waveSmoothed[i] != null ? waveSmoothed[i] : 0.12;
+        var next = prev + (target - prev) * alpha;
+        waveSmoothed[i] = next;
+        bars[i].style.height = Math.round(10 + next * 90) + '%';
+      }
+    }
+
+    function idleBarTargets(bars, subtle) {
+      var t = Date.now() / 1000;
+      var out = [];
+      var amp = subtle ? 0.025 : 0.04;
+      var base = subtle ? 0.11 : 0.13;
+      for (var i = 0; i < bars.length; i++) {
+        out[i] = base + Math.sin(t * 1.1 + i * 0.38) * amp;
+      }
+      return out;
+    }
+
+    function computeRms(timeData) {
+      var sum = 0;
+      for (var i = 0; i < timeData.length; i++) {
+        var n = (timeData[i] - 128) / 128;
+        sum += n * n;
+      }
+      return Math.sqrt(sum / Math.max(1, timeData.length));
     }
 
     function stopWaveform() {
@@ -341,14 +441,77 @@
         micAudioCtx = null;
       }
       micAnalyser = null;
-      var bars = document.querySelectorAll('#tvTalkWave span');
-      bars.forEach(function (b) { b.style.height = ''; });
+      resetWaveBars();
     }
 
     function startWaveform() {
       stopWaveform();
       var bars = document.querySelectorAll('#tvTalkWave span');
-      if (!bars.length || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      if (!bars.length) return;
+      resetWaveBars();
+
+      var freqData = null;
+      var timeData = null;
+
+      function tick() {
+        if (!coachActive) return;
+        var overlay = document.getElementById('tvTalkOverlay');
+        var mode = waveMode;
+        var targets;
+        var active = false;
+
+        if (mode === 'listening' && micAnalyser) {
+          if (!freqData || freqData.length !== micAnalyser.frequencyBinCount) {
+            freqData = new Uint8Array(micAnalyser.frequencyBinCount);
+            timeData = new Uint8Array(micAnalyser.fftSize);
+          }
+          micAnalyser.getByteTimeDomainData(timeData);
+          micAnalyser.getByteFrequencyData(freqData);
+          var rms = computeRms(timeData);
+          if (voiceGateOpen) {
+            if (rms < VOICE_RMS_OFF) voiceGateOpen = false;
+          } else if (rms > VOICE_RMS_ON) {
+            voiceGateOpen = true;
+          }
+          if (overlay) overlay.classList.toggle('is-voice-active', voiceGateOpen);
+          if (voiceGateOpen) {
+            targets = mirrorSpectrumLevels(freqData, bars.length);
+            /* Scale with RMS so soft speech still moves, silence stays calm */
+            var boost = Math.min(1.35, 0.55 + rms * 8);
+            for (var i = 0; i < targets.length; i++) targets[i] *= boost;
+            active = true;
+          } else {
+            targets = idleBarTargets(bars, true);
+          }
+        } else if (mode === 'speaking' && neuralAnalyser) {
+          if (!freqData || freqData.length !== neuralAnalyser.frequencyBinCount) {
+            freqData = new Uint8Array(neuralAnalyser.frequencyBinCount);
+            timeData = new Uint8Array(neuralAnalyser.fftSize);
+          }
+          neuralAnalyser.getByteTimeDomainData(timeData);
+          neuralAnalyser.getByteFrequencyData(freqData);
+          var ttsRms = computeRms(timeData);
+          if (ttsRms > 0.02) {
+            targets = mirrorSpectrumLevels(freqData, bars.length);
+            active = true;
+          } else {
+            targets = idleBarTargets(bars, true);
+          }
+          if (overlay) overlay.classList.remove('is-voice-active');
+        } else {
+          /* thinking / speaking without neural / error — calm idle bars */
+          targets = idleBarTargets(bars, mode === 'thinking');
+          if (overlay) overlay.classList.remove('is-voice-active');
+          voiceGateOpen = false;
+        }
+
+        applyBarHeights(bars, targets, active);
+        waveRaf = requestAnimationFrame(tick);
+      }
+
+      waveRaf = requestAnimationFrame(tick);
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
       navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) {
         if (!coachActive) {
           stream.getTracks().forEach(function (t) { t.stop(); });
@@ -358,26 +521,16 @@
         var AC = global.AudioContext || global.webkitAudioContext;
         if (!AC) return;
         micAudioCtx = new AC();
+        if (micAudioCtx.state === 'suspended') {
+          try { micAudioCtx.resume(); } catch (e) {}
+        }
         var source = micAudioCtx.createMediaStreamSource(stream);
         micAnalyser = micAudioCtx.createAnalyser();
-        micAnalyser.fftSize = 64;
+        micAnalyser.fftSize = 256;
+        micAnalyser.smoothingTimeConstant = 0.65;
         source.connect(micAnalyser);
-        var data = new Uint8Array(micAnalyser.frequencyBinCount);
-
-        function tick() {
-          if (!micAnalyser || !coachActive) return;
-          micAnalyser.getByteFrequencyData(data);
-          var step = Math.max(1, Math.floor(data.length / bars.length));
-          for (var i = 0; i < bars.length; i++) {
-            var v = data[Math.min(data.length - 1, i * step)] || 0;
-            var h = 12 + Math.round((v / 255) * 88);
-            bars[i].style.height = h + '%';
-          }
-          waveRaf = requestAnimationFrame(tick);
-        }
-        tick();
       }).catch(function () {
-        /* CSS fallback animation still runs via .is-listening */
+        /* Bars stay calm/idle without mic — orb CSS still conveys state */
       });
     }
 
