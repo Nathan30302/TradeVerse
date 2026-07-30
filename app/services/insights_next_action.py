@@ -47,7 +47,7 @@ def build_insights_next_action(
             "body": "Set a weekly rule that limits size or skips this emotion for 5 sessions.",
             "cta_label": "Set weekly focus",
             "cta_url": url_for("dashboard.weekly_review"),
-            "secondary_label": "Open AI Buddy",
+            "secondary_label": "Open AI Coach",
             "secondary_url": url_for("dashboard.ai"),
         }
 

@@ -842,6 +842,14 @@ def view(trade_id):
                 post_close_coach = build_post_close_coach_card(current_user, trade)
             except Exception:
                 current_app.logger.debug('post_close_coach skipped', exc_info=True)
+
+        coach_grades = None
+        if trade.status == 'CLOSED':
+            try:
+                from app.services.trade_coach_grades import grade_trade
+                coach_grades = grade_trade(trade)
+            except Exception:
+                current_app.logger.debug('coach_grades skipped', exc_info=True)
         
         return render_template(
             'trade/view.html',
@@ -851,6 +859,7 @@ def view(trade_id):
             linked_plans=linked_plans,
             playbook_setup=playbook_setup,
             post_close_coach=post_close_coach,
+            coach_grades=coach_grades,
         )
 
     except HTTPException:

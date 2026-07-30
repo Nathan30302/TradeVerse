@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}AI Buddy - {{ app_name }}{% endblock %}
+{% block title %}AI Coach - {{ app_name }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -298,89 +298,154 @@
     font-size: 0.8125rem;
     border-radius: 10px;
   }
+
+  .tv-coach-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  @media (min-width: 768px) {
+    .tv-coach-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  .tv-coach-action {
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 16px;
+    background: rgba(15,23,42,0.04);
+    padding: 1rem 0.85rem;
+    text-align: center;
+    cursor: pointer;
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+    width: 100%;
+  }
+  body[data-theme="light"] .tv-coach-action { background: #fff; }
+  .tv-coach-action:hover {
+    transform: translateY(-2px);
+    border-color: rgba(99,102,241,0.55);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+  }
+  .tv-coach-action .ico {
+    font-size: 1.35rem;
+    margin-bottom: 0.35rem;
+    color: #6366f1;
+  }
+  .tv-coach-action .lbl { font-weight: 700; font-size: 0.92rem; display: block; }
+  .tv-coach-action .sub { font-size: 0.72rem; opacity: 0.7; }
+  .tv-smart-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+  @media (min-width: 768px) {
+    .tv-smart-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .tv-smart-card {
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(148,163,184,0.22);
+    background: rgba(15,23,42,0.035);
+  }
+  .tv-smart-card.tone-good { border-color: rgba(34,197,94,0.35); }
+  .tv-smart-card.tone-warn { border-color: rgba(245,158,11,0.4); }
+  .tv-smart-card.tone-danger { border-color: rgba(239,68,68,0.35); }
+  .tv-smart-card .t { font-weight: 700; font-size: 0.8rem; margin-bottom: 0.25rem; }
+  .tv-perf-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    background: rgba(99,102,241,0.12);
+    font-weight: 700;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="tv-cockpit">
-<div class="tv-page-hero">
+<div class="tv-page-hero mb-3">
     <div class="page-header">
         <div class="row align-items-center">
             <div class="col">
                 <h1 class="page-title mb-2">
-                    <i class="fas fa-chalkboard-user"></i> AI Buddy
+                    <i class="fas fa-chalkboard-user"></i> AI Coach
                 </h1>
-                <p class="page-subtitle mb-0">Private coach for your journal — calm reads, sharp fixes, one weekly focus.</p>
+                <p class="page-subtitle mb-0">Your journal-aware trading mentor — performance, psychology, and the next clear move.</p>
             </div>
             <div class="col-auto">
-                <div class="d-flex flex-wrap gap-2 justify-content-end">
-                    <button id="voiceBtn" class="btn btn-primary btn-lg">
-                        <i class="fas fa-play-circle"></i> Play Voice Review
-                    </button>
-                    <button id="voicePauseBtn" class="btn btn-outline-secondary btn-lg" type="button" title="Pause / resume">
-                        <i class="fas fa-pause"></i>
-                    </button>
-                    <button id="voiceStopBtn" class="btn btn-outline-danger btn-lg" type="button" title="Stop">
-                        <i class="fas fa-stop"></i>
-                    </button>
+                {% if performance_card %}
+                <div class="tv-perf-pill" title="Weekly performance score">
+                    <span>{{ performance_card.grade }}</span>
+                    <span class="small fw-normal tv-muted">{{ '%.0f'|format(performance_card.overall) }}/100</span>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
-
-<div class="tv-surface soft p-3 p-md-4 mb-4">
-    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
-        <div class="d-flex align-items-start gap-3">
-            <div style="width:44px;height:44px;border-radius:14px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
-                <i class="fas fa-wand-magic-sparkles text-primary"></i>
-            </div>
-            <div class="flex-grow-1">
-                <div class="tv-section-title mb-1">Coach mode</div>
-                <div class="small tv-muted">
-                    Best results come from consistent risk (SL or risk $), strategy tags, and short post-trade notes.
-                    I’ll turn patterns into one next-week rule you can actually follow.
-                </div>
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                    <span class="tv-chip"><i class="fas fa-bullseye"></i> Weekly focus</span>
-                    <span class="tv-chip success"><i class="fas fa-check-circle"></i> What you did well</span>
-                    <span class="tv-chip warning"><i class="fas fa-triangle-exclamation"></i> What’s costing you</span>
-                    <span class="tv-chip danger"><i class="fas fa-ban"></i> One rule for next week</span>
-                </div>
-            </div>
-        </div>
-        <div class="d-flex flex-column flex-sm-row gap-2">
-            <a class="btn btn-outline-primary" href="{{ url_for('dashboard.analytics') }}"><i class="fas fa-chart-bar me-1"></i> Open Analytics</a>
-            <a class="btn btn-outline-secondary" href="{{ url_for('planner.index') }}"><i class="fas fa-clipboard-list me-1"></i> Open Planner</a>
-            <a class="btn btn-primary" href="{{ url_for('trade.add') }}"><i class="fas fa-plus-circle me-1"></i> Add Trade</a>
-        </div>
-    </div>
-</div>
-
-
 
 <div id="ai-page-root"
      data-query-url="{{ url_for('dashboard.ai_query') }}"
      data-trade-doctor-url="{{ url_for('dashboard.trade_doctor_api') }}"
      data-pin-url="{{ url_for('dashboard.pin_ai_note_json') }}"
      data-focus-url="{{ url_for('dashboard.apply_weekly_focus_json') }}"
+     data-briefing-url="{{ url_for('dashboard.ai_briefing_api') }}"
+     data-speak-url="{{ url_for('api_voice.speak') }}"
+     data-voices-url="{{ url_for('api_voice.voices') }}"
+     data-cards-url="{{ url_for('dashboard.ai_smart_cards_api') }}"
      data-voice="{{ (voice_summary or '') | e }}"
      data-username="{{ (current_user.username or '') | e }}"
      data-suggested-focus="{{ (suggested_weekly_focus or '') | e }}"
+     data-neural="{{ '1' if has_neural_voice else '0' }}"
      data-currency="{{ (chart_currency_code or current_user.preferred_currency or 'USD')|e }}"
      data-fx="{{ fx_usd_to_preferred|default(1.0) }}">
-<ul class="nav nav-pills tv-ai-tabs mb-4 gap-2" id="aiBuddyTabs" role="tablist">
-    <li class="nav-item"><button type="button" class="nav-link active" data-ai-tab="today">Today</button></li>
-    <li class="nav-item"><button type="button" class="nav-link" data-ai-tab="review">Review</button></li>
-    <li class="nav-item"><button type="button" class="nav-link" data-ai-tab="setup">Coach setup</button></li>
-</ul>
 
-<div id="ai-section-today" class="ai-tab-panel">
-{# ------------------------------------------------------------------ #}
+{# Four primary actions #}
+<div class="tv-coach-actions mb-4">
+    <button type="button" class="tv-coach-action" id="coachActionTalk">
+        <div class="ico"><i class="fas fa-microphone"></i></div>
+        <span class="lbl">Talk to Coach</span>
+        <span class="sub">Voice conversation</span>
+    </button>
+    <button type="button" class="tv-coach-action" id="coachActionToday">
+        <div class="ico"><i class="fas fa-sun"></i></div>
+        <span class="lbl">Today’s Review</span>
+        <span class="sub">Daily performance brief</span>
+    </button>
+    <button type="button" class="tv-coach-action" id="coachActionLeaks">
+        <div class="ico"><i class="fas fa-search"></i></div>
+        <span class="lbl">Find My Leaks</span>
+        <span class="sub">Pattern diagnosis</span>
+    </button>
+    <button type="button" class="tv-coach-action" id="coachActionAsk">
+        <div class="ico"><i class="fas fa-comments"></i></div>
+        <span class="lbl">Ask the Coach</span>
+        <span class="sub">Type a question</span>
+    </button>
+</div>
+
+{% if smart_cards %}
+<div class="tv-smart-cards mb-4" id="aiSmartCards">
+    {% for c in smart_cards %}
+    <div class="tv-smart-card tone-{{ c.tone or 'neutral' }}">
+        <div class="t">{{ c.title }}</div>
+        <div class="small">{{ c.body }}</div>
+        {% if c.action and c.action.type == 'leaks' %}
+        <button type="button" class="btn btn-sm btn-outline-primary mt-2 tv-card-leaks">{{ c.action.label }}</button>
+        {% elif c.action and c.action.type == 'ask' %}
+        <button type="button" class="btn btn-sm btn-outline-primary mt-2 tv-card-ask">{{ c.action.label }}</button>
+        {% elif c.action and c.action.href %}
+        <a class="btn btn-sm btn-outline-secondary mt-2" href="{{ c.action.href }}">{{ c.action.label }}</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# Chat canvas #}
 <div id="ai-chat-card" class="card border-0 mb-4 tv-surface tv-hud-panel">
     <div class="card-header bg-primary text-white">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <h5 class="mb-0"><i class="fas fa-comments"></i> Talk to AI Buddy</h5>
+            <h5 class="mb-0"><i class="fas fa-comments"></i> Coach</h5>
             <div class="small" id="aiDataBasis" style="opacity:.9;">
                 <span class="badge bg-light text-dark">Last 7d: <span id="aiBasisTrades">—</span> trades</span>
                 <span class="badge bg-light text-dark">WR: <span id="aiBasisWR">—</span></span>
@@ -389,26 +454,20 @@
         </div>
     </div>
     <div class="card-body tv-ai-chat-shell">
-        <div id="aiCoachStatus" class="mb-2 tv-muted" role="status" aria-live="polite">Type a question, or tap Talk to speak with your coach.</div>
-
+        <div id="aiCoachStatus" class="mb-2 tv-muted" role="status" aria-live="polite">Pick an action above, or type a question below.</div>
         <div id="aiChat" class="tv-ai-chat-thread flex-grow-1">
             <div id="aiEmptyHints" class="tv-panel mb-3">
-                <div class="small tv-muted mb-2">Try:</div>
+                <div class="small tv-muted mb-2">Try asking:</div>
                 <div class="d-flex flex-wrap gap-2" id="aiQuickChips">
                     <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my biggest performance leak this week?">Biggest leak</button>
                     <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What should my one rule be next week?">One rule</button>
                     <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my best strategy and why?">Best strategy</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="Explain risk:reward and how to improve it.">Risk:Reward</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="tradeDoctorBtn">
-                        <i class="fas fa-stethoscope"></i> Trade Doctor
-                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="tradeDoctorBtn"><i class="fas fa-stethoscope"></i> Find leaks</button>
                 </div>
-                <div class="mt-3 small tv-muted"><em>Ask about your win rate, leaks, best setups — or a general trading question.</em></div>
             </div>
             <div id="aiChatLog"></div>
             <div class="mt-3 d-flex flex-wrap gap-2" id="aiFollowUps"></div>
         </div>
-
         <div class="tv-ai-composer">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
                 <div class="form-check form-switch small mb-0">
@@ -418,521 +477,84 @@
                 <div class="d-flex align-items-center gap-2 small">
                     <label class="tv-muted mb-0" for="aiVoiceSelectComposer">Voice</label>
                     <select id="aiVoiceSelectComposer" class="form-select form-select-sm" style="width:auto;max-width:11rem;" title="Coach speaking voice"></select>
-                    <button id="aiClearBtn" type="button" class="btn btn-sm btn-outline-secondary" title="Clear this chat">
-                        <i class="fas fa-eraser"></i>
-                    </button>
+                    <button id="aiClearBtn" type="button" class="btn btn-sm btn-outline-secondary" title="Clear this chat"><i class="fas fa-eraser"></i></button>
                 </div>
             </div>
             <div class="tv-ai-composer-row">
-                <textarea id="aiQuestion"
-                       class="form-control"
-                       rows="1"
-                       placeholder="Message AI Buddy…"
-                       autocomplete="off"></textarea>
+                <textarea id="aiQuestion" class="form-control" rows="1" placeholder="Message your coach…" autocomplete="off"></textarea>
                 <div class="tv-ai-composer-actions">
-                    <button id="coachTalkBtn" type="button" class="btn btn-outline-primary" title="Talk mode — speak, pause, get an answer">
-                        <i class="fas fa-microphone"></i>
-                    </button>
-                    <button id="aiSubmitBtn" type="button" class="btn btn-primary" title="Send">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <button id="coachTalkBtn" type="button" class="btn btn-outline-primary" title="Talk mode"><i class="fas fa-microphone"></i></button>
+                    <button id="aiSubmitBtn" type="button" class="btn btn-primary" title="Send"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
-            <button id="coachStopBtn" type="button" class="btn btn-sm btn-outline-danger mt-2 d-none w-100">
-                <i class="fas fa-stop"></i> End Talk mode
-            </button>
+            <button id="coachStopBtn" type="button" class="btn btn-sm btn-outline-danger mt-2 d-none w-100"><i class="fas fa-stop"></i> End Talk mode</button>
         </div>
     </div>
 </div>
 
-
-{% set cn = coach_narrative or {} %}
-{% if cn and cn.summary %}
-<div class="tv-surface soft p-3 p-md-4 mb-4 tv-hud-panel">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-        <div>
-            <div class="tv-section-title mb-1"><i class="fas fa-compass me-2 text-primary"></i> This week’s read</div>
-            <p class="small mb-0" style="line-height:1.5;">{{ cn.summary }}</p>
-        </div>
-        {% if cn.source %}<span class="badge bg-secondary">{{ cn.source|replace('_', ' ') }}</span>{% endif %}
-    </div>
-    <div class="row g-2 small mb-3">
-        <div class="col-md-4"><span class="text-muted">Leak:</span> <strong>{{ cn.leak }}</strong></div>
-        <div class="col-md-4"><span class="text-muted">Strength:</span> <strong>{{ cn.strength }}</strong></div>
-        <div class="col-md-4"><span class="text-muted">Do this:</span> <strong>{{ cn.next_action }}</strong></div>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-        {% if cn.suggested_focus %}
-        <button type="button" class="btn btn-sm btn-primary" id="narrativeFocusBtn" data-rule="{{ cn.suggested_focus|e }}">Use as weekly focus</button>
-        {% endif %}
-        {% if cn.lab_prompt %}
-        <a class="btn btn-sm btn-outline-secondary"
-           href="{{ url_for('lab.index', description=cn.lab_prompt, mode='journal') }}&from=ai">
-            <i class="fas fa-flask me-1"></i> Stress-test in Lab
-        </a>
-        {% endif %}
-        <button type="button" class="btn btn-sm btn-outline-primary" id="narrativeDoctorBtn">Run Trade Doctor</button>
-    </div>
-</div>
-{% endif %}
-
-{% if not (morning_briefing.has_data if morning_briefing else False) and not (cn.has_data if cn else False) %}
-<div class="tv-surface soft p-3 p-md-4 mb-4 border border-primary border-opacity-25" id="aiFirstWin">
-    <div class="tv-section-title mb-2"><i class="fas fa-rocket me-2 text-primary"></i> 10-minute first win</div>
-    <p class="small tv-muted mb-3">Get a real Trade Doctor diagnosis even before you have a big sample — then lock one rule.</p>
-    <ol class="small mb-3 ps-3">
-        <li class="mb-1"><strong>Seed data</strong> — load 3 sample closed trades (or log your own).</li>
-        <li class="mb-1"><strong>Diagnose</strong> — run Trade Doctor for your #1 leak.</li>
-        <li class="mb-1"><strong>Lock a rule</strong> — set weekly focus and track adherence.</li>
-    </ol>
-    <div class="d-flex flex-wrap gap-2">
-        <form method="POST" action="{{ url_for('dashboard.getting_started_sample_data') }}" class="d-inline">
+{# Coach settings (secondary) #}
+<details class="tv-surface soft p-3 p-md-4 mb-4">
+    <summary class="fw-semibold" style="cursor:pointer;">Coach settings & weekly focus</summary>
+    <div class="mt-3">
+        <p class="small tv-muted mb-3">One sentence I’ll hold you to when coaching.</p>
+        <form method="POST" action="{{ url_for('dashboard.save_weekly_focus') }}" class="row g-2 align-items-end mb-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="next" value="{{ url_for('dashboard.ai') }}">
-            <button type="submit" class="btn btn-sm btn-primary">1 · Load sample trades</button>
+            <div class="col-md-10">
+                <input class="form-control" id="weekly_focus_ai" name="weekly_focus" maxlength="4000"
+                       value="{{ weekly_focus_rule or '' }}"
+                       placeholder="e.g. Max 2 trades per day; stop after −1R" autocomplete="off">
+            </div>
+            <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Save</button></div>
         </form>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="firstWinDoctorBtn">2 · Run Trade Doctor</button>
-        <a href="{{ url_for('trade.add') }}" class="btn btn-sm btn-outline-secondary">Or log a real trade</a>
-    </div>
-</div>
-{% endif %}
-
-<div class="tv-surface soft p-3 p-md-4 mb-4 tv-hud-panel">
-    <div class="tv-section-title mb-2"><i class="fas fa-sun me-2 text-warning"></i> Morning briefing</div>
-    {% for line in (morning_briefing.lines or []) %}
-    <div class="tv-morning-line small">{{ line }}</div>
-    {% else %}
-    <p class="small tv-muted mb-0">Log closed trades to unlock a personalized briefing.</p>
-    {% endfor %}
-    {% if last_trade_insight %}
-    <p class="mt-3 pt-3 border-top small mb-0"><span class="text-muted">Latest trade:</span> {{ last_trade_insight }}</p>
-    {% endif %}
-    {% if has_ai_web %}<p class="small tv-muted mt-2 mb-0"><i class="fas fa-sparkles"></i> Pro web coach is on — including personal journal questions.</p>{% endif %}
-</div>
-{% if focus_compliance and focus_compliance.has_focus %}
-<div class="tv-surface soft p-3 p-md-4 mb-4 tv-hud-panel" id="aiFocusCompliance">
-    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
-        <div>
-            <div class="tv-section-title mb-1"><i class="fas fa-bullseye me-2 text-success"></i> Focus adherence</div>
-            <div class="fw-semibold mb-1">{{ focus_compliance.label }}</div>
-            <p class="small tv-muted mb-1">{{ focus_compliance.detail }}</p>
-            {% if weekly_focus_rule %}
-            <p class="small mb-0"><span class="text-muted">Rule:</span> {{ weekly_focus_rule }}</p>
-            {% endif %}
+        {% if suggested_weekly_focus %}
+        <div class="mb-3" id="aiSuggestedFocus">
+            <div class="small fw-semibold mb-1">Suggested focus</div>
+            <div class="small" id="aiSuggestedFocusText">{{ suggested_weekly_focus }}</div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="useSuggestedFocusBtn">Use this rule</button>
         </div>
-        {% if focus_compliance.rate is not none %}
-        <div class="text-center px-3 py-2 rounded-3" style="background: rgba(20,184,166,0.12); min-width: 5.5rem;">
-            <div class="fs-4 fw-bold" style="color:#14b8a6;">{{ focus_compliance.rate }}%</div>
-            <div class="small text-muted">{{ focus_compliance.followed }}/{{ focus_compliance.sample_size }}</div>
+        {% else %}
+        <div class="d-none" id="aiSuggestedFocus"><div class="small" id="aiSuggestedFocusText"></div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="useSuggestedFocusBtn">Use this rule</button>
         </div>
         {% endif %}
-    </div>
-</div>
-{% endif %}
+        <button type="button" class="btn btn-sm btn-outline-secondary mb-3" id="suggestFocusBtn">Suggest again</button>
 
-<div class="tv-surface soft p-3 p-md-4 mb-4 {% if not suggested_weekly_focus %}d-none{% endif %}" id="aiSuggestedFocus">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <div>
-            <div class="fw-semibold mb-1">Suggested weekly focus</div>
-            <div class="small" id="aiSuggestedFocusText">{{ suggested_weekly_focus or '' }}</div>
-        </div>
-        <div class="d-flex gap-2">
-            <button type="button" class="btn btn-sm btn-primary" id="useSuggestedFocusBtn">Use this rule</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="suggestFocusBtn">Suggest again</button>
-        </div>
-    </div>
-</div>
-
-
-{# ------------------------------------------------------------------ #}
-{# Talk to AI Buddy — chat-first + Talk mode                           #}
-
-
-</div>
-
-<div id="ai-section-setup" class="ai-tab-panel d-none">
-<div class="tv-surface soft p-3 p-md-4 mb-4">
-    <div class="tv-section-title mb-2"><i class="fas fa-bullseye me-2 text-primary"></i>Your weekly focus</div>
-    <p class="small tv-muted mb-3">One sentence I’ll hold you to when coaching (review weekly).</p>
-    <form method="POST" action="{{ url_for('dashboard.save_weekly_focus') }}" class="row g-2 align-items-end">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="next" value="{{ url_for('dashboard.ai') }}">
-        <div class="col-md-10">
-            <label class="form-label small mb-1" for="weekly_focus_ai">Rule for this week</label>
-            <input class="form-control" id="weekly_focus_ai" name="weekly_focus" maxlength="4000"
-                   value="{{ weekly_focus_rule or '' }}"
-                   placeholder="e.g. Max 2 trades per day; stop after −1R"
-                   autocomplete="off">
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100">Save</button>
-        </div>
-    </form>
-</div>
-
-{# ------------------------------------------------------------------ #}
-{# Saved coaching note (pinned)                                        #}
-{# ------------------------------------------------------------------ #}
-<div class="card border-0 mb-4 tv-surface tv-hud-panel">
-    <div class="card-header bg-secondary text-white d-flex align-items-center justify-content-between">
-        <h5 class="mb-0"><i class="fas fa-thumbtack"></i> Saved coaching note</h5>
-        <span class="small opacity-75">Pinned to your dashboard</span>
-    </div>
-    <div class="card-body">
-        {% if pinned_note %}
-            <div class="mb-2 small text-muted">Current pinned rule</div>
-            <div class="fw-semibold mb-3">{{ pinned_note.pinned_rule }}</div>
-            {% set items = pinned_note.checklist_items() %}
-            {% if items %}
-            <div class="mb-2 small text-muted">Checklist</div>
-            <ul class="ps-3">
-                {% for it in items[:12] %}
-                <li class="small">{{ it }}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-            <form method="POST" action="{{ url_for('dashboard.clear_ai_note') }}" class="mt-3">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="next" value="{{ url_for('dashboard.ai') }}">
-                <button class="btn btn-outline-danger btn-sm" type="submit"><i class="fas fa-trash"></i> Clear pinned note</button>
-            </form>
-            <hr class="my-4">
+        <h6 class="mt-3">Pinned coaching note</h6>
+        {% if pinned_note and pinned_note.pinned_rule %}
+        <p class="small mb-2">{{ pinned_note.pinned_rule }}</p>
         {% endif %}
-
-        <div class="small tv-muted mb-2">Save a pinned rule + checklist (AI Buddy will coach you against it).</div>
-        <form method="POST" action="{{ url_for('dashboard.save_ai_note') }}" class="row g-2">
+        <form method="POST" action="{{ url_for('dashboard.save_ai_note') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="next" value="{{ url_for('dashboard.ai') }}">
             <input type="hidden" name="source" value="manual">
-            <div class="col-12">
-                <label class="form-label fw-bold small" for="pinned_rule">Pinned rule</label>
-                <input class="form-control" id="pinned_rule" name="pinned_rule" maxlength="4000"
-                       placeholder="Example: Stop after −2R or 2 losses; only A+ setups">
+            <div class="mb-2">
+                <textarea class="form-control" name="pinned_rule" rows="2" placeholder="Pinned rule">{{ pinned_note.pinned_rule if pinned_note else '' }}</textarea>
             </div>
-            <div class="col-12">
-                <label class="form-label fw-bold small" for="checklist_text">Checklist (one per line)</label>
-                <textarea class="form-control" id="checklist_text" name="checklist_text" rows="4"
-                          placeholder="Setup matches playbook\nSL is placed and sized\nEntry at level, not chasing\nNews checked\nPlan written in 1 sentence"></textarea>
+            <div class="mb-2">
+                <textarea class="form-control" name="checklist_text" rows="3" placeholder="Checklist (one item per line)">{{ pinned_note.checklist_text if pinned_note else '' }}</textarea>
             </div>
-            <div class="col-12 d-flex justify-content-end">
-                <button class="btn btn-secondary" type="submit"><i class="fas fa-save"></i> Save pinned note</button>
-            </div>
+            <button type="submit" class="btn btn-sm btn-primary">Save note</button>
         </form>
-    </div>
-</div>
-
-{% set sub = current_user.effective_subscription() %}
-{% if not has_ai_web %}
-<div class="card tv-surface soft mb-4" style="border-left: 4px solid #6366f1;">
-    <div class="card-body d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
-        <div>
-            <div class="fw-semibold mb-1"><i class="fas fa-lock me-2 text-primary"></i>Pro Plus unlocks the web coach (OpenAI)</div>
-            <div class="small text-muted">
-                Upgrade for conversational coaching with your journal context. The local coach remains on all plans.
-            </div>
-        </div>
-        <a class="btn btn-primary btn-sm" href="{{ url_for('main.pricing') }}">
-            Upgrade to Pro Plus
-        </a>
-    </div>
-</div>
-{% endif %}
-
-</div>
-
-{# Resolve all template variables once, safely, before rendering HTML #}
-{# ------------------------------------------------------------------ #}
-{% set weekly_stats        = (weekly_review.get('stats')           if weekly_review else {}) or {} %}
-{% set weekly_setups       = (weekly_review.get('setups')          if weekly_review else {}) or {} %}
-{% set weekly_alerts       = (weekly_review.get('alerts')          if weekly_review else []) or [] %}
-{% set weekly_strengths    = (weekly_review.get('strengths')       if weekly_review else []) or [] %}
-{% set weekly_weaknesses   = (weekly_review.get('weaknesses')      if weekly_review else []) or [] %}
-{% set weekly_recs         = (weekly_review.get('recommendations') if weekly_review else []) or [] %}
-{% set weekly_summary_text = (weekly_review.get('summary')         if weekly_review else '') or 'Quiet so far — close a few trades and I’ll give you a clear read.' %}
-
-{% set best_strategy   = weekly_setups.get('best_strategy')  if weekly_setups else none %}
-{% set worst_strategy  = weekly_setups.get('worst_strategy') if weekly_setups else none %}
-{% set best_instrument = weekly_setups.get('best_instrument') if weekly_setups else none %}
-
-{% set monthly_stats     = (monthly_review.get('stats')     if monthly_review else {}) or {} %}
-{% set monthly_summary   = (monthly_review.get('summary')   if monthly_review else '') or 'No monthly data available yet.' %}
-{% set monthly_direction = (monthly_review.get('direction') if monthly_review else '') or 'needs review' %}
-
-{% set bi      = behavioral_insights or {} %}
-{% set bi_risk = bi.get('risk_behavior') or {} %}
-
-<div id="ai-section-review" class="ai-tab-panel d-none">
-{# ------------------------------------------------------------------ #}
-{# Weekly Review + Smart Alerts                                        #}
-{# ------------------------------------------------------------------ #}
-<div class="row g-4 mb-4">
-
-    <div class="col-lg-6">
-        <div class="card border-0 h-100 tv-surface tv-hud-panel">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-calendar-week"></i> Weekly Coach Brief</h5>
-                <div class="small opacity-75 mt-1">A fast read + a single fix to carry into next week.</div>
-            </div>
-            <div class="card-body">
-                <p class="mb-3">{{ weekly_summary_text }}</p>
-
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="tv-kpi">
-                            <div class="label">Trades</div>
-                            <div class="value">{{ weekly_stats.get('total_trades', 0) }}</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="tv-kpi">
-                            <div class="label">Win rate</div>
-                            <div class="value">{{ (weekly_stats.get('win_rate', 0) | float) | round(1) }}%</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="tv-kpi">
-                            <div class="label">Net P/L</div>
-                            <div class="value">{{ (weekly_stats.get('total_pnl', 0) | default(0)) | currency(current_user.preferred_currency) }}</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="tv-kpi">
-                            <div class="label">Avg R:R</div>
-                            <div class="value">{{ (weekly_stats.get('avg_rr', 0) | float) | round(2) }}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="small tv-muted mt-3">
-                    Data basis: last 7 days, {{ weekly_stats.get('total_trades', 0) }} trades logged.
-                </div>
-
-                {% if weekly_strengths %}
-                <div class="mt-3">
-                    <h6 class="text-success"><i class="fas fa-thumbs-up"></i> Strengths</h6>
-                    <ul class="mb-0 ps-3">
-                        {% for s in weekly_strengths %}
-                        <li class="small">{{ s }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                {% if weekly_review.get('has_data') and weekly_weaknesses %}
-                <div class="mt-3">
-                    <h6 class="text-warning"><i class="fas fa-exclamation-triangle"></i> Areas to Improve</h6>
-                    <ul class="mb-0 ps-3">
-                        {% for w in weekly_weaknesses %}
-                        <li class="small">{{ w }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                {% if weekly_review.get('has_data') and weekly_recs %}
-                <div class="mt-3">
-                    <h6 class="text-info"><i class="fas fa-lightbulb"></i> Recommendations</h6>
-                    <ul class="mb-0 ps-3">
-                        {% for r in weekly_recs %}
-                        <li class="small">{{ r }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card border-0 h-100 tv-surface tv-hud-panel">
-            <div class="card-header bg-gradient-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-bell"></i> Smart Alerts</h5>
-            </div>
-            <div class="card-body">
-                {% if weekly_alerts %}
-                    <ul class="list-group list-group-flush">
-                        {% for alert_item in weekly_alerts %}
-                        <li class="list-group-item d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="fw-semibold">{{ alert_item }}</div>
-                                <small class="text-muted">Spotted from your journal.</small>
-                            </div>
-                            <span class="badge bg-danger rounded-pill">Alert</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="tv-empty-well py-5">
-                        <div class="tv-empty-icon mx-auto"><i class="fas fa-check-circle text-success"></i></div>
-                        <p class="mb-0 fw-semibold">No urgent alerts</p>
-                        <p class="small tv-muted mb-0 mt-2">Keep logging plans and trades — patterns show up early when the trail is complete.</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-{# ------------------------------------------------------------------ #}
-{# Setup Breakdown (only rendered when data exists)                   #}
-{# ------------------------------------------------------------------ #}
-{% if best_strategy or worst_strategy or best_instrument %}
-<div class="row g-4 mb-4">
-
-    {% if best_strategy and best_strategy is mapping %}
-    <div class="col-md-4">
-        <div class="card border-0 h-100 tv-surface soft">
-            <div class="card-body text-center">
-                <i class="fas fa-trophy fa-2x text-warning mb-2"></i>
-                <h6 class="text-muted">Best Strategy</h6>
-                <div class="h5 mb-1">{{ best_strategy.get('name') or '&mdash;' }}</div>
-                <small class="text-success">
-                    {{ (best_strategy.get('win_rate', 0) | float) | round(0) }}% win rate
-                    &bull; {{ best_strategy.get('total_trades', 0) }} trades
-                </small>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if worst_strategy and worst_strategy is mapping %}
-    <div class="col-md-4">
-        <div class="card border-0 h-100 tv-surface soft">
-            <div class="card-body text-center">
-                <i class="fas fa-skull-crossbones fa-2x text-danger mb-2"></i>
-                <h6 class="text-muted">Weakest Strategy</h6>
-                <div class="h5 mb-1">{{ worst_strategy.get('name') or '&mdash;' }}</div>
-                <small class="text-danger">
-                    {{ (worst_strategy.get('win_rate', 0) | float) | round(0) }}% win rate
-                    &bull; {{ worst_strategy.get('total_trades', 0) }} trades
-                </small>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if best_instrument and best_instrument is mapping %}
-    <div class="col-md-4">
-        <div class="card border-0 h-100 tv-surface soft">
-            <div class="card-body text-center">
-                <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
-                <h6 class="text-muted">Best Instrument</h6>
-                <div class="h5 mb-1">{{ best_instrument.get('name') or '&mdash;' }}</div>
-                <small class="text-success">
-                    {{ (best_instrument.get('win_rate', 0) | float) | round(0) }}% win rate
-                    &bull; {{ best_instrument.get('total_trades', 0) }} trades
-                </small>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-</div>
-{% endif %}
-
-{# ------------------------------------------------------------------ #}
-{# Monthly Review                                                      #}
-{# ------------------------------------------------------------------ #}
-<div class="card border-0 mb-4 tv-surface tv-hud-panel">
-    <div class="card-header bg-secondary text-white">
-        <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Monthly AI Buddy Review</h5>
-    </div>
-    <div class="card-body">
-        <p class="mb-3">{{ monthly_summary }}</p>
-        <div class="row g-3">
-            <div class="col-md-3 col-6">
-                <div class="tv-kpi text-center">
-                    <div class="label">Trades</div>
-                    <div class="value" style="font-size:1.35rem">{{ monthly_stats.get('total_trades', 0) }}</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="tv-kpi text-center">
-                    <div class="label">Win rate</div>
-                    <div class="value" style="font-size:1.35rem">{{ (monthly_stats.get('win_rate', 0) | float) | round(1) }}%</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="tv-kpi text-center">
-                    <div class="label">Net P/L</div>
-                    <div class="value" style="font-size:1.15rem">{{ (monthly_stats.get('total_pnl', 0) | default(0)) | currency(current_user.preferred_currency) }}</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="tv-kpi text-center">
-                    <div class="label">Direction</div>
-                    <div class="value" style="font-size:1rem">
-                        <span class="badge {% if monthly_direction == 'improving' %}bg-success{% else %}bg-warning text-dark{% endif %}">
-                            {{ monthly_direction | title }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{# ------------------------------------------------------------------ #}
-{# Behavioural Insights                                                #}
-{# ------------------------------------------------------------------ #}
-<div class="card border-0 mb-4 tv-surface tv-hud-panel">
-    <div class="card-header bg-dark text-white border-0">
-        <h5 class="mb-0"><i class="fas fa-brain"></i> Behavioural Insights</h5>
-    </div>
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-3 col-6">
-                <div class="tv-kpi text-center">
-                    <div class="label">Discipline</div>
-                    <div class="value" style="font-size:1.35rem">{{ bi.get('discipline_score', 0) | float | round(1) }}</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="tv-kpi text-center">
-                    <div class="label">Consistency</div>
-                    <div class="value" style="font-size:1.35rem">{{ bi.get('consistency_score', 0) | float | round(1) }}</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="tv-kpi text-center">
-                    <div class="label">Avg R:R</div>
-                    <div class="value" style="font-size:1.35rem">{{ bi_risk.get('avg_rr', 0) | float | round(2) }}</div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="tv-kpi text-center">
-                    <div class="label">High-risk</div>
-                    {% set hrt = bi_risk.get('high_risk_trades', 0) %}
-                    <div class="value {% if hrt > 0 %}text-danger{% endif %}" style="font-size:1.35rem">{{ hrt }}</div>
-                </div>
-            </div>
-        </div>
-
-        {% set emotional_bias = bi.get('emotional_bias') %}
-        {% if emotional_bias %}
-        <div class="mt-3">
-            <small class="text-muted">Emotional Activity:</small>
-            <span class="ms-2 fw-semibold">{{ emotional_bias }}</span>
+        {% if not has_ai_web %}
+        <div class="alert alert-light border mt-3 small mb-0">
+            Upgrade to Pro Plus for neural voice + web coach with full journal context.
         </div>
         {% endif %}
-
-        {% set conf = bi.get('confidence_trend') %}
-        {% if conf is not none and conf != '' %}
-        <div class="mt-1">
-            <small class="text-muted">Average Confidence Level:</small>
-            <span class="ms-2 fw-semibold">{{ conf | round(1) }} / 10</span>
-        </div>
+        {% if coach_memories %}
+        <h6 class="mt-4">Recent coaching memory</h6>
+        <ul class="small mb-0 ps-3">
+            {% for m in coach_memories %}
+            <li class="mb-1"><strong>{{ m.title }}</strong> — {{ m.body[:160] }}{% if m.body|length > 160 %}…{% endif %}</li>
+            {% endfor %}
+        </ul>
         {% endif %}
     </div>
-</div>
-</div>
-</div>
+</details>
 
-{# ------------------------------------------------------------------ #}
-{% endblock %}
+</div>{# ai-page-root #}
 
-{% block extra_js %}
-{# Talk mode overlay — waveform + live transcript #}
+{# Talk mode overlay #}
 <div id="tvTalkOverlay" class="tv-talk-overlay" aria-hidden="true">
     <div class="tv-talk-panel" role="dialog" aria-labelledby="tvTalkState">
         <div id="tvTalkState" class="tv-talk-state">Listening</div>
@@ -946,11 +568,13 @@
             <label for="aiVoiceSelect">Voice</label>
             <select id="aiVoiceSelect" class="form-select form-select-sm"></select>
         </div>
-        <button type="button" class="btn btn-danger w-100" id="tvTalkEndBtn">
-            <i class="fas fa-stop me-1"></i> End Talk
-        </button>
+        <button type="button" class="btn btn-danger w-100" id="tvTalkEndBtn"><i class="fas fa-stop me-1"></i> End Talk</button>
     </div>
 </div>
 
+</div>{# cockpit #}
+{% endblock %}
+
+{% block extra_js %}
 <script src="{{ url_for('static', filename='js/ai-buddy.js') }}?v={{ app_version }}"></script>
 {% endblock %}

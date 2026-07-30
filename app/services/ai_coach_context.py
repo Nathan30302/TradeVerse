@@ -225,6 +225,13 @@ def build_coach_context_dict(user, weekly_stats: Optional[Dict[str, Any]] = None
     compliance = measure_focus_compliance(user, last_n=10)
     playbook = _playbook_adherence(user.id, last_n=20)
     plans = _plan_adherence(user.id, last_n=20)
+    memory_block = ""
+    try:
+        from app.services.coach_memory import format_memory_block
+
+        memory_block = format_memory_block(user.id, limit=6)
+    except Exception:
+        memory_block = ""
     return {
         "weekly_focus_rule": wf,
         "pinned_rule": (pinned.pinned_rule if pinned else "") or "",
@@ -234,6 +241,7 @@ def build_coach_context_dict(user, weekly_stats: Optional[Dict[str, Any]] = None
         "focus_compliance": compliance,
         "playbook": playbook,
         "plans": plans,
+        "coaching_memory": memory_block,
     }
 
 
@@ -499,4 +507,9 @@ def format_coach_context_block(ctx: Dict[str, Any], *, include_stats: bool = Tru
                 lines.append(
                     f"- {s.get('symbol', '?')} ({s.get('pnl', '')}): {s.get('text', '')}"
                 )
+
+    mem = (ctx.get("coaching_memory") or "").strip()
+    if mem:
+        lines.append(mem)
+
     return "\n".join(lines)

@@ -2610,7 +2610,7 @@
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}"
                    href="{{ url_for('dashboard.ai') }}">
-                    <i class="fas fa-chalkboard-user"></i> AI Buddy
+                    <i class="fas fa-chalkboard-user"></i> AI Coach
                 </a>
             </li>
         </ul>
@@ -2770,7 +2770,7 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}" href="{{ url_for('dashboard.ai') }}">
-                                <i class="fas fa-chalkboard-user"></i><span>AI Buddy</span>
+                                <i class="fas fa-chalkboard-user"></i><span>AI Coach</span>
                             </a>
                         </li>
                         <li class="nav-item mt-2"><small class="text-muted px-3">INSIGHTS</small></li>
@@ -3141,7 +3141,7 @@
                 planner: 'Planner',
                 playbook: 'Playbook',
                 lab: 'Strategy Lab',
-                ai: 'AI Buddy',
+                ai: 'AI Coach',
             };
 
             function presetFor() {
@@ -3210,7 +3210,7 @@
                         text: focus
                             ? ('Rule: ' + focus + adhereTxt)
                             : 'Set one focus rule for this week',
-                        metaHtml: '<a href="/dashboard/ai">Open AI Buddy</a>',
+                        metaHtml: '<a href="/dashboard/ai">Open AI Coach</a>',
                         mood: 'focus',
                     };
                 }

@@ -11,9 +11,14 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    cols = {c["name"] for c in insp.get_columns("playbook_setups")} if insp.has_table("playbook_setups") else set()
     with op.batch_alter_table("playbook_setups") as batch:
-        batch.add_column(sa.Column("setup_grade", sa.String(length=8), nullable=False, server_default=""))
-        batch.add_column(sa.Column("typical_rr", sa.Float(), nullable=True))
+        if "setup_grade" not in cols:
+            batch.add_column(sa.Column("setup_grade", sa.String(length=8), nullable=False, server_default=""))
+        if "typical_rr" not in cols:
+            batch.add_column(sa.Column("typical_rr", sa.Float(), nullable=True))
 
 
 def downgrade():

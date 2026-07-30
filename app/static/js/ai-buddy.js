@@ -24,6 +24,11 @@
     var FOCUS_URL = root.getAttribute('data-focus-url') || '';
     var VOICE_TEXT = root.getAttribute('data-voice') || '';
     var USERNAME = root.getAttribute('data-username') || '';
+    var SPEAK_URL = root.getAttribute('data-speak-url') || '';
+    var BRIEFING_URL = root.getAttribute('data-briefing-url') || '';
+    var HAS_NEURAL = root.getAttribute('data-neural') === '1';
+    var neuralVoiceId = 'coral';
+    var neuralAudio = null;
     var STATS_URL = '/dashboard/api/stats';
 
     var HISTORY = [];
@@ -69,22 +74,8 @@
     }
 
     function showAiTab(name) {
-      var panels = {
-        today: document.getElementById('ai-section-today'),
-        review: document.getElementById('ai-section-review'),
-        setup: document.getElementById('ai-section-setup'),
-      };
-      Object.keys(panels).forEach(function (key) {
-        var el = panels[key];
-        if (!el) return;
-        if (key === name) el.classList.remove('d-none');
-        else el.classList.add('d-none');
-      });
-      document.querySelectorAll('#aiBuddyTabs [data-ai-tab]').forEach(function (btn) {
-        var active = btn.getAttribute('data-ai-tab') === name;
-        btn.classList.toggle('active', active);
-      });
-      try { sessionStorage.setItem('tv_ai_tab', name); } catch (e) {}
+      // Legacy no-op — Coach home is a single canvas now.
+      try { sessionStorage.setItem('tv_ai_tab', name || 'today'); } catch (e) {}
     }
 
     function ensureChatTab() {
@@ -92,6 +83,10 @@
       var card = document.getElementById('ai-chat-card');
       if (card && card.scrollIntoView) {
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      var q = document.getElementById('aiQuestion');
+      if (q) {
+        try { q.focus(); } catch (e) {}
       }
     }
 
@@ -129,15 +124,37 @@
     }
 
     function populateVoiceSelects() {
-      if (!global.speechSynthesis) return;
-      var voices = global.speechSynthesis.getVoices() || [];
+      var neuralSel = HAS_NEURAL;
       var selects = [
         document.getElementById('aiVoiceSelect'),
         document.getElementById('aiVoiceSelectComposer'),
       ];
       try {
         selectedVoiceURI = localStorage.getItem('tv_ai_voice_uri') || selectedVoiceURI;
+        neuralVoiceId = localStorage.getItem('tv_ai_neural_voice') || neuralVoiceId;
       } catch (e) {}
+
+      if (neuralSel) {
+        var neuralList = ['coral', 'verse', 'alloy', 'nova', 'sage', 'shimmer', 'echo', 'fable', 'onyx', 'ash', 'ballad'];
+        selects.forEach(function (sel) {
+          if (!sel) return;
+          sel.textContent = '';
+          neuralList.forEach(function (v) {
+            var opt = document.createElement('option');
+            opt.value = 'neural:' + v;
+            opt.textContent = v.charAt(0).toUpperCase() + v.slice(1) + ' (neural)';
+            sel.appendChild(opt);
+          });
+          var want = 'neural:' + neuralVoiceId;
+          sel.value = want;
+          if (!sel.value) sel.value = 'neural:coral';
+          selectedVoiceURI = sel.value;
+        });
+        return;
+      }
+
+      if (!global.speechSynthesis) return;
+      var voices = global.speechSynthesis.getVoices() || [];
       var english = voices.filter(function (v) {
         return (v.lang || '').toLowerCase().indexOf('en') === 0;
       });
@@ -162,11 +179,108 @@
       if (!sel) return;
       sel.addEventListener('change', function () {
         selectedVoiceURI = sel.value || '';
+        if (selectedVoiceURI.indexOf('neural:') === 0) {
+          neuralVoiceId = selectedVoiceURI.slice(7) || 'coral';
+          try { localStorage.setItem('tv_ai_neural_voice', neuralVoiceId); } catch (e) {}
+        }
         try { localStorage.setItem('tv_ai_voice_uri', selectedVoiceURI); } catch (e) {}
         var other = sel.id === 'aiVoiceSelect'
           ? document.getElementById('aiVoiceSelectComposer')
           : document.getElementById('aiVoiceSelect');
         if (other) other.value = selectedVoiceURI;
+      });
+    }
+
+    function stopNeuralAudio() {
+      if (neuralAudio) {
+        try { neuralAudio.pause(); } catch (e) {}
+        try { URL.revokeObjectURL(neuralAudio._tvUrl); } catch (e) {}
+        neuralAudio = null;
+      }
+    }
+
+    function speakNeural(text) {
+      return new Promise(function (resolve) {
+        if (!SPEAK_URL || !HAS_NEURAL) { resolve(false); return; }
+        stopNeuralAudio();
+        stopListening();
+        try { global.speechSynthesis && global.speechSynthesis.cancel(); } catch (e) {}
+        isSpeaking = true;
+        setCoachStatus('speaking', 'Speaking the answer…');
+        if (coachActive) setTalkTranscript('AI Coach is speaking…', false);
+        fetch(SPEAK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'audio/mpeg',
+            'X-CSRFToken': CSRF,
+            'X-CSRF-Token': CSRF,
+          },
+          body: JSON.stringify({ text: text, voice: neuralVoiceId || 'coral' }),
+        })
+          .then(function (r) {
+            if (!r.ok) throw new Error('tts');
+            return r.blob();
+          })
+          .then(function (blob) {
+            var url = URL.createObjectURL(blob);
+            var audio = new Audio(url);
+            audio._tvUrl = url;
+            neuralAudio = audio;
+            audio.onended = audio.onerror = function () {
+              isSpeaking = false;
+              stopNeuralAudio();
+              if (coachActive && !requestInFlight) {
+                setCoachStatus('listening', 'Listening… speak your next question.');
+                setTalkTranscript('Your turn — I’m listening.', false);
+              } else if (!coachActive) {
+                setCoachStatus('idle', 'Pick an action above, or type a question below.');
+              }
+              resolve(true);
+            };
+            return audio.play().then(function () {}, function () { throw new Error('play'); });
+          })
+          .catch(function () {
+            isSpeaking = false;
+            resolve(false);
+          });
+      });
+    }
+
+    function speakBrowser(text) {
+      return new Promise(function (resolve) {
+        if (!global.speechSynthesis) { resolve(); return; }
+        stopListening();
+        global.speechSynthesis.cancel();
+        var plain = String(text || '').replace(/\*\*/g, '');
+        var u = new SpeechSynthesisUtterance(plain);
+        u.rate = 1.02;
+        u.pitch = 1.03;
+        var v = pickEnglishVoice();
+        if (v) u.voice = v;
+        isSpeaking = true;
+        setCoachStatus('speaking', 'Speaking the answer…');
+        var coachBtn = document.getElementById('coachTalkBtn');
+        if (coachBtn) coachBtn.classList.add('tv-speaking');
+        u.onend = u.onerror = function () {
+          isSpeaking = false;
+          if (coachBtn) coachBtn.classList.remove('tv-speaking');
+          if (coachActive && !requestInFlight) {
+            setCoachStatus('listening', 'Listening… speak your next question.');
+            setTalkTranscript('Your turn — I’m listening.', false);
+          } else if (!coachActive) {
+            setCoachStatus('idle', 'Pick an action above, or type a question below.');
+          }
+          resolve();
+        };
+        global.speechSynthesis.speak(u);
+      });
+    }
+
+    function speakText(text) {
+      return speakNeural(text).then(function (ok) {
+        if (ok) return;
+        return speakBrowser(text);
       });
     }
 
@@ -336,47 +450,13 @@
       } catch (e) {}
     }
 
-    function speakText(text) {
-      return new Promise(function (resolve) {
-        if (!global.speechSynthesis) { resolve(); return; }
-        stopListening();
-        global.speechSynthesis.cancel();
-        var plain = String(text || '').replace(/\*\*/g, '');
-        var u = new SpeechSynthesisUtterance(plain);
-        u.rate = 1.02;
-        u.pitch = 1.03;
-        var v = pickEnglishVoice();
-        if (v) u.voice = v;
-        isSpeaking = true;
-        setCoachStatus('speaking', 'Speaking the answer…');
-        if (coachActive) setTalkTranscript('AI Buddy is speaking…', false);
-        var coachBtn = document.getElementById('coachTalkBtn');
-        if (coachBtn) coachBtn.classList.add('tv-speaking');
-        u.onend = u.onerror = function () {
-          isSpeaking = false;
-          if (coachBtn) coachBtn.classList.remove('tv-speaking');
-          if (coachActive && !requestInFlight) {
-            setCoachStatus('listening', 'Listening… speak your next question.');
-            setTalkTranscript('Your turn — I’m listening.', false);
-          } else if (!coachActive) {
-            setCoachStatus('idle', 'Type a question, or tap Talk to speak with your coach.');
-          }
-          resolve();
-        };
-        global.speechSynthesis.speak(u);
-      });
-    }
-
     function splitSentences(text) {
       return String(text || '').replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
     }
 
     async function playVoiceReview() {
-      if (!VOICE_TEXT || !global.speechSynthesis) return;
-      var queue = splitSentences(VOICE_TEXT);
-      for (var i = 0; i < queue.length; i++) {
-        await speakText(queue[i]);
-      }
+      if (!VOICE_TEXT) return;
+      await speakText(VOICE_TEXT);
     }
 
     function renderFollowUps(items) {
@@ -403,7 +483,7 @@
       var head = document.createElement('div');
       head.className = 'd-flex align-items-center justify-content-between gap-2 small tv-muted mb-2';
       var who = document.createElement('div');
-      who.textContent = role === 'user' ? (USERNAME ? USERNAME + ' (you)' : 'You') : 'AI Buddy';
+      who.textContent = role === 'user' ? (USERNAME ? USERNAME + ' (you)' : 'You') : 'AI Coach';
       head.appendChild(who);
       if (role === 'assistant' && opts.usedWeb !== undefined) {
         var src = document.createElement('span');
@@ -495,7 +575,7 @@
         var safeHint = hint.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         var label = hint
           ? '<div class="small tv-muted mb-1 text-truncate" title="' + safeHint + '">Answering: ' + safeHint + '</div>'
-          : '<div class="small tv-muted mb-1">AI Buddy</div>';
+          : '<div class="small tv-muted mb-1">AI Coach</div>';
         bubble.innerHTML = label + '<div class="tv-typing" aria-label="Thinking"><span></span><span></span><span></span></div>';
         log.appendChild(bubble);
         scrollChatToBottom();
@@ -627,7 +707,7 @@
         .catch(function (err) {
           var msg = (err && err.message) ? String(err.message) : '';
           if (msg.indexOf('HTTP 503') >= 0) {
-            appendChat('assistant', 'AI Buddy is temporarily unavailable. Your local coach will be back shortly — try again in a moment.');
+            appendChat('assistant', 'AI Coach is temporarily unavailable. Your local coach will be back shortly — try again in a moment.');
           } else {
             appendChat('assistant', 'I could not reach the coach right now. Check your connection and try again, or rephrase in one short sentence.');
           }
@@ -768,10 +848,11 @@
       }
       stopListening();
       stopWaveform();
+      stopNeuralAudio();
       setTalkOverlayOpen(false);
       try { global.speechSynthesis.cancel(); } catch (e) {}
       isSpeaking = false;
-      setCoachStatus('idle', 'Type a question, or tap Talk to speak with your coach.');
+      setCoachStatus('idle', 'Pick an action above, or type a question below.');
     }
 
     function startCoach() {
@@ -842,7 +923,7 @@
         questionEl.value = '';
         questionEl.classList.remove('tv-voice-interim', 'tv-voice-listening');
         questionEl.focus();
-        questionEl.placeholder = 'Message AI Buddy…';
+        questionEl.placeholder = 'Message your coach…';
       }
       if (!coachActive) {
         setCoachStatus('idle', 'Type a question, or tap Talk to speak with your coach.');
@@ -920,6 +1001,43 @@
       onAskClick('Suggest a weekly focus rule for me based on my trading.');
     });
 
+    function runTodaysReview() {
+      ensureChatTab();
+      if (requestInFlight) return;
+      appendChat('assistant', 'Pulling today’s review from your journal…', { skipHistory: true });
+      var url = BRIEFING_URL || '/dashboard/ai/briefing';
+      fetch(url, { headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var lines = (d && d.lines) ? d.lines : [];
+          var text = lines.length
+            ? lines.join('\n\n')
+            : (VOICE_TEXT || 'Quiet day so far — close a trade and I’ll brief you.');
+          appendChat('assistant', text);
+          speakText(text);
+        })
+        .catch(function () {
+          appendChat('assistant', VOICE_TEXT || 'Could not load today’s review. Try Ask the Coach.');
+        });
+    }
+
+    var actionTalk = document.getElementById('coachActionTalk');
+    var actionToday = document.getElementById('coachActionToday');
+    var actionLeaks = document.getElementById('coachActionLeaks');
+    var actionAsk = document.getElementById('coachActionAsk');
+    if (actionTalk) actionTalk.addEventListener('click', function () {
+      if (coachBtn) coachBtn.click();
+    });
+    if (actionToday) actionToday.addEventListener('click', runTodaysReview);
+    if (actionLeaks) actionLeaks.addEventListener('click', function () { runTradeDoctor(); });
+    if (actionAsk) actionAsk.addEventListener('click', function () { ensureChatTab(); });
+    document.querySelectorAll('.tv-card-leaks').forEach(function (b) {
+      b.addEventListener('click', function () { runTradeDoctor(); });
+    });
+    document.querySelectorAll('.tv-card-ask').forEach(function (b) {
+      b.addEventListener('click', function () { ensureChatTab(); });
+    });
+
     refreshBasis();
     setInterval(refreshBasis, 60000);
 
@@ -940,18 +1058,6 @@
 
     var initialFocus = root.getAttribute('data-suggested-focus');
     if (initialFocus) showSuggestedFocus(initialFocus);
-
-    var savedTab = 'today';
-    try { savedTab = sessionStorage.getItem('tv_ai_tab') || 'today'; } catch (e) {}
-    if (['today', 'review', 'setup'].indexOf(savedTab) < 0) savedTab = 'today';
-    showAiTab(savedTab);
-
-    document.querySelectorAll('#aiBuddyTabs [data-ai-tab]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var tab = btn.getAttribute('data-ai-tab');
-        if (tab) showAiTab(tab);
-      });
-    });
   }
 
   if (document.readyState === 'loading') {

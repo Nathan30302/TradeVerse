@@ -93,3 +93,77 @@ def transcribe():
         return jsonify({'error': 'No speech detected in recording.'}), 422
 
     return jsonify({'text': text})
+
+
+_NEURAL_VOICES = frozenset({
+    'alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse',
+})
+
+
+@bp.route('/speak', methods=['POST'])
+@login_required
+def speak():
+    """Neural TTS via OpenAI — short spoken coach replies (mp3)."""
+    from flask_login import current_user
+    from app.services.entitlements import user_has_feature
+    from app.services.ai_buddy_voice import truncate_for_speech
+
+    api_key = os.environ.get('OPENAI_API_KEY', '').strip()
+    if not api_key:
+        return jsonify({'error': 'Speech is not configured.', 'fallback': True}), 503
+    if not user_has_feature(current_user, 'ai_web'):
+        return jsonify({'error': 'Neural voice requires Pro Plus.', 'fallback': True}), 403
+
+    payload = request.get_json(silent=True) or {}
+    text = truncate_for_speech(str(payload.get('text') or ''))
+    if not text:
+        return jsonify({'error': 'Nothing to speak.'}), 400
+    voice = str(payload.get('voice') or 'coral').strip().lower()
+    if voice not in _NEURAL_VOICES:
+        voice = 'coral'
+
+    try:
+        resp = requests.post(
+            'https://api.openai.com/v1/audio/speech',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+            },
+            json={
+                'model': 'tts-1',
+                'voice': voice,
+                'input': text,
+                'response_format': 'mp3',
+            },
+            timeout=60,
+        )
+    except requests.RequestException as exc:
+        current_app.logger.warning('TTS request failed: %s', exc)
+        return jsonify({'error': 'Could not reach speech service.', 'fallback': True}), 502
+
+    if resp.status_code != 200:
+        current_app.logger.warning('TTS HTTP %s: %s', resp.status_code, resp.text[:300])
+        return jsonify({'error': 'Speech synthesis failed.', 'fallback': True}), 502
+
+    from flask import Response
+
+    return Response(
+        resp.content,
+        mimetype='audio/mpeg',
+        headers={'Cache-Control': 'no-store'},
+    )
+
+
+@bp.route('/voices', methods=['GET'])
+@login_required
+def voices():
+    """List neural TTS voice ids when available."""
+    from flask_login import current_user
+    from app.services.entitlements import user_has_feature
+
+    enabled = _transcribe_enabled() and user_has_feature(current_user, 'ai_web')
+    return jsonify({
+        'enabled': enabled,
+        'voices': sorted(_NEURAL_VOICES) if enabled else [],
+        'default': 'coral',
+    })

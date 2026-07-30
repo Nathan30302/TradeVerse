@@ -1173,12 +1173,12 @@ def save_weekly_focus():
 @login_required
 def ai():
     """
-    AI Buddy Dashboard
+    AI Coach Dashboard
 
-    Premium AI insights built from your real trading history.
+    Premium coaching built from the trader's real journal — not a generic chatbot.
     """
     if not current_app.config.get('FEATURE_AI_BUDDY', True):
-        flash('AI Buddy is temporarily unavailable.', 'warning')
+        flash('AI Coach is temporarily unavailable.', 'warning')
         return redirect(url_for('dashboard.index'))
 
     analyzer = AIAnalyzer(current_user.id)
@@ -1231,7 +1231,7 @@ def ai():
         voice_summary = voice_summary.replace('"', "'").replace('\n', ' ').replace('\r', '')
     except Exception as exc:
         current_app.logger.warning('AI Buddy get_voice_summary failed: %s', exc)
-        voice_summary = 'AI Buddy has no data to summarise yet. Log some trades to get started.'
+        voice_summary = 'AI Coach has no data to summarise yet. Log some trades to get started.'
 
     alerts = weekly_review.get('alerts', [])
 
@@ -1285,6 +1285,39 @@ def ai():
     except Exception:
         coach_narrative = {}
 
+    smart_cards = []
+    try:
+        from app.services.coach_smart_cards import build_smart_cards
+        smart_cards = build_smart_cards(current_user, max_cards=4)
+    except Exception:
+        smart_cards = []
+
+    coach_memories = []
+    try:
+        from app.services.coach_memory import recent_memories
+        coach_memories = recent_memories(current_user.id, limit=5)
+    except Exception:
+        coach_memories = []
+
+    performance_card = None
+    try:
+        from app.services.performance_calculator import PerformanceCalculator
+        score_obj = PerformanceCalculator(current_user.id).calculate()
+        if score_obj and getattr(score_obj, 'overall_score', None) is not None:
+            performance_card = {
+                'overall': float(score_obj.overall_score or 0),
+                'grade': score_obj.grade or '—',
+                'discipline': getattr(score_obj, 'discipline_score', None),
+                'rule_compliance': getattr(score_obj, 'rule_compliance_score', None),
+            }
+    except Exception:
+        performance_card = None
+
+    import os as _os
+    has_neural_voice = bool(
+        has_ai_web and _os.environ.get('OPENAI_API_KEY', '').strip()
+    )
+
     return render_template('dashboard/ai.html',
                            weekly_review=weekly_review,
                            monthly_review=monthly_review,
@@ -1296,9 +1329,13 @@ def ai():
                            morning_briefing=morning_briefing,
                            suggested_weekly_focus=suggested_focus,
                            has_ai_web=has_ai_web,
+                           has_neural_voice=has_neural_voice,
                            last_trade_insight=last_trade_insight,
                            focus_compliance=focus_compliance,
-                           coach_narrative=coach_narrative)
+                           coach_narrative=coach_narrative,
+                           smart_cards=smart_cards,
+                           coach_memories=coach_memories,
+                           performance_card=performance_card)
 
 
 @bp.route('/ai/notes/save', methods=['POST'])
@@ -1364,7 +1401,7 @@ def clear_ai_note():
 def ai_query():
     """Ask AI Buddy about your trading performance."""
     if not current_app.config.get('FEATURE_AI_BUDDY', True):
-        return jsonify({'answer': 'AI Buddy is temporarily unavailable.', 'follow_ups': []}), 503
+        return jsonify({'answer': 'AI Coach is temporarily unavailable.', 'follow_ups': []}), 503
 
     payload = request.get_json() or {}
     question = payload.get('question', '').strip()
@@ -1539,6 +1576,12 @@ def apply_weekly_focus_json():
             compliance = measure_focus_compliance(current_user, last_n=10)
         except Exception:
             compliance = {}
+        try:
+            from app.services.coach_memory import remember_focus
+            if text:
+                remember_focus(current_user.id, text)
+        except Exception:
+            pass
         return jsonify({
             'ok': True,
             'weekly_focus_rule': text,
@@ -1597,10 +1640,46 @@ def trade_doctor_api():
         result = AIAnalyzer(current_user.id).trade_doctor(last_n=10)
         if not isinstance(result, dict):
             return jsonify({"text": "Trade Doctor is unavailable right now."}), 200
+        try:
+            from app.services.coach_memory import remember_trade_doctor
+            remember_trade_doctor(current_user.id, result)
+        except Exception:
+            pass
         return jsonify(result)
     except Exception as exc:
         current_app.logger.warning("trade_doctor_api failed: %s", exc)
         return jsonify({"text": "Trade Doctor could not analyze your trades right now."}), 200
+
+
+@bp.route('/ai/cards')
+@login_required
+def ai_smart_cards_api():
+    """Relevance-ranked smart cards for AI Coach home."""
+    try:
+        from app.services.coach_smart_cards import build_smart_cards
+        return jsonify({'cards': build_smart_cards(current_user, max_cards=4)})
+    except Exception as exc:
+        current_app.logger.warning('ai_smart_cards_api failed: %s', exc)
+        return jsonify({'cards': []})
+
+
+@bp.route('/ai/grade-trade/<int:trade_id>')
+@login_required
+def ai_grade_trade(trade_id: int):
+    """Deterministic coach grades for a single trade."""
+    trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
+    try:
+        from app.services.trade_coach_grades import grade_trade, format_grades_text
+
+        payload = grade_trade(trade)
+        return jsonify({
+            'ok': True,
+            'grades': payload,
+            'text': format_grades_text(payload),
+        })
+    except Exception as exc:
+        current_app.logger.warning('ai_grade_trade failed: %s', exc)
+        return jsonify({'ok': False, 'text': 'Could not grade this trade right now.'}), 200
 
 
 # ==================== Behavior Patterns ====================

@@ -12,6 +12,7 @@ from app.models.cooldown import Cooldown
 from app.models.broker import BrokerProfile, UserBrokerCredential, ImportedTradeSource
 from app.models.stripe_webhook_event import StripeWebhookEvent
 from app.models.ai_coaching_note import AICoachingNote
+from app.models.coach_memory import CoachMemory
 from app.models.playbook_setup import PlaybookSetup
 from app.models.trade_replay_event import TradeReplayEvent
 from app.models.admin_console import AdminConsoleEvent, AdminEmailDraft
@@ -31,6 +32,7 @@ __all__ = [
     'ImportedTradeSource',
     'StripeWebhookEvent',
     'AICoachingNote',
+    'CoachMemory',
     'PlaybookSetup',
     'TradeReplayEvent',
     'AdminConsoleEvent',
