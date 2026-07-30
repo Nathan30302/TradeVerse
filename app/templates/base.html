@@ -2126,11 +2126,11 @@
             to { transform: translateX(-50%); }
         }
         
-        /* Quick Actions Floating Button */
+        /* Quick Add Trade — standalone FAB (mobile + desktop) */
         .fab-container {
             position: fixed;
-            bottom: 2rem;
-            right: 2rem;
+            bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+            right: 1.5rem;
             z-index: 1000;
         }
         
@@ -2148,11 +2148,18 @@
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
+            text-decoration: none;
         }
         
-        .fab:hover {
-            transform: scale(1.1);
+        .fab:hover,
+        .fab:focus-visible {
+            transform: scale(1.08);
             box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+            color: white;
+        }
+
+        body.modal-open .fab-container {
+            display: none !important;
         }
         
         /* Toast Notifications */
@@ -2404,8 +2411,13 @@
             .page-header .btn-lg { width: 100%; text-align: center; }
             .row.g-4 { gap: 0.75rem !important; }
             .row.g-4 > * { margin-bottom: 0.75rem; }
-            .fab-container { bottom: 1rem; right: 1rem; }
-            .fab { width: 48px; height: 48px; font-size: 1.25rem; }
+            .fab-container {
+                left: 50%;
+                right: auto;
+                bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+                transform: translateX(-50%);
+            }
+            .fab { width: 56px; height: 56px; font-size: 1.35rem; }
             .instrument-categories { display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 0.5rem; padding-bottom: 0.5rem; scrollbar-width: none; }
             .instrument-categories::-webkit-scrollbar { display: none; }
             .category-tab { flex: 0 0 auto; padding: 0.4rem 0.75rem; font-size: 0.75rem; white-space: nowrap; }
@@ -3544,7 +3556,6 @@
     })();
     </script>
     {% if current_user.is_authenticated %}
-    {% include 'partials/mobile_today_strip.html' %}
     <script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('{{ url_for('main.service_worker') }}').catch(function () {});
