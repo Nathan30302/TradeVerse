@@ -115,7 +115,14 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.8.1'
+    APP_VERSION = '2.8.2'
+
+    # Trial defaults (env overrides; code defaults are 60 days for everyone):
+    #   TV_TRIAL_DAYS_PRO_PLUS=60          — new signups
+    #   TV_ALL_USERS_PROPLUS_TRIAL=1       — existing accounts also get Pro Plus until their personal clock ends
+    #   TV_ALL_USERS_PROPLUS_TRIAL_DAYS=60 — length of that personal clock (created_at + N)
+    # Backfill once: flask grant-promo-trial --days 60
+    # Turn off marketing overlay: TV_ALL_USERS_PROPLUS_TRIAL=0
 
     # UI themes (order preserved for pickers)
     UI_THEME_CHOICES = ('light', 'dark', 'blue', 'midnight', 'sand', 'ember', 'forest', 'pearl')

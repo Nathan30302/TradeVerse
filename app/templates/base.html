@@ -681,7 +681,7 @@
             box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
         }
 
-        /* Sidebar bottom account / plan */
+        /* Sidebar bottom account / plan — theme-safe */
         .sidebar-inner.tv-sidebar-inner {
             min-height: calc(100vh - 5.5rem);
         }
@@ -690,40 +690,100 @@
             padding-top: 0.75rem;
         }
         .tv-account-chip {
-            background: linear-gradient(155deg, rgba(99, 102, 241, 0.14), rgba(15, 23, 42, 0.85));
-            border: 1px solid rgba(148, 163, 184, 0.22);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
             border-radius: 14px;
             padding: 0.85rem 0.9rem;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            box-shadow: 0 8px 22px color-mix(in srgb, var(--text-primary) 8%, transparent);
             max-width: 100%;
             overflow: hidden;
+            color: var(--text-primary);
         }
-        .tv-account-chip .badge {
-            font-size: 0.7rem;
+        .tv-account-chip-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+        }
+        .tv-account-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            line-height: 1.25;
+        }
+        .tv-account-plan { margin-top: 0.35rem; }
+        .tv-plan-badge {
+            display: inline-block;
+            font-size: 0.68rem;
             font-weight: 700;
             letter-spacing: 0.02em;
-            vertical-align: middle;
+            border-radius: 999px;
+            padding: 0.22rem 0.55rem;
+            border: 1px solid var(--card-border);
+            background: color-mix(in srgb, var(--primary) 14%, var(--bg-secondary));
+            color: var(--text-primary);
         }
-        body[data-theme="light"] .tv-account-chip,
-        body[data-theme="sand"] .tv-account-chip {
-            background: linear-gradient(155deg, rgba(99, 102, 241, 0.18), rgba(30, 41, 59, 0.92));
-            border-color: rgba(148, 163, 184, 0.35);
+        .tv-plan-badge.is-trial {
+            background: color-mix(in srgb, var(--primary) 22%, var(--bg-secondary));
+            border-color: color-mix(in srgb, var(--primary) 40%, var(--card-border));
         }
-        body[data-theme="light"] .tv-account-chip .fw-semibold,
-        body[data-theme="sand"] .tv-account-chip .fw-semibold {
-            color: #f8fafc !important;
+        .tv-plan-badge.is-pro {
+            background: color-mix(in srgb, var(--primary) 28%, var(--bg-secondary));
         }
-        .tv-account-avatar {
-            width: 38px;
-            height: 38px;
+        .tv-plan-badge.is-owner {
+            background: color-mix(in srgb, #f59e0b 22%, var(--bg-secondary));
+            border-color: color-mix(in srgb, #f59e0b 40%, var(--card-border));
+        }
+        .tv-plan-badge.is-free {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+        .tv-trial-box {
+            margin-top: 0.7rem;
+            padding: 0.55rem 0.65rem;
             border-radius: 10px;
-            background: rgba(99, 102, 241, 0.25);
-            color: #c7d2fe;
+            background: var(--bg-secondary);
+            border: 1px solid var(--card-border);
+        }
+        .tv-trial-days {
+            display: flex;
+            align-items: baseline;
+            gap: 0.35rem;
+            color: var(--text-primary);
+        }
+        .tv-trial-num {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--primary);
+            line-height: 1;
+        }
+        .tv-trial-unit {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .tv-trial-ends {
+            margin-top: 0.25rem;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            line-height: 1.35;
+        }
+        .tv-trial-ends strong { color: var(--text-primary); font-weight: 700; }
+        .tv-trial-span { white-space: nowrap; }
+        .tv-account-link { color: var(--text-secondary) !important; }
+        .tv-account-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: color-mix(in srgb, var(--primary) 18%, var(--bg-secondary));
+            color: var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 0.95rem;
             overflow: hidden;
+            border: 1px solid var(--card-border);
+            flex-shrink: 0;
         }
         .tv-account-avatar img {
             width: 100%;
@@ -731,10 +791,10 @@
             object-fit: cover;
         }
         .mobile-nav-drawer .tv-sidebar-account-wrap {
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid var(--card-border);
             margin-top: 0.5rem;
             padding: 1rem 1rem 1.25rem;
-            background: rgba(0, 0, 0, 0.15);
+            background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
         }
 
         /* Nav Tabs - Settings Page */
@@ -2519,11 +2579,11 @@
                     {% set trial_end_display = trial_personal_ends_at if trial_personal_ends_at is defined and trial_personal_ends_at else sub.trial_ends_at %}
                     {% if sub.status == 'trialing' and trial_end_display and sub.tier != 'owner' %}
                     <li class="dropdown-item">
-                        <small class="text-muted">Pro trial</small>
+                        <small class="text-muted">{{ trial_period_days|default(60) }}-day Pro Plus trial</small>
                         <div style="font-weight:700;">
                             {% if trial_days_remaining is not none %}{{ trial_days_remaining }} day{% if trial_days_remaining != 1 %}s{% endif %} left{% else %}Active trial{% endif %}
-                            <span class="text-muted fw-normal small"> · ends {{ trial_end_display|datetime('%b %d, %Y') }}</span>
                         </div>
+                        <div class="small text-muted">Ends {{ trial_end_display|datetime('%b %d, %Y') }}</div>
                     </li>
                     {% endif %}
                     <li><a class="dropdown-item" href="{{ url_for('trade.list') }}"><i class="fas fa-list me-2"></i> Trades taken <span class="badge bg-secondary ms-2">{{ current_user.safe_trade_count() }}</span></a></li>
@@ -2566,7 +2626,7 @@
             <button type="button" class="btn-close mobile-nav-close" id="mobileNavClose" aria-label="Close menu"></button>
         </div>
         {% if current_user.is_authenticated %}
-        <div class="mobile-nav-section">Primary</div>
+        <div class="mobile-nav-section">Journal</div>
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
@@ -2575,32 +2635,11 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint and ('trade.' in request.endpoint or request.endpoint == 'dashboard.calendar') %}active{% endif %}"
+                <a class="nav-link {% if request.endpoint == 'trade.list' %}active{% endif %}"
                    href="{{ url_for('trade.list') }}">
-                    <i class="fas fa-book"></i> Journal
+                    <i class="fas fa-list"></i> My Trades
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link {% if request.endpoint in ['dashboard.analytics','dashboard.performance','dashboard.patterns','dashboard.emotions'] %}active{% endif %}"
-                   href="{{ url_for('dashboard.analytics') }}">
-                    <i class="fas fa-chart-bar"></i> Analytics
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}"
-                   href="{{ url_for('dashboard.ai') }}">
-                    <i class="fas fa-chalkboard-user"></i> AI Coach
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'auth.settings' or request.endpoint == 'auth.profile' %}active{% endif %}"
-                   href="{{ url_for('auth.settings') }}">
-                    <i class="fas fa-user"></i> Profile
-                </a>
-            </li>
-        </ul>
-        <div class="mobile-nav-section">More</div>
-        <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}"
                    href="{{ url_for('trade.add') }}">
@@ -2614,6 +2653,15 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {% if request.endpoint and 'planner' in request.endpoint %}active{% endif %}"
+                   href="{{ url_for('planner.index') }}">
+                    <i class="fas fa-clipboard-list"></i> Trade Planner
+                </a>
+            </li>
+        </ul>
+        <div class="mobile-nav-section">Review</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'dashboard.weekly_review' %}active{% endif %}"
                    href="{{ url_for('dashboard.weekly_review') }}">
                     <i class="fas fa-calendar-week"></i> Weekly review
@@ -2626,6 +2674,42 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}"
+                   href="{{ url_for('dashboard.ai') }}">
+                    <i class="fas fa-chalkboard-user"></i> AI Coach
+                </a>
+            </li>
+        </ul>
+        <div class="mobile-nav-section">Insights</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.analytics' %}active{% endif %}"
+                   href="{{ url_for('dashboard.analytics') }}">
+                    <i class="fas fa-chart-bar"></i> Analytics
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.performance' %}active{% endif %}"
+                   href="{{ url_for('dashboard.performance') }}">
+                    <i class="fas fa-trophy"></i> Performance
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.patterns' %}active{% endif %}"
+                   href="{{ url_for('dashboard.patterns') }}">
+                    <i class="fas fa-brain"></i> Patterns
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard.emotions' %}active{% endif %}"
+                   href="{{ url_for('dashboard.emotions') }}">
+                    <i class="fas fa-heart"></i> Emotions
+                </a>
+            </li>
+        </ul>
+        <div class="mobile-nav-section">System</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
                 <a class="nav-link {% if request.endpoint and request.endpoint.startswith('playbook.') %}active{% endif %}"
                    href="{{ url_for('playbook.index') }}">
                     <i class="fas fa-book-open"></i> Playbook
@@ -2637,12 +2721,6 @@
                     <i class="fas fa-flask"></i> Strategy Lab
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link {% if request.endpoint and 'planner' in request.endpoint %}active{% endif %}"
-                   href="{{ url_for('planner.index') }}">
-                    <i class="fas fa-clipboard-list"></i> Trade Planner
-                </a>
-            </li>
             {% if feature_replay %}
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint and request.endpoint.startswith('replay.') %}active{% endif %}"
@@ -2651,6 +2729,12 @@
                 </a>
             </li>
             {% endif %}
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'auth.settings' or request.endpoint == 'auth.profile' %}active{% endif %}"
+                   href="{{ url_for('auth.settings') }}">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </li>
             {% if discord_community_url %}
             <li class="nav-item mt-2 border-top border-secondary pt-2">
                 <a class="nav-link" href="{{ discord_community_url }}" target="_blank" rel="noopener noreferrer">
@@ -2712,34 +2796,17 @@
             <nav class="col-md-2 d-none d-md-block sidebar">
                 <div class="sidebar-inner tv-sidebar-inner d-flex flex-column">
                     <ul class="nav flex-column flex-grow-1 mb-0">
-                        <li class="nav-item"><small class="text-muted px-3">PRIMARY</small></li>
+                        <li class="nav-item"><small class="text-muted px-3">JOURNAL</small></li>
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
                                 <i class="fas fa-home"></i><span>Dashboard</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint and ('trade.' in request.endpoint or request.endpoint == 'dashboard.calendar') %}active{% endif %}" href="{{ url_for('trade.list') }}">
-                                <i class="fas fa-book"></i><span>Journal</span>
+                            <a class="nav-link {% if request.endpoint == 'trade.list' %}active{% endif %}" href="{{ url_for('trade.list') }}">
+                                <i class="fas fa-list"></i><span>My Trades</span>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint in ['dashboard.analytics','dashboard.performance','dashboard.patterns','dashboard.emotions'] %}active{% endif %}" href="{{ url_for('dashboard.analytics') }}">
-                                <i class="fas fa-chart-bar"></i><span>Analytics</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}" href="{{ url_for('dashboard.ai') }}">
-                                <i class="fas fa-chalkboard-user"></i><span>AI Coach</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'auth.settings' or request.endpoint == 'auth.profile' %}active{% endif %}" href="{{ url_for('auth.settings') }}">
-                                <i class="fas fa-user"></i><span>Profile</span>
-                            </a>
-                        </li>
-
-                        <li class="nav-item mt-3"><small class="text-muted px-3">MORE</small></li>
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}" href="{{ url_for('trade.add') }}">
                                 <i class="fas fa-plus-circle"></i><span>Add Trade</span>
@@ -2751,6 +2818,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint and 'planner' in request.endpoint %}active{% endif %}" href="{{ url_for('planner.index') }}">
+                                <i class="fas fa-clipboard-list"></i><span>Trade Planner</span>
+                            </a>
+                        </li>
+                        <li class="nav-item mt-2"><small class="text-muted px-3">REVIEW</small></li>
+                        <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'dashboard.weekly_review' %}active{% endif %}" href="{{ url_for('dashboard.weekly_review') }}">
                                 <i class="fas fa-calendar-week"></i><span>Weekly review</span>
                             </a>
@@ -2761,6 +2834,33 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'dashboard.ai' %}active{% endif %}" href="{{ url_for('dashboard.ai') }}">
+                                <i class="fas fa-chalkboard-user"></i><span>AI Coach</span>
+                            </a>
+                        </li>
+                        <li class="nav-item mt-2"><small class="text-muted px-3">INSIGHTS</small></li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'dashboard.analytics' %}active{% endif %}" href="{{ url_for('dashboard.analytics') }}">
+                                <i class="fas fa-chart-bar"></i><span>Analytics</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'dashboard.performance' %}active{% endif %}" href="{{ url_for('dashboard.performance') }}">
+                                <i class="fas fa-trophy"></i><span>Performance</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'dashboard.patterns' %}active{% endif %}" href="{{ url_for('dashboard.patterns') }}">
+                                <i class="fas fa-brain"></i><span>Patterns</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'dashboard.emotions' %}active{% endif %}" href="{{ url_for('dashboard.emotions') }}">
+                                <i class="fas fa-heart"></i><span>Emotions</span>
+                            </a>
+                        </li>
+                        <li class="nav-item mt-2"><small class="text-muted px-3">SYSTEM</small></li>
+                        <li class="nav-item">
                             <a class="nav-link {% if request.endpoint and request.endpoint.startswith('playbook.') %}active{% endif %}" href="{{ url_for('playbook.index') }}">
                                 <i class="fas fa-book-open"></i><span>Playbook</span>
                             </a>
@@ -2770,11 +2870,6 @@
                                 <i class="fas fa-flask"></i><span>Strategy Lab</span>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint and 'planner' in request.endpoint %}active{% endif %}" href="{{ url_for('planner.index') }}">
-                                <i class="fas fa-clipboard-list"></i><span>Trade Planner</span>
-                            </a>
-                        </li>
                         {% if feature_replay %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint and request.endpoint.startswith('replay.') %}active{% endif %}" href="{{ url_for('replay.index') }}">
@@ -2782,6 +2877,11 @@
                             </a>
                         </li>
                         {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'auth.settings' or request.endpoint == 'auth.profile' %}active{% endif %}" href="{{ url_for('auth.settings') }}">
+                                <i class="fas fa-cog"></i><span>Settings</span>
+                            </a>
+                        </li>
                         <li class="nav-item mt-3">
                             <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}">
                                 <i class="fas fa-sign-out-alt"></i><span>Logout</span>

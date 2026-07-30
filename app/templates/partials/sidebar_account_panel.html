@@ -1,57 +1,62 @@
-{# Bottom sidebar / drawer: identity + plan + upgrade (authenticated only). #}
+{# Bottom sidebar / drawer: identity + 60-day trial countdown (authenticated only). #}
 {% if current_user.is_authenticated %}
 {% set sub = current_user.effective_subscription() %}
+{% set trial_end_display = trial_personal_ends_at if trial_personal_ends_at is defined and trial_personal_ends_at else sub.trial_ends_at %}
 <div class="tv-account-chip">
-    <div class="d-flex align-items-start gap-2 mb-2">
-        <div class="tv-account-avatar flex-shrink-0">
+    <div class="tv-account-chip-top">
+        <div class="tv-account-avatar flex-shrink-0" aria-hidden="true">
             {% if current_user.avatar_url %}
-                <img src="{{ media_url(current_user.avatar_url) }}" alt="" width="38" height="38" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';">
+                <img src="{{ media_url(current_user.avatar_url) }}" alt="" width="40" height="40" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/default-avatar.svg') }}';">
             {% else %}
                 <i class="fas fa-user"></i>
             {% endif %}
         </div>
-        <div class="min-w-0 flex-grow-1">
-            <div class="fw-semibold text-truncate text-white" title="{{ current_user.username }}">{{ current_user.username }}</div>
-            <div class="small mt-1">
+        <div class="tv-account-chip-meta min-w-0 flex-grow-1">
+            <div class="tv-account-name text-truncate" title="{{ current_user.username }}">{{ current_user.username }}</div>
+            <div class="tv-account-plan">
                 {% if sub.tier == 'owner' %}
-                    <span class="badge rounded-pill bg-warning text-dark">Owner</span>
+                    <span class="tv-plan-badge is-owner">Owner</span>
                 {% elif owner_platform_session_only %}
-                    <span class="badge rounded-pill bg-warning text-dark">Admin</span>
+                    <span class="tv-plan-badge is-owner">Admin</span>
                 {% elif sub.status == 'trialing' %}
-                    <span class="badge rounded-pill bg-info text-dark">
-                        {% if sub.tier == 'pro_plus' %}{{ trial_period_days }}-day Pro Plus trial{% elif sub.tier == 'pro' %}Pro trial{% else %}Trial{% endif %}
-                    </span>
+                    <span class="tv-plan-badge is-trial">{{ trial_period_days|default(60) }}-day Pro Plus trial</span>
                 {% elif sub.tier == 'pro_plus' %}
-                    <span class="badge rounded-pill bg-primary">Pro Plus</span>
+                    <span class="tv-plan-badge is-pro">Pro Plus</span>
                 {% elif sub.tier == 'pro' %}
-                    <span class="badge rounded-pill bg-primary bg-opacity-75">Pro</span>
+                    <span class="tv-plan-badge is-pro">Pro</span>
                 {% else %}
-                    <span class="badge rounded-pill bg-secondary">Free</span>
+                    <span class="tv-plan-badge is-free">Free</span>
                 {% endif %}
             </div>
-            {% set trial_end_display = trial_personal_ends_at if trial_personal_ends_at is defined and trial_personal_ends_at else sub.trial_ends_at %}
-            {% if trial_end_display and sub.status == 'trialing' %}
-            <div class="small text-muted mt-1 text-truncate" title="{{ trial_end_display.isoformat() if trial_end_display else '' }}">
-                <i class="far fa-clock me-1"></i>
-                {% if trial_days_remaining is not none %}
-                    <strong>{{ trial_days_remaining }}</strong> day{% if trial_days_remaining != 1 %}s{% endif %} left
-                    <span class="opacity-75">· ends {{ trial_end_display|datetime('%b %d, %Y') }}</span>
-                {% else %}
-                    Until {{ trial_end_display|datetime('%b %d, %Y') }}
-                {% endif %}
-            </div>
-            {% endif %}
         </div>
     </div>
+
+    {% if trial_end_display and sub.status == 'trialing' and sub.tier != 'owner' %}
+    <div class="tv-trial-box" title="Trial ends {{ trial_end_display|datetime('%B %d, %Y') }}">
+        <div class="tv-trial-days">
+            {% if trial_days_remaining is not none %}
+                <span class="tv-trial-num">{{ trial_days_remaining }}</span>
+                <span class="tv-trial-unit">day{% if trial_days_remaining != 1 %}s{% endif %} left</span>
+            {% else %}
+                <span class="tv-trial-unit">Active trial</span>
+            {% endif %}
+        </div>
+        <div class="tv-trial-ends">
+            Ends <strong>{{ trial_end_display|datetime('%b %d, %Y') }}</strong>
+            <span class="tv-trial-span">· {{ trial_period_days|default(60) }}-day trial</span>
+        </div>
+    </div>
+    {% endif %}
+
     {% if owner_platform_access %}
-    <a href="{{ url_for('owner_admin.platform_stats') }}" class="btn btn-outline-warning btn-sm w-100 rounded-pill fw-semibold">
+    <a href="{{ url_for('owner_admin.platform_stats') }}" class="btn btn-outline-warning btn-sm w-100 rounded-pill fw-semibold mt-2">
         <i class="fas fa-chart-line me-1"></i> Analytics
     </a>
     {% if sub.tier != 'owner' %}
-    <a href="{{ url_for('main.pricing') }}" class="btn btn-link btn-sm text-white-50 py-1 mt-1 text-decoration-none">Plans &amp; pricing</a>
+    <a href="{{ url_for('main.pricing') }}" class="btn btn-link btn-sm tv-account-link py-1 mt-1 text-decoration-none">Plans &amp; pricing</a>
     {% endif %}
     {% else %}
-    <a href="{{ url_for('main.pricing') }}" class="btn btn-primary btn-sm w-100 rounded-pill fw-semibold shadow-sm">
+    <a href="{{ url_for('main.pricing') }}" class="btn btn-primary btn-sm w-100 rounded-pill fw-semibold shadow-sm mt-2">
         <i class="fas fa-arrow-circle-up me-1"></i>
         {% if sub.tier == 'pro_plus' and sub.status == 'active' %}Manage plan{% else %}Upgrade{% endif %}
     </a>

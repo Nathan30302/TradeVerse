@@ -144,6 +144,17 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     trial_ends_at: Optional[datetime] = _as_utc_aware(_safe_getattr(user, "trial_ends_at", None))
     subscription_expires_at: Optional[datetime] = _as_utc_aware(_safe_getattr(user, "subscription_expires_at", None))
 
+    # Owner/admin bypass: full access without billing enforcement (check before promo trial).
+    if role in {"owner"} or is_owner_user(user):
+        return SubscriptionState(tier="owner", status="active", is_active=True, trial_ends_at=None, subscription_expires_at=None)
+
+    # Paying customers keep their paid plan — do not overlay the marketing trial.
+    is_paid_active = (
+        status == "active"
+        and tier in {"pro", "pro_plus"}
+        and (subscription_expires_at is None or subscription_expires_at >= now)
+    )
+
     # Marketing mode: give everyone Pro Plus features for a limited time.
     # This avoids forcing immediate payment setup and keeps the platform fully usable.
     #
@@ -152,7 +163,7 @@ def get_effective_subscription_state(user) -> SubscriptionState:
     #   — feature access may continue until that date, but the visible countdown
     #     always follows EACH user's personal trial clock (signup / trial_ends_at).
     force_all_trial = (os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL", "1") or "1").strip().lower() in {"1", "true", "yes", "on"}
-    if force_all_trial:
+    if force_all_trial and not is_paid_active:
         days = int(os.environ.get("TV_ALL_USERS_PROPLUS_TRIAL_DAYS", "60") or "60")
         created = _as_utc_aware(_safe_getattr(user, "created_at", None))
         promo_until = _parse_promo_access_until()
@@ -195,10 +206,6 @@ def get_effective_subscription_state(user) -> SubscriptionState:
                 subscription_expires_at=None,
             )
         # Marketing trial window elapsed — use normal tier logic below.
-
-    # Owner/admin bypass: full access without billing enforcement.
-    if role in {"owner"} or is_owner_user(user):
-        return SubscriptionState(tier="owner", status="active", is_active=True, trial_ends_at=None, subscription_expires_at=None)
 
     if tier == "free":
         return SubscriptionState(tier="free", status="active", is_active=True, trial_ends_at=trial_ends_at, subscription_expires_at=subscription_expires_at)
