@@ -1038,6 +1038,72 @@
       b.addEventListener('click', function () { ensureChatTab(); });
     });
 
+    var GOALS_URL = root.getAttribute('data-goals-url') || '';
+    var CHALLENGES_URL = root.getAttribute('data-challenges-url') || '';
+
+    document.querySelectorAll('.tv-goal-quick').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (!GOALS_URL) return;
+        var title = btn.getAttribute('data-title') || 'Goal';
+        var metric = btn.getAttribute('data-metric') || 'custom';
+        var target = parseFloat(btn.getAttribute('data-target') || '0') || null;
+        fetch(GOALS_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF,
+            'X-CSRF-Token': CSRF,
+          },
+          body: JSON.stringify({ title: title, metric: metric, target_value: target, target_text: title, days: 30 }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.ok) {
+              appendChat('assistant', 'Goal saved: **' + title + '**. ' + ((d.goal && d.goal.progress_detail) || 'I’ll track this from your journal.'));
+              setTimeout(function () { window.location.reload(); }, 800);
+            } else {
+              appendChat('assistant', 'Could not save that goal right now.');
+            }
+          })
+          .catch(function () {
+            appendChat('assistant', 'Could not save that goal right now.');
+          });
+      });
+    });
+
+    document.querySelectorAll('.tv-challenge-start').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (!CHALLENGES_URL) return;
+        var code = btn.getAttribute('data-code');
+        if (!code) return;
+        fetch(CHALLENGES_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF,
+            'X-CSRF-Token': CSRF,
+          },
+          body: JSON.stringify({ code: code }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.ok && d.challenge) {
+              appendChat(
+                'assistant',
+                'Challenge started: **' + d.challenge.title + '**. ' +
+                  (d.challenge.progress_detail || 'I’ll track progress from your next closed trades.')
+              );
+              setTimeout(function () { window.location.reload(); }, 900);
+            } else {
+              appendChat('assistant', (d && d.error) || 'Could not start that challenge.');
+            }
+          })
+          .catch(function () {
+            appendChat('assistant', 'Could not start that challenge right now.');
+          });
+      });
+    });
+
     refreshBasis();
     setInterval(refreshBasis, 60000);
 

@@ -64,6 +64,31 @@
       </div>
     </div>
 
+    <div class="card mb-3 border-primary border-opacity-25">
+      <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-chalkboard-user text-primary me-1"></i> AI Coach walkthrough</span>
+        {% if walkthrough and walkthrough.overall_grade %}
+        <span class="badge bg-primary">{{ walkthrough.overall_grade }}</span>
+        {% endif %}
+      </div>
+      <div class="card-body small">
+        {% if walkthrough %}
+          {% for s in walkthrough.sections %}
+          <div class="mb-2">
+            <div class="fw-semibold">{{ s.title }}</div>
+            <div class="text-muted">{{ s.body }}</div>
+          </div>
+          {% endfor %}
+          <div class="mt-2 p-2 rounded" style="background:rgba(99,102,241,.08);">
+            <strong>Next:</strong> {{ walkthrough.next_step }}
+          </div>
+          <a class="btn btn-sm btn-outline-primary mt-2" href="{{ url_for('dashboard.ai') }}">Open AI Coach</a>
+        {% else %}
+          <p class="mb-0 text-muted">Close the trade and add a few replay notes to unlock a coach walkthrough.</p>
+        {% endif %}
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header fw-bold">Quick prompts</div>
       <div class="card-body small text-muted">

@@ -175,6 +175,25 @@ def build_smart_cards(user, *, max_cards: int = 4) -> List[Dict[str, Any]]:
     except Exception:
         pass
 
+    # Challenge progress card
+    try:
+        from app.services.coach_goals import list_challenges
+
+        chs = list_challenges(uid)
+        active = next((c for c in chs if c.get("status") == "active"), None)
+        if active:
+            cards.append(
+                {
+                    "id": "challenge",
+                    "title": "Challenge Progress",
+                    "body": f"{active.get('title')}: {active.get('progress_count')}/{active.get('target_count')} — {active.get('progress_detail')}",
+                    "tone": "neutral",
+                    "action": {"label": "Ask the Coach", "type": "ask"},
+                }
+            )
+    except Exception:
+        pass
+
     # Behaviour forecast card
     try:
         from app.services.trade_coach_grades import behaviour_forecast

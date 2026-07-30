@@ -392,6 +392,8 @@
      data-speak-url="{{ url_for('api_voice.speak') }}"
      data-voices-url="{{ url_for('api_voice.voices') }}"
      data-cards-url="{{ url_for('dashboard.ai_smart_cards_api') }}"
+     data-goals-url="{{ url_for('dashboard.ai_goals_api') }}"
+     data-challenges-url="{{ url_for('dashboard.ai_challenges_api') }}"
      data-voice="{{ (voice_summary or '') | e }}"
      data-username="{{ (current_user.username or '') | e }}"
      data-suggested-focus="{{ (suggested_weekly_focus or '') | e }}"
@@ -440,6 +442,95 @@
     {% endfor %}
 </div>
 {% endif %}
+
+{# Weekly Coach Review #}
+{% set wr = weekly_review or {} %}
+{% set wr_stats = wr.get('stats') or {} %}
+<div class="tv-surface soft p-3 p-md-4 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+        <div>
+            <div class="tv-section-title mb-1"><i class="fas fa-calendar-week me-2 text-primary"></i> Weekly Coach Review</div>
+            <p class="small mb-0">{{ wr.get('summary') or 'Close a few trades this week and I’ll summarize performance, leaks, and focus.' }}</p>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dashboard.weekly_review') }}">Full page</a>
+    </div>
+    {% if wr.get('has_data') %}
+    <div class="row g-2 small mb-2">
+        <div class="col-4 col-md-2"><span class="text-muted">Trades</span><div class="fw-semibold">{{ wr_stats.get('total_trades', 0) }}</div></div>
+        <div class="col-4 col-md-2"><span class="text-muted">Win %</span><div class="fw-semibold">{{ '%.0f'|format(wr_stats.get('win_rate', 0) or 0) }}%</div></div>
+        <div class="col-4 col-md-2"><span class="text-muted">P/L</span><div class="fw-semibold">{{ '%+.2f'|format(wr_stats.get('total_pnl', 0) or 0) }}</div></div>
+    </div>
+    {% endif %}
+    {% if wr.get('strengths') %}
+    <div class="small mb-1"><span class="text-success fw-semibold">Improved:</span> {{ wr.strengths[0] }}</div>
+    {% endif %}
+    {% if wr.get('weaknesses') or wr.get('alerts') %}
+    <div class="small mb-1"><span class="text-warning fw-semibold">Watch:</span> {{ (wr.weaknesses or wr.alerts)[0] }}</div>
+    {% endif %}
+    {% if wr.get('recommendations') %}
+    <div class="small"><span class="fw-semibold">Next week:</span> {{ wr.recommendations[0] }}</div>
+    {% endif %}
+</div>
+
+{% if comparisons and comparisons.has_data and comparisons.insights %}
+<div class="tv-surface soft p-3 p-md-4 mb-4">
+    <div class="tv-section-title mb-2"><i class="fas fa-not-equal me-2 text-primary"></i> Smart comparisons</div>
+    <ul class="small mb-0 ps-3">
+        {% for tip in comparisons.insights[:4] %}
+        <li class="mb-1">{{ tip|safe }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{# Goals & Challenges #}
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="tv-surface soft p-3 h-100">
+            <div class="tv-section-title mb-2"><i class="fas fa-bullseye me-2 text-success"></i> Goals</div>
+            {% if coach_goals %}
+                {% for g in coach_goals[:3] %}
+                <div class="mb-2 small">
+                    <div class="d-flex justify-content-between"><strong>{{ g.title }}</strong><span>{{ '%.0f'|format(g.progress_pct or 0) }}%</span></div>
+                    <div class="progress mb-1" style="height:6px;"><div class="progress-bar" style="width:{{ g.progress_pct or 0 }}%"></div></div>
+                    <div class="text-muted">{{ g.progress_detail }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="small tv-muted mb-2">Set a measurable goal (risk %, max trades/day, no revenge).</p>
+            {% endif %}
+            <div class="d-flex flex-wrap gap-1">
+                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="max_trades_day" data-title="Max 2 trades per day" data-target="2">Max 2/day</button>
+                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="risk_pct" data-title="Risk 1% per trade" data-target="1">1% risk</button>
+                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="no_revenge" data-title="No revenge trading (30 days)" data-target="30">No revenge</button>
+                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="rule_adherence" data-title="90% rule adherence" data-target="90">90% focus</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="tv-surface soft p-3 h-100">
+            <div class="tv-section-title mb-2"><i class="fas fa-flag-checkered me-2 text-warning"></i> Challenges</div>
+            {% set active_ch = coach_challenges|selectattr('status', 'equalto', 'active')|list %}
+            {% if active_ch %}
+                {% for ch in active_ch[:2] %}
+                <div class="mb-2 small">
+                    <div class="fw-semibold">{{ ch.title }}</div>
+                    <div>{{ ch.progress_count }}/{{ ch.target_count }} — {{ ch.progress_detail }}</div>
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% set done_ch = coach_challenges|selectattr('status', 'equalto', 'completed')|list %}
+            {% if done_ch %}
+                <div class="small text-success mb-2">Completed: {{ done_ch|length }} challenge{{ 's' if done_ch|length != 1 else '' }}</div>
+            {% endif %}
+            <div class="d-flex flex-wrap gap-1">
+                {% for c in (challenge_catalog or [])[:4] %}
+                <button type="button" class="btn btn-sm btn-outline-secondary tv-challenge-start" data-code="{{ c.code }}">{{ c.title[:28] }}{% if c.title|length > 28 %}…{% endif %}</button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
 
 {# Chat canvas #}
 <div id="ai-chat-card" class="card border-0 mb-4 tv-surface tv-hud-panel">

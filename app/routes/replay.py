@@ -64,7 +64,18 @@ def trade_replay(trade_id: int):
         .order_by(TradeReplayEvent.occurred_at.asc().nulls_last(), TradeReplayEvent.created_at.asc())
         .all()
     )
-    return render_template("replay/trade.html", trade=trade, events=events)
+    walkthrough = None
+    try:
+        from app.services.replay_coach import build_replay_walkthrough
+        walkthrough = build_replay_walkthrough(current_user, trade, events)
+    except Exception:
+        current_app.logger.debug("replay walkthrough skipped", exc_info=True)
+    return render_template(
+        "replay/trade.html",
+        trade=trade,
+        events=events,
+        walkthrough=walkthrough,
+    )
 
 
 @bp.route("/trade/<int:trade_id>/add", methods=["POST"])

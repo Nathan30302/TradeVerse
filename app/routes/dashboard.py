@@ -1294,7 +1294,8 @@ def ai():
 
     coach_memories = []
     try:
-        from app.services.coach_memory import recent_memories
+        from app.services.coach_memory import recent_memories, record_improvement_snapshot
+        record_improvement_snapshot(current_user.id)
         coach_memories = recent_memories(current_user.id, limit=5)
     except Exception:
         coach_memories = []
@@ -1312,6 +1313,24 @@ def ai():
             }
     except Exception:
         performance_card = None
+
+    comparisons = {'has_data': False, 'insights': []}
+    try:
+        from app.services.coach_comparisons import build_smart_comparisons
+        comparisons = build_smart_comparisons(current_user.id)
+    except Exception:
+        comparisons = {'has_data': False, 'insights': []}
+
+    coach_goals = []
+    coach_challenges = []
+    challenge_catalog = []
+    try:
+        from app.services.coach_goals import catalog, list_challenges, list_goals
+        coach_goals = list_goals(current_user.id)
+        coach_challenges = list_challenges(current_user.id)
+        challenge_catalog = catalog()
+    except Exception:
+        pass
 
     import os as _os
     has_neural_voice = bool(
@@ -1335,7 +1354,11 @@ def ai():
                            coach_narrative=coach_narrative,
                            smart_cards=smart_cards,
                            coach_memories=coach_memories,
-                           performance_card=performance_card)
+                           performance_card=performance_card,
+                           comparisons=comparisons,
+                           coach_goals=coach_goals,
+                           coach_challenges=coach_challenges,
+                           challenge_catalog=challenge_catalog)
 
 
 @bp.route('/ai/notes/save', methods=['POST'])
@@ -1661,6 +1684,85 @@ def ai_smart_cards_api():
     except Exception as exc:
         current_app.logger.warning('ai_smart_cards_api failed: %s', exc)
         return jsonify({'cards': []})
+
+
+@bp.route('/ai/comparisons')
+@login_required
+def ai_comparisons_api():
+    """Smart instrument/session/weekday comparisons."""
+    try:
+        from app.services.coach_comparisons import build_smart_comparisons
+        return jsonify(build_smart_comparisons(current_user.id))
+    except Exception as exc:
+        current_app.logger.warning('ai_comparisons_api failed: %s', exc)
+        return jsonify({'has_data': False, 'insights': []})
+
+
+@bp.route('/ai/goals', methods=['GET', 'POST'])
+@login_required
+def ai_goals_api():
+    """List or create coaching goals."""
+    from app.services.coach_goals import create_goal, list_goals
+
+    if request.method == 'GET':
+        try:
+            return jsonify({'goals': list_goals(current_user.id)})
+        except Exception as exc:
+            current_app.logger.warning('ai_goals_api get failed: %s', exc)
+            return jsonify({'goals': []})
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        g = create_goal(
+            current_user.id,
+            title=str(payload.get('title') or 'Coaching goal'),
+            metric=str(payload.get('metric') or 'custom'),
+            target_value=payload.get('target_value'),
+            target_text=str(payload.get('target_text') or ''),
+            days=payload.get('days'),
+        )
+        return jsonify({'ok': True, 'goal': {
+            'id': g.id, 'title': g.title, 'progress_pct': g.progress_pct,
+            'progress_detail': g.progress_detail, 'status': g.status,
+        }})
+    except Exception as exc:
+        current_app.logger.warning('ai_goals_api post failed: %s', exc)
+        return jsonify({'ok': False, 'error': 'Could not save goal.'}), 500
+
+
+@bp.route('/ai/challenges', methods=['GET', 'POST'])
+@login_required
+def ai_challenges_api():
+    """List challenges / catalog, or start one."""
+    from app.services.coach_goals import catalog, list_challenges, start_challenge
+
+    if request.method == 'GET':
+        try:
+            return jsonify({
+                'challenges': list_challenges(current_user.id),
+                'catalog': catalog(),
+            })
+        except Exception as exc:
+            current_app.logger.warning('ai_challenges_api get failed: %s', exc)
+            return jsonify({'challenges': [], 'catalog': catalog()})
+
+    payload = request.get_json(silent=True) or {}
+    code = str(payload.get('code') or '').strip()
+    try:
+        ch = start_challenge(current_user.id, code)
+        if not ch:
+            return jsonify({'ok': False, 'error': 'Unknown challenge.'}), 400
+        return jsonify({
+            'ok': True,
+            'challenge': {
+                'id': ch.id, 'code': ch.code, 'title': ch.title,
+                'progress_count': ch.progress_count, 'target_count': ch.target_count,
+                'status': ch.status, 'progress_detail': ch.progress_detail,
+            },
+        })
+    except Exception as exc:
+        current_app.logger.warning('ai_challenges_api post failed: %s', exc)
+        return jsonify({'ok': False, 'error': 'Could not start challenge.'}), 500
 
 
 @bp.route('/ai/grade-trade/<int:trade_id>')
