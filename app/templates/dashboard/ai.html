@@ -4,73 +4,67 @@
 
 {% block extra_css %}
 <style>
-  /* Cockpit / control-room framing for AI Buddy */
-  .tv-cockpit {
+  /* AI Coach — theme-token UI (readable on every theme) */
+  .tv-coach-page {
     position: relative;
-  }
-  @media (min-width: 768px) {
-    .tv-cockpit {
-      border-left: 3px solid rgba(34, 211, 238, 0.35);
-      padding-left: 1.1rem;
-      margin-left: -0.35rem;
-    }
-  }
-  .tv-hud-panel {
-    border: 1px solid rgba(99, 102, 241, 0.28) !important;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255,255,255,0.04);
-    border-radius: 18px;
-    overflow: hidden;
-  }
-  .tv-hud-panel > .card-header:not(.bg-primary):not(.bg-secondary):not(.bg-gradient-primary):not(.bg-dark) {
-    background: linear-gradient(90deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.92)) !important;
-    color: #f8fafc !important;
-    border-bottom: 1px solid rgba(99, 102, 241, 0.22) !important;
-  }
-  body[data-theme="light"] .tv-hud-panel > .card-header:not(.bg-primary):not(.bg-secondary):not(.bg-dark) {
-    background: linear-gradient(90deg, #e0e7ff, #f8fafc) !important;
-    color: #0f172a !important;
-    border-bottom: 1px solid rgba(99, 102, 241, 0.15) !important;
-  }
-  .tv-hud-panel > .card-header.bg-primary {
-    background: linear-gradient(90deg, #4f46e5, #6366f1) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.12) !important;
-  }
-  .tv-hud-panel > .card-header.bg-secondary {
-    background: linear-gradient(90deg, #334155, #475569) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-  }
-  .tv-hud-panel > .card-header.bg-gradient-primary {
-    background: linear-gradient(90deg, #4f46e5, #7c3aed) !important;
-    color: #fff !important;
-    border-bottom: none !important;
-  }
-  .tv-cockpit .list-group-item {
-    background: var(--card-bg);
-    border-color: var(--card-border);
     color: var(--text-primary);
   }
+  .tv-coach-page .tv-muted,
+  .tv-coach-page .text-muted {
+    color: var(--text-secondary) !important;
+  }
 
-  /* Talk-to-AI: live/typing polish */
+  .tv-coach-panel {
+    border: 1px solid var(--card-border) !important;
+    border-radius: var(--tv-radius, 18px);
+    background: var(--card-bg);
+    box-shadow: 0 10px 32px color-mix(in srgb, var(--text-primary) 8%, transparent);
+    overflow: hidden;
+    color: var(--text-primary);
+  }
+  .tv-coach-panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.9rem 1.1rem;
+    background: color-mix(in srgb, var(--primary) 12%, var(--bg-secondary));
+    border-bottom: 1px solid var(--card-border);
+    color: var(--text-primary);
+  }
+  .tv-coach-panel-header h5 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .tv-coach-basis .badge {
+    background: color-mix(in srgb, var(--card-bg) 88%, var(--primary)) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--card-border);
+    font-weight: 600;
+  }
+
   .tv-typing {
     display: inline-flex;
     gap: 6px;
     align-items: center;
     height: 18px;
   }
-  .tv-typing span{
+  .tv-typing span {
     width: 6px;
     height: 6px;
     border-radius: 999px;
-    background: rgba(255,255,255,0.65);
+    background: color-mix(in srgb, var(--primary) 70%, var(--text-primary));
     animation: tvDot 0.9s infinite ease-in-out;
   }
-  .tv-typing span:nth-child(2){ animation-delay: 0.12s; }
-  .tv-typing span:nth-child(3){ animation-delay: 0.24s; }
+  .tv-typing span:nth-child(2) { animation-delay: 0.12s; }
+  .tv-typing span:nth-child(3) { animation-delay: 0.24s; }
   @keyframes tvDot {
     0%, 100% { transform: translateY(0); opacity: 0.55; }
     50% { transform: translateY(-3px); opacity: 1; }
   }
-
   .tv-speaking {
     animation: tvSpeak 0.14s infinite ease-in-out;
   }
@@ -81,33 +75,31 @@
     75% { transform: translate(0.5px, 0.5px); }
     100% { transform: translate(0,0); }
   }
-  .tv-ai-tabs .nav-link { border-radius: 999px; font-weight: 600; }
-  .tv-ai-tabs .nav-link.active { background: var(--primary, #6366f1); color: #fff; }
-  .tv-morning-line { padding: 0.35rem 0; border-bottom: 1px solid rgba(148,163,184,0.12); }
-  .tv-morning-line:last-child { border-bottom: none; }
+
   #ai-chat-card { scroll-margin-top: 5rem; }
   .tv-ai-chat-shell {
     display: flex;
     flex-direction: column;
-    min-height: min(68vh, 640px);
-    max-height: min(78vh, 760px);
+    min-height: min(62vh, 600px);
+    max-height: min(76vh, 740px);
+    padding: 1rem 1.1rem 1.1rem;
+    background: var(--card-bg);
+    color: var(--text-primary);
   }
   .tv-ai-chat-thread {
     flex: 1 1 auto;
     overflow-y: auto;
     scroll-behavior: smooth;
-    padding: 0.25rem 0.15rem 1rem;
-    min-height: 220px;
+    padding: 0.15rem 0.1rem 0.85rem;
+    min-height: 200px;
   }
   #aiChatLog { max-height: none; overflow: visible; }
+
   .tv-ai-composer {
     flex: 0 0 auto;
-    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    border-top: 1px solid var(--card-border);
     padding-top: 0.85rem;
-    background: linear-gradient(180deg, transparent, rgba(15, 23, 42, 0.04));
-  }
-  body[data-theme="light"] .tv-ai-composer {
-    background: linear-gradient(180deg, transparent, rgba(248, 250, 252, 0.9));
+    background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
   }
   .tv-ai-composer-row {
     display: flex;
@@ -116,9 +108,12 @@
   }
   .tv-ai-composer-row #aiQuestion {
     flex: 1 1 auto;
-    min-height: 2.75rem;
+    min-height: 2.85rem;
     border-radius: 14px;
     resize: none;
+    background: var(--form-bg, var(--card-bg));
+    color: var(--form-text, var(--text-primary));
+    border-color: var(--form-border, var(--card-border));
   }
   .tv-ai-composer-actions {
     display: flex;
@@ -134,63 +129,101 @@
     justify-content: center;
     padding: 0;
   }
+  .tv-ai-options {
+    margin-top: 0.65rem;
+  }
+  .tv-ai-options > summary {
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    list-style: none;
+  }
+  .tv-ai-options > summary::-webkit-details-marker { display: none; }
+  .tv-ai-options-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.65rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+  .tv-ai-options-body .form-check-label {
+    color: var(--text-primary);
+  }
+
   #aiCoachStatus {
     min-height: 1.75rem;
     font-size: 0.8125rem;
     border-radius: 10px;
-    padding: 0.35rem 0.65rem;
-    background: rgba(99, 102, 241, 0.08);
-    border: 1px solid rgba(99, 102, 241, 0.15);
+    padding: 0.4rem 0.7rem;
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-secondary));
+    border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--card-border));
+    color: var(--text-primary);
   }
   #aiCoachStatus.is-listening {
-    background: rgba(59, 130, 246, 0.12);
-    border-color: rgba(59, 130, 246, 0.4);
-    color: #1d4ed8;
+    background: color-mix(in srgb, var(--primary) 16%, var(--bg-secondary));
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--card-border));
+    color: var(--text-primary);
   }
   #aiCoachStatus.is-thinking {
-    background: rgba(99, 102, 241, 0.14);
-    border-color: rgba(99, 102, 241, 0.35);
+    background: color-mix(in srgb, var(--primary) 18%, var(--bg-secondary));
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--card-border));
+    color: var(--text-primary);
   }
   #aiCoachStatus.is-speaking {
-    background: rgba(14, 165, 233, 0.12);
-    border-color: rgba(14, 165, 233, 0.35);
+    background: color-mix(in srgb, var(--primary) 14%, var(--bg-secondary));
+    border-color: color-mix(in srgb, var(--primary) 38%, var(--card-border));
+    color: var(--text-primary);
   }
   #aiCoachStatus.is-error {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.35);
-    color: #991b1b;
+    background: color-mix(in srgb, #ef4444 12%, var(--bg-secondary));
+    border-color: color-mix(in srgb, #ef4444 40%, var(--card-border));
+    color: var(--text-primary);
   }
   #aiQuestion.tv-voice-interim {
     font-style: italic;
-    color: var(--text-muted, #64748b);
+    color: var(--text-secondary);
   }
   #aiQuestion.tv-voice-listening {
-    border-color: rgba(59, 130, 246, 0.55);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: color-mix(in srgb, var(--primary) 55%, var(--form-border, var(--card-border)));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
   }
   #coachTalkBtn.tv-coach-active {
-    background: rgba(59, 130, 246, 0.15);
-    border-color: rgba(59, 130, 246, 0.45);
-    color: #1d4ed8;
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    border-color: color-mix(in srgb, var(--primary) 50%, var(--card-border));
+    color: var(--primary);
   }
   .tv-answer-source {
     font-size: 0.7rem;
     padding: 0.15rem 0.45rem;
     border-radius: 999px;
-    background: rgba(99, 102, 241, 0.12);
-    color: #4338ca;
+    background: color-mix(in srgb, var(--primary) 14%, var(--bg-secondary));
+    color: var(--text-primary);
+    border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--card-border));
     font-weight: 600;
   }
+  .tv-chat-bubble-user,
+  .tv-chat-bubble-assistant {
+    color: var(--text-primary);
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--card-border) !important;
+  }
   .tv-chat-bubble-user {
-    margin-left: 1.5rem;
-    border-left: 3px solid rgba(59, 130, 246, 0.45);
+    margin-left: 1.25rem;
+    border-left: 3px solid color-mix(in srgb, var(--primary) 55%, transparent) !important;
   }
   .tv-chat-bubble-assistant {
-    margin-right: 1.5rem;
-    border-left: 3px solid rgba(99, 102, 241, 0.4);
+    margin-right: 1.25rem;
+    border-left: 3px solid color-mix(in srgb, var(--primary) 70%, transparent) !important;
   }
 
-  /* Talk mode overlay */
+  /* Talk overlay — token surfaces */
   .tv-talk-overlay {
     position: fixed;
     inset: 0;
@@ -199,7 +232,7 @@
     align-items: center;
     justify-content: center;
     padding: 1rem;
-    background: rgba(2, 6, 23, 0.72);
+    background: color-mix(in srgb, var(--bg-primary) 35%, rgba(0, 0, 0, 0.55));
     backdrop-filter: blur(8px);
   }
   .tv-talk-overlay.is-open { display: flex; }
@@ -207,23 +240,18 @@
     width: min(440px, 100%);
     border-radius: 24px;
     padding: 1.5rem 1.35rem 1.25rem;
-    background: linear-gradient(165deg, #0f172a 0%, #1e293b 55%, #0f172a 100%);
-    border: 1px solid rgba(96, 165, 250, 0.35);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
-    color: #e2e8f0;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: 0 24px 80px color-mix(in srgb, var(--text-primary) 22%, transparent);
+    color: var(--text-primary);
     text-align: center;
-  }
-  body[data-theme="light"] .tv-talk-panel {
-    background: linear-gradient(165deg, #f8fafc 0%, #e2e8f0 100%);
-    color: #0f172a;
-    border-color: rgba(59, 130, 246, 0.35);
   }
   .tv-talk-state {
     font-size: 0.8rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     font-weight: 700;
-    color: #93c5fd;
+    color: var(--primary);
     margin-bottom: 0.75rem;
   }
   .tv-wave {
@@ -237,10 +265,14 @@
   .tv-wave span {
     width: 6px;
     border-radius: 999px;
-    background: linear-gradient(180deg, #60a5fa, #2563eb);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--primary) 70%, white),
+      var(--primary)
+    );
     height: 18%;
     transition: height 0.08s ease;
-    opacity: 0.85;
+    opacity: 0.9;
   }
   .tv-talk-overlay.is-listening .tv-wave span,
   .tv-talk-overlay.is-speaking .tv-wave span {
@@ -272,15 +304,17 @@
     margin-bottom: 1rem;
     padding: 0.75rem 0.85rem;
     border-radius: 14px;
-    background: rgba(15, 23, 42, 0.45);
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: var(--bg-secondary);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
     text-align: left;
   }
-  body[data-theme="light"] .tv-talk-transcript {
-    background: rgba(255, 255, 255, 0.75);
-  }
   .tv-talk-transcript.is-interim { font-style: italic; opacity: 0.85; }
-  .tv-talk-hint { font-size: 0.8rem; opacity: 0.7; margin-bottom: 1rem; }
+  .tv-talk-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+  }
   .tv-talk-voice-row {
     display: flex;
     align-items: center;
@@ -290,7 +324,7 @@
   }
   .tv-talk-voice-row label {
     font-size: 0.75rem;
-    opacity: 0.75;
+    color: var(--text-secondary);
     white-space: nowrap;
   }
   .tv-talk-voice-row select {
@@ -308,28 +342,37 @@
     .tv-coach-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   }
   .tv-coach-action {
-    border: 1px solid rgba(99,102,241,0.25);
+    border: 1px solid var(--card-border);
     border-radius: 16px;
-    background: rgba(15,23,42,0.04);
+    background: var(--card-bg);
+    color: var(--text-primary);
     padding: 1rem 0.85rem;
     text-align: center;
     cursor: pointer;
     transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
     width: 100%;
   }
-  body[data-theme="light"] .tv-coach-action { background: #fff; }
   .tv-coach-action:hover {
     transform: translateY(-2px);
-    border-color: rgba(99,102,241,0.55);
-    box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+    border-color: color-mix(in srgb, var(--primary) 55%, var(--card-border));
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--text-primary) 10%, transparent);
   }
   .tv-coach-action .ico {
     font-size: 1.35rem;
     margin-bottom: 0.35rem;
-    color: #6366f1;
+    color: var(--primary);
   }
-  .tv-coach-action .lbl { font-weight: 700; font-size: 0.92rem; display: block; }
-  .tv-coach-action .sub { font-size: 0.72rem; opacity: 0.7; }
+  .tv-coach-action .lbl {
+    font-weight: 700;
+    font-size: 0.92rem;
+    display: block;
+    color: var(--text-primary);
+  }
+  .tv-coach-action .sub {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+  }
+
   .tv-smart-cards {
     display: grid;
     grid-template-columns: 1fr;
@@ -341,27 +384,81 @@
   .tv-smart-card {
     border-radius: 14px;
     padding: 0.85rem 1rem;
-    border: 1px solid rgba(148,163,184,0.22);
-    background: rgba(15,23,42,0.035);
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    color: var(--text-primary);
   }
-  .tv-smart-card.tone-good { border-color: rgba(34,197,94,0.35); }
-  .tv-smart-card.tone-warn { border-color: rgba(245,158,11,0.4); }
-  .tv-smart-card.tone-danger { border-color: rgba(239,68,68,0.35); }
-  .tv-smart-card .t { font-weight: 700; font-size: 0.8rem; margin-bottom: 0.25rem; }
+  .tv-smart-card.tone-good { border-color: color-mix(in srgb, #22c55e 45%, var(--card-border)); }
+  .tv-smart-card.tone-warn { border-color: color-mix(in srgb, #f59e0b 50%, var(--card-border)); }
+  .tv-smart-card.tone-danger { border-color: color-mix(in srgb, #ef4444 45%, var(--card-border)); }
+  .tv-smart-card .t {
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+  }
+  .tv-smart-card .small { color: var(--text-secondary); }
+
   .tv-perf-pill {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     border-radius: 999px;
     padding: 0.35rem 0.85rem;
-    background: rgba(99,102,241,0.12);
+    background: color-mix(in srgb, var(--primary) 14%, var(--bg-secondary));
+    border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--card-border));
+    color: var(--text-primary);
     font-weight: 700;
+  }
+
+  .tv-coach-insights {
+    border: 1px solid var(--card-border);
+    border-radius: var(--tv-radius, 18px);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    padding: 0.85rem 1.1rem 1.1rem;
+  }
+  .tv-coach-insights > summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--text-primary);
+    list-style: none;
+  }
+  .tv-coach-insights > summary::-webkit-details-marker { display: none; }
+  .tv-coach-insights > summary .hint {
+    font-weight: 500;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  .tv-coach-insights-body { margin-top: 1rem; }
+  .tv-coach-insights .tv-surface {
+    background: var(--bg-secondary);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+  }
+  .tv-coach-insights .tv-section-title {
+    color: var(--text-primary);
+  }
+  .tv-attach-preview {
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 0.5rem 0.65rem;
+    background: var(--bg-secondary);
+  }
+  .tv-attach-preview img {
+    max-height: 64px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="tv-cockpit">
+{% set wr = weekly_review or {} %}
+{% set wr_stats = wr.get('stats') or {} %}
+{% set insights_open = wr.get('has_data') or (comparisons and comparisons.has_data) or (coach_goals and coach_goals|length > 0) or (coach_challenges and coach_challenges|length > 0) %}
+
+<div class="tv-coach-page">
 <div class="tv-page-hero mb-3">
     <div class="page-header">
         <div class="row align-items-center">
@@ -445,161 +542,18 @@
 </div>
 {% endif %}
 
-{# Weekly Coach Review #}
-{% set wr = weekly_review or {} %}
-{% set wr_stats = wr.get('stats') or {} %}
-<div class="tv-surface soft p-3 p-md-4 mb-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-        <div>
-            <div class="tv-section-title mb-1"><i class="fas fa-calendar-week me-2 text-primary"></i> Weekly Coach Review</div>
-            <p class="small mb-0">{{ wr.get('summary') or 'Close a few trades this week and I’ll summarize performance, leaks, and focus.' }}</p>
-        </div>
-        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dashboard.weekly_review') }}">Full page</a>
-    </div>
-    {% if wr.get('has_data') %}
-    <div class="row g-2 small mb-2">
-        <div class="col-4 col-md-2"><span class="text-muted">Trades</span><div class="fw-semibold">{{ wr_stats.get('total_trades', 0) }}</div></div>
-        <div class="col-4 col-md-2"><span class="text-muted">Win %</span><div class="fw-semibold">{{ '%.0f'|format(wr_stats.get('win_rate', 0) or 0) }}%</div></div>
-        <div class="col-4 col-md-2"><span class="text-muted">P/L</span><div class="fw-semibold">{{ '%+.2f'|format(wr_stats.get('total_pnl', 0) or 0) }}</div></div>
-    </div>
-    {% endif %}
-    {% if wr.get('strengths') %}
-    <div class="small mb-1"><span class="text-success fw-semibold">Improved:</span> {{ wr.strengths[0] }}</div>
-    {% endif %}
-    {% if wr.get('weaknesses') or wr.get('alerts') %}
-    <div class="small mb-1"><span class="text-warning fw-semibold">Watch:</span> {{ (wr.weaknesses or wr.alerts)[0] }}</div>
-    {% endif %}
-    {% if wr.get('recommendations') %}
-    <div class="small"><span class="fw-semibold">Next week:</span> {{ wr.recommendations[0] }}</div>
-    {% endif %}
-</div>
-
-{% if comparisons and comparisons.has_data %}
-<div class="tv-surface soft p-3 p-md-4 mb-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-        <div class="tv-section-title mb-0"><i class="fas fa-not-equal me-2 text-primary"></i> Smart comparisons</div>
-        <span class="small tv-muted">Last {{ comparisons.sample_size or '—' }} closed trades</span>
-    </div>
-    {% if comparisons.insights %}
-    <ul class="small mb-3 ps-3">
-        {% for tip in comparisons.insights[:4] %}
-        <li class="mb-1">{{ tip|safe }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
-    {% set groups = comparisons.groups or {} %}
-    <div class="row g-2 small">
-        {% for gkey, glabel in [('instruments','Instruments'),('sessions','Sessions'),('weekdays','Weekdays'),('setups','Setups')] %}
-        {% set rows = groups.get(gkey) or [] %}
-        {% if rows %}
-        <div class="col-md-6 col-lg-3">
-            <div class="fw-semibold mb-1">{{ glabel }}</div>
-            {% for r in rows[:4] %}
-            <div class="d-flex justify-content-between border-bottom border-opacity-25 py-1">
-                <span>{{ r.name }}</span>
-                <span class="tv-muted">{{ '%.0f'|format(r.win_rate) }}% · {{ '%+.1f'|format(r.net) }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% endfor %}
-    </div>
-    <button type="button" class="btn btn-sm btn-outline-primary mt-3" id="compareAskBtn"
-            data-q="Compare my best vs worst instruments and sessions — what should I cut?">Ask coach to dig deeper</button>
-</div>
-{% endif %}
-
-{# Goals & Challenges #}
-<div class="row g-3 mb-4">
-    <div class="col-md-6">
-        <div class="tv-surface soft p-3 h-100">
-            <div class="tv-section-title mb-2"><i class="fas fa-bullseye me-2 text-success"></i> Goals</div>
-            {% if coach_goals %}
-                {% for g in coach_goals[:3] %}
-                <div class="mb-2 small">
-                    <div class="d-flex justify-content-between"><strong>{{ g.title }}</strong><span>{{ '%.0f'|format(g.progress_pct or 0) }}%</span></div>
-                    <div class="progress mb-1" style="height:6px;"><div class="progress-bar" style="width:{{ g.progress_pct or 0 }}%"></div></div>
-                    <div class="text-muted">{{ g.progress_detail }}</div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <p class="small tv-muted mb-2">Set a measurable goal (risk %, max trades/day, no revenge).</p>
-            {% endif %}
-            <div class="d-flex flex-wrap gap-1 mb-2">
-                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="max_trades_day" data-title="Max 2 trades per day" data-target="2">Max 2/day</button>
-                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="risk_pct" data-title="Risk 1% per trade" data-target="1">1% risk</button>
-                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="no_revenge" data-title="No revenge trading (30 days)" data-target="30">No revenge</button>
-                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="rule_adherence" data-title="90% rule adherence" data-target="90">90% focus</button>
-                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="journal_days" data-title="Journal 7 days" data-target="7">Journal 7d</button>
-            </div>
-            <details class="small">
-                <summary class="fw-semibold" style="cursor:pointer;">Custom goal</summary>
-                <div class="row g-2 mt-2">
-                    <div class="col-12">
-                        <input type="text" class="form-control form-control-sm" id="customGoalTitle" maxlength="200" placeholder="Goal title">
-                    </div>
-                    <div class="col-6">
-                        <select class="form-select form-select-sm" id="customGoalMetric">
-                            <option value="max_trades_day">Max trades / day</option>
-                            <option value="risk_pct">Risk %</option>
-                            <option value="no_revenge">Clean emotional days</option>
-                            <option value="rule_adherence">Rule adherence %</option>
-                            <option value="journal_days">Journal days</option>
-                            <option value="custom">Custom (coach-tracked)</option>
-                        </select>
-                    </div>
-                    <div class="col-3">
-                        <input type="number" class="form-control form-control-sm" id="customGoalTarget" step="any" placeholder="Target">
-                    </div>
-                    <div class="col-3">
-                        <input type="number" class="form-control form-control-sm" id="customGoalDays" value="30" min="7" max="90" title="Days">
-                    </div>
-                    <div class="col-12">
-                        <button type="button" class="btn btn-sm btn-primary" id="customGoalSave">Save custom goal</button>
-                    </div>
-                </div>
-            </details>
+{# Chat canvas — primary surface #}
+<div id="ai-chat-card" class="card border-0 mb-4 tv-coach-panel">
+    <div class="tv-coach-panel-header">
+        <h5><i class="fas fa-comments me-2"></i>Coach chat</h5>
+        <div class="small tv-coach-basis" id="aiDataBasis">
+            <span class="badge">Last 7d: <span id="aiBasisTrades">—</span> trades</span>
+            <span class="badge">WR: <span id="aiBasisWR">—</span></span>
+            <span class="badge">P/L: <span id="aiBasisPNL">—</span></span>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="tv-surface soft p-3 h-100">
-            <div class="tv-section-title mb-2"><i class="fas fa-flag-checkered me-2 text-warning"></i> Challenges</div>
-            {% set active_ch = coach_challenges|selectattr('status', 'equalto', 'active')|list %}
-            {% if active_ch %}
-                {% for ch in active_ch[:2] %}
-                <div class="mb-2 small">
-                    <div class="fw-semibold">{{ ch.title }}</div>
-                    <div>{{ ch.progress_count }}/{{ ch.target_count }} — {{ ch.progress_detail }}</div>
-                </div>
-                {% endfor %}
-            {% endif %}
-            {% set done_ch = coach_challenges|selectattr('status', 'equalto', 'completed')|list %}
-            {% if done_ch %}
-                <div class="small text-success mb-2">Completed: {{ done_ch|length }} challenge{{ 's' if done_ch|length != 1 else '' }}</div>
-            {% endif %}
-            <div class="d-flex flex-wrap gap-1">
-                {% for c in (challenge_catalog or [])[:4] %}
-                <button type="button" class="btn btn-sm btn-outline-secondary tv-challenge-start" data-code="{{ c.code }}">{{ c.title[:28] }}{% if c.title|length > 28 %}…{% endif %}</button>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-</div>
-
-{# Chat canvas #}
-<div id="ai-chat-card" class="card border-0 mb-4 tv-surface tv-hud-panel">
-    <div class="card-header bg-primary text-white">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <h5 class="mb-0"><i class="fas fa-comments"></i> Coach</h5>
-            <div class="small" id="aiDataBasis" style="opacity:.9;">
-                <span class="badge bg-light text-dark">Last 7d: <span id="aiBasisTrades">—</span> trades</span>
-                <span class="badge bg-light text-dark">WR: <span id="aiBasisWR">—</span></span>
-                <span class="badge bg-light text-dark">P/L: <span id="aiBasisPNL">—</span></span>
-            </div>
-        </div>
-    </div>
-    <div class="card-body tv-ai-chat-shell">
-        <div id="aiCoachStatus" class="mb-2 tv-muted" role="status" aria-live="polite">Pick an action above, or type a question below.</div>
+    <div class="tv-ai-chat-shell">
+        <div id="aiCoachStatus" class="mb-2" role="status" aria-live="polite">Pick an action above, or type a question below.</div>
         <div id="aiChat" class="tv-ai-chat-thread flex-grow-1">
             <div id="aiEmptyHints" class="tv-panel mb-3">
                 <div class="small tv-muted mb-2">Try asking:</div>
@@ -614,26 +568,9 @@
             <div class="mt-3 d-flex flex-wrap gap-2" id="aiFollowUps"></div>
         </div>
         <div class="tv-ai-composer">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                    <div class="form-check form-switch small mb-0">
-                        <input class="form-check-input" type="checkbox" id="aiVoiceAutoSend" checked>
-                        <label class="form-check-label" for="aiVoiceAutoSend">Auto-send after pause</label>
-                    </div>
-                    <div class="form-check form-switch small mb-0">
-                        <input class="form-check-input" type="checkbox" id="aiProactiveSpeak" checked>
-                        <label class="form-check-label" for="aiProactiveSpeak">Speak check-in</label>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2 small">
-                    <label class="tv-muted mb-0" for="aiVoiceSelectComposer">Voice</label>
-                    <select id="aiVoiceSelectComposer" class="form-select form-select-sm" style="width:auto;max-width:11rem;" title="Coach speaking voice"></select>
-                    <button id="aiClearBtn" type="button" class="btn btn-sm btn-outline-secondary" title="Clear this chat"><i class="fas fa-eraser"></i></button>
-                </div>
-            </div>
-            <div id="aiAttachPreview" class="d-none mb-2 small">
+            <div id="aiAttachPreview" class="d-none mb-2 small tv-attach-preview">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <img id="aiAttachThumb" alt="Attached chart" style="max-height:64px;border-radius:8px;border:1px solid rgba(148,163,184,.35);">
+                    <img id="aiAttachThumb" alt="Attached chart">
                     <span class="tv-muted" id="aiAttachLabel">Chart attached</span>
                     <button type="button" class="btn btn-sm btn-outline-danger" id="aiAttachClear">Remove</button>
                 </div>
@@ -648,9 +585,175 @@
                 </div>
             </div>
             <button id="coachStopBtn" type="button" class="btn btn-sm btn-outline-danger mt-2 d-none w-100"><i class="fas fa-stop"></i> End Talk mode</button>
+            <details class="tv-ai-options">
+                <summary>Chat options</summary>
+                <div class="tv-ai-options-body">
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <div class="form-check form-switch small mb-0">
+                            <input class="form-check-input" type="checkbox" id="aiVoiceAutoSend" checked>
+                            <label class="form-check-label" for="aiVoiceAutoSend">Auto-send after pause</label>
+                        </div>
+                        <div class="form-check form-switch small mb-0">
+                            <input class="form-check-input" type="checkbox" id="aiProactiveSpeak" checked>
+                            <label class="form-check-label" for="aiProactiveSpeak">Speak check-in</label>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 small">
+                        <label class="tv-muted mb-0" for="aiVoiceSelectComposer">Voice</label>
+                        <select id="aiVoiceSelectComposer" class="form-select form-select-sm" style="width:auto;max-width:11rem;" title="Coach speaking voice"></select>
+                        <button id="aiClearBtn" type="button" class="btn btn-sm btn-outline-secondary" title="Clear this chat"><i class="fas fa-eraser"></i></button>
+                    </div>
+                </div>
+            </details>
         </div>
     </div>
 </div>
+
+{# Insights & goals — secondary, collapsed unless data exists #}
+<details class="tv-coach-insights mb-4"{% if insights_open %} open{% endif %}>
+    <summary>
+        Insights &amp; goals
+        <span class="hint ms-2">Weekly review, comparisons, challenges</span>
+    </summary>
+    <div class="tv-coach-insights-body">
+        <div class="tv-surface soft p-3 p-md-4 mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                <div>
+                    <div class="tv-section-title mb-1"><i class="fas fa-calendar-week me-2 text-primary"></i> Weekly Coach Review</div>
+                    <p class="small mb-0">{{ wr.get('summary') or 'Close a few trades this week and I’ll summarize performance, leaks, and focus.' }}</p>
+                </div>
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dashboard.weekly_review') }}">Full page</a>
+            </div>
+            {% if wr.get('has_data') %}
+            <div class="row g-2 small mb-2">
+                <div class="col-4 col-md-2"><span class="text-muted">Trades</span><div class="fw-semibold">{{ wr_stats.get('total_trades', 0) }}</div></div>
+                <div class="col-4 col-md-2"><span class="text-muted">Win %</span><div class="fw-semibold">{{ '%.0f'|format(wr_stats.get('win_rate', 0) or 0) }}%</div></div>
+                <div class="col-4 col-md-2"><span class="text-muted">P/L</span><div class="fw-semibold">{{ '%+.2f'|format(wr_stats.get('total_pnl', 0) or 0) }}</div></div>
+            </div>
+            {% endif %}
+            {% if wr.get('strengths') %}
+            <div class="small mb-1"><span class="text-success fw-semibold">Improved:</span> {{ wr.strengths[0] }}</div>
+            {% endif %}
+            {% if wr.get('weaknesses') or wr.get('alerts') %}
+            <div class="small mb-1"><span class="text-warning fw-semibold">Watch:</span> {{ (wr.weaknesses or wr.alerts)[0] }}</div>
+            {% endif %}
+            {% if wr.get('recommendations') %}
+            <div class="small"><span class="fw-semibold">Next week:</span> {{ wr.recommendations[0] }}</div>
+            {% endif %}
+        </div>
+
+        {% if comparisons and comparisons.has_data %}
+        <div class="tv-surface soft p-3 p-md-4 mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                <div class="tv-section-title mb-0"><i class="fas fa-not-equal me-2 text-primary"></i> Smart comparisons</div>
+                <span class="small tv-muted">Last {{ comparisons.sample_size or '—' }} closed trades</span>
+            </div>
+            {% if comparisons.insights %}
+            <ul class="small mb-3 ps-3">
+                {% for tip in comparisons.insights[:4] %}
+                <li class="mb-1">{{ tip|safe }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% set groups = comparisons.groups or {} %}
+            <div class="row g-2 small">
+                {% for gkey, glabel in [('instruments','Instruments'),('sessions','Sessions'),('weekdays','Weekdays'),('setups','Setups')] %}
+                {% set rows = groups.get(gkey) or [] %}
+                {% if rows %}
+                <div class="col-md-6 col-lg-3">
+                    <div class="fw-semibold mb-1">{{ glabel }}</div>
+                    {% for r in rows[:4] %}
+                    <div class="d-flex justify-content-between border-bottom py-1" style="border-color: var(--card-border) !important;">
+                        <span>{{ r.name }}</span>
+                        <span class="tv-muted">{{ '%.0f'|format(r.win_rate) }}% · {{ '%+.1f'|format(r.net) }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-3" id="compareAskBtn"
+                    data-q="Compare my best vs worst instruments and sessions — what should I cut?">Ask coach to dig deeper</button>
+        </div>
+        {% endif %}
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="tv-surface soft p-3 h-100">
+                    <div class="tv-section-title mb-2"><i class="fas fa-bullseye me-2 text-success"></i> Goals</div>
+                    {% if coach_goals %}
+                        {% for g in coach_goals[:3] %}
+                        <div class="mb-2 small">
+                            <div class="d-flex justify-content-between"><strong>{{ g.title }}</strong><span>{{ '%.0f'|format(g.progress_pct or 0) }}%</span></div>
+                            <div class="progress mb-1" style="height:6px;"><div class="progress-bar" style="width:{{ g.progress_pct or 0 }}%"></div></div>
+                            <div class="text-muted">{{ g.progress_detail }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="small tv-muted mb-2">Set a measurable goal (risk %, max trades/day, no revenge).</p>
+                    {% endif %}
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="max_trades_day" data-title="Max 2 trades per day" data-target="2">Max 2/day</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="risk_pct" data-title="Risk 1% per trade" data-target="1">1% risk</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="no_revenge" data-title="No revenge trading (30 days)" data-target="30">No revenge</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="rule_adherence" data-title="90% rule adherence" data-target="90">90% focus</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="journal_days" data-title="Journal 7 days" data-target="7">Journal 7d</button>
+                    </div>
+                    <details class="small">
+                        <summary class="fw-semibold" style="cursor:pointer;">Custom goal</summary>
+                        <div class="row g-2 mt-2">
+                            <div class="col-12">
+                                <input type="text" class="form-control form-control-sm" id="customGoalTitle" maxlength="200" placeholder="Goal title">
+                            </div>
+                            <div class="col-6">
+                                <select class="form-select form-select-sm" id="customGoalMetric">
+                                    <option value="max_trades_day">Max trades / day</option>
+                                    <option value="risk_pct">Risk %</option>
+                                    <option value="no_revenge">Clean emotional days</option>
+                                    <option value="rule_adherence">Rule adherence %</option>
+                                    <option value="journal_days">Journal days</option>
+                                    <option value="custom">Custom (coach-tracked)</option>
+                                </select>
+                            </div>
+                            <div class="col-3">
+                                <input type="number" class="form-control form-control-sm" id="customGoalTarget" step="any" placeholder="Target">
+                            </div>
+                            <div class="col-3">
+                                <input type="number" class="form-control form-control-sm" id="customGoalDays" value="30" min="7" max="90" title="Days">
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-sm btn-primary" id="customGoalSave">Save custom goal</button>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="tv-surface soft p-3 h-100">
+                    <div class="tv-section-title mb-2"><i class="fas fa-flag-checkered me-2 text-warning"></i> Challenges</div>
+                    {% set active_ch = coach_challenges|selectattr('status', 'equalto', 'active')|list %}
+                    {% if active_ch %}
+                        {% for ch in active_ch[:2] %}
+                        <div class="mb-2 small">
+                            <div class="fw-semibold">{{ ch.title }}</div>
+                            <div>{{ ch.progress_count }}/{{ ch.target_count }} — {{ ch.progress_detail }}</div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    {% set done_ch = coach_challenges|selectattr('status', 'equalto', 'completed')|list %}
+                    {% if done_ch %}
+                        <div class="small text-success mb-2">Completed: {{ done_ch|length }} challenge{{ 's' if done_ch|length != 1 else '' }}</div>
+                    {% endif %}
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for c in (challenge_catalog or [])[:4] %}
+                        <button type="button" class="btn btn-sm btn-outline-secondary tv-challenge-start" data-code="{{ c.code }}">{{ c.title[:28] }}{% if c.title|length > 28 %}…{% endif %}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</details>
 
 {# Coach settings (secondary) #}
 <details class="tv-surface soft p-3 p-md-4 mb-4">
@@ -732,7 +835,7 @@
     </div>
 </div>
 
-</div>{# cockpit #}
+</div>{# coach page #}
 {% endblock %}
 
 {% block extra_js %}
