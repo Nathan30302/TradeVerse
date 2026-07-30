@@ -432,21 +432,21 @@ class AIAnalyzer:
                 'stats': stats,
                 'direction': 'onboarding',
                 'summary': (
-                    'No closed trades in the last 30 days yet. '
-                    'Log a few closed trades and AI Buddy will track your trend here.'
+                    'Quiet month so far — no closed trades in the last 30 days. '
+                    'Close a few and I’ll track the trend here.'
                 ),
             }
 
         direction = 'improving' if win_rate >= 50 and total_pnl >= 0 else 'needs review'
         if direction == 'improving':
             summary = (
-                f"Your last 30-day performance is improving, with "
-                f"{win_rate:.0f}% wins and ${total_pnl:.2f} P/L."
+                f"Last 30 days look constructive: "
+                f"{win_rate:.0f}% wins, {total_pnl:+.2f} P/L."
             )
         else:
             summary = (
-                f"Your last 30-day performance needs review: "
-                f"{win_rate:.0f}% wins and ${total_pnl:.2f} P/L."
+                f"Last 30 days need a closer look: "
+                f"{win_rate:.0f}% wins, {total_pnl:+.2f} P/L."
             )
         return {
             'label': 'AI Buddy Monthly Review',
@@ -528,29 +528,31 @@ class AIAnalyzer:
         total = stats.get('total_trades', 0)
         if total == 0:
             return (
-                'No closed trades recorded this week. '
-                'Log trades to get AI Buddy insights.'
+                "Quiet week so far — no closed trades logged. "
+                "When you close one, I’ll turn it into a clear read."
             )
- 
+
         win_rate = stats.get('win_rate', 0.0)
         total_pnl = stats.get('total_pnl', 0.0)
         intro = (
-            f"This week you took {total} closed trades with a "
-            f"{win_rate:.0f}% win rate and ${total_pnl:.2f} P/L."
+            f"This week: {total} closed trade{'s' if total != 1 else ''}, "
+            f"{win_rate:.0f}% win rate, {total_pnl:+.2f} P/L."
         )
- 
+
         best_strategy = (setups or {}).get('best_strategy')
         if best_strategy and isinstance(best_strategy, dict):
             name = best_strategy.get('name', '')
             wr = best_strategy.get('win_rate', 0.0)
-            intro += f" Your best strategy was {name} with a {wr:.0f}% win rate."
- 
+            if name:
+                intro += f" {name} carried the edge at {wr:.0f}%."
+
         best_day = (day_insights or {}).get('best_day')
         if best_day and isinstance(best_day, dict):
             name = best_day.get('name', '')
             wr = best_day.get('win_rate', 0.0)
-            intro += f" Your strongest day was {name} with a {wr:.0f}% win rate."
- 
+            if name:
+                intro += f" Strongest day was {name} ({wr:.0f}%)."
+
         return intro
  
     def _get_recommendations(
@@ -560,9 +562,9 @@ class AIAnalyzer:
         total = int(stats.get('total_trades', 0) or 0)
         if total < 1:
             return [
-                'Log your next 3 closed trades with stop loss, strategy tag, and 1–2 lines of post-trade notes.',
-                'Set one weekly focus rule (max trades per day or daily stop in R).',
-                'Run Trade Doctor again once you have at least 5 closed trades.',
+                'Close your next 3 trades with stop loss, strategy tag, and 1–2 lines of notes.',
+                'Set one weekly focus (max trades per day or a daily stop in R).',
+                'Re-run Trade Doctor once you have at least 5 closed trades.',
             ]
 
         win_rate = stats.get('win_rate', 0.0)
@@ -571,32 +573,32 @@ class AIAnalyzer:
 
         if win_rate < 50:
             recommendations.append(
-                'Review your losing setups and avoid weak sessions.'
+                'Protect the week: only take A-grade setups until win rate recovers.'
             )
         if avg_rr < 1.5:
             recommendations.append(
-                'Improve risk management by targeting R:R above 1.5:1.'
+                'Raise the bar on R:R — aim for at least 1.5:1 before you click.'
             )
         if total_pnl < 0:
             recommendations.append(
-                'Focus on quality setups and avoid emotional entries.'
+                'Slow the pace. Quality over activity until the curve turns.'
             )
- 
+
         best_strategy = (setups or {}).get('best_strategy')
         if best_strategy and isinstance(best_strategy, dict):
             name = best_strategy.get('name', '')
             if name:
                 recommendations.append(
-                    f'Trade more with {name} when conditions are aligned.'
+                    f'Lean into {name} when the same conditions show up again.'
                 )
- 
+
         worst_strategy = (setups or {}).get('worst_strategy')
         if worst_strategy and isinstance(worst_strategy, dict):
             name = worst_strategy.get('name', '')
             wr = worst_strategy.get('win_rate', 100.0)
             if name and wr < 40:
                 recommendations.append(
-                    f'Avoid {name} until you review the edge.'
+                    f'Park {name} until you rewrite the rules with chart examples.'
                 )
  
         return recommendations
@@ -615,16 +617,14 @@ class AIAnalyzer:
                 else 'your strongest strategy'
             )
             return (
-                f"Hello trader, this week you took {total} closed trades. "
-                f"Your win rate was {win_rate:.0f} percent. "
-                f"Your biggest strength was {strategy_name}. "
-                f"Your biggest opportunity is to improve your risk reward "
-                f"and reduce emotional trades."
+                f"Here’s your week: {total} closed trade{'s' if total != 1 else ''}, "
+                f"{win_rate:.0f}% win rate. "
+                f"The standout edge was {strategy_name}. "
+                f"Biggest unlock next: cleaner R:R and fewer emotional entries."
             )
         except Exception:
             return (
-                'AI Buddy has no data to summarise yet. '
-                'Log some trades to get started.'
+                "Nothing to review yet — close a few trades and I’ll give you a clear read."
             )
  
     def get_voice_review(self, user_name: str = '') -> Dict[str, Any]:
@@ -668,26 +668,30 @@ class AIAnalyzer:
             return rng.choice(options) if options else ''
 
         greet_name = (user_name or '').strip()
-        greet = pick([
-            f"Hey {greet_name}—quick coach brief.",
-            f"Alright {greet_name}, here’s your weekly review.",
-            f"{greet_name}, let’s review your week like a pro.",
-            "Quick coach brief—here’s the week.",
-            "Let’s break down your week."
-        ])
-        greet = greet.replace("—", ",") if not greet_name else greet
+        if greet_name:
+            greet = pick([
+                f"{greet_name}, here’s a quiet read on your week.",
+                f"Good to catch you, {greet_name} — week in focus.",
+                f"{greet_name}, this is what the journal shows.",
+            ])
+        else:
+            greet = pick([
+                "Here’s a quiet read on your week.",
+                "Week in focus — straight from your journal.",
+                "A clear look at the week you just traded.",
+            ])
 
         if total <= 0:
             segments = [
                 greet,
-                "You don’t have any closed trades logged this week.",
-                "If you want me to coach you properly, log at least your entry, exit, and stop loss—or your risk amount.",
-                "Question: what’s the one setup you’re focusing on next week?"
+                "No closed trades logged this week yet.",
+                "When you’re ready, log entry, exit, and stop — or risk amount — and I’ll coach from your numbers.",
+                "What’s the one setup you want to own next week?",
             ]
             return {
                 'text': ' '.join(segments),
                 'segments': segments,
-                'questions': ["What’s the one setup you’re focusing on next week?"],
+                'questions': ["What’s the one setup you want to own next week?"],
                 'meta': {'trades': total, 'win_rate': win_rate, 'total_pnl': total_pnl, 'avg_rr': avg_rr}
             }
 
@@ -717,61 +721,61 @@ class AIAnalyzer:
             worst_trade_line = ''
 
         pnl_phrase = pick([
-            f"Net P and L: {total_pnl:.0f}.",
-            f"You’re at {total_pnl:.0f} net for the week.",
-            f"Your week finished at {total_pnl:.0f} total."
+            f"Net for the week: {total_pnl:+.0f}.",
+            f"You’re sitting at {total_pnl:+.0f} net.",
+            f"The week closed at {total_pnl:+.0f}.",
         ])
 
         wr_phrase = pick([
-            f"Win rate: {win_rate:.0f} percent across {total} trades.",
-            f"You took {total} trades with a {win_rate:.0f} percent win rate.",
-            f"{total} trades logged, {win_rate:.0f} percent winners."
+            f"{total} trades, {win_rate:.0f}% winners.",
+            f"Win rate landed at {win_rate:.0f}% across {total} trades.",
+            f"You took {total} — {win_rate:.0f}% of them winners.",
         ])
 
         rr_phrase = pick([
-            f"Average R to R: {avg_rr:.2f}.",
-            f"Your average risk reward was {avg_rr:.2f}.",
-            f"Risk reward averaged {avg_rr:.2f}."
+            f"Average R:R was {avg_rr:.2f}.",
+            f"Risk-to-reward averaged {avg_rr:.2f}.",
+            f"You’re getting about {avg_rr:.2f}R when you win on average.",
         ])
 
         best_phrase = (
             pick([
-                f"Your strongest edge showed up in {best_name}.",
-                f"Best setup this week was {best_name}.",
-                f"Your best-performing strategy: {best_name}."
+                f"{best_name} was the cleanest edge.",
+                f"Your strongest setup was {best_name}.",
+                f"{best_name} paid best when conditions lined up.",
             ]) if best_name else pick([
-                "No single strategy dominated this week.",
-                "Your results were spread—no clear best setup yet.",
-                "You don’t have a clear best strategy in this sample."
+                "No single setup dominated — the sample is still mixed.",
+                "Results were spread; we don’t have a clear best setup yet.",
+                "Still hunting for the setup that deserves size.",
             ])
         )
 
         best_day_phrase = (
             pick([
-                f"Your strongest day was {best_day_name} at {best_day_wr:.0f} percent.",
-                f"Best day: {best_day_name}, {best_day_wr:.0f} percent win rate.",
+                f"{best_day_name} was your strongest day ({best_day_wr:.0f}% win rate).",
+                f"Best day: {best_day_name} at {best_day_wr:.0f}%.",
             ]) if best_day_name and best_day_wr is not None and total >= 3 else ""
         )
 
         strength_line = strengths[0] if strengths else pick([
-            "Strength: you showed discipline in at least part of the sample.",
-            "Strength: you’re tracking enough data to improve.",
+            "Strength: you’re leaving a trail of data we can actually use.",
+            "Strength: parts of the week already look disciplined.",
         ])
         weakness_line = weaknesses[0] if weaknesses else pick([
-            "Leak: risk reward is your biggest lever this week.",
-            "Leak: consistency and selectivity look like the next upgrade."
+            "The soft spot: R:R and selectivity — that’s the lever.",
+            "The soft spot: consistency. Fewer, cleaner trades.",
         ])
 
         one_rule = pick(recs) if recs else pick([
-            "One rule: only take trades that meet your checklist—no exceptions.",
-            "One rule: predefine risk before entry, every single time.",
-            "One rule: if you feel rushed, you don’t trade."
+            "Only take trades that clear your checklist — no exceptions.",
+            "Define risk before entry, every time.",
+            "If you feel rushed, you don’t trade.",
         ])
 
         follow_up = pick([
-            "Quick question: what was the one emotion you felt most before entering trades this week?",
-            "Quick question: what time of day did you take most of your losing trades?",
-            "Quick question: did you move your stop loss on any trade this week?"
+            "What emotion showed up most before your entries this week?",
+            "What time of day held most of the losses?",
+            "Did you move a stop on any trade this week?",
         ])
 
         segments = [greet, wr_phrase, pnl_phrase, rr_phrase, best_phrase]
@@ -782,8 +786,13 @@ class AIAnalyzer:
         if worst_trade_line:
             segments.append(worst_trade_line)
         if alerts:
-            segments.append("Top alerts: " + "; ".join(alerts) + ".")
-        segments.extend([strength_line, weakness_line, f"Your one rule for next week: {one_rule}", follow_up])
+            segments.append("Worth watching: " + "; ".join(alerts) + ".")
+        segments.extend([
+            strength_line,
+            weakness_line,
+            f"One rule for next week: {one_rule}",
+            follow_up,
+        ])
         text = ' '.join(s for s in segments if s)
         return {
             'text': text,
@@ -795,19 +804,24 @@ class AIAnalyzer:
     def _answer_evidence_prefix(
         self, stats: Dict[str, Any], coach_context: str = ''
     ) -> str:
+        from app.services.ai_buddy_voice import format_week_snapshot
+
         total = int(stats.get('total_trades') or 0)
         block = (coach_context or '').strip()
         if total < 1:
             head = (
-                "**Your data (last 7 days):** No closed trades yet.\n"
-                "Log 3+ closed trades with stop loss, strategy tags, and short post-trade notes."
+                "**From your journal (last 7 days)**\n"
+                "No closed trades yet. Log a few with stop, strategy tag, and a short note."
             )
         else:
             head = (
-                f"**Your data (last 7 days):** {total} trades, "
-                f"{float(stats.get('win_rate') or 0):.0f}% win rate, "
-                f"net {float(stats.get('total_pnl') or 0):.2f}, "
-                f"avg R:R {float(stats.get('avg_rr') or 0):.2f}."
+                "**From your journal (last 7 days)**\n"
+                + format_week_snapshot(
+                    total=total,
+                    win_rate=float(stats.get('win_rate') or 0),
+                    total_pnl=float(stats.get('total_pnl') or 0),
+                    avg_rr=float(stats.get('avg_rr') or 0) or None,
+                )
             )
         if block:
             return head + "\n\n" + block + "\n\n"
@@ -820,12 +834,12 @@ class AIAnalyzer:
 
     def _empty_state_coach_reply(self, stats: Dict[str, Any], coach_context: str = '') -> Dict[str, Any]:
         body = (
-            "I don’t have enough of *your* trade data to diagnose a leak yet.\n\n"
-            "**Do this next (takes ~10 minutes):**\n"
-            "- Log **3 closed trades** with stop loss (or risk $), strategy tag, and emotion.\n"
-            "- Add **1–2 lines** of post-trade notes on each (what was sloppy vs correct).\n"
-            "- Set **one weekly focus rule** (example: max 2 trades/day; stop after −2R).\n\n"
-            "Then ask: *“What’s my biggest leak?”* or run **Trade Doctor**."
+            "I don’t have enough of your journal yet to name a real leak.\n\n"
+            "**A clean first pass (~10 minutes):**\n"
+            "- Close **3 trades** with stop (or risk $), strategy tag, and emotion.\n"
+            "- Write **one honest line** on each — what was process vs impulse.\n"
+            "- Set **one weekly focus** (example: max 2 trades/day; stop after −2R).\n\n"
+            "Then ask “What’s my biggest leak?” — or open Trade Doctor."
         )
         return {
             'answer': self._wrap_coach_answer(body, stats, coach_context),
@@ -843,22 +857,31 @@ class AIAnalyzer:
         alerts = weekly.get('alerts') or []
         recs = weekly.get('recommendations') or []
         total = int(stats.get('total_trades') or 0)
-        name = (user_name or '').strip() or 'Trader'
+        name = (user_name or '').strip()
 
         if total < 1:
+            hello = f"{name}, " if name else ""
             lines = [
-                f"Good session, {name}. Your journal is ready — add your first closed trade when you finish one.",
-                "Focus today: one setup, one market, one session window.",
-                "Set a weekly focus rule (even one sentence) so I can coach you against it.",
+                f"{hello}the journal is ready — close one trade and I’ll start reading your edge.",
+                "Today: one setup, one market, one session window.",
+                "Leave one weekly focus sentence so I can hold you to it.",
             ]
         else:
-            pnl = float(stats.get('total_pnl') or 0)
-            wr = float(stats.get('win_rate') or 0)
+            from app.services.ai_buddy_voice import format_week_snapshot
+
+            snap = format_week_snapshot(
+                total=total,
+                win_rate=float(stats.get('win_rate') or 0),
+                total_pnl=float(stats.get('total_pnl') or 0),
+            )
+            hello = f"{name} — " if name else ""
             lines = [
-                f"Good session, {name}. Last 7 days: {total} trades, {wr:.0f}% win rate, net {pnl:+.2f}.",
-                (alerts[0] if alerts else (recs[0] if recs else "Keep tagging strategy and emotion on every trade.")),
-                recs[0] if recs and not alerts else (
-                    recs[0] if recs else "Review yesterday’s loss — was it process or impulse?"
+                f"{hello}{snap}",
+                (alerts[0] if alerts else (recs[0] if recs else "Keep tagging strategy and emotion — patterns hide without labels.")),
+                (
+                    recs[0]
+                    if recs
+                    else "Before the next click: was yesterday process or impulse?"
                 ),
             ]
         return {'lines': lines[:3], 'has_data': total > 0}
@@ -884,11 +907,11 @@ class AIAnalyzer:
         emo = (t.emotion or "").strip()
         note = (t.post_trade_notes or t.lessons_learned or "").strip()
         if pnl > 0:
-            tone = "Winner logged"
+            tone = "Clean win"
         elif pnl < 0:
-            tone = "Loss logged"
+            tone = "Loss closed"
         else:
-            tone = "Trade closed"
+            tone = "Flat close"
         line = f"{tone} on {sym} ({pnl:+.2f})."
         if emo:
             line += f" Emotion: {emo}."
@@ -896,7 +919,7 @@ class AIAnalyzer:
             snippet = note[:120] + ("..." if len(note) > 120 else "")
             line += f" Note: {snippet}"
         elif pnl < 0:
-            line += " Add a one-line lesson so AI Buddy can spot patterns."
+            line += " Leave one honest line while it’s fresh — that’s how patterns show up."
         return line
 
     @staticmethod
@@ -956,7 +979,7 @@ class AIAnalyzer:
         td = self.trade_doctor(last_n=10)
         leak = (td.get('leak') or '').strip()
         if leak and leak not in ('No recent closed trades', 'Need more signal'):
-            return f"Trade Doctor focus: {leak[:160]}"
+            return f"Focus this week: {leak[:160]}"
         return "Max 2 trades per day; stop trading after −2R daily loss."
 
     def answer_question(
@@ -1307,18 +1330,19 @@ class AIAnalyzer:
         if not trades:
             text = (
                 "**Trade Doctor**\n\n"
-                "Not enough closed trades yet. Log and close **at least 3 trades** with:\n"
+                "I need a few closed trades before I can name a real leak. "
+                "Close **at least 3** with:\n"
                 "- Strategy tag + emotion\n"
                 "- Stop loss (or risk $)\n"
-                "- One-line post-trade note\n\n"
-                "Then run Trade Doctor again for a leak diagnosis."
+                "- One honest post-trade line\n\n"
+                "Then come back — the read gets sharp fast."
             )
             return {
                 "leak": "No recent closed trades",
-                "evidence": ["Log and close at least 3 trades to unlock Trade Doctor."],
+                "evidence": ["Close at least 3 trades with risk, tags, and a short note."],
                 "plan": [
-                    "Log your next 10 trades with: strategy tag, emotion, SL, and a 1‑line plan.",
-                    "Ask Trade Doctor again.",
+                    "On the next 10 closes: strategy tag, emotion, SL, and a one-line plan.",
+                    "Re-run Trade Doctor once those are in.",
                 ],
                 "checklist": [
                     "Strategy tag selected",
@@ -1458,7 +1482,7 @@ class AIAnalyzer:
             plan = [
                 "Tag strategy + emotion for the next 10 trades.",
                 "Log SL (or risk $) on every trade.",
-                "Ask Trade Doctor again.",
+                "Re-run Trade Doctor once those fields are filled.",
             ]
             checklist = [
                 "Strategy tag",
@@ -1478,20 +1502,20 @@ class AIAnalyzer:
                 suggested_focus = pl.split(":", 1)[-1].strip()
                 break
         if not suggested_focus and leak and leak not in ("No recent closed trades", "Need more signal"):
-            suggested_focus = f"Trade Doctor focus: {leak}"
+            suggested_focus = f"Focus this week: {leak}"
 
         # Strict plan wrapper
         strict = [
-            f"**Trade Doctor diagnosis:** {leak}",
+            f"**Biggest leak:** {leak}",
             "",
-            "**Evidence (from last 10 closed trades)**",
+            "**From your last closed trades**",
             *[f"- {e}" for e in evidence],
             "",
-            "**Strict plan (follow exactly for next 10 trades)**",
+            "**Next 10 trades — hold this line**",
             *[f"- {p}" for p in plan],
         ]
         if suggested_focus:
-            strict.extend(["", f"**Suggested weekly focus:** {suggested_focus}"])
+            strict.extend(["", f"**Weekly focus:** {suggested_focus}"])
 
         compliance = {}
         try:

@@ -150,7 +150,7 @@
                 <h1 class="page-title mb-2">
                     <i class="fas fa-chalkboard-user"></i> AI Buddy
                 </h1>
-                <p class="page-subtitle mb-0">Your personal trading coach. Clear patterns, direct fixes, and a weekly focus.</p>
+                <p class="page-subtitle mb-0">Private coach for your journal — calm reads, sharp fixes, one weekly focus.</p>
             </div>
             <div class="col-auto">
                 <div class="d-flex flex-wrap gap-2 justify-content-end">
@@ -176,10 +176,10 @@
                 <i class="fas fa-wand-magic-sparkles text-primary"></i>
             </div>
             <div class="flex-grow-1">
-                <div class="tv-section-title mb-1">Coach mode (actionable by default)</div>
+                <div class="tv-section-title mb-1">Coach mode</div>
                 <div class="small tv-muted">
-                    Best results come from consistent risk input (SL or risk $), strategy tags, and short post-trade notes.
-                    AI Buddy will always try to turn patterns into one next-week rule you can actually follow.
+                    Best results come from consistent risk (SL or risk $), strategy tags, and short post-trade notes.
+                    I’ll turn patterns into one next-week rule you can actually follow.
                 </div>
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     <span class="tv-chip"><i class="fas fa-bullseye"></i> Weekly focus</span>
@@ -221,7 +221,7 @@
 <div class="tv-surface soft p-3 p-md-4 mb-4 tv-hud-panel">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
         <div>
-            <div class="tv-section-title mb-1"><i class="fas fa-compass me-2 text-primary"></i> This week’s coach story</div>
+            <div class="tv-section-title mb-1"><i class="fas fa-compass me-2 text-primary"></i> This week’s read</div>
             <p class="small mb-0" style="line-height:1.5;">{{ cn.summary }}</p>
         </div>
         {% if cn.source %}<span class="badge bg-secondary">{{ cn.source|replace('_', ' ') }}</span>{% endif %}
@@ -277,7 +277,7 @@
     {% if last_trade_insight %}
     <p class="mt-3 pt-3 border-top small mb-0"><span class="text-muted">Latest trade:</span> {{ last_trade_insight }}</p>
     {% endif %}
-    {% if has_ai_web %}<p class="small tv-muted mt-2 mb-0"><i class="fas fa-sparkles"></i> Web coach (OpenAI) is active for chat — including personal journal questions.</p>{% endif %}
+    {% if has_ai_web %}<p class="small tv-muted mt-2 mb-0"><i class="fas fa-sparkles"></i> Pro web coach is on — including personal journal questions.</p>{% endif %}
 </div>
 {% if focus_compliance and focus_compliance.has_focus %}
 <div class="tv-surface soft p-3 p-md-4 mb-4 tv-hud-panel" id="aiFocusCompliance">
@@ -368,7 +368,7 @@
                         <i class="fas fa-stethoscope"></i> Trade Doctor
                     </button>
                 </div>
-                <div class="mt-3 small tv-muted"><em>Ask AI Buddy about your win rate, mistakes, best setups, or general trading questions.</em></div>
+                <div class="mt-3 small tv-muted"><em>Ask about your win rate, leaks, best setups — or a general trading question.</em></div>
             </div>
             <div id="aiChatLog" class="mt-3"></div>
             <div class="mt-3 d-flex flex-wrap gap-2" id="aiFollowUps"></div>
@@ -381,7 +381,7 @@
 <div id="ai-section-setup" class="ai-tab-panel d-none">
 <div class="tv-surface soft p-3 p-md-4 mb-4">
     <div class="tv-section-title mb-2"><i class="fas fa-bullseye me-2 text-primary"></i>Your weekly focus</div>
-    <p class="small tv-muted mb-3">One sentence AI Buddy should enforce when coaching you (review weekly).</p>
+    <p class="small tv-muted mb-3">One sentence I’ll hold you to when coaching (review weekly).</p>
     <form method="POST" action="{{ url_for('dashboard.save_weekly_focus') }}" class="row g-2 align-items-end">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="next" value="{{ url_for('dashboard.ai') }}">
@@ -476,7 +476,7 @@
 {% set weekly_strengths    = (weekly_review.get('strengths')       if weekly_review else []) or [] %}
 {% set weekly_weaknesses   = (weekly_review.get('weaknesses')      if weekly_review else []) or [] %}
 {% set weekly_recs         = (weekly_review.get('recommendations') if weekly_review else []) or [] %}
-{% set weekly_summary_text = (weekly_review.get('summary')         if weekly_review else '') or 'No insights available yet. Log some trades to get AI Buddy feedback.' %}
+{% set weekly_summary_text = (weekly_review.get('summary')         if weekly_review else '') or 'Quiet so far — close a few trades and I’ll give you a clear read.' %}
 
 {% set best_strategy   = weekly_setups.get('best_strategy')  if weekly_setups else none %}
 {% set worst_strategy  = weekly_setups.get('worst_strategy') if weekly_setups else none %}
@@ -583,7 +583,7 @@
                         <li class="list-group-item d-flex justify-content-between align-items-start">
                             <div>
                                 <div class="fw-semibold">{{ alert_item }}</div>
-                                <small class="text-muted">AI Buddy detected behaviour or pattern.</small>
+                                <small class="text-muted">Spotted from your journal.</small>
                             </div>
                             <span class="badge bg-danger rounded-pill">Alert</span>
                         </li>
@@ -593,7 +593,7 @@
                     <div class="tv-empty-well py-5">
                         <div class="tv-empty-icon mx-auto"><i class="fas fa-check-circle text-success"></i></div>
                         <p class="mb-0 fw-semibold">No urgent alerts</p>
-                        <p class="small tv-muted mb-0 mt-2">Keep logging plans and trades so AI Buddy can spot patterns early.</p>
+                        <p class="small tv-muted mb-0 mt-2">Keep logging plans and trades — patterns show up early when the trail is complete.</p>
                     </div>
                 {% endif %}
             </div>

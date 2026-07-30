@@ -366,7 +366,7 @@
           if (d && d.ok) {
             var inp = document.getElementById('weekly_focus_ai');
             if (inp) inp.value = rule;
-            var msg = 'Saved your weekly focus: **' + rule + '**. AI Buddy will score the next trades against this rule.';
+            var msg = 'Saved your weekly focus: **' + rule + '**. I’ll score the next trades against this.';
             if (d.compliance && d.compliance.sample_size) {
               msg += '\n\nCurrent adherence: **' + (d.compliance.label || '') + '**';
             } else {
@@ -615,11 +615,11 @@
         coachBtn.classList.add('tv-coach-active');
       }
       var intro = USERNAME
-        ? 'Hey ' + USERNAME + '. Ask out loud — I’ll answer, then listen again.'
-        : 'Ask out loud — I’ll answer, then listen again.';
+        ? USERNAME + ', I’m listening. Ask out loud — I’ll answer, then listen again.'
+        : 'I’m listening. Ask out loud — I’ll answer, then listen again.';
       if (!coachIntroShown) {
         coachIntroShown = true;
-        setCoachStatus('speaking', 'Starting Coach Talk…');
+        setCoachStatus('speaking', 'Starting voice…');
         appendChat('assistant', intro, { skipStore: false });
         speakText(intro).then(startListening);
       } else {

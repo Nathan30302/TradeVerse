@@ -238,26 +238,26 @@ def build_post_close_coach_card(user, trade: Trade) -> Dict[str, Any]:
     has_sl = getattr(trade, "stop_loss", None) is not None or getattr(trade, "risk_amount", None) is not None
 
     if pnl > 0:
-        headline = f"Winner on {sym} ({pnl:+.2f})"
+        headline = f"Win on {sym} ({pnl:+.2f})"
     elif pnl < 0:
         headline = f"Loss on {sym} ({pnl:+.2f})"
     else:
-        headline = f"Closed {sym} breakeven"
+        headline = f"Flat close on {sym}"
 
     lessons: List[str] = []
     if not has_sl:
-        lessons.append("No SL/risk logged — undefined risk is a silent account killer.")
+        lessons.append("No SL or risk on the ticket — undefined risk is how accounts quietly bleed.")
     if not followed_pb and pnl < 0:
         lessons.append("Playbook not marked followed on a loser — was this off-system?")
     if emo and emo.lower() in ("revenge", "fomo", "angry", "tilt"):
-        lessons.append(f"Emotion tagged {emo} — enforce a break before the next entry.")
+        lessons.append(f"Emotion tagged {emo} — take a break before the next entry.")
     if note:
         lessons.append(note[:160] + ("…" if len(note) > 160 else ""))
     if not lessons:
         if pnl < 0:
-            lessons.append("Add a one-line lesson now so AI Buddy can spot the pattern.")
+            lessons.append("Leave one honest line while it’s fresh — that’s how patterns show up.")
         else:
-            lessons.append("Solid close. Tag strategy + emotion so winners stay repeatable.")
+            lessons.append("Clean close. Tag strategy and emotion so winners stay repeatable.")
 
     # Suggest a concrete next-week rule
     if not has_sl:
@@ -269,7 +269,7 @@ def build_post_close_coach_card(user, trade: Trade) -> Dict[str, Any]:
     elif pnl < 0:
         suggested = "Max 2 trades per day; stop after 2 losses."
     else:
-        suggested = "Keep tagging strategy + emotion; review only A+ setups this week."
+        suggested = "Keep tagging strategy and emotion; review only A+ setups this week."
 
     compliance = measure_focus_compliance(user, last_n=10)
     this_ok, this_fails = trade_follows_focus(trade, _rule_text(user))

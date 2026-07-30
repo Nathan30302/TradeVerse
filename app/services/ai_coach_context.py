@@ -250,14 +250,14 @@ def get_coach_narrative(user) -> Dict[str, Any]:
         "has_data": False,
         "leak": "Not enough trades yet",
         "strength": "Journal is ready",
-        "next_action": "Log 3 closed trades with SL, strategy tag, and a one-line note",
+        "next_action": "Close 3 trades with SL, strategy tag, and a one-line note",
         "summary": (
-            "AI Buddy needs a few closed trades before it can diagnose a leak. "
-            "Take the 10-minute first win: sample data or real logs → Trade Doctor → one weekly rule."
+            "I need a few closed trades before I can name a real leak. "
+            "Start small: sample data or live logs, then Trade Doctor, then one weekly rule."
         ),
         "suggested_focus": "Max 2 trades per day; stop after 2 losses.",
         "lab_prompt": (
-            "Only trade A+ setups with a clear stop loss under invalidation and a target at least "
+            "Only trade A+ setups with a clear stop under invalidation and a target at least "
             "1.5R. Skip FOMO entries after a loss."
         ),
         "compliance": measure_focus_compliance(user, last_n=10) if uid else {},
@@ -318,17 +318,17 @@ def get_coach_narrative(user) -> Dict[str, Any]:
             evidence = td.get("evidence") or []
             if leak == "Need more signal":
                 summary = (
-                    f"You have {doctor_n} closed trade(s) on file. "
+                    f"{doctor_n} closed trade(s) on file. "
                     + (
                         evidence[0]
                         if evidence
-                        else "Tag strategy, emotion, and SL so the next diagnosis is sharp."
+                        else "Tag strategy, emotion, and SL — the next read gets sharper."
                     )
                 )
             else:
                 summary = (
-                    f"Trade Doctor: {leak}. "
-                    + (evidence[0] if evidence else "Follow the strict plan for the next 10 trades.")
+                    f"Main leak: {leak}. "
+                    + (evidence[0] if evidence else "Run a strict plan for the next 10 trades.")
                 )
             lab_prompt = (
                 f"Only take setups that avoid this leak: {leak}. "
@@ -406,9 +406,8 @@ def get_coach_narrative(user) -> Dict[str, Any]:
                     weekly.get("summary")
                     if weekly_total
                     else (
-                        f"You have {lifetime_closed} closed trade(s). "
-                        "Most sit outside this week’s window — keep logging with SL and tags "
-                        "so AI Buddy can isolate one leak."
+                        f"{lifetime_closed} closed trade(s) on file — most sit outside this week. "
+                        "Keep logging with SL and tags so I can isolate one leak."
                     )
                 )[:320],
                 "suggested_focus": analyzer.suggest_weekly_focus_rule() or empty["suggested_focus"],

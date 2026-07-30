@@ -160,29 +160,18 @@ def answer_with_web(
     hist_txt = ("\n\nConversation context:\n" + "\n".join(hist_lines)) if hist_lines else ""
 
     if is_personal:
-        system = (
-            "You are TradeVerse AI Buddy: a personal trading coach inside a trading journal.\n"
-            "EVIDENCE-ONLY MODE for this question:\n"
-            "1) Answer using ONLY the User context block (stats, focus rule, playbook adherence, plans, snippets).\n"
-            "2) Cite specific numbers from context (win rate, P/L, compliance counts). Never invent trades or P/L.\n"
-            "3) If context lacks the answer, say what data is missing and give one logging action — do not guess.\n"
-            "4) Be practical and risk-first: end with ONE concrete next-week rule the trader can follow.\n"
-            "5) Keep it concise: short paragraphs or bullets. No generic trading lectures.\n"
+        from app.services.ai_buddy_voice import (
+            PERSONAL_GROUNDING_NOTE,
+            SYSTEM_PERSONAL,
+            USER_STRUCTURE_HINT,
         )
-        personal_note = (
-            "This is about the user's own journal. Do not use outside market knowledge. "
-            "Prioritize focus compliance and playbook adherence when present.\n"
-        )
+
+        system = SYSTEM_PERSONAL
+        personal_note = PERSONAL_GROUNDING_NOTE
     else:
-        system = (
-            "You are TradeVerse AI Buddy: a professional trading coach inside a trading journal app.\n"
-            "Rules:\n"
-            "1) Answer the user's exact question first — do not change the topic or give a generic lecture.\n"
-            "2) When user context includes journal stats, cite those numbers; never invent trades or P/L.\n"
-            "3) Be practical, risk-first, and concise (bullets + one clear next action).\n"
-            "4) For general education you may use web source summaries; do not hallucinate live prices or news.\n"
-            "5) If you cannot answer from context/sources, say what is missing and ask one clarifying question.\n"
-        )
+        from app.services.ai_buddy_voice import SYSTEM_GENERAL, USER_STRUCTURE_HINT
+
+        system = SYSTEM_GENERAL
         personal_note = ""
     user = (
         f"User context:\n{user_context}\n"
@@ -190,8 +179,7 @@ def answer_with_web(
         f"{personal_note}"
         f"Question: {q}\n"
         f"{sources_txt}\n\n"
-        "Structure: (1) Direct answer to the question, (2) 2–4 bullet points, (3) one next action.\n"
-        "End with 2 short follow-up questions the user can tap next."
+        f"{USER_STRUCTURE_HINT}\n"
     )
 
     content = _openai_chat(system, user)
