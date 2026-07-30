@@ -109,6 +109,93 @@ def remember_focus(user_id: int, rule: str) -> None:
     )
 
 
+def maybe_summarize_conversation(
+    user_id: int,
+    history: List[Dict[str, str]],
+    *,
+    latest_question: str = "",
+    latest_answer: str = "",
+) -> Optional[str]:
+    """
+    Every ~6 turns, distill chat into a lasting coaching memory (Pro Plus / OpenAI when available).
+    Falls back to a short local digest so Free users still accumulate memory.
+    """
+    turns = [m for m in (history or []) if isinstance(m, dict) and (m.get("content") or "").strip()]
+    # Count user+assistant pairs in history; trigger on multiples of 6 messages
+    if len(turns) < 6 or (len(turns) % 6) != 0:
+        return None
+
+    # Avoid duplicating if we already stored a conversation summary in the last hour
+    try:
+        from datetime import timedelta
+
+        from app.utils.timeutil import utc_now
+
+        recent = (
+            CoachMemory.query.filter_by(user_id=int(user_id), kind="conversation")
+            .order_by(CoachMemory.created_at.desc())
+            .first()
+        )
+        if recent and recent.created_at and (utc_now() - recent.created_at) < timedelta(hours=1):
+            return None
+    except Exception:
+        pass
+
+    snippet_lines = []
+    for m in turns[-12:]:
+        role = (m.get("role") or "user").strip().upper()
+        content = (m.get("content") or "").strip()[:350]
+        if content:
+            snippet_lines.append(f"{role}: {content}")
+    if latest_question:
+        snippet_lines.append(f"USER: {latest_question.strip()[:350]}")
+    if latest_answer:
+        snippet_lines.append(f"ASSISTANT: {latest_answer.strip()[:500]}")
+    transcript = "\n".join(snippet_lines)
+    if not transcript.strip():
+        return None
+
+    summary = ""
+    try:
+        import os
+
+        from app.services.web_ai import _openai_chat
+
+        if os.environ.get("OPENAI_API_KEY", "").strip():
+            summary = (
+                _openai_chat(
+                    system=(
+                        "You are a trading journal coach. Summarize this conversation into 2–4 short "
+                        "bullets of lasting coaching memory: focus rules, leaks, commitments, or "
+                        "patterns discussed. No market predictions or buy/sell advice. Plain text only."
+                    ),
+                    user=transcript[:3500],
+                    timeout_s=25,
+                )
+                or ""
+            ).strip()
+    except Exception:
+        summary = ""
+
+    if not summary:
+        # Local digest: last user ask + first sentence of answer
+        q = (latest_question or "").strip()
+        a = (latest_answer or "").strip().split("\n")[0][:220]
+        if not q and turns:
+            q = (turns[-2].get("content") if len(turns) >= 2 else turns[-1].get("content") or "")[:200]
+        summary = f"Discussed: {q or 'journal review'}. Coach note: {a or 'keep tracking process.'}"
+
+    summary = summary[:1800]
+    remember(
+        user_id,
+        kind="conversation",
+        title="Chat takeaway",
+        body=summary,
+        meta={"turns": len(turns)},
+    )
+    return summary
+
+
 def record_improvement_snapshot(user_id: int) -> Optional[str]:
     """
     Compare this month vs last month trade count / overtrading proxy.

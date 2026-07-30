@@ -398,6 +398,8 @@
      data-username="{{ (current_user.username or '') | e }}"
      data-suggested-focus="{{ (suggested_weekly_focus or '') | e }}"
      data-neural="{{ '1' if has_neural_voice else '0' }}"
+     data-vision="{{ '1' if has_vision else '0' }}"
+     data-proactive="{{ (proactive_line or '') | e }}"
      data-currency="{{ (chart_currency_code or current_user.preferred_currency or 'USD')|e }}"
      data-fx="{{ fx_usd_to_preferred|default(1.0) }}">
 
@@ -472,14 +474,38 @@
     {% endif %}
 </div>
 
-{% if comparisons and comparisons.has_data and comparisons.insights %}
+{% if comparisons and comparisons.has_data %}
 <div class="tv-surface soft p-3 p-md-4 mb-4">
-    <div class="tv-section-title mb-2"><i class="fas fa-not-equal me-2 text-primary"></i> Smart comparisons</div>
-    <ul class="small mb-0 ps-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+        <div class="tv-section-title mb-0"><i class="fas fa-not-equal me-2 text-primary"></i> Smart comparisons</div>
+        <span class="small tv-muted">Last {{ comparisons.sample_size or '—' }} closed trades</span>
+    </div>
+    {% if comparisons.insights %}
+    <ul class="small mb-3 ps-3">
         {% for tip in comparisons.insights[:4] %}
         <li class="mb-1">{{ tip|safe }}</li>
         {% endfor %}
     </ul>
+    {% endif %}
+    {% set groups = comparisons.groups or {} %}
+    <div class="row g-2 small">
+        {% for gkey, glabel in [('instruments','Instruments'),('sessions','Sessions'),('weekdays','Weekdays'),('setups','Setups')] %}
+        {% set rows = groups.get(gkey) or [] %}
+        {% if rows %}
+        <div class="col-md-6 col-lg-3">
+            <div class="fw-semibold mb-1">{{ glabel }}</div>
+            {% for r in rows[:4] %}
+            <div class="d-flex justify-content-between border-bottom border-opacity-25 py-1">
+                <span>{{ r.name }}</span>
+                <span class="tv-muted">{{ '%.0f'|format(r.win_rate) }}% · {{ '%+.1f'|format(r.net) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-primary mt-3" id="compareAskBtn"
+            data-q="Compare my best vs worst instruments and sessions — what should I cut?">Ask coach to dig deeper</button>
 </div>
 {% endif %}
 
@@ -499,12 +525,40 @@
             {% else %}
                 <p class="small tv-muted mb-2">Set a measurable goal (risk %, max trades/day, no revenge).</p>
             {% endif %}
-            <div class="d-flex flex-wrap gap-1">
+            <div class="d-flex flex-wrap gap-1 mb-2">
                 <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="max_trades_day" data-title="Max 2 trades per day" data-target="2">Max 2/day</button>
                 <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="risk_pct" data-title="Risk 1% per trade" data-target="1">1% risk</button>
                 <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="no_revenge" data-title="No revenge trading (30 days)" data-target="30">No revenge</button>
                 <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="rule_adherence" data-title="90% rule adherence" data-target="90">90% focus</button>
+                <button type="button" class="btn btn-sm btn-outline-primary tv-goal-quick" data-metric="journal_days" data-title="Journal 7 days" data-target="7">Journal 7d</button>
             </div>
+            <details class="small">
+                <summary class="fw-semibold" style="cursor:pointer;">Custom goal</summary>
+                <div class="row g-2 mt-2">
+                    <div class="col-12">
+                        <input type="text" class="form-control form-control-sm" id="customGoalTitle" maxlength="200" placeholder="Goal title">
+                    </div>
+                    <div class="col-6">
+                        <select class="form-select form-select-sm" id="customGoalMetric">
+                            <option value="max_trades_day">Max trades / day</option>
+                            <option value="risk_pct">Risk %</option>
+                            <option value="no_revenge">Clean emotional days</option>
+                            <option value="rule_adherence">Rule adherence %</option>
+                            <option value="journal_days">Journal days</option>
+                            <option value="custom">Custom (coach-tracked)</option>
+                        </select>
+                    </div>
+                    <div class="col-3">
+                        <input type="number" class="form-control form-control-sm" id="customGoalTarget" step="any" placeholder="Target">
+                    </div>
+                    <div class="col-3">
+                        <input type="number" class="form-control form-control-sm" id="customGoalDays" value="30" min="7" max="90" title="Days">
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-sm btn-primary" id="customGoalSave">Save custom goal</button>
+                    </div>
+                </div>
+            </details>
         </div>
     </div>
     <div class="col-md-6">
@@ -561,9 +615,15 @@
         </div>
         <div class="tv-ai-composer">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                <div class="form-check form-switch small mb-0">
-                    <input class="form-check-input" type="checkbox" id="aiVoiceAutoSend" checked>
-                    <label class="form-check-label" for="aiVoiceAutoSend">Auto-send after pause</label>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="form-check form-switch small mb-0">
+                        <input class="form-check-input" type="checkbox" id="aiVoiceAutoSend" checked>
+                        <label class="form-check-label" for="aiVoiceAutoSend">Auto-send after pause</label>
+                    </div>
+                    <div class="form-check form-switch small mb-0">
+                        <input class="form-check-input" type="checkbox" id="aiProactiveSpeak" checked>
+                        <label class="form-check-label" for="aiProactiveSpeak">Speak check-in</label>
+                    </div>
                 </div>
                 <div class="d-flex align-items-center gap-2 small">
                     <label class="tv-muted mb-0" for="aiVoiceSelectComposer">Voice</label>
@@ -571,9 +631,18 @@
                     <button id="aiClearBtn" type="button" class="btn btn-sm btn-outline-secondary" title="Clear this chat"><i class="fas fa-eraser"></i></button>
                 </div>
             </div>
+            <div id="aiAttachPreview" class="d-none mb-2 small">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <img id="aiAttachThumb" alt="Attached chart" style="max-height:64px;border-radius:8px;border:1px solid rgba(148,163,184,.35);">
+                    <span class="tv-muted" id="aiAttachLabel">Chart attached</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="aiAttachClear">Remove</button>
+                </div>
+            </div>
             <div class="tv-ai-composer-row">
-                <textarea id="aiQuestion" class="form-control" rows="1" placeholder="Message your coach…" autocomplete="off"></textarea>
+                <textarea id="aiQuestion" class="form-control" rows="1" placeholder="Message your coach… (or attach a chart)" autocomplete="off"></textarea>
                 <div class="tv-ai-composer-actions">
+                    <input type="file" id="aiAttachInput" accept="image/png,image/jpeg,image/webp,image/gif" class="d-none" {% if not has_vision %}disabled{% endif %}>
+                    <button id="aiAttachBtn" type="button" class="btn btn-outline-secondary" title="{% if has_vision %}Attach chart screenshot{% else %}Chart vision requires Pro Plus{% endif %}" {% if not has_vision %}disabled{% endif %}><i class="fas fa-image"></i></button>
                     <button id="coachTalkBtn" type="button" class="btn btn-outline-primary" title="Talk mode"><i class="fas fa-microphone"></i></button>
                     <button id="aiSubmitBtn" type="button" class="btn btn-primary" title="Send"><i class="fas fa-paper-plane"></i></button>
                 </div>

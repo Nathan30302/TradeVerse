@@ -183,6 +183,13 @@ def format_grades_text(payload: Dict[str, Any]) -> str:
     """Human-readable coach grade summary."""
     if not payload:
         return "Not enough fields to grade this trade yet."
+    if payload.get("narrative"):
+        overall = payload.get("overall") or {}
+        return (
+            f"**Trade grade: {overall.get('letter', '—')}** "
+            f"(score {overall.get('score', '—')})\n\n"
+            f"{payload['narrative']}"
+        )
     overall = payload.get("overall") or {}
     lines = [
         f"**Trade grade: {overall.get('letter', '—')}** "
@@ -207,6 +214,49 @@ def format_grades_text(payload: Dict[str, Any]) -> str:
     lines.append("")
     lines.append("Next: tag emotion, confirm playbook, and always log SL before the next entry.")
     return "\n".join(lines)
+
+
+def polish_grades_with_llm(trade, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Keep heuristic letter grades; rewrite the coach narrative in mentor voice (OpenAI).
+    Safe no-op when key missing or call fails.
+    """
+    if not payload or not payload.get("grades"):
+        return payload
+    import os
+
+    if not os.environ.get("OPENAI_API_KEY", "").strip():
+        return payload
+    try:
+        from app.services.web_ai import _openai_chat
+        from app.services.ai_buddy_voice import SYSTEM_PERSONAL
+
+        heuristic = format_grades_text(payload)
+        sym = getattr(trade, "symbol", None) or "?"
+        side = getattr(trade, "direction", None) or getattr(trade, "trade_type", None) or ""
+        pnl = getattr(trade, "profit_loss", None)
+        emotion = getattr(trade, "emotion", None) or ""
+        notes = (
+            (getattr(trade, "post_trade_notes", None) or "")
+            + " "
+            + (getattr(trade, "lessons_learned", None) or "")
+        ).strip()[:600]
+        user = (
+            f"Trade: {sym} {side} PnL={pnl} emotion={emotion}\n"
+            f"Notes: {notes or '(none)'}\n\n"
+            f"Heuristic grades (keep these letter grades — do not change them):\n{heuristic}\n\n"
+            "Rewrite as a short mentor debrief (What / Why / Evidence / Improve / one next step). "
+            "Max 180 words. No market prediction or buy/sell signals."
+        )
+        narrative = (_openai_chat(SYSTEM_PERSONAL, user, timeout_s=25) or "").strip()
+        if narrative and "couldn't generate" not in narrative.lower():
+            out = dict(payload)
+            out["narrative"] = narrative[:2500]
+            out["polished"] = True
+            return out
+    except Exception:
+        pass
+    return payload
 
 
 def behaviour_forecast(user_id: int) -> str:

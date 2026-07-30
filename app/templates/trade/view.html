@@ -349,6 +349,9 @@
                 <span class="badge bg-primary fs-6">{{ coach_grades.overall.letter }} · {{ coach_grades.overall.score }}</span>
             </div>
             <div class="card-body">
+                {% if coach_grades.narrative %}
+                <div class="small mb-3" style="white-space:pre-wrap;">{{ coach_grades.narrative }}</div>
+                {% endif %}
                 <div class="row g-2 small">
                     {% for key, label in [
                         ('psychology','Psychology'),('execution','Execution'),('entry','Entry'),

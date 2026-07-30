@@ -27,9 +27,12 @@
     var SPEAK_URL = root.getAttribute('data-speak-url') || '';
     var BRIEFING_URL = root.getAttribute('data-briefing-url') || '';
     var HAS_NEURAL = root.getAttribute('data-neural') === '1';
+    var HAS_VISION = root.getAttribute('data-vision') === '1';
+    var PROACTIVE_LINE = root.getAttribute('data-proactive') || '';
     var neuralVoiceId = 'coral';
     var neuralAudio = null;
     var STATS_URL = '/dashboard/api/stats';
+    var pendingImageDataUrl = null;
 
     var HISTORY = [];
     var coachActive = false;
@@ -485,11 +488,16 @@
       var who = document.createElement('div');
       who.textContent = role === 'user' ? (USERNAME ? USERNAME + ' (you)' : 'You') : 'AI Coach';
       head.appendChild(who);
-      if (role === 'assistant' && opts.usedWeb !== undefined) {
+      if (role === 'assistant' && (opts.usedWeb !== undefined || opts.usedVision)) {
         var src = document.createElement('span');
         src.className = 'tv-answer-source';
-        src.textContent = opts.usedWeb ? 'Pro web' : 'Journal coach';
-        src.title = opts.usedWeb ? 'Answer used live web context' : 'Answer from your journal and stats';
+        if (opts.usedVision) {
+          src.textContent = 'Chart vision';
+          src.title = 'Answer used screenshot / chart analysis';
+        } else {
+          src.textContent = opts.usedWeb ? 'Pro web' : 'Journal coach';
+          src.title = opts.usedWeb ? 'Answer used live web context' : 'Answer from your journal and stats';
+        }
         head.appendChild(src);
       }
       if (role === 'assistant') {
@@ -647,12 +655,77 @@
         });
     }
 
+    function clearAttach() {
+      pendingImageDataUrl = null;
+      var preview = document.getElementById('aiAttachPreview');
+      var thumb = document.getElementById('aiAttachThumb');
+      var input = document.getElementById('aiAttachInput');
+      if (preview) preview.classList.add('d-none');
+      if (thumb) thumb.removeAttribute('src');
+      if (input) input.value = '';
+    }
+
+    function setAttachPreview(dataUrl, label) {
+      pendingImageDataUrl = dataUrl;
+      var preview = document.getElementById('aiAttachPreview');
+      var thumb = document.getElementById('aiAttachThumb');
+      var lab = document.getElementById('aiAttachLabel');
+      if (thumb) thumb.src = dataUrl;
+      if (lab) lab.textContent = label || 'Chart attached';
+      if (preview) preview.classList.remove('d-none');
+    }
+
+    function readImageFile(file) {
+      return new Promise(function (resolve, reject) {
+        if (!file || !file.type || file.type.indexOf('image/') !== 0) {
+          reject(new Error('image'));
+          return;
+        }
+        if (file.size > 4.5 * 1024 * 1024) {
+          reject(new Error('size'));
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function () {
+          var dataUrl = String(reader.result || '');
+          // Downscale large images in-browser to keep payloads reasonable
+          var img = new Image();
+          img.onload = function () {
+            try {
+              var maxSide = 1280;
+              var w = img.width;
+              var h = img.height;
+              if (w > maxSide || h > maxSide) {
+                var scale = maxSide / Math.max(w, h);
+                w = Math.round(w * scale);
+                h = Math.round(h * scale);
+              }
+              var canvas = document.createElement('canvas');
+              canvas.width = w;
+              canvas.height = h;
+              var ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/jpeg', 0.82));
+            } catch (e) {
+              resolve(dataUrl);
+            }
+          };
+          img.onerror = function () { resolve(dataUrl); };
+          img.src = dataUrl;
+        };
+        reader.onerror = function () { reject(new Error('read')); };
+        reader.readAsDataURL(file);
+      });
+    }
+
     function handleAnswerResponse(data) {
       var ans = (data && data.answer) ? data.answer : '';
       if (!ans.trim()) {
         ans = 'I could not build an answer for that. Try a shorter question or tap **Risk:Reward**.';
       }
-      appendChat('assistant', ans, { usedWeb: !!(data && data.used_web) });
+      var opts = { usedWeb: !!(data && data.used_web) };
+      if (data && data.used_vision) opts.usedVision = true;
+      appendChat('assistant', ans, opts);
       renderFollowUps((data && data.follow_ups) ? data.follow_ups : []);
       if (data && data.suggested_weekly_focus) showSuggestedFocus(data.suggested_weekly_focus);
       if (coachActive) {
@@ -667,21 +740,28 @@
       var questionEl = document.getElementById('aiQuestion');
       if (!questionEl) return;
       var q = (forcedQuestion || questionEl.value || '').trim();
-      if (!q) {
-        setCoachStatus('idle', 'Type your question first, or tap a quick chip below.');
+      var hasImage = !!pendingImageDataUrl;
+      if (!q && !hasImage) {
+        setCoachStatus('idle', 'Type your question first, attach a chart, or tap a quick chip.');
         if (questionEl) questionEl.focus();
         return;
       }
+      if (!q && hasImage) q = 'Analyze this chart screenshot from my journal perspective.';
 
       ensureChatTab();
       clearVoiceSendTimer();
       questionEl.classList.remove('tv-voice-interim', 'tv-voice-listening');
       questionEl.value = '';
-      appendChat('user', q);
+      appendChat('user', hasImage ? (q + ' 📎') : q);
       var priorHistory = HISTORY.slice(0, -1);
+      var imagePayload = pendingImageDataUrl;
+      clearAttach();
 
       requestInFlight = true;
       setChatBusy(true, q);
+
+      var body = { question: q, history: priorHistory };
+      if (imagePayload) body.image = imagePayload;
 
       fetch(AI_QUERY_URL, {
         method: 'POST',
@@ -691,7 +771,7 @@
           'X-CSRFToken': CSRF,
           'X-CSRF-Token': CSRF,
         },
-        body: JSON.stringify({ question: q, history: priorHistory }),
+        body: JSON.stringify(body),
       })
         .then(function (r) {
           if (!r.ok) {
@@ -919,6 +999,7 @@
       updateEmptyHints();
       ensureChatTab();
       clearVoiceSendTimer();
+      clearAttach();
       if (questionEl) {
         questionEl.value = '';
         questionEl.classList.remove('tv-voice-interim', 'tv-voice-listening');
@@ -1103,6 +1184,116 @@
           });
       });
     });
+
+    var customGoalSave = document.getElementById('customGoalSave');
+    if (customGoalSave) {
+      customGoalSave.addEventListener('click', function () {
+        if (!GOALS_URL) return;
+        var titleEl = document.getElementById('customGoalTitle');
+        var metricEl = document.getElementById('customGoalMetric');
+        var targetEl = document.getElementById('customGoalTarget');
+        var daysEl = document.getElementById('customGoalDays');
+        var title = (titleEl && titleEl.value || '').trim();
+        var metric = (metricEl && metricEl.value) || 'custom';
+        var target = targetEl ? parseFloat(targetEl.value) : NaN;
+        var days = daysEl ? parseInt(daysEl.value, 10) : 30;
+        if (!title) {
+          appendChat('assistant', 'Give your custom goal a short title first.');
+          if (titleEl) titleEl.focus();
+          return;
+        }
+        fetch(GOALS_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF,
+            'X-CSRF-Token': CSRF,
+          },
+          body: JSON.stringify({
+            title: title,
+            metric: metric,
+            target_value: isNaN(target) ? null : target,
+            target_text: title,
+            days: isNaN(days) ? 30 : days,
+          }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.ok) {
+              appendChat('assistant', 'Custom goal saved: **' + title + '**. I’ll track it from your journal.');
+              setTimeout(function () { window.location.reload(); }, 700);
+            } else {
+              appendChat('assistant', 'Could not save that custom goal.');
+            }
+          })
+          .catch(function () {
+            appendChat('assistant', 'Could not save that custom goal.');
+          });
+      });
+    }
+
+    var compareAsk = document.getElementById('compareAskBtn');
+    if (compareAsk) {
+      compareAsk.addEventListener('click', function () {
+        var q = compareAsk.getAttribute('data-q') || 'Compare my best vs worst instruments.';
+        onAskClick(q);
+      });
+    }
+
+    var attachBtn = document.getElementById('aiAttachBtn');
+    var attachInput = document.getElementById('aiAttachInput');
+    var attachClear = document.getElementById('aiAttachClear');
+    if (attachBtn && attachInput) {
+      attachBtn.addEventListener('click', function () {
+        if (!HAS_VISION) {
+          appendChat('assistant', 'Chart screenshot analysis is available on **Pro Plus** when OpenAI is configured.');
+          return;
+        }
+        attachInput.click();
+      });
+      attachInput.addEventListener('change', function () {
+        var file = attachInput.files && attachInput.files[0];
+        if (!file) return;
+        readImageFile(file)
+          .then(function (dataUrl) {
+            setAttachPreview(dataUrl, file.name || 'Chart attached');
+            setCoachStatus('idle', 'Chart attached — add a question or tap Send to analyze.');
+          })
+          .catch(function (err) {
+            var why = (err && err.message === 'size')
+              ? 'Image is too large (max ~4.5MB). Try a tighter crop.'
+              : 'Could not read that image. Use PNG or JPG.';
+            appendChat('assistant', why);
+            clearAttach();
+          });
+      });
+    }
+    if (attachClear) attachClear.addEventListener('click', clearAttach);
+
+    // Optional proactive check-in speak (once per day, user can disable)
+    try {
+      var speakToggle = document.getElementById('aiProactiveSpeak');
+      var savedSpeak = localStorage.getItem('tv_ai_proactive_speak');
+      if (speakToggle && savedSpeak === '0') speakToggle.checked = false;
+      if (speakToggle) {
+        speakToggle.addEventListener('change', function () {
+          try {
+            localStorage.setItem('tv_ai_proactive_speak', speakToggle.checked ? '1' : '0');
+          } catch (e) {}
+        });
+      }
+      var dayKey = 'tv_ai_proactive_' + new Date().toISOString().slice(0, 10);
+      var already = localStorage.getItem(dayKey);
+      var allowSpeak = !speakToggle || speakToggle.checked;
+      if (allowSpeak && PROACTIVE_LINE && !already && !coachActive) {
+        localStorage.setItem(dayKey, '1');
+        setTimeout(function () {
+          if (coachActive || requestInFlight) return;
+          setCoachStatus('idle', 'Morning check-in ready — speaking a short brief…');
+          speakText(PROACTIVE_LINE);
+        }, 1200);
+      }
+    } catch (e) {}
 
     refreshBasis();
     setInterval(refreshBasis, 60000);

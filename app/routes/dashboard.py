@@ -1336,6 +1336,17 @@ def ai():
     has_neural_voice = bool(
         has_ai_web and _os.environ.get('OPENAI_API_KEY', '').strip()
     )
+    has_vision = has_neural_voice  # same Pro Plus + OpenAI gate
+
+    proactive_line = ''
+    try:
+        lines = (morning_briefing or {}).get('lines') or []
+        if lines:
+            proactive_line = str(lines[0] or '').strip()[:420]
+        if not proactive_line and voice_summary:
+            proactive_line = str(voice_summary).strip()[:420]
+    except Exception:
+        proactive_line = ''
 
     return render_template('dashboard/ai.html',
                            weekly_review=weekly_review,
@@ -1349,6 +1360,8 @@ def ai():
                            suggested_weekly_focus=suggested_focus,
                            has_ai_web=has_ai_web,
                            has_neural_voice=has_neural_voice,
+                           has_vision=has_vision,
+                           proactive_line=proactive_line,
                            last_trade_insight=last_trade_insight,
                            focus_compliance=focus_compliance,
                            coach_narrative=coach_narrative,
@@ -1428,7 +1441,16 @@ def ai_query():
 
     payload = request.get_json() or {}
     question = payload.get('question', '').strip()
-    if not question:
+    image_data = (payload.get('image') or payload.get('image_data_url') or '').strip()
+    if image_data and not image_data.startswith('data:image/'):
+        image_data = ''
+    if image_data and len(image_data) > 6_500_000:
+        return jsonify({
+            "answer": "That image is too large. Compress it or use a smaller screenshot (under ~4MB).",
+            "follow_ups": [],
+        }), 400
+
+    if not question and not image_data:
         return jsonify(
             {
                 "answer": "Ask me anything about your recent performance or about trading in general.",
@@ -1439,6 +1461,8 @@ def ai_query():
                 ],
             }
         )
+    if not question and image_data:
+        question = "Analyze this chart screenshot from my journal perspective."
     if len(question) > 1200:
         return jsonify({"answer": "That question is a bit long. Please shorten it and ask again.", "follow_ups": []}), 400
 
@@ -1450,6 +1474,7 @@ def ai_query():
     follow_ups: list[str] = []
     suggested_focus = ''
     used_web = False
+    used_vision = False
     wf = ''
     try:
         wf = (_safe_getattr(current_user, 'weekly_focus_rule', None) or '').strip()
@@ -1473,6 +1498,14 @@ def ai_query():
         ctx_dict = build_coach_context_dict(current_user, ws)
         coach_block = format_coach_context_block(ctx_dict, include_stats=True)
         try:
+            from app.services.coach_memory import format_memory_block
+
+            mem_block = format_memory_block(current_user.id, limit=6)
+            if mem_block:
+                coach_block = f"{coach_block}\n\n{mem_block}"
+        except Exception:
+            pass
+        try:
             s = current_user.get_stats()
             ctx_all = (
                 f"open_trades={int(s.get('open_trades') or 0)}\n"
@@ -1484,10 +1517,37 @@ def ai_query():
             ctx_all = ""
         ctx = f"username={current_user.username or ''}\n{coach_block}\n{ctx_all}"
 
+        # Chart / screenshot vision (Pro Plus + OpenAI)
+        if image_data and use_web:
+            try:
+                from app.services.coach_vision import analyze_chart_image
+
+                vision = analyze_chart_image(
+                    question=question,
+                    user_context=ctx,
+                    image_data_url=image_data,
+                    history=history[-6:],
+                )
+                vision_answer = (vision.answer or "").strip()
+                if vision_answer:
+                    answer = vision_answer
+                    follow_ups = [str(x) for x in (vision.follow_ups or []) if x]
+                    used_web = True
+                    used_vision = True
+            except OpenAIRateLimited:
+                current_app.logger.info("Vision AI rate limited; falling back.")
+            except Exception:
+                current_app.logger.warning("Vision AI failed; falling back", exc_info=True)
+        elif image_data and not use_web:
+            answer = (
+                "Chart analysis needs Pro Plus with OpenAI configured. "
+                "You can still ask text questions about your journal, or upgrade to unlock screenshot coaching."
+            )
+
         # Personal journal questions use the LLM with evidence-only grounding when Pro Plus web is on.
         is_personal = AIAnalyzer._is_personal_performance_question(question)
 
-        if use_web:
+        if not answer and use_web:
             try:
                 web = answer_with_web(
                     question=question,
@@ -1539,12 +1599,25 @@ def ai_query():
             "Explain risk:reward and how to improve it.",
         ]
 
+    try:
+        from app.services.coach_memory import maybe_summarize_conversation
+
+        maybe_summarize_conversation(
+            current_user.id,
+            history[-14:],
+            latest_question=question,
+            latest_answer=answer,
+        )
+    except Exception:
+        pass
+
     return jsonify({
         'answer': answer,
         'follow_ups': follow_ups,
         'context': {'weekly_focus_rule': wf},
         'suggested_weekly_focus': suggested_focus,
         'used_web': used_web,
+        'used_vision': used_vision,
     })
 
 
@@ -1768,16 +1841,29 @@ def ai_challenges_api():
 @bp.route('/ai/grade-trade/<int:trade_id>')
 @login_required
 def ai_grade_trade(trade_id: int):
-    """Deterministic coach grades for a single trade."""
+    """Deterministic coach grades for a single trade (LLM narrative when Pro Plus)."""
     trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
     try:
-        from app.services.trade_coach_grades import grade_trade, format_grades_text
+        from app.services.trade_coach_grades import (
+            format_grades_text,
+            grade_trade,
+            polish_grades_with_llm,
+        )
 
         payload = grade_trade(trade)
+        polish = request.args.get('polish', '1') != '0'
+        if (
+            polish
+            and bool(current_app.config.get('FEATURE_AI_WEB'))
+            and bool(os.environ.get('OPENAI_API_KEY', '').strip())
+            and user_has_feature(current_user, 'ai_web')
+        ):
+            payload = polish_grades_with_llm(trade, payload)
         return jsonify({
             'ok': True,
             'grades': payload,
             'text': format_grades_text(payload),
+            'polished': bool(payload.get('polished')),
         })
     except Exception as exc:
         current_app.logger.warning('ai_grade_trade failed: %s', exc)

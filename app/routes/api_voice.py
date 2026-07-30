@@ -122,36 +122,61 @@ def speak():
     if voice not in _NEURAL_VOICES:
         voice = 'coral'
 
-    try:
-        resp = requests.post(
-            'https://api.openai.com/v1/audio/speech',
-            headers={
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json',
-            },
-            json={
-                'model': 'tts-1',
-                'voice': voice,
-                'input': text,
-                'response_format': 'mp3',
-            },
-            timeout=60,
-        )
-    except requests.RequestException as exc:
-        current_app.logger.warning('TTS request failed: %s', exc)
-        return jsonify({'error': 'Could not reach speech service.', 'fallback': True}), 502
+    # Prefer higher-quality models; fall back so older accounts keep working.
+    models = [
+        os.environ.get('OPENAI_TTS_MODEL', '').strip(),
+        'gpt-4o-mini-tts',
+        'tts-1-hd',
+        'tts-1',
+    ]
+    models = [m for m in models if m]
+    # Deduplicate while preserving order
+    seen = set()
+    models = [m for m in models if not (m in seen or seen.add(m))]
 
-    if resp.status_code != 200:
-        current_app.logger.warning('TTS HTTP %s: %s', resp.status_code, resp.text[:300])
-        return jsonify({'error': 'Speech synthesis failed.', 'fallback': True}), 502
+    last_err = ''
+    for model in models:
+        body = {
+            'model': model,
+            'voice': voice,
+            'input': text,
+            'response_format': 'mp3',
+        }
+        if model.startswith('gpt-4o'):
+            body['instructions'] = (
+                'Speak like a calm senior trading mentor: warm, steady, concise, never hype.'
+            )
+        try:
+            resp = requests.post(
+                'https://api.openai.com/v1/audio/speech',
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json',
+                },
+                json=body,
+                timeout=60,
+            )
+        except requests.RequestException as exc:
+            current_app.logger.warning('TTS request failed (%s): %s', model, exc)
+            last_err = str(exc)
+            continue
 
-    from flask import Response
+        if resp.status_code == 200:
+            from flask import Response
 
-    return Response(
-        resp.content,
-        mimetype='audio/mpeg',
-        headers={'Cache-Control': 'no-store'},
-    )
+            return Response(
+                resp.content,
+                mimetype='audio/mpeg',
+                headers={
+                    'Cache-Control': 'no-store',
+                    'X-TTS-Model': model,
+                },
+            )
+        last_err = resp.text[:300]
+        current_app.logger.info('TTS model %s HTTP %s — trying next', model, resp.status_code)
+
+    current_app.logger.warning('TTS failed all models: %s', last_err)
+    return jsonify({'error': 'Speech synthesis failed.', 'fallback': True}), 502
 
 
 @bp.route('/voices', methods=['GET'])
