@@ -421,12 +421,14 @@
             <div class="card-body">
                 <div class="mb-3">
                     {% if trade.checklist_completed %}
-                        <div class="alert alert-success mb-2">
-                            <i class="fas fa-check-circle"></i> Checklist completed
+                        <div class="d-flex align-items-start gap-2 small text-success mb-2">
+                            <i class="fas fa-check-circle mt-1" aria-hidden="true"></i>
+                            <span>Checklist completed</span>
                         </div>
                     {% else %}
-                        <div class="alert alert-warning mb-2">
-                            <i class="fas fa-exclamation-triangle"></i> Checklist not completed
+                        <div class="rounded px-3 py-2 small mb-2" style="background: rgba(148,163,184,0.12); border: 1px solid rgba(148,163,184,0.28);">
+                            <i class="fas fa-lightbulb text-muted me-1" aria-hidden="true"></i>
+                            <span class="text-muted">Tip:</span> Pre-trade checklist not marked yet — finish it before the next entry for cleaner reviews.
                         </div>
                     {% endif %}
                 </div>
@@ -445,17 +447,20 @@
                             {% endif %}
                         </div>
                     {% elif feature_playbook %}
-                        <div class="alert alert-secondary py-2 small mb-3">
-                            No playbook setup linked — tag the next trade to a setup so you stay on-system.
+                        <div class="rounded px-3 py-2 small mb-3" style="background: rgba(148,163,184,0.12); border: 1px solid rgba(148,163,184,0.28);">
+                            <i class="fas fa-lightbulb text-muted me-1" aria-hidden="true"></i>
+                            <span class="text-muted">Tip:</span> No playbook setup linked — tag the next trade to a setup so you stay on-system.
                         </div>
                     {% endif %}
                     {% if trade.playbook_followed %}
-                        <div class="alert alert-success mb-0">
-                            <i class="fas fa-check-circle"></i> Playbook followed
+                        <div class="d-flex align-items-start gap-2 small text-success mb-0">
+                            <i class="fas fa-check-circle mt-1" aria-hidden="true"></i>
+                            <span>Playbook followed</span>
                         </div>
                     {% else %}
-                        <div class="alert alert-danger mb-0">
-                            <i class="fas fa-times-circle"></i> Playbook not followed
+                        <div class="rounded px-3 py-2 small mb-0" style="background: rgba(148,163,184,0.12); border: 1px solid rgba(148,163,184,0.28);">
+                            <i class="fas fa-lightbulb text-muted me-1" aria-hidden="true"></i>
+                            <span class="text-muted">Tip:</span> Playbook not marked as followed — useful to note when reviewing this trade.
                         </div>
                     {% endif %}
                 </div>
@@ -509,28 +514,29 @@
             </div>
         </div>
 
-        <!-- Mistakes Detected -->
+        <!-- Coaching signals (softer than error flashes — success save stays clear) -->
         {% if mistakes %}
         <div class="card mb-4">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Mistakes Detected</h5>
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-clipboard-list me-1"></i> Coaching notes</h5>
             </div>
             <div class="card-body">
+                <p class="small text-muted mb-3">Process reminders for review — not save errors.</p>
                 <ul class="list-unstyled mb-0">
                     {% for mistake in mistakes %}
-                        <li class="mb-2">
-                            <i class="fas fa-arrow-right text-warning"></i> {{ mistake }}
+                        <li class="mb-2 small">
+                            <i class="fas fa-info-circle text-muted me-1" aria-hidden="true"></i> {{ mistake }}
                         </li>
                     {% endfor %}
                 </ul>
             </div>
         </div>
-        {% else %}
+        {% elif trade.status == 'CLOSED' %}
         <div class="card mb-4">
             <div class="card-body text-center">
                 <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                <h6>No Mistakes Detected!</h6>
-                <p class="text-muted small mb-0">Great job following your rules!</p>
+                <h6>No process flags</h6>
+                <p class="text-muted small mb-0">Looks clean against the basic checks.</p>
             </div>
         </div>
         {% endif %}

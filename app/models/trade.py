@@ -322,13 +322,12 @@ class Trade(db.Model):
         if self.risk_percentage and self.risk_percentage > 2.0:
             mistakes.append(f"🚨 Risk too high ({self.risk_percentage:.1f}%) - should be max 2%")
         
-        # Checklist not completed
-        if not self.checklist_completed:
-            mistakes.append("📋 Pre-trade checklist not completed")
-        
-        # Playbook not followed
-        if not self.playbook_followed:
-            mistakes.append("📖 Trading playbook not followed")
+        # Process reminders only after close/review — open trades shouldn't read as save failures.
+        if (self.status or '').upper() != 'OPEN':
+            if not self.checklist_completed:
+                mistakes.append("📋 Pre-trade checklist not completed")
+            if not self.playbook_followed:
+                mistakes.append("📖 Trading playbook not followed")
         
         # Emotional trading
         emotional_flags = ['Revenge Trading', 'FOMO', 'Greedy', 'Anxious', 'Fearful']

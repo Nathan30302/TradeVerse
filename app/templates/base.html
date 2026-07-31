@@ -3246,10 +3246,11 @@
 
             function buildMoment(data) {
                 if (!userId || ctx === 'landing') {
+                    // No register CTA inside DI chrome — signup lives in navbar / hero only.
                     return {
                         kicker: 'Start here',
                         text: 'Plan → log → review. Your edge compounds.',
-                        metaHtml: '<a href="/auth/register">Create a free account</a>',
+                        metaHtml: 'Use Start free or Sign up above to begin',
                         mood: 'landing',
                     };
                 }
