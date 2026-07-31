@@ -115,7 +115,7 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.8.6'
+    APP_VERSION = '2.8.7'
 
     # Trial defaults (env overrides; code defaults are 60 days for everyone):
     #   TV_TRIAL_DAYS_PRO_PLUS=60          — new signups (created_at / register → trial_ends_at)
@@ -289,28 +289,29 @@ class Config:
     DISPLAY_CURRENCIES = ('USD', 'ZAR', 'ZMW', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD')
 
     # Registration / profile: ISO 3166-1 alpha-2 (first element '' = placeholder; required on signup)
+    # Countries listed alphabetically — no regional default/suggestion.
     REGISTER_COUNTRY_CHOICES = (
         ('', 'Select your country'),
-        ('ZM', 'Zambia'),
-        ('ZA', 'South Africa'),
-        ('US', 'United States'),
-        ('GB', 'United Kingdom'),
-        ('DE', 'Germany'),
-        ('FR', 'France'),
-        ('NG', 'Nigeria'),
-        ('KE', 'Kenya'),
-        ('IN', 'India'),
         ('AU', 'Australia'),
-        ('CA', 'Canada'),
         ('BR', 'Brazil'),
-        ('AE', 'United Arab Emirates'),
-        ('SG', 'Singapore'),
-        ('JP', 'Japan'),
+        ('CA', 'Canada'),
         ('CN', 'China'),
-        ('NL', 'Netherlands'),
-        ('ES', 'Spain'),
+        ('FR', 'France'),
+        ('DE', 'Germany'),
+        ('IN', 'India'),
         ('IT', 'Italy'),
+        ('JP', 'Japan'),
+        ('KE', 'Kenya'),
+        ('NL', 'Netherlands'),
+        ('NG', 'Nigeria'),
         ('PT', 'Portugal'),
+        ('SG', 'Singapore'),
+        ('ZA', 'South Africa'),
+        ('ES', 'Spain'),
+        ('AE', 'United Arab Emirates'),
+        ('GB', 'United Kingdom'),
+        ('US', 'United States'),
+        ('ZM', 'Zambia'),
     )
     
     # Motivational Trading Quotes
