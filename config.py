@@ -134,7 +134,7 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.9.0'
+    APP_VERSION = '2.9.1'
 
     # Trial defaults (env overrides; code defaults are 60 days for everyone):
     #   TV_TRIAL_DAYS_PRO_PLUS=60          — new signups (created_at / register → trial_ends_at)
