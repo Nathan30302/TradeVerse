@@ -291,9 +291,15 @@
                                             <span class="badge rounded-pill bg-secondary">Free</span>
                                         {% endif %}
                                     </div>
-                                    {% if sub.status == 'trialing' and sub.trial_ends_at %}
+                                    {% set trial_end_display = trial_personal_ends_at if trial_personal_ends_at is defined and trial_personal_ends_at else sub.trial_ends_at %}
+                                    {% if sub.status == 'trialing' and trial_end_display %}
                                     <div class="small text-muted mt-1">
-                                        Trial reference date: <strong>{{ sub.trial_ends_at.strftime('%B %d, %Y') }}</strong>
+                                        {% if trial_days_remaining is not none %}
+                                            {{ trial_days_remaining }} day{% if trial_days_remaining != 1 %}s{% endif %} left
+                                            ·
+                                        {% endif %}
+                                        Ends <strong>{{ trial_end_display.strftime('%B %d, %Y') }}</strong>
+                                        <span class="d-block mt-1">{{ trial_period_days|default(60) }}-day Pro Plus trial</span>
                                     </div>
                                     {% endif %}
                                 </div>

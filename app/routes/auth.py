@@ -395,6 +395,17 @@ def login():
                 # Never allow ancillary tracking to break login.
                 current_app.logger.debug("update_last_login failed; continuing", exc_info=True)
             _record_login_event(user.id)
+            try:
+                from app.services.entitlements import ensure_user_pro_plus_trial
+
+                if ensure_user_pro_plus_trial(user):
+                    db.session.commit()
+            except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+                current_app.logger.debug('ensure_user_pro_plus_trial on login skipped', exc_info=True)
 
             flash(f'👋 Welcome back, {user.username}!', 'success')
             

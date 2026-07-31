@@ -651,7 +651,7 @@ def trial_info():
         else (created_at or now)
     )
 
-    # Prefer effective trial end (promo / extended window), not a stale DB stamp.
+    # Same source of truth as sidebar/navbar: persisted trial_ends_at (after ensure).
     from app.services.entitlements import get_personal_trial_end, get_trial_days_remaining
 
     trial_end = get_personal_trial_end(current_user) or state.trial_ends_at

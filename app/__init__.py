@@ -303,6 +303,33 @@ def create_app(config_name='default'):
     def _assign_request_id():
         from uuid import uuid4
         request._tv_request_id = uuid4().hex[:16]
+
+    @app.before_request
+    def _ensure_pro_plus_trial():
+        """
+        Repair stuck/expired signup-clock trials for eligible users before UI/gates run.
+
+        Persists trial_ends_at so navbar, sidebar, billing, and entitlements share one clock.
+        """
+        try:
+            from flask_login import current_user
+
+            if not getattr(current_user, 'is_authenticated', False):
+                return
+            # Skip static assets / health probes
+            path = (request.path or '')
+            if path.startswith('/static/') or path in {'/health', '/healthz', '/ping'}:
+                return
+            from app.services.entitlements import ensure_user_pro_plus_trial
+
+            if ensure_user_pro_plus_trial(current_user):
+                db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            app.logger.debug('ensure_user_pro_plus_trial skipped', exc_info=True)
     
     # Register template filters
     register_template_filters(app)
@@ -593,20 +620,41 @@ def register_context_processors(app):
     @app.context_processor
     def inject_trial_countdown():
         """Days left in Pro Plus trial + configured trial length (for UI copy)."""
-        import os
-        from app.services.entitlements import get_personal_trial_end, get_trial_days_remaining
+        from app.services.entitlements import (
+            get_personal_trial_end,
+            get_trial_days_remaining,
+            trial_period_days,
+        )
 
-        period = int(os.environ.get('TV_TRIAL_DAYS_PRO_PLUS', '60') or '60')
+        period = trial_period_days()
         if not getattr(current_user, 'is_authenticated', False):
             return {
                 'trial_days_remaining': None,
                 'trial_period_days': period,
                 'trial_personal_ends_at': None,
             }
+        # Single clock for chip + billing: persisted trial end, else effective state end.
+        end = get_personal_trial_end(current_user)
+        days_left = get_trial_days_remaining(current_user)
+        try:
+            st = current_user.effective_subscription()
+            eff_end = getattr(st, 'trial_ends_at', None)
+            if eff_end is not None:
+                from datetime import datetime, timezone
+                now = datetime.now(timezone.utc)
+                end_aware = end
+                if end_aware is not None and getattr(end_aware, 'tzinfo', None) is None:
+                    end_aware = end_aware.replace(tzinfo=timezone.utc)
+                # If personal DB end is missing/past but effective trial is still open
+                # (e.g. TV_PROMO_ACCESS_UNTIL), show the effective end with days left.
+                if end is None or (end_aware is not None and end_aware < now and st.status == 'trialing'):
+                    end = eff_end
+        except Exception:
+            pass
         return {
-            'trial_days_remaining': get_trial_days_remaining(current_user),
+            'trial_days_remaining': days_left,
             'trial_period_days': period,
-            'trial_personal_ends_at': get_personal_trial_end(current_user),
+            'trial_personal_ends_at': end,
         }
 
     @app.context_processor

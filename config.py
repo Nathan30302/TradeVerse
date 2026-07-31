@@ -115,13 +115,15 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.8.5'
+    APP_VERSION = '2.8.6'
 
     # Trial defaults (env overrides; code defaults are 60 days for everyone):
-    #   TV_TRIAL_DAYS_PRO_PLUS=60          — new signups
-    #   TV_ALL_USERS_PROPLUS_TRIAL=1       — existing accounts also get Pro Plus until their personal clock ends
-    #   TV_ALL_USERS_PROPLUS_TRIAL_DAYS=60 — length of that personal clock (created_at + N)
-    # Backfill once: flask grant-promo-trial --days 60
+    #   TV_TRIAL_DAYS_PRO_PLUS=60          — new signups (created_at / register → trial_ends_at)
+    #   TV_ALL_USERS_PROPLUS_TRIAL=1       — eligible existing accounts get Pro Plus while trial_ends_at is future
+    #   TV_ALL_USERS_PROPLUS_TRIAL_DAYS=60 — length for signup clock + one-time repair grants
+    # Repair stuck expired signup clocks: automatic on request, or:
+    #   flask grant-promo-trial --days 60
+    #   python scripts/verify_trials.py
     # Turn off marketing overlay: TV_ALL_USERS_PROPLUS_TRIAL=0
 
     # UI themes (order preserved for pickers)
