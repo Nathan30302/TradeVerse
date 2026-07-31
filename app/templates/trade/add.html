@@ -74,7 +74,9 @@
         </div>
         {% endif %}
 
-        <form id="trade-add-form" method="POST" action="{{ url_for('trade.add') }}" enctype="multipart/form-data">
+        {# novalidate: native HTML5 blocks submit before our handler, so closed-trade
+           strategy/notes failures looked silent. We validate in JS with visible alerts. #}
+        <form id="trade-add-form" method="POST" action="{{ url_for('trade.add') }}" enctype="multipart/form-data" novalidate>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="accountability_confirmed" id="accountability_confirmed" value="false">
             {% if prefill %}
@@ -208,6 +210,9 @@
                             <input type="datetime-local" class="form-control" id="exit_date" name="exit_date">
                         </div>
                     </div>
+                    <div id="tv-closed-req-banner" class="alert alert-info py-2 px-3 small d-none mb-3" role="status">
+                        <strong>Closed trade:</strong> pick a <strong>strategy</strong> and add <strong>pre-trade</strong> + <strong>post-trade</strong> notes (at least 8 characters each) below before saving.
+                    </div>
 
                     <div class="rounded-3 bg-body-secondary p-3 mb-3">
                         <div class="row text-center g-2">
@@ -269,16 +274,17 @@
                     <div class="mt-4 pt-3 border-top border-secondary-subtle" id="tvMoreFields">
                         <div class="tv-more-section">
                             <h6 class="text-muted text-uppercase small fw-bold mb-2">Strategy &amp; session</h6>
-                            <p class="small text-muted mb-3">For <strong>open</strong> trades these are optional (log fast). For <strong>closed</strong> trades, strategy, pre-trade plan, and post-trade notes are required so coaching stays accurate.</p>
+                            <p id="tv-strategy-notes-blurb" class="small text-muted mb-3">For <strong>open</strong> trades these are optional (log fast). For <strong>closed</strong> trades, strategy, pre-trade plan, and post-trade notes are required so coaching stays accurate.</p>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-4">
                                     <label for="strategy" class="form-label small fw-semibold">Strategy <span id="tv-strategy-required" class="text-danger d-none">*</span></label>
-                                    <select class="form-select" id="strategy" name="strategy">
-                                        <option value="" selected>Optional for open trades…</option>
+                                    <select class="form-select" id="strategy" name="strategy" aria-describedby="tv-strategy-field-err">
+                                        <option value="" selected id="tv-strategy-placeholder">Optional for open trades…</option>
                                         {% for strategy in config.STRATEGIES %}
                                             <option value="{{ strategy }}">{{ strategy }}</option>
                                         {% endfor %}
                                     </select>
+                                    <div id="tv-strategy-field-err" class="invalid-feedback d-none" role="alert"></div>
                                 </div>
                                 <div class="col-md-4">
                                     <label for="session_type" class="form-label small fw-semibold">Session</label>
@@ -328,13 +334,15 @@
                             <h6 class="text-muted text-uppercase small fw-bold mb-3">Notes</h6>
                             <div class="mb-3">
                                 <label for="pre_trade_plan" class="form-label small fw-semibold">Pre-trade plan <span id="tv-pre-plan-required" class="text-danger d-none">*</span></label>
-                                <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" maxlength="8000" placeholder="What was the setup and plan? (required when closed.)"></textarea>
-                                <div class="form-text">Recommended always; required when the trade is Closed (min. 8 characters).</div>
+                                <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" maxlength="8000" placeholder="What was the setup and plan?" aria-describedby="tv-pre-plan-hint tv-pre-plan-field-err"></textarea>
+                                <div id="tv-pre-plan-hint" class="form-text">Recommended always; required when the trade is Closed (min. 8 characters).</div>
+                                <div id="tv-pre-plan-field-err" class="invalid-feedback d-none" role="alert"></div>
                             </div>
                             <div class="mb-3">
                                 <label for="post_trade_notes" class="form-label small fw-semibold">Post-trade notes <span id="tv-post-notes-required" class="text-danger d-none">*</span></label>
-                                <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3" maxlength="8000" placeholder="Review, outcome, lessons (required if trade is closed.)"></textarea>
+                                <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3" maxlength="8000" placeholder="Review, outcome, lessons" aria-describedby="tv-post-notes-hint tv-post-notes-field-err"></textarea>
                                 <div id="tv-post-notes-hint" class="form-text">Required when position is <strong>Closed</strong> (min. 8 characters).</div>
+                                <div id="tv-post-notes-field-err" class="invalid-feedback d-none" role="alert"></div>
                             </div>
                             <h6 class="text-muted text-uppercase small fw-bold mb-2">Compliance</h6>
                             <p class="small text-muted mb-2">Honesty checks for score &amp; coaching — don’t game these; they only help you if they’re real.</p>
@@ -365,7 +373,7 @@
                 </div>
             </div>
 
-            <div id="tv-client-validation-err" class="alert alert-warning py-2 px-3 small d-none mb-3" role="alert"></div>
+            <div id="tv-client-validation-err" class="alert alert-danger py-2 px-3 small d-none mb-3" role="alert" aria-live="assertive"></div>
             <div class="d-flex flex-column flex-sm-row gap-2 gap-sm-3 justify-content-between align-items-stretch align-items-sm-center mb-5">
                 <a href="{{ url_for('trade.list') }}" class="btn btn-outline-secondary btn-lg order-2 order-sm-1">
                     <i class="fas fa-times me-1"></i> Cancel
@@ -937,12 +945,81 @@ function calculateRR() {
     var preReqStar = document.getElementById('tv-pre-plan-required');
     var stratElStatus = document.getElementById('strategy');
     var preTa = document.getElementById('pre_trade_plan');
+    var closedBanner = document.getElementById('tv-closed-req-banner');
+    var stratPlaceholder = document.getElementById('tv-strategy-placeholder');
+    var preHint = document.getElementById('tv-pre-plan-hint');
+    var postHint = document.getElementById('tv-post-notes-hint');
+    var fieldErrMap = {
+      strategy: document.getElementById('tv-strategy-field-err'),
+      pre_trade_plan: document.getElementById('tv-pre-plan-field-err'),
+      post_trade_notes: document.getElementById('tv-post-notes-field-err'),
+      exit_price: document.getElementById('tv-exit-inline-err')
+    };
+
+    function clearFieldErr(el) {
+      if (!el) return;
+      el.classList.remove('is-invalid');
+      el.removeAttribute('aria-invalid');
+      var err = fieldErrMap[el.id];
+      if (err) {
+        err.textContent = '';
+        err.classList.add('d-none');
+        err.classList.remove('d-block');
+      }
+    }
+
+    function markFieldErr(el, msg) {
+      if (!el) return;
+      el.classList.add('is-invalid');
+      el.setAttribute('aria-invalid', 'true');
+      var err = fieldErrMap[el.id];
+      if (err) {
+        err.textContent = msg;
+        err.classList.remove('d-none');
+        err.classList.add('d-block');
+      }
+    }
+
+    function clearAllFieldErrs() {
+      ['strategy', 'pre_trade_plan', 'post_trade_notes', 'exit_price', 'entry_price', 'lot_size'].forEach(function (id) {
+        clearFieldErr(document.getElementById(id));
+      });
+      if (exitInline) {
+        exitInline.textContent = '';
+        exitInline.classList.add('d-none');
+      }
+    }
+
     function applyLogStatus() {
       var closed = closedR && closedR.checked;
       if (hStat) hStat.value = closed ? 'closed' : 'open';
       if (exitWrap) exitWrap.classList.toggle('d-none', !closed);
       if (exitIn) exitIn.required = !!closed;
       if (!closed && exitIn) exitIn.value = '';
+      if (closedBanner) closedBanner.classList.toggle('d-none', !closed);
+      if (stratPlaceholder) {
+        stratPlaceholder.textContent = closed ? 'Select a strategy (required)…' : 'Optional for open trades…';
+      }
+      if (preHint) {
+        preHint.innerHTML = closed
+          ? '<strong class="text-body">Required for closed trades</strong> — at least 8 characters describing your setup and plan.'
+          : 'Recommended always; required when the trade is Closed (min. 8 characters).';
+      }
+      if (postHint) {
+        postHint.innerHTML = closed
+          ? '<strong class="text-body">Required for closed trades</strong> — at least 8 characters covering outcome and lessons.'
+          : 'Required when position is <strong>Closed</strong> (min. 8 characters).';
+      }
+      if (preTa) {
+        preTa.placeholder = closed
+          ? 'What was the setup and plan? (min. 8 characters)'
+          : 'What was the setup and plan?';
+      }
+      if (postTa) {
+        postTa.placeholder = closed
+          ? 'Review, outcome, lessons (min. 8 characters)'
+          : 'Review, outcome, lessons';
+      }
       if (postTa) {
         postTa.required = !!closed;
         if (closed) {
@@ -960,6 +1037,7 @@ function calculateRR() {
         if (closed) preTa.setAttribute('minlength', '8');
         else preTa.removeAttribute('minlength');
       }
+      if (!closed) clearAllFieldErrs();
     }
     if (openR) openR.addEventListener('change', applyLogStatus);
     if (closedR) closedR.addEventListener('change', applyLogStatus);
@@ -984,10 +1062,19 @@ function calculateRR() {
     };
 
     var valErr = document.getElementById('tv-client-validation-err');
-    function showValErr(msg) {
+    function showValErr(msg, focusEl) {
       if (valErr) {
-        valErr.textContent = msg;
+        valErr.innerHTML = '<i class="fas fa-exclamation-circle me-1" aria-hidden="true"></i>' + msg;
         valErr.classList.remove('d-none');
+      }
+      if (focusEl && typeof focusEl.focus === 'function') {
+        try {
+          focusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (eScroll) {}
+        try { focusEl.focus({ preventScroll: true }); } catch (eFocus) {
+          try { focusEl.focus(); } catch (e2) {}
+        }
+      } else if (valErr) {
         valErr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
@@ -998,9 +1085,17 @@ function calculateRR() {
       }
     }
 
+    ['strategy', 'pre_trade_plan', 'post_trade_notes', 'exit_price', 'entry_price', 'lot_size'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', function () { clearFieldErr(el); hideValErr(); });
+      el.addEventListener('change', function () { clearFieldErr(el); hideValErr(); });
+    });
+
     if (form) {
       form.addEventListener('submit', function (e) {
         hideValErr();
+        clearAllFieldErrs();
         var iidEl = document.getElementById('instrument_id');
         var symEl = document.getElementById('symbol');
         if (!iidEl || !symEl || !String(iidEl.value || '').trim() || !String(symEl.value || '').trim()) {
@@ -1011,40 +1106,56 @@ function calculateRR() {
           }
           var pick = document.querySelector('.instrument-picker-container');
           if (pick) pick.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          showValErr('Choose an instrument before saving.');
           return false;
         }
         hideInstErr();
-        if (exitInline) {
-          exitInline.textContent = '';
-          exitInline.classList.add('d-none');
+
+        var entryEl = document.getElementById('entry_price');
+        if (!entryEl || !String(entryEl.value || '').trim()) {
+          e.preventDefault();
+          markFieldErr(entryEl, 'Entry price is required.');
+          showValErr('Enter an entry price to save the trade.', entryEl);
+          return false;
         }
+        var lotEl = document.getElementById('lot_size');
+        if (!lotEl || !String(lotEl.value || '').trim() || Number(lotEl.value) <= 0) {
+          e.preventDefault();
+          markFieldErr(lotEl, 'Lot size must be greater than 0.');
+          showValErr('Enter a valid lot size to save the trade.', lotEl);
+          return false;
+        }
+
         var stratEl = document.getElementById('strategy');
         var preEl = document.getElementById('pre_trade_plan');
         if (closedR && closedR.checked) {
           if (!stratEl || !String(stratEl.value || '').trim()) {
             e.preventDefault();
-            showValErr('Closed trades need a strategy (helps Analytics and Patterns).');
-            stratEl && stratEl.focus();
+            markFieldErr(stratEl, 'Pick a strategy to save a closed trade.');
+            showValErr('Closed trades need a strategy (helps Analytics and Patterns).', stratEl);
             return false;
           }
           if (!preEl || String(preEl.value || '').trim().length < 8) {
             e.preventDefault();
-            showValErr('Closed trades need a short pre-trade plan (at least 8 characters).');
-            preEl && preEl.focus();
+            var preMsg = 'Add a short pre-trade note (at least 8 characters) to save a closed trade.';
+            markFieldErr(preEl, preMsg);
+            showValErr(preMsg, preEl);
             return false;
           }
         } else if (preEl && String(preEl.value || '').trim() && String(preEl.value || '').trim().length < 8) {
           e.preventDefault();
-          showValErr('Pre-trade plan must be at least 8 characters if you fill it in.');
-          preEl.focus();
+          var preOptMsg = 'Pre-trade plan must be at least 8 characters if you fill it in.';
+          markFieldErr(preEl, preOptMsg);
+          showValErr(preOptMsg, preEl);
           return false;
         }
         if (closedR && closedR.checked) {
           var postEl = document.getElementById('post_trade_notes');
           if (!postEl || String(postEl.value || '').trim().length < 8) {
             e.preventDefault();
-            showValErr('Closed trades need post-trade notes (at least 8 characters).');
-            postEl && postEl.focus();
+            var postMsg = 'Add short post-trade notes (at least 8 characters) to save a closed trade.';
+            markFieldErr(postEl, postMsg);
+            showValErr(postMsg, postEl);
             return false;
           }
         }
@@ -1052,12 +1163,14 @@ function calculateRR() {
           var exv = exitIn && String(exitIn.value || '').trim();
           if (!exv) {
             e.preventDefault();
+            var exitMsg = 'Exit price is required for a closed trade (or switch to Open).';
+            markFieldErr(exitIn, exitMsg);
             if (exitInline) {
-              exitInline.textContent = 'Exit price is required for a closed trade (or switch to Open).';
+              exitInline.textContent = exitMsg;
               exitInline.classList.remove('d-none');
             }
             exitWrap && exitWrap.classList.remove('d-none');
-            exitIn && exitIn.focus();
+            showValErr(exitMsg, exitIn);
             return false;
           }
         }
