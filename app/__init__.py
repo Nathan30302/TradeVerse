@@ -62,9 +62,10 @@ def create_app(config_name='default'):
         except (OSError, PermissionError):
             pass
     try:
-        from app.services.uploads_storage import ensure_upload_dirs
+        from app.services.uploads_storage import ensure_upload_dirs, warn_if_ephemeral_storage
 
         ensure_upload_dirs()
+        warn_if_ephemeral_storage()
     except Exception:
         pass
 

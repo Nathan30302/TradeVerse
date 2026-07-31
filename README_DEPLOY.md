@@ -24,9 +24,13 @@ This file describes the recommended production deployment steps for TradeVerse.
 - Use managed Postgres in production (Render/Heroku/AWS RDS).
 - Run migrations with Alembic (Flask-Migrate): `flask db upgrade` in the deployed environment or via a deploy hook.
 
-5) Static files / uploads
-- App uses `/tmp/uploads` in production by default. Configure durable storage (S3) for persistent uploads if needed.
-- Avoid writing to local disk in production; configure `UPLOAD_FOLDER` via env var if using persistent storage.
+5) Static files / uploads (critical — otherwise avatars/screenshots vanish on redeploy)
+- Preferred: S3-compatible storage — set `S3_BUCKET` (or `R2_BUCKET`), `AWS_ACCESS_KEY_ID`,
+  `AWS_SECRET_ACCESS_KEY`, and for Cloudflare R2 also `S3_ENDPOINT_URL`.
+- Fallback: Render persistent disk mounted at `/var/data` with `TRADEVERSE_DATA_DIR=/var/data`
+  (`render.yaml` already declares a 10GB disk).
+- Without either, the app falls back to `app/static/uploads` which is **ephemeral** on Render.
+- DB keeps relative paths (`uploads/avatars/...`); old files already wiped cannot be recovered.
 
 6) Health checks & monitoring
 - Expose `/metrics` if running prometheus_client; ensure access control for metrics if public.

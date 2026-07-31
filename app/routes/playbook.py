@@ -7,7 +7,6 @@ so they follow a defined strategy instead of trading blindly.
 
 from __future__ import annotations
 
-import os
 import uuid
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
@@ -28,7 +27,7 @@ from app.services.playbook_grades import (
     normalize_setup_grade,
     suggest_grade_from_trades,
 )
-from app.services.uploads_storage import playbook_images_dir, resolve_playbook_file
+from app.services.uploads_storage import delete_upload, put_bytes
 
 
 bp = Blueprint("playbook", __name__, url_prefix="/playbook")
@@ -60,22 +59,15 @@ def _get_setup_or_404(setup_id: int) -> PlaybookSetup:
 def _unlink_playbook_image(stored_path: str) -> None:
     if not stored_path or not stored_path.startswith("uploads/playbook/"):
         return
-    fname = stored_path.split("/", 2)[-1]
-    found = resolve_playbook_file(fname)
-    if not found:
-        return
-    folder, name = found
     try:
-        os.remove(os.path.join(folder, name))
-    except OSError:
+        delete_upload(stored_path)
+    except Exception:
         current_app.logger.debug("playbook image unlink failed", exc_info=True)
 
 
 def _save_uploaded_playbook_images(user_id: int, storages) -> list[str]:
     """Validate and persist uploaded example images; return relative paths."""
     saved: list[str] = []
-    dest_dir = playbook_images_dir()
-    os.makedirs(dest_dir, exist_ok=True)
 
     for storage in storages or []:
         if not storage or not getattr(storage, "filename", None):
@@ -101,15 +93,14 @@ def _save_uploaded_playbook_images(user_id: int, storages) -> list[str]:
         safe = secure_filename(out_name)
         if not safe or safe != out_name:
             continue
-        full = os.path.join(dest_dir, safe)
+        rel = f"uploads/playbook/{safe}"
         try:
-            with open(full, "wb") as out_f:
-                out_f.write(data)
+            put_bytes(rel, data, content_type=f"image/{ext if ext != 'jpg' else 'jpeg'}")
         except OSError:
             current_app.logger.warning("playbook image save failed", exc_info=True)
             flash("Could not save one of the images. Try again.", "warning")
             continue
-        saved.append(f"uploads/playbook/{safe}")
+        saved.append(rel)
     return saved
 
 

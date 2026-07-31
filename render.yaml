@@ -22,7 +22,9 @@ services:
           property: connectionString
       - key: PYTHONUNBUFFERED
         value: 'true'
-      # Persistent uploads (avatars, before/after trade screenshots)
+      # Persistent uploads (avatars, before/after, playbook, replay).
+      # Prefer also setting S3_BUCKET + AWS_* (or R2) in the Render dashboard for
+      # object storage that survives even if this disk is missing.
       - key: TRADEVERSE_DATA_DIR
         value: /var/data
       # 2-month Pro Plus for current + new users

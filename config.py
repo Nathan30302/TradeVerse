@@ -91,8 +91,14 @@ class Config:
     # File Upload Configuration
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     # Absolute paths avoid cwd-dependent saves (avatar "saved then gone").
+    # Preferred permanence: S3/R2 (see S3_* / AWS_* below). Else TRADEVERSE_DATA_DIR disk.
     _PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
-    TRADEVERSE_DATA_DIR = os.environ.get('TRADEVERSE_DATA_DIR') or os.path.join(_PROJECT_ROOT, 'app', 'static')
+    TRADEVERSE_DATA_DIR = (
+        os.environ.get('TRADEVERSE_DATA_DIR')
+        or os.environ.get('UPLOAD_ROOT')
+        or os.environ.get('PERSISTENT_DISK_PATH')
+        or os.path.join(_PROJECT_ROOT, 'app', 'static')
+    )
     UPLOAD_FOLDER = os.path.join(TRADEVERSE_DATA_DIR, 'uploads')
     TRADE_SCREENSHOTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'trade_screenshots')
     AVATARS_FOLDER = os.path.join(UPLOAD_FOLDER, 'avatars')
@@ -100,6 +106,19 @@ class Config:
     PLAYBOOK_IMAGES_FOLDER = os.path.join(UPLOAD_FOLDER, 'playbook')
     # Screenshots use png/jpg/webp/heic; pdf kept for other uploads (e.g. statements).
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'pdf'}
+    # S3-compatible object storage (AWS S3, Cloudflare R2, MinIO). When set, uploads
+    # persist across Render redeploys without relying on the container filesystem.
+    S3_BUCKET = (
+        os.environ.get('S3_BUCKET')
+        or os.environ.get('AWS_S3_BUCKET')
+        or os.environ.get('R2_BUCKET')
+        or ''
+    ).strip()
+    S3_ENDPOINT_URL = (os.environ.get('S3_ENDPOINT_URL') or os.environ.get('AWS_ENDPOINT_URL') or '').strip()
+    S3_PUBLIC_BASE_URL = (
+        os.environ.get('S3_PUBLIC_BASE_URL') or os.environ.get('R2_PUBLIC_BASE_URL') or ''
+    ).strip()
+    S3_PREFIX = (os.environ.get('S3_PREFIX') or '').strip()
     
     # Pagination
     ITEMS_PER_PAGE = 20
@@ -115,7 +134,7 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.8.9'
+    APP_VERSION = '2.9.0'
 
     # Trial defaults (env overrides; code defaults are 60 days for everyone):
     #   TV_TRIAL_DAYS_PRO_PLUS=60          — new signups (created_at / register → trial_ends_at)
@@ -432,11 +451,14 @@ class ProductionConfig(Config):
         '1', 'true', 'yes'
     )
 
-    # Durable uploads: attach a Render disk and set TRADEVERSE_DATA_DIR=/var/data.
+    # Durable uploads:
+    #   1) Prefer S3/R2 (S3_BUCKET + AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY).
+    #   2) Else attach a Render disk and set TRADEVERSE_DATA_DIR=/var/data.
     # If /var/data is configured but not mounted/writable, fall back to app/static
-    # so boot still succeeds (uploads become ephemeral until a disk is attached).
+    # so boot still succeeds (uploads become ephemeral until disk or S3 is set).
     _preferred_data = (
         os.environ.get('TRADEVERSE_DATA_DIR')
+        or os.environ.get('UPLOAD_ROOT')
         or os.environ.get('PERSISTENT_DISK_PATH')
         or '/var/data'
     )

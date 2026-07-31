@@ -50,18 +50,20 @@ def _allowed_file(filename):
 
 
 def _save_screenshot(file, prefix='trade'):
-    """Save an uploaded screenshot to persistent storage; return relative path or None."""
+    """Save an uploaded screenshot to durable storage (S3/disk); return relative path or None."""
     if not (file and file.filename and _allowed_file(file.filename)):
         return None
-    from app.services.uploads_storage import screenshots_dir
+    from app.services.uploads_storage import put_file_storage
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = secure_filename(file.filename)
     unique_name = f"{prefix}_{current_user.id}_{timestamp}_{filename}"
-    upload_dir = screenshots_dir()
-    os.makedirs(upload_dir, exist_ok=True)
-    file.save(os.path.join(upload_dir, unique_name))
-    return f"uploads/trade_screenshots/{unique_name}"
+    rel = f"uploads/trade_screenshots/{unique_name}"
+    try:
+        return put_file_storage(rel, file)
+    except OSError as exc:
+        logger.warning('screenshot save failed: %s', exc)
+        return None
 
 
 def _safe_float(value, default=None):

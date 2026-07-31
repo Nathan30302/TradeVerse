@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, send_from_directory, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
@@ -26,14 +26,6 @@ def _allowed_file(filename: str) -> bool:
         return False
     ext = filename.rsplit(".", 1)[1].lower()
     return ext in (current_app.config.get("ALLOWED_EXTENSIONS") or set())
-
-
-def _replay_upload_dir() -> str:
-    from app.services.uploads_storage import replay_dir
-
-    path = replay_dir()
-    os.makedirs(path, exist_ok=True)
-    return path
 
 
 def _trade_or_404(trade_id: int) -> Trade:
@@ -98,21 +90,18 @@ def add_event(trade_id: int):
         if not _allowed_file(f.filename):
             flash("Unsupported file type.", "warning")
             return redirect(url_for("replay.trade_replay", trade_id=trade.id))
+        from app.services.uploads_storage import exists, put_file_storage
+
         safe = secure_filename(f.filename)
         ts = utc_now().strftime("%Y%m%d_%H%M%S")
         stored = f"u{current_user.id}_t{trade.id}_{ts}_{safe}"
-        dst_dir = _replay_upload_dir()
-        dest_path = os.path.join(dst_dir, stored)
-        f.save(dest_path)
+        rel = f"uploads/replay/{stored}"
         try:
-            if not os.path.isfile(dest_path) or os.path.getsize(dest_path) == 0:
-                try:
-                    os.remove(dest_path)
-                except OSError:
-                    pass
-                flash("Screenshot upload failed or file was empty.", "warning")
-                return redirect(url_for("replay.trade_replay", trade_id=trade.id))
+            put_file_storage(rel, f, content_type=f.mimetype)
         except OSError:
+            flash("Screenshot upload failed or file was empty.", "warning")
+            return redirect(url_for("replay.trade_replay", trade_id=trade.id))
+        if not exists(rel):
             flash("Could not verify uploaded file.", "warning")
             return redirect(url_for("replay.trade_replay", trade_id=trade.id))
         media_filename = stored
@@ -148,6 +137,13 @@ def media(filename: str):
     )
     if not exists:
         abort(404)
-    directory = _replay_upload_dir()
-    return send_from_directory(directory, filename)
+    from app.services.uploads_storage import serve_upload
+
+    name = os.path.basename(filename)
+    if not name or ".." in name:
+        abort(404)
+    resp = serve_upload(f"uploads/replay/{name}")
+    if resp is None:
+        abort(404)
+    return resp
 

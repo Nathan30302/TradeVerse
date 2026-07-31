@@ -167,21 +167,23 @@ def privacy():
 @bp.route('/avatar/<path:filename>')
 @login_required
 def avatar_file(filename):
-    """Serve profile photos from the persistent avatars directory (or legacy paths)."""
-    from app.services.uploads_storage import resolve_avatar_file
+    """Serve profile photos from durable storage (disk and/or S3) or legacy paths."""
+    from app.services.uploads_storage import serve_upload
 
-    found = resolve_avatar_file(filename)
-    if not found:
+    name = os.path.basename((filename or '').strip())
+    if not name or '..' in name:
         abort(404)
-    folder, name = found
-    return send_from_directory(folder, name)
+    resp = serve_upload(f'uploads/avatars/{name}')
+    if resp is None:
+        abort(404)
+    return resp
 
 
 @bp.route('/playbook-image/<path:stored>')
 @login_required
 def playbook_image_file(stored):
-    """Serve playbook example images from persistent storage."""
-    from app.services.uploads_storage import resolve_playbook_file
+    """Serve playbook example images from durable storage (disk and/or S3)."""
+    from app.services.uploads_storage import serve_upload
 
     rel = (stored or '').replace('\\', '/').strip()
     prefix = 'uploads/playbook/'
@@ -191,11 +193,10 @@ def playbook_image_file(stored):
     if not fname or '..' in fname or fname.startswith('/'):
         abort(404)
 
-    found = resolve_playbook_file(fname)
-    if not found:
+    resp = serve_upload(f'{prefix}{os.path.basename(fname)}')
+    if resp is None:
         abort(404)
-    folder, name = found
-    return send_from_directory(folder, name)
+    return resp
 
 
 @bp.route('/planner-screenshot/<path:stored>')
@@ -204,10 +205,10 @@ def planner_screenshot_file(stored):
     """
     Serve Trade Planner before/after images.
 
-    Files live under TRADE_SCREENSHOTS_FOLDER (persistent disk in production) or
-    legacy static/tmp paths. DB stores paths like uploads/trade_screenshots/name.png.
+    Files live on S3/R2, TRADEVERSE_DATA_DIR disk, or legacy static/tmp paths.
+    DB stores paths like uploads/trade_screenshots/name.png.
     """
-    from app.services.uploads_storage import resolve_screenshot_file
+    from app.services.uploads_storage import serve_upload
 
     rel = (stored or '').replace('\\', '/').strip()
     prefix = 'uploads/trade_screenshots/'
@@ -217,11 +218,10 @@ def planner_screenshot_file(stored):
     if not fname or '..' in fname or fname.startswith('/'):
         abort(404)
 
-    found = resolve_screenshot_file(fname)
-    if not found:
+    resp = serve_upload(f'{prefix}{os.path.basename(fname)}')
+    if resp is None:
         abort(404)
-    folder, name = found
-    return send_from_directory(folder, name)
+    return resp
 
 
 @bp.route('/api/calculate-pnl', methods=['POST'])

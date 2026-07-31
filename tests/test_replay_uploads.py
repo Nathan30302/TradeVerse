@@ -36,9 +36,11 @@ def app():
         yield app, u.id, t.id
 
 
-def test_replay_note_and_png_upload(app, tmp_path):
+def test_replay_note_and_png_upload(app, tmp_path, monkeypatch):
     app_obj, uid, tid = app
-    app_obj.config["TRADE_SCREENSHOTS_FOLDER"] = str(tmp_path)
+    monkeypatch.setenv("TRADEVERSE_DATA_DIR", str(tmp_path))
+    app_obj.config["TRADEVERSE_DATA_DIR"] = str(tmp_path)
+    app_obj.config["REPLAY_UPLOADS_FOLDER"] = str(tmp_path / "uploads" / "replay")
 
     data = {
         "event_type": "note",
@@ -69,13 +71,15 @@ def test_replay_note_and_png_upload(app, tmp_path):
         assert ev is not None
         assert ev.media_filename
         assert "chart" in ev.media_filename.lower() or ev.media_filename.endswith(".png")
-        d = os.path.join(tmp_path, "replay")
+        d = os.path.join(str(tmp_path), "uploads", "replay")
         assert os.path.isfile(os.path.join(d, ev.media_filename))
 
 
-def test_replay_rapid_sequential_uploads(app, tmp_path):
+def test_replay_rapid_sequential_uploads(app, tmp_path, monkeypatch):
     app_obj, uid, tid = app
-    app_obj.config["TRADE_SCREENSHOTS_FOLDER"] = str(tmp_path)
+    monkeypatch.setenv("TRADEVERSE_DATA_DIR", str(tmp_path))
+    app_obj.config["TRADEVERSE_DATA_DIR"] = str(tmp_path)
+    app_obj.config["REPLAY_UPLOADS_FOLDER"] = str(tmp_path / "uploads" / "replay")
     client = app_obj.test_client()
     with client.session_transaction() as sess:
         sess["_user_id"] = str(uid)

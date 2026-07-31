@@ -22,13 +22,24 @@ _can_write_dir() {
   return 0
 }
 
-PREFERRED_DATA_DIR="${TRADEVERSE_DATA_DIR:-${PERSISTENT_DISK_PATH:-/var/data}}"
+PREFERRED_DATA_DIR="${TRADEVERSE_DATA_DIR:-${UPLOAD_ROOT:-${PERSISTENT_DISK_PATH:-/var/data}}}"
 FALLBACK_DATA_DIR="$(pwd)/app/static"
 DATA_DIR="$PREFERRED_DATA_DIR"
 
+S3_NAME="${S3_BUCKET:-${AWS_S3_BUCKET:-${R2_BUCKET:-}}}"
+if [[ -n "$S3_NAME" && -n "${AWS_ACCESS_KEY_ID:-}" && -n "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
+  echo "[render-start] Object storage configured (bucket=${S3_NAME}) — uploads persist across redeploys."
+fi
+
 if ! _can_write_dir "$DATA_DIR"; then
   echo "[render-start] WARN: ${PREFERRED_DATA_DIR} is not writable (no Render disk mounted?)."
-  echo "[render-start] Falling back to ${FALLBACK_DATA_DIR} — uploads/OHLC cache will be ephemeral until you attach a disk at /var/data."
+  if [[ -z "$S3_NAME" || -z "${AWS_ACCESS_KEY_ID:-}" ]]; then
+    echo "[render-start] Falling back to ${FALLBACK_DATA_DIR} — uploads/OHLC cache will be EPHEMERAL until you either:"
+    echo "[render-start]   (A) set S3_BUCKET + AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY (+ S3_ENDPOINT_URL for R2), or"
+    echo "[render-start]   (B) attach a Render disk at /var/data and set TRADEVERSE_DATA_DIR=/var/data."
+  else
+    echo "[render-start] Local cache dir unavailable; S3/R2 will still hold durable uploads."
+  fi
   DATA_DIR="$FALLBACK_DATA_DIR"
   if ! _can_write_dir "$DATA_DIR"; then
     echo "[render-start] WARN: fallback also failed; trying /tmp/tradeverse_data"

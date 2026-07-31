@@ -138,7 +138,12 @@ def _frankfurter_pair(symbol: str) -> Optional[Tuple[str, str]]:
 
 def _disk_cache_dir() -> str:
     root = (
-        (os.environ.get("TRADEVERSE_DATA_DIR") or "").strip()
+        (
+            os.environ.get("TRADEVERSE_DATA_DIR")
+            or os.environ.get("UPLOAD_ROOT")
+            or os.environ.get("PERSISTENT_DISK_PATH")
+            or ""
+        ).strip()
         or (os.environ.get("PERSISTENT_DISK_PATH") or "").strip()
         or os.path.join("app", "static")
     )

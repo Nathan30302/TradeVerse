@@ -475,30 +475,22 @@ def _profile_stats_for_user(user):
 
 
 def _unlink_user_avatar_file(avatar_url):
-    """Remove a previously stored avatar file from disk (best-effort)."""
+    """Remove a previously stored avatar from disk/S3 (best-effort)."""
     if not avatar_url or not isinstance(avatar_url, str):
         return
     s = avatar_url.strip()
     if s.startswith(('http://', 'https://')):
         return
     s = s.lstrip('/')
-    rel_name = None
-    if s.startswith('static/uploads/avatars/'):
-        rel_name = s[len('static/uploads/avatars/') :]
-    elif s.startswith('uploads/avatars/'):
-        rel_name = s[len('uploads/avatars/') :]
-    if not rel_name or '..' in rel_name or '/' in rel_name or '\\' in rel_name:
+    if s.startswith('static/'):
+        s = s[len('static/') :]
+    if not s.startswith('uploads/avatars/') or '..' in s:
         return
-    from app.services.uploads_storage import resolve_avatar_file
+    from app.services.uploads_storage import delete_upload
 
-    found = resolve_avatar_file(rel_name)
-    if not found:
-        return
-    folder, name = found
-    full = os.path.join(folder, name)
     try:
-        os.remove(full)
-    except OSError:
+        delete_upload(s)
+    except Exception:
         current_app.logger.debug('avatar unlink failed', exc_info=True)
 
 
@@ -539,16 +531,13 @@ def _read_avatar_upload_bytes(storage) -> tuple[bytes | None, str | None]:
 
 def _save_avatar_for_user(user, storage):
     """
-    Validate and store an avatar under a writable avatars directory.
-
-    Also mirrors a copy into ``static/uploads/avatars`` when that path differs,
-    so the photo still serves if the primary durable disk is unavailable later.
+    Validate and store an avatar via durable storage (S3/R2 or persistent disk).
 
     Returns:
         tuple[str | None, str | None, str | None]: (error, relative_path, full_disk_path)
     """
     from werkzeug.utils import secure_filename
-    from app.services.uploads_storage import avatars_dir, static_avatars_mirror_dir, resolve_avatar_file
+    from app.services.uploads_storage import exists, find_local_file, put_bytes
 
     if not storage or not storage.filename:
         return (None, None, None)
@@ -566,36 +555,18 @@ def _save_avatar_for_user(user, storage):
     if not safe or safe != out_name:
         return ('Invalid file name.', None, None)
 
-    dest_dir = avatars_dir()
-    full_path = os.path.join(dest_dir, safe)
+    rel = f'uploads/avatars/{safe}'
     try:
-        os.makedirs(dest_dir, exist_ok=True)
-        with open(full_path, 'wb') as out_f:
-            out_f.write(data)
+        put_bytes(rel, data, content_type=f'image/{ext if ext != "jpg" else "jpeg"}')
     except OSError as e:
         current_app.logger.warning('avatar save failed: %s', e)
         return ('Could not save the image. Please try again.', None, None)
 
-    # Mirror into static tree when primary is elsewhere (e.g. /var/data).
-    mirror = static_avatars_mirror_dir()
-    if mirror and os.path.abspath(mirror) != os.path.abspath(dest_dir):
-        try:
-            mirror_path = os.path.join(mirror, safe)
-            with open(mirror_path, 'wb') as out_f:
-                out_f.write(data)
-        except OSError:
-            current_app.logger.debug('avatar static mirror skipped', exc_info=True)
-
-    if not resolve_avatar_file(safe):
-        current_app.logger.warning('avatar saved but not resolvable: %s', full_path)
-        try:
-            if os.path.isfile(full_path):
-                os.remove(full_path)
-        except OSError:
-            pass
+    if not exists(rel):
+        current_app.logger.warning('avatar saved but not resolvable: %s', rel)
         return ('Photo was written but could not be verified. Please try again.', None, None)
 
-    rel = f'uploads/avatars/{safe}'
+    full_path = find_local_file(rel) or rel
     return (None, rel, full_path)
 
 
@@ -658,25 +629,25 @@ def profile():
             return redirect(url_for('auth.profile'))
 
         old_avatar_url = user.avatar_url
-        uploaded_disk_path = None
+        uploaded_rel_path = None
         pending_avatar = ('noop', None)  # ('clear', None) | ('set', rel_path) | noop
         # Prefer a new upload over "remove" if both are submitted.
         avatar_storage = request.files.get('avatar')
         if avatar_storage and avatar_storage.filename:
-            aerr, rel_path, full_disk = _save_avatar_for_user(user, avatar_storage)
+            aerr, rel_path, _full_disk = _save_avatar_for_user(user, avatar_storage)
             if aerr:
                 field_msgs.append(aerr)
             elif rel_path:
                 pending_avatar = ('set', rel_path)
-                uploaded_disk_path = full_disk
+                uploaded_rel_path = rel_path
         elif request.form.get('remove_avatar'):
             pending_avatar = ('clear', None)
 
         def _rollback_new_avatar_file():
-            if uploaded_disk_path and os.path.isfile(uploaded_disk_path):
+            if uploaded_rel_path:
                 try:
-                    os.remove(uploaded_disk_path)
-                except OSError:
+                    _unlink_user_avatar_file(uploaded_rel_path)
+                except Exception:
                     current_app.logger.debug('rollback avatar file failed', exc_info=True)
 
         # Update profile
