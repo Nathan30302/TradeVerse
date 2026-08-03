@@ -380,6 +380,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="checkbox" class="form-check-input" id="remember" name="remember" value="1">
                     <label class="form-check-label" for="remember">Keep me signed in</label>
                 </div>
+                <div class="text-end mb-3">
+                    <a href="{{ url_for('auth.forgot_password') }}" class="small" style="color: #a5b4fc; text-decoration: none;">
+                        Forgot password or username?
+                    </a>
+                </div>
                 
                 <button type="submit" class="btn-login" id="tv-login-submit" aria-label="Sign in to your account">
                     <i class="fas fa-arrow-right" aria-hidden="true"></i>

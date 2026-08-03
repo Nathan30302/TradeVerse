@@ -148,7 +148,17 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.9.3'
+    APP_VERSION = '2.9.4'
+
+    # Password reset link lifetime (seconds)
+    try:
+        PASSWORD_RESET_MAX_AGE = max(300, int(os.environ.get('TV_PASSWORD_RESET_MAX_AGE', '3600')))
+    except ValueError:
+        PASSWORD_RESET_MAX_AGE = 3600
+    try:
+        PASSWORD_RESET_MAX_PER_IP_HOUR = max(1, int(os.environ.get('TV_PASSWORD_RESET_MAX_PER_IP_HOUR', '8')))
+    except ValueError:
+        PASSWORD_RESET_MAX_PER_IP_HOUR = 8
 
     # Trial defaults (env overrides; code defaults are 60 days for everyone):
     #   TV_TRIAL_DAYS_PRO_PLUS=60          — new signups (created_at / register → trial_ends_at)

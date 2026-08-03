@@ -751,6 +751,134 @@ def profile():
         profile_phone_number=(_safe_user_col(current_user, 'phone_number', None) or ''),
     )
 
+# ==================== Forgot / reset password (logged out) ====================
+
+@bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """
+    Account recovery: email username + password reset link.
+
+    Always shows a generic success message so we do not leak whether an email is registered.
+    """
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard.index'))
+
+    from app.services.account_recovery import (
+        mail_is_configured,
+        make_reset_token,
+        send_recovery_email,
+    )
+    from app.services.email_policy import normalize_email
+    from app.services.signup_abuse import client_ip_from_request, register_rate_limited
+
+    if request.method == 'POST':
+        # Reuse the signup IP limiter with a tighter window for recovery spam.
+        max_per = int(current_app.config.get('PASSWORD_RESET_MAX_PER_IP_HOUR', 8) or 8)
+        ip = client_ip_from_request(request)
+        if register_rate_limited(ip, max_per_window=max_per, window_seconds=3600):
+            flash(
+                'Too many recovery requests from this network. Please wait and try again, '
+                f'or email {current_app.config.get("SUPPORT_EMAIL")}.',
+                'warning',
+            )
+            return render_template('auth/forgot_password.html')
+
+        email = normalize_email(request.form.get('email'))
+        # Generic copy whether or not the account exists / mail works.
+        generic_ok = (
+            'If an account exists for that email, we sent instructions to reset your password '
+            'and remind you of your username. Check your inbox and spam folder.'
+        )
+
+        if not email:
+            flash('Enter the email address on your account.', 'danger')
+            return render_template('auth/forgot_password.html')
+
+        user = User.query.filter(func.lower(User.email) == email).first()
+        if user and getattr(user, 'is_active', True):
+            if not mail_is_configured():
+                current_app.logger.error(
+                    'Password reset requested for user_id=%s but mail is not configured',
+                    user.id,
+                )
+                flash(
+                    f'Email sending is not configured on the server right now. '
+                    f'Please contact {current_app.config.get("SUPPORT_EMAIL")} '
+                    f'and we will help you reset access.',
+                    'warning',
+                )
+                return render_template('auth/forgot_password.html')
+            token = make_reset_token(user)
+            if send_recovery_email(user, reset_token=token):
+                flash(generic_ok, 'success')
+            else:
+                flash(
+                    f'We could not send email just now. Please try again shortly, '
+                    f'or contact {current_app.config.get("SUPPORT_EMAIL")}.',
+                    'danger',
+                )
+                return render_template('auth/forgot_password.html')
+        else:
+            # Same message — no account enumeration.
+            flash(generic_ok, 'success')
+
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/forgot_password.html')
+
+
+@bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token: str):
+    """Set a new password using a timed email token."""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard.index'))
+
+    from app.services.account_recovery import load_reset_token
+
+    payload, err = load_reset_token(token)
+    if err or not payload:
+        flash(err or 'This reset link is invalid. Request a new one.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    user = db.session.get(User, int(payload.get('uid') or 0))
+    if not user or not getattr(user, 'is_active', True):
+        flash('This reset link is no longer valid. Request a new one.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    email_in_token = (payload.get('email') or '').lower()
+    if email_in_token and email_in_token != (user.email or '').lower():
+        flash('This reset link is no longer valid. Request a new one.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    ph = payload.get('ph') or ''
+    current_ph = (user.password_hash or '')[:20]
+    if ph and ph != current_ph:
+        flash('This reset link was already used. Request a new one if you still need access.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        if new_password != confirm_password:
+            flash('Passwords do not match.', 'danger')
+            return render_template('auth/reset_password.html', token=token, username=user.username)
+        pw_errs = _password_policy_errors(new_password)
+        if pw_errs:
+            flash(' '.join(pw_errs), 'danger')
+            return render_template('auth/reset_password.html', token=token, username=user.username)
+        try:
+            user.set_password(new_password)
+            db.session.commit()
+            flash('Password updated. You can sign in now.', 'success')
+            return redirect(url_for('auth.login'))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Password reset failed for user_id=%s', user.id)
+            flash('Could not update password. Please try again.', 'danger')
+
+    return render_template('auth/reset_password.html', token=token, username=user.username)
+
+
 # ==================== Change Password ====================
 
 @bp.route('/change-password', methods=['GET', 'POST'])
