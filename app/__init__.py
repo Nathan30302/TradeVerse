@@ -279,8 +279,15 @@ def create_app(config_name='default'):
         """Safari aggressively caches HTML — avoid stale landing/UI after deploys."""
         ct = (response.content_type or '').lower()
         if 'text/html' in ct:
-            response.headers['Cache-Control'] = 'no-cache, must-revalidate'
-            response.headers.setdefault('Pragma', 'no-cache')
+            # Auth pages must never be CDN/browser-cached with a baked-in CSRF token.
+            path = (request.path or '')
+            if path.startswith('/auth/'):
+                response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+                response.headers['Pragma'] = 'no-cache'
+                response.headers['Expires'] = '0'
+            else:
+                response.headers['Cache-Control'] = 'no-cache, must-revalidate'
+                response.headers.setdefault('Pragma', 'no-cache')
         return response
 
     @app.after_request
@@ -443,9 +450,32 @@ def register_error_handlers(app):
 
         @app.errorhandler(CSRFError)
         def csrf_error(error):
-            """Avoid opaque 400s when POST arrives without a valid CSRF token."""
+            """
+            Stale CSRF tokens are common on signup (idle tabs, bfcache, ad landings).
+            Prefer a fresh form over a dead-end error page so visitors can finish signing up.
+            """
             db.session.rollback()
-            return render_template('errors/csrf.html'), 400
+            from flask import flash, redirect, request, url_for
+
+            path = (request.path or "").rstrip("/")
+            # Auth POSTs: bounce back to a fresh form with a clear message.
+            if request.method == "POST" and path.endswith("/auth/register"):
+                flash(
+                    "Please try again — we refreshed the form for security. "
+                    "This can happen after waiting on the page or opening several tabs.",
+                    "warning",
+                )
+                utm = (request.args.get("utm_source") or "").strip()[:255]
+                if utm:
+                    return redirect(url_for("auth.register", utm_source=utm))
+                return redirect(url_for("auth.register"))
+            if request.method == "POST" and path.endswith("/auth/login"):
+                flash(
+                    "Please try signing in again — your session token was refreshed.",
+                    "warning",
+                )
+                return redirect(url_for("auth.login"))
+            return render_template("errors/csrf.html"), 400
     
     @app.errorhandler(404)
     def not_found_error(error):

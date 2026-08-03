@@ -23,6 +23,9 @@ from sqlalchemy.exc import (
 )
 from sqlalchemy.orm import load_only
 from app.services.entitlements import _safe_getattr as _safe_user_col
+from app.services.email_policy import validate_signup_email
+from app.services.signup_abuse import client_ip_from_request, register_rate_limited
+from sqlalchemy import func
 
 # Create Blueprint
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -99,22 +102,29 @@ def _count_accounts_matching_display_name(norm: str) -> int:
 
 
 def _password_policy_errors(password: str) -> list:
-    """Return human-readable password requirement violations (empty if OK)."""
+    """Return human-readable password requirement violations (empty if OK).
+
+    Kept intentionally light for ad/signup conversion: length + letter + digit.
+    """
     errs = []
     if not password:
         errs.append('Password is required.')
         return errs
-    if len(password) < 10:
-        errs.append('Password must be at least 10 characters.')
-    if not re.search(r'[A-Z]', password):
-        errs.append('Use at least one uppercase letter (A–Z).')
-    if not re.search(r'[a-z]', password):
-        errs.append('Use at least one lowercase letter (a–z).')
+    if len(password) < 8:
+        errs.append('Password must be at least 8 characters.')
+    if not re.search(r'[A-Za-z]', password):
+        errs.append('Include at least one letter in your password.')
     if not re.search(r'[0-9]', password):
-        errs.append('Use at least one number (0–9).')
-    if not re.search(r'[^A-Za-z0-9]', password):
-        errs.append('Use at least one symbol (for example ! @ # $ % ^ & *).')
+        errs.append('Include at least one number in your password.')
     return errs
+
+
+@bp.route('/csrf-token', methods=['GET'])
+def csrf_token_json():
+    """Fresh CSRF token for long-lived signup/login tabs (JSON)."""
+    from flask_wtf.csrf import generate_csrf
+
+    return jsonify({'csrf_token': generate_csrf()})
 
 
 def _record_login_event(user_id: int) -> None:
@@ -151,7 +161,6 @@ def register():
     if request.method == 'POST':
         # Get form data
         username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
         full_name = request.form.get('full_name', '').strip()
@@ -160,6 +169,22 @@ def register():
 
         # Validation
         errors = []
+
+        # Burst protection: same IP creating many accounts quickly
+        max_per_ip = int(current_app.config.get('REGISTER_MAX_PER_IP_HOUR', 4) or 4)
+        window_s = int(current_app.config.get('REGISTER_IP_WINDOW_SECONDS', 3600) or 3600)
+        ip = client_ip_from_request(request)
+        if register_rate_limited(ip, max_per_window=max_per_ip, window_seconds=window_s):
+            flash(
+                'Too many accounts were created from this network recently. '
+                'Please try again later, or contact support if you need help.',
+                'danger',
+            )
+            current_app.logger.warning('register rate-limited ip=%s', ip)
+            utm_keep = (
+                (request.form.get('signup_utm_source') or request.args.get('utm_source') or "").strip()
+            )[:255]
+            return render_template("auth/register.html", signup_utm_default=utm_keep)
         
         # Username validation
         if not username or len(username) < 3:
@@ -169,11 +194,13 @@ def register():
         elif not re.match(r'^[a-zA-Z0-9_-]+$', username):
             errors.append('Username can only contain letters, numbers, underscores, and hyphens.')
         
-        # Email validation
-        if not email:
-            errors.append('Email is required.')
-        elif not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-            errors.append('Please provide a valid email address.')
+        allow_test_email = bool(current_app.config.get('ALLOW_TEST_EMAIL_DOMAINS'))
+        email, email_err = validate_signup_email(
+            request.form.get('email'),
+            allow_test_domains=allow_test_email,
+        )
+        if email_err:
+            errors.append(email_err)
         
         # Full name (required; used for duplicate-person cap)
         if not full_name or len(full_name.strip()) < 2:
@@ -195,14 +222,14 @@ def register():
                 'Contact support if you need an exception.'
             )
 
-        if User.query.filter_by(username=username).first():
+        if username and User.query.filter(func.lower(User.username) == username.lower()).first():
             errors.append('Username already taken. Please choose another.')
         
-        # Check if email already exists
-        if User.query.filter_by(email=email).first():
+        # One account per email (case-insensitive; email already normalized)
+        if email and User.query.filter(func.lower(User.email) == email).first():
             errors.append('Email already registered. Please log in or use another email.')
 
-        country_code, cerr = _parse_signup_country(country_raw, required=True)
+        country_code, cerr = _parse_signup_country(country_raw, required=False)
         if cerr:
             errors.append(cerr)
         phone_number, perr = _parse_signup_phone(phone_raw)

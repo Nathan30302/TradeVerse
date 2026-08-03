@@ -1,13 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Session expired{% endblock %}
+{% block title %}Try again{% endblock %}
 {% block content %}
 <div class="container text-center py-5">
-    <h1 class="display-5 mb-3"><i class="fas fa-shield-alt text-warning"></i> Could not verify request</h1>
-    <p class="text-muted mb-4">
-        Your security token expired or was missing (often after sitting on a form or opening many tabs).
-        Go back, refresh the page, and try again.
+    <h1 class="display-5 mb-3"><i class="fas fa-shield-alt text-warning"></i> Please try again</h1>
+    <p class="text-muted mb-4 mx-auto" style="max-width: 28rem;">
+        Your form security token expired (common after waiting on the page or using multiple tabs).
+        We’ll take you back to a fresh form — your details may need to be entered once more.
     </p>
-    <a href="{{ url_for('auth.login') }}" class="btn btn-primary me-2">Sign in again</a>
-    <a href="javascript:history.back()" class="btn btn-outline-secondary">Go back</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-primary me-2">Create account</a>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">Sign in</a>
 </div>
+<script>
+  // If they landed here from signup, prefer an automatic soft return.
+  (function () {
+    var ref = document.referrer || '';
+    if (ref.indexOf('/auth/register') !== -1) {
+      setTimeout(function () { window.location.replace('{{ url_for("auth.register") }}'); }, 1200);
+    }
+  })();
+</script>
 {% endblock %}

@@ -83,6 +83,20 @@ class Config:
         MAX_ACCOUNTS_PER_DISPLAY_NAME = max(1, int(os.environ.get('TV_MAX_ACCOUNTS_PER_DISPLAY_NAME', '2')))
     except ValueError:
         MAX_ACCOUNTS_PER_DISPLAY_NAME = 2
+
+    # Signup: block disposable / fake email domains (example.com, mailinator, …).
+    # Set TV_ALLOW_TEST_EMAIL_DOMAINS=1 only for automated tests — never on production.
+    ALLOW_TEST_EMAIL_DOMAINS = os.environ.get('TV_ALLOW_TEST_EMAIL_DOMAINS', '').lower() in (
+        '1', 'true', 'yes', 'on',
+    )
+    try:
+        REGISTER_MAX_PER_IP_HOUR = max(1, int(os.environ.get('TV_REGISTER_MAX_PER_IP_HOUR', '4')))
+    except ValueError:
+        REGISTER_MAX_PER_IP_HOUR = 4
+    try:
+        REGISTER_IP_WINDOW_SECONDS = max(60, int(os.environ.get('TV_REGISTER_IP_WINDOW_SECONDS', '3600')))
+    except ValueError:
+        REGISTER_IP_WINDOW_SECONDS = 3600
     
     # WTForms Configuration
     WTF_CSRF_ENABLED = True
@@ -134,7 +148,7 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.9.1'
+    APP_VERSION = '2.9.3'
 
     # Trial defaults (env overrides; code defaults are 60 days for everyone):
     #   TV_TRIAL_DAYS_PRO_PLUS=60          — new signups (created_at / register → trial_ends_at)
@@ -502,6 +516,9 @@ class TestingConfig(Config):
     WTF_CSRF_ENABLED = False  # Disable CSRF for testing
     PROMETHEUS_METRICS_ENABLED = False
     MAINTENANCE_MODE = False
+    # Unit tests historically use @example.com; production never allows this.
+    ALLOW_TEST_EMAIL_DOMAINS = True
+    REGISTER_MAX_PER_IP_HOUR = 1000
 
 # Configuration dictionary
 config = {

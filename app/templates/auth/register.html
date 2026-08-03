@@ -343,7 +343,7 @@
                                required
                                minlength="2"
                                autocomplete="name">
-                        <div class="form-hint">Required — used for account security (max 2 accounts per name).</div>
+                        <div class="form-hint">How we greet you in the app.</div>
                     </div>
                 </div>
                 
@@ -352,24 +352,24 @@
                     <input type="email" 
                            class="form-control" 
                            name="email" 
-                           placeholder="john@example.com"
-                           required>
+                           placeholder="you@gmail.com"
+                           required
+                           autocomplete="email">
+                    <div class="form-hint">Use your real email (Gmail, iCloud, Outlook, etc.) so you can recover your account.</div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label" for="register-country">Country <span class="text-danger" aria-hidden="true">*</span></label>
-                        <select class="form-control" id="register-country" name="country_code" aria-label="Country" required aria-required="true">
+                        <label class="form-label" for="register-country">Country <span class="text-muted small">(optional)</span></label>
+                        <select class="form-control" id="register-country" name="country_code" aria-label="Country">
                             {% for code, label in (config.REGISTER_COUNTRY_CHOICES or ()) %}
-                            <option value="{{ code }}"{% if not code %} disabled selected{% endif %}>{{ label }}</option>
+                            <option value="{{ code }}"{% if not code %} selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-hint">Required — helps us understand where traders are joining from.</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Phone <span class="text-muted small">(optional)</span></label>
                         <input type="tel" class="form-control" name="phone_number" placeholder="+… or local number" autocomplete="tel">
-                        <div class="form-hint">Digits and + only after stripping spaces; used for support if needed.</div>
                     </div>
                 </div>
                 
@@ -379,11 +379,11 @@
                         <input type="password" 
                                class="form-control" 
                                name="password" 
-                               placeholder="Min 10 characters + mix of character types"
+                               placeholder="At least 8 characters"
                                required 
-                               minlength="10"
+                               minlength="8"
                                autocomplete="new-password">
-                        <div class="form-hint">At least 10 characters with uppercase, lowercase, a number, and a symbol.</div>
+                        <div class="form-hint">At least 8 characters, with a letter and a number.</div>
                     </div>
                     
                     <div class="form-group">
@@ -393,7 +393,7 @@
                                name="confirm_password" 
                                placeholder="Repeat password"
                                required 
-                               minlength="10"
+                               minlength="8"
                                autocomplete="new-password">
                     </div>
                 </div>
@@ -408,11 +408,56 @@
                     </label>
                 </div>
                 
-                <button type="submit" class="btn-register">
+                <button type="submit" class="btn-register" id="tv-register-submit">
                     <i class="fas fa-user-plus"></i>
                     Create Account
                 </button>
             </form>
+            <script>
+            (function () {
+              var form = document.querySelector('.auth-card form[method="POST"]');
+              if (!form) return;
+              var tokenInput = form.querySelector('input[name="csrf_token"]');
+              var submitting = false;
+
+              // Back-forward cache can restore a page with a dead CSRF token.
+              window.addEventListener('pageshow', function (ev) {
+                if (ev.persisted) {
+                  window.location.reload();
+                }
+              });
+
+              function refreshCsrf() {
+                return fetch('{{ url_for("auth.csrf_token_json") }}', {
+                  credentials: 'same-origin',
+                  headers: { 'Accept': 'application/json' },
+                  cache: 'no-store'
+                }).then(function (r) { return r.json(); }).then(function (data) {
+                  if (data && data.csrf_token && tokenInput) {
+                    tokenInput.value = data.csrf_token;
+                  }
+                }).catch(function () { /* submit with existing token */ });
+              }
+
+              // Refresh periodically while the tab sits open (ads / slow readers).
+              setInterval(refreshCsrf, 4 * 60 * 1000);
+              refreshCsrf();
+
+              form.addEventListener('submit', function (e) {
+                if (submitting) return;
+                e.preventDefault();
+                var btn = document.getElementById('tv-register-submit');
+                if (btn) {
+                  btn.disabled = true;
+                  btn.setAttribute('aria-busy', 'true');
+                }
+                refreshCsrf().finally(function () {
+                  submitting = true;
+                  HTMLFormElement.prototype.submit.call(form);
+                });
+              });
+            })();
+            </script>
             
             <div class="auth-divider">
                 <span>Already have an account?</span>

@@ -305,4 +305,63 @@ def register_commands(app):
             f'(Expires in {current_app.config.get("ADMIN_TIMED_LINK_MAX_AGE", 3600)} seconds.)'
         )
 
+    @app.cli.command('purge-test-users')
+    @click.option('--execute', is_flag=True, help='Actually delete (default is dry-run)')
+    @click.option(
+        '--include-qa-usernames/--no-qa-usernames',
+        default=True,
+        help='Also match usernames qa_*, qa3_* (default: on)',
+    )
+    def purge_test_users(execute: bool, include_qa_usernames: bool):
+        """
+        List/delete obvious automated QA accounts (@example.com / qa3_* / qa_*).
+
+        Never deletes owners or paid active subscriptions. Dry-run by default.
+        """
+        from app.models.user import User
+
+        rows = []
+        for u in User.query.order_by(User.id.asc()).all():
+            email = (u.email or '').lower()
+            uname = (u.username or '').lower()
+            hit = (
+                email.endswith('@example.com')
+                or email.endswith('@example.org')
+                or email.endswith('@example.net')
+            )
+            if include_qa_usernames and (
+                uname.startswith('qa3_')
+                or uname.startswith('qa_')
+                or uname.startswith('qa3')
+            ):
+                hit = True
+            if hit:
+                rows.append(u)
+
+        click.echo(f'Matched {len(rows)} candidate user(s).')
+        deleted = 0
+        skipped = 0
+        for u in rows:
+            role = (getattr(u, 'role', None) or 'user').lower()
+            tier = (getattr(u, 'subscription_tier', None) or 'free').lower()
+            status = (getattr(u, 'subscription_status', None) or '').lower()
+            if role == 'owner':
+                click.echo(f'  skip owner id={u.id} {u.username} <{u.email}>')
+                skipped += 1
+                continue
+            if status == 'active' and tier in ('pro', 'pro_plus', 'elite'):
+                click.echo(f'  skip paid id={u.id} {u.username} <{u.email}> {tier}/{status}')
+                skipped += 1
+                continue
+            click.echo(f'  {"DELETE" if execute else "would delete"} id={u.id} {u.username} <{u.email}>')
+            if execute:
+                db.session.delete(u)
+                deleted += 1
+        if execute and deleted:
+            db.session.commit()
+        click.echo(
+            f'Done. deleted={deleted if execute else 0} skipped={skipped} '
+            f'({"executed" if execute else "dry-run — pass --execute to delete"}).'
+        )
+
     return None
