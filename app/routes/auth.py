@@ -886,8 +886,8 @@ def forgot_password():
                     flash(generic_ok, 'success')
                 else:
                     flash(
-                        f'We could not send email just now (mail server timed out or rejected login). '
-                        f'Check MAIL_USERNAME / App Password on Render, or email {support}.',
+                        f'We could not send email just now. On Render, Gmail SMTP is often blocked — '
+                        f'set BREVO_API_KEY (free) in Environment, or email {support}.',
                         'danger',
                     )
                     return render_template('auth/forgot_password.html')

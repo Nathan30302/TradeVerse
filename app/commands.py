@@ -309,36 +309,36 @@ def register_commands(app):
     @click.argument('to_email')
     def send_test_email(to_email: str):
         """
-        Send a one-line test message to verify MAIL_* env vars (SMTP).
+        Send a one-line test message to verify email backend.
+
+        Prefers BREVO_API_KEY / RESEND_API_KEY (HTTPS — works on Render).
+        Falls back to MAIL_USERNAME/MAIL_PASSWORD SMTP (often blocked on Render).
 
         Example: flask send-test-email you@gmail.com
         """
-        from flask_mail import Message
-        from app import mail
-        from app.services.account_recovery import mail_is_configured
+        from app.services.outbound_mail import mail_is_configured, preferred_backend, send_text_email
 
         if not mail_is_configured():
             click.echo(
-                'Mail is NOT configured. Set MAIL_USERNAME and MAIL_PASSWORD '
-                '(and usually MAIL_SERVER=smtp.gmail.com, MAIL_PORT=587, MAIL_USE_TLS=true).'
+                'Mail is NOT configured. On Render set BREVO_API_KEY (recommended), '
+                'or RESEND_API_KEY, or MAIL_USERNAME/MAIL_PASSWORD for SMTP.'
             )
             return
-        sender = current_app.config.get('MAIL_DEFAULT_SENDER') or current_app.config.get('MAIL_USERNAME')
-        msg = Message(
+        backend = preferred_backend()
+        click.echo(f'Using backend: {backend}')
+        ok = send_text_email(
+            to_email=to_email.strip(),
             subject='TradeVerse mail test',
-            sender=sender,
-            recipients=[to_email.strip()],
             body=(
-                'This is a TradeVerse SMTP test.\n\n'
+                'This is a TradeVerse email test.\n\n'
                 'If you received this, password-reset emails should work.\n'
             ),
         )
-        try:
-            mail.send(msg)
-            click.echo(f'Sent test email to {to_email} from {sender}')
-        except Exception as e:
-            click.echo(f'FAILED to send: {e}')
-            raise
+        if ok:
+            click.echo(f'Sent test email to {to_email}')
+        else:
+            click.echo('FAILED to send — check logs / API key / sender verification.')
+            raise SystemExit(1)
 
     @app.cli.command('purge-test-users')
     @click.option('--execute', is_flag=True, help='Actually delete (default is dry-run)')

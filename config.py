@@ -152,7 +152,11 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.9.7'
+    APP_VERSION = '2.9.8'
+
+    # HTTPS email APIs (preferred on Render — outbound SMTP is often blocked)
+    BREVO_API_KEY = (os.environ.get('BREVO_API_KEY') or os.environ.get('SENDINBLUE_API_KEY') or '').strip()
+    RESEND_API_KEY = (os.environ.get('RESEND_API_KEY') or '').strip()
 
     # Password reset link lifetime (seconds)
     try:
