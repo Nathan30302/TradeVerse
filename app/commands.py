@@ -305,6 +305,41 @@ def register_commands(app):
             f'(Expires in {current_app.config.get("ADMIN_TIMED_LINK_MAX_AGE", 3600)} seconds.)'
         )
 
+    @app.cli.command('send-test-email')
+    @click.argument('to_email')
+    def send_test_email(to_email: str):
+        """
+        Send a one-line test message to verify MAIL_* env vars (SMTP).
+
+        Example: flask send-test-email you@gmail.com
+        """
+        from flask_mail import Message
+        from app import mail
+        from app.services.account_recovery import mail_is_configured
+
+        if not mail_is_configured():
+            click.echo(
+                'Mail is NOT configured. Set MAIL_USERNAME and MAIL_PASSWORD '
+                '(and usually MAIL_SERVER=smtp.gmail.com, MAIL_PORT=587, MAIL_USE_TLS=true).'
+            )
+            return
+        sender = current_app.config.get('MAIL_DEFAULT_SENDER') or current_app.config.get('MAIL_USERNAME')
+        msg = Message(
+            subject='TradeVerse mail test',
+            sender=sender,
+            recipients=[to_email.strip()],
+            body=(
+                'This is a TradeVerse SMTP test.\n\n'
+                'If you received this, password-reset emails should work.\n'
+            ),
+        )
+        try:
+            mail.send(msg)
+            click.echo(f'Sent test email to {to_email} from {sender}')
+        except Exception as e:
+            click.echo(f'FAILED to send: {e}')
+            raise
+
     @app.cli.command('purge-test-users')
     @click.option('--execute', is_flag=True, help='Actually delete (default is dry-run)')
     @click.option(

@@ -11,7 +11,11 @@ This file describes the recommended production deployment steps for TradeVerse.
 2) Production environment variables (must be set in your hosting platform or secrets manager)
 - SECRET_KEY (strong random string)
 - DATABASE_URL (postgres://... or postgresql://...)
-- MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD (optional)
+- MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD (required for password reset emails)
+  - Gmail: create an App Password (Google Account → Security → 2-Step Verification → App passwords)
+  - Typical values: MAIL_SERVER=smtp.gmail.com, MAIL_PORT=587, MAIL_USE_TLS=true
+  - Also set PUBLIC_SITE_URL=https://www.tradeversejournal.space for correct reset links
+  - Verify with: flask send-test-email you@gmail.com
 - STRIPE_API_KEY (if using monetization)
 - AWS_* (if using S3 or other AWS services)
 

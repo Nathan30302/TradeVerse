@@ -823,57 +823,91 @@ def forgot_password():
     from app.services.signup_abuse import client_ip_from_request, register_rate_limited
 
     if request.method == 'POST':
-        # Reuse the signup IP limiter with a tighter window for recovery spam.
-        max_per = int(current_app.config.get('PASSWORD_RESET_MAX_PER_IP_HOUR', 8) or 8)
-        ip = client_ip_from_request(request)
-        if register_rate_limited(ip, max_per_window=max_per, window_seconds=3600):
-            flash(
-                'Too many recovery requests from this network. Please wait and try again, '
-                f'or email {current_app.config.get("SUPPORT_EMAIL")}.',
-                'warning',
-            )
-            return render_template('auth/forgot_password.html')
-
-        email = normalize_email(request.form.get('email'))
-        # Generic copy whether or not the account exists / mail works.
-        generic_ok = (
-            'If an account exists for that email, we sent instructions to reset your password '
-            'and remind you of your username. Check your inbox and spam folder.'
-        )
-
-        if not email:
-            flash('Enter the email address on your account.', 'danger')
-            return render_template('auth/forgot_password.html')
-
-        user = User.query.filter(func.lower(User.email) == email).first()
-        if user and getattr(user, 'is_active', True):
-            if not mail_is_configured():
-                current_app.logger.error(
-                    'Password reset requested for user_id=%s but mail is not configured',
-                    user.id,
-                )
+        support = current_app.config.get('SUPPORT_EMAIL') or 'support'
+        try:
+            # Reuse the signup IP limiter with a tighter window for recovery spam.
+            max_per = int(current_app.config.get('PASSWORD_RESET_MAX_PER_IP_HOUR', 8) or 8)
+            ip = client_ip_from_request(request)
+            if register_rate_limited(ip, max_per_window=max_per, window_seconds=3600):
                 flash(
-                    f'Email sending is not configured on the server right now. '
-                    f'Please contact {current_app.config.get("SUPPORT_EMAIL")} '
-                    f'and we will help you reset access.',
+                    'Too many recovery requests from this network. Please wait and try again, '
+                    f'or email {support}.',
                     'warning',
                 )
                 return render_template('auth/forgot_password.html')
-            token = make_reset_token(user)
-            if send_recovery_email(user, reset_token=token):
-                flash(generic_ok, 'success')
-            else:
+
+            email = normalize_email(request.form.get('email'))
+            generic_ok = (
+                'If an account exists for that email, we sent instructions to reset your password '
+                'and remind you of your username. Check your inbox and spam folder.'
+            )
+
+            if not email:
+                flash('Enter the email address on your account.', 'danger')
+                return render_template('auth/forgot_password.html')
+
+            user = None
+            try:
+                user = User.query.filter(func.lower(User.email) == email).first()
+            except Exception:
+                current_app.logger.exception('forgot-password user lookup failed')
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
                 flash(
-                    f'We could not send email just now. Please try again shortly, '
-                    f'or contact {current_app.config.get("SUPPORT_EMAIL")}.',
+                    f'We hit a temporary problem looking up that account. Try again, or email {support}.',
                     'danger',
                 )
                 return render_template('auth/forgot_password.html')
-        else:
-            # Same message — no account enumeration.
-            flash(generic_ok, 'success')
 
-        return redirect(url_for('auth.login'))
+            if user and getattr(user, 'is_active', True):
+                if not mail_is_configured():
+                    current_app.logger.error(
+                        'Password reset requested for user_id=%s but mail is not configured',
+                        getattr(user, 'id', None),
+                    )
+                    flash(
+                        f'Email sending is not configured on the server right now. '
+                        f'Please contact {support} and we will help you reset access.',
+                        'warning',
+                    )
+                    return render_template('auth/forgot_password.html')
+                try:
+                    token = make_reset_token(user)
+                except Exception:
+                    current_app.logger.exception('make_reset_token failed')
+                    flash(
+                        f'Could not create a reset link just now. Please try again or email {support}.',
+                        'danger',
+                    )
+                    return render_template('auth/forgot_password.html')
+                if send_recovery_email(user, reset_token=token):
+                    flash(generic_ok, 'success')
+                else:
+                    flash(
+                        f'We could not send email just now (mail server timed out or rejected login). '
+                        f'Check MAIL_USERNAME / App Password on Render, or email {support}.',
+                        'danger',
+                    )
+                    return render_template('auth/forgot_password.html')
+            else:
+                # Same message — no account enumeration.
+                flash(generic_ok, 'success')
+
+            return redirect(url_for('auth.login'))
+        except Exception:
+            current_app.logger.exception('forgot-password failed')
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            flash(
+                f'Something went wrong sending the reset email. Please try again in a minute, '
+                f'or contact {support}.',
+                'danger',
+            )
+            return render_template('auth/forgot_password.html')
 
     return render_template('auth/forgot_password.html')
 
