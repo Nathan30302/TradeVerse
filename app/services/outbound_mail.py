@@ -28,11 +28,17 @@ def _env(*keys: str, default: str = "") -> str:
 
     for key in keys:
         raw = (os.environ.get(key) or "").strip()
+        if not raw:
+            cfg = current_app.config.get(key)
+            if cfg is not None and str(cfg).strip():
+                raw = str(cfg).strip()
         if raw:
+            # Render users often paste keys wrapped in quotes by accident.
+            if (raw.startswith('"') and raw.endswith('"')) or (
+                raw.startswith("'") and raw.endswith("'")
+            ):
+                raw = raw[1:-1].strip()
             return raw
-        cfg = current_app.config.get(key)
-        if cfg is not None and str(cfg).strip():
-            return str(cfg).strip()
     return default
 
 
