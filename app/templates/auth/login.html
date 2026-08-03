@@ -335,11 +335,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 <div class="form-group">
                     <label class="form-label" for="username">
-                        Username
+                        Username or email
                         <i class="fas fa-question-circle text-muted ms-1" 
                            data-bs-toggle="tooltip" 
                            data-bs-placement="right" 
-                           title="Enter your TradeVerse username"></i>
+                           title="You can sign in with your username or the email on your account"></i>
                     </label>
                     <div class="input-icon-wrapper">
                         <i class="fas fa-user" aria-hidden="true"></i>
@@ -347,11 +347,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                class="form-control" 
                                id="username"
                                name="username" 
-                               placeholder="Enter your username"
-                               aria-label="Username"
+                               placeholder="Username or email"
+                               aria-label="Username or email"
                                aria-required="true"
                                required 
-                               autofocus>
+                               autofocus
+                               autocomplete="username">
                     </div>
                 </div>
                 

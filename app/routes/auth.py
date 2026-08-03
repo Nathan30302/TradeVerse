@@ -333,6 +333,65 @@ def register():
 
 # ==================== Login ====================
 
+def _find_user_for_login(identifier: str):
+    """
+    Resolve login identifier as username or email (case-insensitive for email).
+
+    Returns a User or None. Tolerates light schema drift via load_only fallback.
+    """
+    ident = (identifier or '').strip()
+    if not ident:
+        return None
+
+    user = None
+    try:
+        if '@' in ident:
+            email = ident.lower()
+            user = User.query.filter(func.lower(User.email) == email).first()
+        if user is None:
+            user = User.query.filter(func.lower(User.username) == ident.lower()).first()
+        if user is None and '@' not in ident:
+            user = User.query.filter_by(username=ident).first()
+        return user
+    except (OperationalError, ProgrammingError):
+        current_app.logger.warning("Login ORM query failed (likely schema drift); using compat fallback")
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        try:
+            q = (
+                db.session.query(User)
+                .options(
+                    load_only(
+                        User.id,
+                        User.username,
+                        User.email,
+                        User.password_hash,
+                        User.is_active,
+                        User.is_verified,
+                        User.is_premium,
+                        User.timezone,
+                        User.preferred_currency,
+                        User.theme,
+                    )
+                )
+            )
+            if '@' in ident:
+                user = q.filter(func.lower(User.email) == ident.lower()).first()
+            if user is None:
+                user = q.filter(func.lower(User.username) == ident.lower()).first()
+            return user
+        except Exception:
+            pass
+        from app.services.user_db_compat import hydrate_user_from_db
+
+        if '@' in ident:
+            # Compat helper is username/id only — try ORM email first already failed above.
+            return None
+        return hydrate_user_from_db(db.session, User, username=ident)
+
+
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     """
@@ -346,7 +405,7 @@ def login():
     
     if request.method == 'POST':
         try:
-            # Get form data
+            # Get form data (username field also accepts email)
             username = request.form.get('username', '').strip()
             password = request.form.get('password', '')
             remember = request.form.get('remember') in ('1', 'on', 'true', 'yes')
@@ -355,46 +414,9 @@ def login():
             flash('❌ Login failed. Please try again.', 'danger')
             return render_template('auth/login.html')
         
-        # Find user (tolerate production schema drift; avoid 500s on missing columns)
         user = None
         try:
-            user = User.query.filter_by(username=username).first()
-        except (OperationalError, ProgrammingError):
-            current_app.logger.warning("Login ORM query failed (likely schema drift); using compat fallback")
-            try:
-                db.session.rollback()
-            except Exception:
-                pass
-
-            # Prefer a session-bound ORM instance with safe columns only
-            try:
-                user = (
-                    db.session.query(User)
-                    .options(
-                        load_only(
-                            User.id,
-                            User.username,
-                            User.email,
-                            User.password_hash,
-                            User.is_active,
-                            User.is_verified,
-                            User.is_premium,
-                            User.timezone,
-                            User.preferred_currency,
-                            User.theme,
-                        )
-                    )
-                    .filter(User.username == username)
-                    .first()
-                )
-            except Exception:
-                user = None
-
-            # Last resort: raw SQL hydration (wide row when possible)
-            if not user:
-                from app.services.user_db_compat import hydrate_user_from_db
-
-                user = hydrate_user_from_db(db.session, User, username=username)
+            user = _find_user_for_login(username)
         except InternalError:
             current_app.logger.exception("Login query failed due to aborted transaction; rolling back")
             try:
@@ -443,7 +465,7 @@ def login():
             else:
                 return redirect(url_for('dashboard.index'))
         else:
-            flash('❌ Invalid username or password. Please try again.', 'danger')
+            flash('❌ Invalid username/email or password. Please try again.', 'danger')
     
     return render_template('auth/login.html')
 
@@ -654,6 +676,35 @@ def profile():
             if after == 'settings':
                 return redirect(url_for('auth.settings'))
             return redirect(url_for('auth.profile'))
+
+        # Optional username change (Settings / Profile)
+        username_err = None
+        new_username = None
+        if 'username' in request.form:
+            new_username = (request.form.get('username') or '').strip()
+            if not new_username or len(new_username) < 3:
+                username_err = 'Username must be at least 3 characters.'
+            elif len(new_username) > 80:
+                username_err = 'Username must be less than 80 characters.'
+            elif not re.match(r'^[a-zA-Z0-9_-]+$', new_username):
+                username_err = 'Username can only contain letters, numbers, underscores, and hyphens.'
+            elif new_username.lower() != (user.username or '').lower():
+                taken = (
+                    UserModel.query.filter(func.lower(UserModel.username) == new_username.lower())
+                    .filter(UserModel.id != user.id)
+                    .first()
+                )
+                if taken:
+                    username_err = 'That username is already taken. Please choose another.'
+            if username_err:
+                field_msgs.append(username_err)
+                flash(username_err, 'danger')
+                after = (request.form.get('after_save') or '').strip().lower()
+                if after == 'settings':
+                    return redirect(url_for('auth.settings'))
+                return redirect(url_for('auth.profile'))
+            if new_username and new_username != user.username:
+                user.username = new_username
 
         old_avatar_url = user.avatar_url
         uploaded_rel_path = None

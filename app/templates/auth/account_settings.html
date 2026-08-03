@@ -160,8 +160,14 @@
                                     <input type="text" name="full_name" class="form-control form-control-lg" value="{{ current_user.full_name or '' }}" autocomplete="name" maxlength="100">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold">Username</label>
-                                    <input type="text" class="form-control form-control-lg bg-secondary bg-opacity-10" value="{{ current_user.username }}" disabled>
+                                    <label class="form-label fw-semibold" for="settings-username">Username</label>
+                                    <input type="text" class="form-control form-control-lg" id="settings-username" name="username"
+                                           value="{{ current_user.username }}"
+                                           minlength="3" maxlength="80"
+                                           pattern="[-a-zA-Z0-9_]+"
+                                           autocomplete="username"
+                                           required>
+                                    <small class="text-muted">Letters, numbers, _ or - — used when you sign in</small>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">Email</label>

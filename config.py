@@ -148,7 +148,7 @@ class Config:
     # Application Settings
     APP_NAME = 'TradeVerse'
     APP_TAGLINE = 'Professional Trading Journal'
-    APP_VERSION = '2.9.4'
+    APP_VERSION = '2.9.5'
 
     # Password reset link lifetime (seconds)
     try:

@@ -63,9 +63,13 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="username" class="form-label fw-bold">Username</label>
-                            <input type="text" class="form-control" id="username" 
-                                   value="{{ current_user.username }}" disabled>
-                            <small class="text-muted">Username cannot be changed</small>
+                            <input type="text" class="form-control" id="username" name="username"
+                                   value="{{ current_user.username }}"
+                                   minlength="3" maxlength="80"
+                                   pattern="[-a-zA-Z0-9_]+"
+                                   autocomplete="username"
+                                   required>
+                            <small class="text-muted">You can change this anytime. Letters, numbers, _ or -.</small>
                         </div>
 
                         <div class="col-md-6">

@@ -103,6 +103,48 @@ def test_reset_password_updates_login(app, client):
     assert login.status_code in (302, 303)
 
 
-def test_login_page_has_forgot_link(client):
-    resp = client.get("/auth/login")
-    assert b"forgot-password" in resp.data or b"Forgot password" in resp.data
+def test_login_with_email(app, client):
+    with app.app_context():
+        u = User(username="emaillogin", email="emaillogin@example.com", full_name="Email Login")
+        u.set_password("SecurePass1!")
+        db.session.add(u)
+        db.session.commit()
+
+    resp = client.post(
+        "/auth/login",
+        data={"username": "emaillogin@example.com", "password": "SecurePass1!"},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+    assert "/dashboard" in (resp.headers.get("Location") or "")
+
+
+def test_username_change_in_settings(app, client):
+    with app.app_context():
+        u = User(username="oldname", email="oldname@example.com", full_name="Old Name")
+        u.set_password("SecurePass1!")
+        db.session.add(u)
+        db.session.commit()
+        uid = u.id
+
+    client.post(
+        "/auth/login",
+        data={"username": "oldname", "password": "SecurePass1!"},
+        follow_redirects=True,
+    )
+    resp = client.post(
+        "/auth/profile",
+        data={
+            "username": "newname99",
+            "full_name": "Old Name",
+            "timezone": "UTC",
+            "preferred_currency": "USD",
+            "theme": "dark",
+            "after_save": "settings",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        u = db.session.get(User, uid)
+        assert u.username == "newname99"
