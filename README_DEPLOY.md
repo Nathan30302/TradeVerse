@@ -24,15 +24,19 @@ This file describes the recommended production deployment steps for TradeVerse.
 - The project includes a `Procfile` that runs the same boot script as Render:
   web: bash scripts/render-start.sh
 - That script applies migrations, then starts Gunicorn on `$PORT`.
-- Python is pinned to **3.11.14** in `runtime.txt` and `.python-version`.
-  Railway Railpack/mise has no precompiled **3.11.0** binary on Metal builders
-  (`no precompiled python found for core:python@3.11.0`). Do not pin 3.11.0.
+- Python is 3.11 (`runtime.txt` / `.python-version`). Do not pin an old
+  patch like **3.11.0** — Railway Railpack/mise often has no precompiled
+  binary for exact old patches on Metal builders.
 - Ensure build/install runs `pip install -r requirements.txt`.
 
-3b) Railway (Railpack / Metal builder)
-- Connect the GitHub repo and deploy the branch that contains `.python-version`.
-- Builder: Railpack (default). No root Dockerfile is required.
-- Optional belt-and-suspenders variable: `RAILPACK_PYTHON_VERSION=3.11.14`
+3b) Railway
+- A root `Dockerfile` is the source of truth. Railway uses it and **skips
+  Railpack/mise**, which is what was failing (`mise install` exit 1).
+- Connect the GitHub repo and deploy `main`. The build log should say
+  `FROM python:3.11-slim-bookworm`, not `install mise packages: python`.
+- If the service was created with Railpack already, open Settings → Build
+  and confirm the builder is **Dockerfile** (or just redeploy after this
+  file exists — Railway prefers a root Dockerfile).
 - Add a **PostgreSQL** plugin and leave `DATABASE_URL` linked to the web service.
 - Required / recommended service variables:
   - `SECRET_KEY` (strong random string)
