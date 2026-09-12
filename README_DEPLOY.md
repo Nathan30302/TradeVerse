@@ -51,6 +51,9 @@ This file describes the recommended production deployment steps for TradeVerse.
 - Health check path: `/`
 - After the first successful deploy, open the generated `*.up.railway.app` URL
   and confirm `/` loads. Migrations run automatically in the start script.
+- If `SECRET_KEY` / `DATABASE_URL` are unset, the start script generates a
+  key and uses SQLite under `/var/data` so the first boot can succeed.
+  Attach Postgres and set `SECRET_KEY` in Variables as soon as that page exists.
 
 4) Postgres / DB
 - Use managed Postgres in production (Render/Heroku/AWS RDS).

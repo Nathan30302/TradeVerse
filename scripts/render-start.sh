@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
-# Apply Alembic migrations before workers start (DATABASE_URL required at runtime on Render).
+# Resolve disk + secrets first, then migrate, then Gunicorn.
+# Railway first-deploys often have no Variables UI yet — persist generated
+# SECRET_KEY / SQLite on the volume so production can boot.
 set -euo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
 export FLASK_APP="${FLASK_APP:-app.wsgi:app}"
-echo "[render-start] $(date -u +%Y-%m-%dT%H:%M:%SZ) flask db upgrade (non-fatal if DB is behind)"
-python -m flask db upgrade || echo "[render-start] flask db upgrade exited non-zero — continuing boot"
-# If multiple Alembic heads exist, try upgrading all of them.
-python -m flask db upgrade heads || echo "[render-start] flask db upgrade heads exited non-zero — continuing boot"
 
-# Prefer configured persistent disk; fall back if /var/data is not mounted/writable.
-# (Dashboard-created Render services often set TRADEVERSE_DATA_DIR without attaching a disk.)
 _can_write_dir() {
   local d="$1"
   mkdir -p "$d" 2>/dev/null || return 1
@@ -22,6 +18,8 @@ _can_write_dir() {
   return 0
 }
 
+# Prefer configured persistent disk; fall back if /var/data is not mounted/writable.
+# (Dashboard-created Render services often set TRADEVERSE_DATA_DIR without attaching a disk.)
 PREFERRED_DATA_DIR="${TRADEVERSE_DATA_DIR:-${UPLOAD_ROOT:-${PERSISTENT_DISK_PATH:-/var/data}}}"
 FALLBACK_DATA_DIR="$(pwd)/app/static"
 DATA_DIR="$PREFERRED_DATA_DIR"
@@ -50,6 +48,35 @@ fi
 
 export TRADEVERSE_DATA_DIR="$DATA_DIR"
 echo "[render-start] TRADEVERSE_DATA_DIR=${TRADEVERSE_DATA_DIR}"
+
+# Production create_app() refuses to boot without these. First Railway deploys
+# often cannot set Variables yet — persist on the volume when possible.
+if [[ -z "${SECRET_KEY:-}" ]]; then
+  KEY_FILE="${DATA_DIR}/.secret_key"
+  if [[ -s "$KEY_FILE" ]]; then
+    SECRET_KEY="$(tr -d '\r\n' < "$KEY_FILE")"
+    echo "[render-start] loaded SECRET_KEY from ${KEY_FILE}"
+  else
+    SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+    if printf '%s\n' "$SECRET_KEY" > "$KEY_FILE" 2>/dev/null; then
+      echo "[render-start] generated SECRET_KEY and saved ${KEY_FILE}"
+    else
+      echo "[render-start] WARN: could not persist SECRET_KEY to ${KEY_FILE} — sessions reset on redeploy"
+    fi
+  fi
+  export SECRET_KEY
+fi
+
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  export DATABASE_URL="sqlite:///${DATA_DIR}/tradeverse.db"
+  echo "[render-start] WARN: DATABASE_URL unset — using ${DATABASE_URL}"
+  echo "[render-start] Attach Railway/Render Postgres and set DATABASE_URL for a real production DB."
+fi
+
+echo "[render-start] $(date -u +%Y-%m-%dT%H:%M:%SZ) flask db upgrade (non-fatal if DB is behind)"
+python -m flask db upgrade || echo "[render-start] flask db upgrade exited non-zero — continuing boot"
+# If multiple Alembic heads exist, try upgrading all of them.
+python -m flask db upgrade heads || echo "[render-start] flask db upgrade heads exited non-zero — continuing boot"
 
 mkdir -p "${DATA_DIR}/uploads/avatars" \
          "${DATA_DIR}/uploads/trade_screenshots" \
