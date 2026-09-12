@@ -36,7 +36,7 @@ if ! _can_write_dir "$DATA_DIR"; then
   if [[ -z "$S3_NAME" || -z "${AWS_ACCESS_KEY_ID:-}" ]]; then
     echo "[render-start] Falling back to ${FALLBACK_DATA_DIR} — uploads/OHLC cache will be EPHEMERAL until you either:"
     echo "[render-start]   (A) set S3_BUCKET + AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY (+ S3_ENDPOINT_URL for R2), or"
-    echo "[render-start]   (B) attach a Render disk at /var/data and set TRADEVERSE_DATA_DIR=/var/data."
+    echo "[render-start]   (B) attach a persistent volume at /var/data (Render disk or Railway volume) and set TRADEVERSE_DATA_DIR=/var/data."
   else
     echo "[render-start] Local cache dir unavailable; S3/R2 will still hold durable uploads."
   fi
@@ -73,5 +73,12 @@ if [[ "${TV_GRANT_PROMO_ON_START:-0}" =~ ^(1|true|yes|on)$ ]]; then
   fi
 fi
 
-echo "[render-start] starting gunicorn"
-exec gunicorn -w 4 -b "0.0.0.0:${PORT:-5000}" app.wsgi:app
+# Railway hobby/trial RAM is tighter than typical Render instances.
+if [[ -n "${RAILWAY_ENVIRONMENT:-}${RAILWAY_ENVIRONMENT_NAME:-}" ]]; then
+  DEFAULT_WORKERS=2
+else
+  DEFAULT_WORKERS=4
+fi
+WORKERS="${WEB_CONCURRENCY:-$DEFAULT_WORKERS}"
+echo "[render-start] starting gunicorn workers=${WORKERS} port=${PORT:-5000}"
+exec gunicorn -w "$WORKERS" -b "0.0.0.0:${PORT:-5000}" app.wsgi:app

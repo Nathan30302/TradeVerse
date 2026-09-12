@@ -21,9 +21,32 @@ This file describes the recommended production deployment steps for TradeVerse.
 - AWS_* (if using S3 or other AWS services)
 
 3) Recommended platform and start command
-- The project includes a `Procfile` that runs Gunicorn:
-  web: python -m gunicorn app.wsgi:app
+- The project includes a `Procfile` that runs the same boot script as Render:
+  web: bash scripts/render-start.sh
+- That script applies migrations, then starts Gunicorn on `$PORT`.
+- Python is pinned to **3.11.14** in `runtime.txt` and `.python-version`.
+  Railway Railpack/mise has no precompiled **3.11.0** binary on Metal builders
+  (`no precompiled python found for core:python@3.11.0`). Do not pin 3.11.0.
 - Ensure build/install runs `pip install -r requirements.txt`.
+
+3b) Railway (Railpack / Metal builder)
+- Connect the GitHub repo and deploy the branch that contains `.python-version`.
+- Builder: Railpack (default). No root Dockerfile is required.
+- Optional belt-and-suspenders variable: `RAILPACK_PYTHON_VERSION=3.11.14`
+- Add a **PostgreSQL** plugin and leave `DATABASE_URL` linked to the web service.
+- Required / recommended service variables:
+  - `SECRET_KEY` (strong random string)
+  - `FLASK_ENV=production`
+  - `PYTHONUNBUFFERED=1`
+  - `PUBLIC_SITE_URL=https://<your-railway-domain>`
+  - Mail: `BREVO_API_KEY` (or `RESEND_API_KEY`) — same as Render
+- Uploads: attach a Railway volume at `/var/data` and set
+  `TRADEVERSE_DATA_DIR=/var/data`, or configure S3/R2 (`S3_BUCKET` + AWS keys).
+  Without one of those, avatars/screenshots are wiped on every redeploy.
+- Start command (if you override Procfile): `bash scripts/render-start.sh`
+- Health check path: `/`
+- After the first successful deploy, open the generated `*.up.railway.app` URL
+  and confirm `/` loads. Migrations run automatically in the start script.
 
 4) Postgres / DB
 - Use managed Postgres in production (Render/Heroku/AWS RDS).
