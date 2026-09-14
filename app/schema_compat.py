@@ -86,6 +86,61 @@ def _add_column_sql(dialect: str, table: str, column: str, coltype: str, default
     return f"ALTER TABLE {table} ADD COLUMN {column} {coltype}"
 
 
+def bootstrap_empty_database(app: Any) -> bool:
+    """
+    Brand-new Postgres (Railway) has no tables. Alembic revision 07e766313e36 is
+    *not* a full create — it only ALTERs ``users``/``trade_plans`` if they already
+    exist — so ``flask db upgrade`` on an empty DB leaves ``users`` missing.
+
+    Create the current ORM schema, then stamp Alembic so later upgrades do not
+    replay ADD COLUMN on objects that already exist.
+    """
+    from app import db
+
+    try:
+        insp = sa.inspect(db.engine)
+        if insp.has_table("users"):
+            return False
+    except Exception as exc:
+        app.logger.warning("schema_compat: inspect for bootstrap failed: %s", exc)
+        return False
+
+    app.logger.warning("schema_compat: empty database — creating tables from models")
+    try:
+        import app.models  # noqa: F401 — register all tables on metadata
+
+        db.create_all()
+    except Exception as exc:
+        app.logger.exception("schema_compat: db.create_all failed: %s", exc)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return False
+
+    try:
+        insp = sa.inspect(db.engine)
+        if not insp.has_table("users"):
+            app.logger.error("schema_compat: create_all finished but users still missing")
+            return False
+    except Exception:
+        pass
+
+    try:
+        from flask_migrate import stamp
+
+        stamp(revision="heads")
+        app.logger.warning("schema_compat: stamped alembic to heads after create_all")
+    except Exception as exc:
+        app.logger.warning("schema_compat: alembic stamp after create_all failed: %s", exc)
+
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+    return True
+
+
 def ensure_user_optional_columns(app: Any) -> bool:
     """Add missing users.* optional columns (role, weekly_focus_rule, billing, …)."""
     from app import db

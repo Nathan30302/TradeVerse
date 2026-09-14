@@ -97,8 +97,15 @@ def _count_accounts_matching_display_name(norm: str) -> int:
     """How many users share this normalized display name (full_name)."""
     if not norm:
         return 0
-    rows = db.session.query(User.full_name).filter(User.full_name.isnot(None)).all()
-    return sum(1 for (fn,) in rows if _normalize_display_name(fn) == norm)
+    try:
+        rows = db.session.query(User.full_name).filter(User.full_name.isnot(None)).all()
+        return sum(1 for (fn,) in rows if _normalize_display_name(fn) == norm)
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return 0
 
 
 def _password_policy_errors(password: str) -> list:
@@ -222,12 +229,18 @@ def register():
                 'Contact support if you need an exception.'
             )
 
-        if username and User.query.filter(func.lower(User.username) == username.lower()).first():
-            errors.append('Username already taken. Please choose another.')
-        
-        # One account per email (case-insensitive; email already normalized)
-        if email and User.query.filter(func.lower(User.email) == email).first():
-            errors.append('Email already registered. Please log in or use another email.')
+        try:
+            if username and User.query.filter(func.lower(User.username) == username.lower()).first():
+                errors.append('Username already taken. Please choose another.')
+            if email and User.query.filter(func.lower(User.email) == email).first():
+                errors.append('Email already registered. Please log in or use another email.')
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            current_app.logger.exception('register: user uniqueness check failed')
+            errors.append('The database is still starting up. Wait a few seconds and try Create Account again.')
 
         country_code, cerr = _parse_signup_country(country_raw, required=False)
         if cerr:

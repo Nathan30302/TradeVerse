@@ -47,6 +47,7 @@ def _migrate_production_locked(flask_app) -> None:
             with flask_app.app_context():
                 from app import schema_compat
 
+                schema_compat.bootstrap_empty_database(flask_app)
                 # If alembic_version is empty/stuck on early branches while users exists,
                 # stamp forward so we stop replaying initial schema every boot.
                 schema_compat.repair_alembic_version(flask_app)

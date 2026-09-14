@@ -88,7 +88,9 @@ def create_app(config_name='default'):
     # Import models (inside app context to avoid circular imports)
     with app.app_context():
         from app import schema_compat
+        import app.models  # noqa: F401 — metadata for create_all / bootstrap
 
+        schema_compat.bootstrap_empty_database(app)
         schema_compat.refresh(app)
         # Idempotent: fill gaps Alembic may have skipped (safe raw SQL).
         schema_compat.ensure_lagging_schema(app)
@@ -175,10 +177,8 @@ def create_app(config_name='default'):
                 app.logger.exception("load_user compat fallback failed (prior=%r)", last_exc)
                 return None
 
-        # Seed instruments from EXNESS catalog on startup (dev/test only).
-        # Schema is managed by Alembic migrations; if the DB hasn't been upgraded yet,
-        # skip seeding rather than mutating schema at runtime.
-        if config_name != 'production' and os.environ.get('SEED_INSTRUMENTS', '1') == '1':
+        # Seed instruments if the catalog is empty (dev *and* a fresh Railway DB).
+        if os.environ.get('SEED_INSTRUMENTS', '1') == '1':
             try:
                 _seed_instruments(app)
             except Exception as e:
