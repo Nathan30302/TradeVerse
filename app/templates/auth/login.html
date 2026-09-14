@@ -2,6 +2,8 @@
 
 {% block title %}Login - {{ app_name }}{% endblock %}
 
+{% block flash_messages %}{% endblock %}
+
 {% block extra_css %}
 <style>
     body {
@@ -330,6 +332,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         <!-- Login Card -->
         <div class="auth-card">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
             <form method="POST" action="{{ url_for('auth.login') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
@@ -402,13 +414,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (ev.persisted) window.location.reload();
               });
               function refreshCsrf() {
-                return fetch('{{ url_for("auth.csrf_token_json") }}', {
+                var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 1500);
+                var opts = {
                   credentials: 'same-origin',
                   headers: { 'Accept': 'application/json' },
                   cache: 'no-store'
-                }).then(function (r) { return r.json(); }).then(function (data) {
+                };
+                if (ctrl) opts.signal = ctrl.signal;
+                return fetch('{{ url_for("auth.csrf_token_json") }}', opts).then(function (r) { return r.json(); }).then(function (data) {
                   if (data && data.csrf_token && tokenInput) tokenInput.value = data.csrf_token;
-                }).catch(function () {});
+                }).catch(function () {}).finally(function () { clearTimeout(timer); });
               }
               setInterval(refreshCsrf, 4 * 60 * 1000);
               refreshCsrf();
@@ -417,10 +433,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 var btn = document.getElementById('tv-login-submit');
                 if (btn) btn.disabled = true;
-                refreshCsrf().finally(function () {
+                var go = function () {
+                  if (submitting) return;
                   submitting = true;
                   HTMLFormElement.prototype.submit.call(form);
-                });
+                };
+                refreshCsrf().finally(go);
+                setTimeout(go, 2000);
               });
             })();
             </script>

@@ -2956,6 +2956,7 @@
 
             <!-- Main Content -->
             <main id="main-content" class="{% if current_user.is_authenticated %}col-12 col-md-10{% else %}col-12{% endif %} main-content" role="main">
+                {% block flash_messages %}
                 <!-- Flash Messages -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
@@ -2967,6 +2968,7 @@
                         {% endfor %}
                     {% endif %}
                 {% endwith %}
+                {% endblock %}
 
                 <!-- Page Content -->
                 <div class="fade-in">
