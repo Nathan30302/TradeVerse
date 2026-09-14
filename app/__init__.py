@@ -88,7 +88,9 @@ def create_app(config_name='default'):
     # Import models (inside app context to avoid circular imports)
     with app.app_context():
         from app import schema_compat
-        import app.models  # noqa: F401 — metadata for create_all / bootstrap
+        import importlib
+
+        importlib.import_module("app.models")  # register tables without shadowing Flask `app`
 
         schema_compat.bootstrap_empty_database(app)
         schema_compat.refresh(app)

@@ -107,8 +107,9 @@ def bootstrap_empty_database(app: Any) -> bool:
 
     app.logger.warning("schema_compat: empty database — creating tables from models")
     try:
-        import app.models  # noqa: F401 — register all tables on metadata
+        import importlib
 
+        importlib.import_module("app.models")  # register tables without shadowing Flask `app`
         db.create_all()
     except Exception as exc:
         app.logger.exception("schema_compat: db.create_all failed: %s", exc)
