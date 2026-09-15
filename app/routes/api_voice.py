@@ -19,13 +19,39 @@ _MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 _ALLOWED_TYPES = frozenset({
     'audio/webm',
     'audio/mp4',
+    'audio/m4a',
+    'audio/x-m4a',
+    'audio/aac',
     'audio/mpeg',
     'audio/wav',
     'audio/x-wav',
     'audio/ogg',
+    'audio/3gpp',
     'video/webm',
+    'video/mp4',
     'application/octet-stream',
 })
+
+_WHISPER_PROMPT = (
+    "Trading journal. Symbols: EURUSD, XAUUSD, GBPUSD, USDJPY, US30, NAS100, BTCUSD. "
+    "Words: buy, sell, long, short, entry, stop loss, take profit, lot size, pips, "
+    "London, New York, Asia, liquidity, breakout."
+)
+
+_EXT_FOR_TYPE = {
+    'audio/mp4': 'm4a',
+    'audio/m4a': 'm4a',
+    'audio/x-m4a': 'm4a',
+    'audio/aac': 'm4a',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/3gpp': '3gp',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'audio/webm': 'webm',
+}
 
 
 def _transcribe_enabled() -> bool:
@@ -64,14 +90,22 @@ def transcribe():
     if content_type not in _ALLOWED_TYPES:
         content_type = 'audio/webm'
 
-    filename = upload.filename if '.' in upload.filename else 'recording.webm'
+    incoming = upload.filename or ''
+    ext = incoming.rsplit('.', 1)[-1].lower() if '.' in incoming else ''
+    if ext not in ('webm', 'm4a', 'mp3', 'wav', 'ogg', 'mp4', '3gp', 'aac'):
+        ext = _EXT_FOR_TYPE.get(content_type, 'webm')
+    filename = f'recording.{ext}'
 
     try:
         resp = requests.post(
             'https://api.openai.com/v1/audio/transcriptions',
             headers={'Authorization': f'Bearer {api_key}'},
             files={'file': (filename, raw, content_type)},
-            data={'model': 'whisper-1'},
+            data={
+                'model': 'whisper-1',
+                'language': 'en',
+                'prompt': _WHISPER_PROMPT,
+            },
             timeout=90,
         )
     except requests.RequestException as exc:

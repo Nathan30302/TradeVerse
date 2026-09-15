@@ -767,11 +767,18 @@ def voice():
 @login_required
 def parse_voice():
     """Turn a transcript into structured trade fields for confirmation."""
-    from app.services.voice_journal import parse_voice_text, preview_metrics, suggest_session
+    from app.services.voice_journal import (
+        enrich_parse_with_llm,
+        parse_voice_text,
+        preview_metrics,
+        suggest_session,
+    )
 
     payload = request.get_json(silent=True) or {}
     text = str(payload.get('text') or '')[:8000]
+    focus = str(payload.get('focus') or '')[:40]
     parsed = parse_voice_text(text)
+    parsed = enrich_parse_with_llm(parsed, text, focus=focus)
     instrument = None
     if parsed.get('symbol'):
         row = _resolve_instrument_row(parsed['symbol'])

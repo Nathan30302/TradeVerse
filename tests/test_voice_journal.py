@@ -71,7 +71,11 @@ def test_parse_voice_gold_buy_levels():
     assert "Liquidity sweep" in out["setup_tags"]
 
 
-def test_parse_voice_does_not_guess_side_from_empty():
+def test_parse_yes_no_status_and_bare_number():
+    assert parse_voice_text("yes that's right")["yes_no"] == "yes"
+    assert parse_voice_text("already done")["status"] == "closed"
+    assert parse_voice_text("still in it")["status"] == "open"
+    assert parse_voice_text("1.17240")["bare_number"] == 1.1724
     out = parse_voice_text("")
     assert out["symbol"] is None
     assert out["trade_type"] is None

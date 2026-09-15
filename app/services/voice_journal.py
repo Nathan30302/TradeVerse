@@ -198,6 +198,26 @@ def parse_side(text: str) -> Optional[str]:
     return None
 
 
+def parse_yes_no(text: str) -> Optional[str]:
+    t = (text or "").lower()
+    if re.search(r"\b(yes|yeah|yep|yup|correct|right|confirm|okay|ok|sure)\b", t):
+        if re.search(r"\b(nope|wrong|not correct)\b", t):
+            return "no"
+        return "yes"
+    if re.search(r"\b(no|nope|nah|wrong|incorrect|change)\b", t):
+        return "no"
+    return None
+
+
+def parse_status(text: str) -> Optional[str]:
+    t = (text or "").lower()
+    if re.search(r"\b(closed|done|finished|already (?:out|done|closed)|stopped out|hit (?:tp|sl))\b", t):
+        return "closed"
+    if re.search(r"\b(open|still in|running|holding|not closed)\b", t):
+        return "open"
+    return None
+
+
 def parse_session(text: str) -> Optional[str]:
     t = (text or "").lower()
     if "overlap" in t or ("london" in t and ("new york" in t or "ny" in t)):
@@ -311,9 +331,20 @@ def parse_voice_text(text: str) -> Dict[str, Any]:
         "setup_tags": [],
         "uncertain": [],
         "fields_found": [],
+        "yes_no": None,
+        "status": None,
+        "bare_number": None,
     }
     if not raw:
         return out
+
+    yn = parse_yes_no(raw)
+    if yn:
+        out["yes_no"] = yn
+    st = parse_status(raw)
+    if st:
+        out["status"] = st
+        out["fields_found"].append("status")
 
     symbol, confirm = normalize_symbol_guess(raw)
     if symbol:
@@ -360,7 +391,130 @@ def parse_voice_text(text: str) -> Dict[str, Any]:
                 out[key if key != "entry" else "entry_price"] = val
                 out["fields_found"].append("entry_price" if key == "entry" else key)
 
+    if out.get("entry_price") is None:
+        nums = [_to_float(x) for x in _PRICE_RE.findall(raw)]
+        nums = [n for n in nums if n is not None]
+        if len(nums) == 1:
+            out["bare_number"] = nums[0]
+        elif len(nums) >= 3:
+            out["entry_price"] = nums[0]
+            out["stop_loss"] = nums[1]
+            out["take_profit"] = nums[2]
+            out["fields_found"].extend(["entry_price", "stop_loss", "take_profit"])
+            out["uncertain"].extend(["entry_price", "stop_loss", "take_profit"])
+
     return out
+
+
+def _focus_missing(parsed: Dict[str, Any], focus: str) -> bool:
+    focus = (focus or "").strip()
+    if focus in ("symbol",):
+        return not parsed.get("symbol")
+    if focus in ("direction", "trade_type"):
+        return not parsed.get("trade_type")
+    if focus in ("entry", "entry_price", "prices"):
+        return parsed.get("entry_price") is None and parsed.get("bare_number") is None
+    if focus in ("stop_loss", "sl"):
+        return parsed.get("stop_loss") is None and parsed.get("bare_number") is None
+    if focus in ("take_profit", "tp"):
+        return parsed.get("take_profit") is None and parsed.get("bare_number") is None
+    if focus in ("exit", "exit_price"):
+        return parsed.get("exit_price") is None and parsed.get("bare_number") is None
+    if focus in ("status",):
+        return not parsed.get("status")
+    return False
+
+
+def enrich_parse_with_llm(parsed: Dict[str, Any], text: str, focus: str = "") -> Dict[str, Any]:
+    """Fill gaps in messy speech (spoken numbers, nicknames) when OpenAI is configured."""
+    import json
+    import os
+
+    import requests
+
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key or not (text or "").strip():
+        return parsed
+    if not _focus_missing(parsed, focus) and parsed.get("symbol") and parsed.get("trade_type"):
+        return parsed
+
+    try:
+        resp = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": os.environ.get("OPENAI_PARSE_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini",
+                "temperature": 0,
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "Extract trading journal fields from dictation. JSON keys: "
+                            "symbol, trade_type (BUY|SELL), entry_price, stop_loss, take_profit, "
+                            "exit_price, lot_size, session_type, status (open|closed), yes_no (yes|no), "
+                            "emotions (array), setup_tags (array), bare_number. Use null when unknown. "
+                            "Never invent prices. Map gold→XAUUSD, euro→EURUSD, nas/nasdaq→NAS100."
+                        ),
+                    },
+                    {"role": "user", "content": text[:2000]},
+                ],
+            },
+            timeout=12,
+        )
+    except requests.RequestException:
+        return parsed
+    if resp.status_code != 200:
+        return parsed
+    try:
+        content = (((resp.json().get("choices") or [{}])[0].get("message") or {}).get("content")) or "{}"
+        data = json.loads(content)
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return parsed
+    if not isinstance(data, dict):
+        return parsed
+
+    def _num(v):
+        return _to_float(str(v)) if v is not None and v != "" else None
+
+    for key, conv in (
+        ("symbol", str),
+        ("trade_type", str),
+        ("session_type", str),
+        ("status", str),
+        ("yes_no", str),
+        ("entry_price", _num),
+        ("stop_loss", _num),
+        ("take_profit", _num),
+        ("exit_price", _num),
+        ("lot_size", _num),
+    ):
+        if parsed.get(key) not in (None, "", []):
+            continue
+        if data.get(key) in (None, ""):
+            continue
+        val = conv(data.get(key))
+        if key == "trade_type" and str(val).upper() in ("BUY", "SELL", "LONG", "SHORT"):
+            parsed[key] = "SELL" if str(val).upper() in ("SELL", "SHORT") else "BUY"
+            parsed.setdefault("fields_found", []).append(key)
+        elif key == "symbol" and val:
+            parsed[key] = str(val).upper().replace("/", "")
+            parsed["symbol_needs_confirm"] = True
+            parsed.setdefault("fields_found", []).append("symbol")
+        elif key in ("entry_price", "stop_loss", "take_profit", "exit_price", "lot_size") and val is not None:
+            parsed[key] = val
+            parsed.setdefault("uncertain", []).append(key)
+            parsed.setdefault("fields_found", []).append(key)
+        elif key in ("session_type", "status", "yes_no") and val:
+            parsed[key] = str(val).lower() if key != "session_type" else str(val)
+            parsed.setdefault("fields_found", []).append(key)
+    if not parsed.get("emotions") and isinstance(data.get("emotions"), list):
+        parsed["emotions"] = [str(x) for x in data["emotions"] if x][:6]
+    if not parsed.get("setup_tags") and isinstance(data.get("setup_tags"), list):
+        parsed["setup_tags"] = [str(x) for x in data["setup_tags"] if x][:6]
+    if parsed.get("entry_price") is None and _num(data.get("bare_number")) is not None:
+        parsed["bare_number"] = _num(data.get("bare_number"))
+    return parsed
 
 
 def preview_metrics(
