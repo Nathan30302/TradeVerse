@@ -469,13 +469,15 @@
   }
 
   function bloomRadius(angle, t, amp) {
-    var base = 78 + amp * 34;
+    var base = 72 + amp * 30;
     var n =
-      Math.sin(angle * 3 + t * 0.9) * (10 + amp * 8) +
-      Math.sin(angle * 5 - t * 1.15) * (7 + amp * 6) +
-      Math.cos(angle * 2 + t * 0.55) * (14 + amp * 10) +
-      Math.sin(angle * 7 + t * 1.7) * (4 + amp * 5);
-    return base + n;
+      Math.sin(angle * 2.2 + t * 0.75) * (18 + amp * 10) +
+      Math.cos(angle * 3.7 - t * 1.05) * (14 + amp * 9) +
+      Math.sin(angle * 5.4 + t * 1.35) * (11 + amp * 8) +
+      Math.cos(angle * 8.1 - t * 0.9) * (7 + amp * 6) +
+      Math.sin(angle * 11 + t * 1.9) * (4.5 + amp * 4) +
+      Math.sin(angle * 1.15 + t * 0.4) * (9 + amp * 5);
+    return Math.max(42, base + n);
   }
 
   function drawOrb() {
@@ -515,21 +517,22 @@
     var goldSoft = '#f3dfa0';
     var goldDeep = '#b8922e';
 
-    var glow = ctx.createRadialGradient(cx, cy, 12, cx, cy, 148 + rec.amp * 36);
-    glow.addColorStop(0, rgbOf(goldSoft, voice ? 0.38 + rec.amp * 0.35 : 0.18));
-    glow.addColorStop(0.45, rgbOf(gold, voice ? 0.16 + rec.amp * 0.14 : 0.08));
+    var glow = ctx.createRadialGradient(cx, cy, 10, cx, cy, 150 + rec.amp * 40);
+    glow.addColorStop(0, rgbOf(goldSoft, voice ? 0.42 + rec.amp * 0.35 : 0.22));
+    glow.addColorStop(0.4, rgbOf(gold, voice ? 0.18 + rec.amp * 0.14 : 0.1));
     glow.addColorStop(1, rgbOf(gold, 0));
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
 
-    function pathBloom(scale) {
-      var steps = 72;
+    function pathBloom(scale, stretchY) {
+      var steps = 96;
+      stretchY = stretchY == null ? 0.88 : stretchY;
       ctx.beginPath();
       for (var i = 0; i <= steps; i++) {
         var ang = (i / steps) * Math.PI * 2;
         var r = bloomRadius(ang, t, rec.amp) * scale;
         var x = cx + Math.cos(ang) * r;
-        var y = cy + Math.sin(ang) * r * 0.92;
+        var y = cy + Math.sin(ang) * r * stretchY;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -538,26 +541,41 @@
 
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(Math.sin(t * 0.35) * 0.05);
+    ctx.rotate(Math.sin(t * 0.28) * 0.08 + Math.cos(t * 0.17) * 0.04);
+    ctx.scale(1 + Math.sin(t * 0.5) * 0.02, 1 + Math.cos(t * 0.4) * 0.025);
     ctx.translate(-cx, -cy);
 
-    pathBloom(1.08);
-    ctx.fillStyle = rgbOf(gold, 0.08 + rec.amp * 0.08);
+    ctx.filter = 'blur(10px)';
+    pathBloom(1.12, 0.9);
+    ctx.fillStyle = rgbOf(gold, 0.22 + rec.amp * 0.12);
     ctx.fill();
+    ctx.filter = 'none';
 
-    pathBloom(1);
-    var body = ctx.createRadialGradient(cx - 18, cy - 22, 8, cx, cy, 110);
-    body.addColorStop(0, goldSoft);
-    body.addColorStop(0.35, gold);
+    pathBloom(1, 0.86);
+    var body = ctx.createRadialGradient(cx - 22, cy - 28, 6, cx + 8, cy + 10, 118);
+    body.addColorStop(0, '#fff6d4');
+    body.addColorStop(0.22, goldSoft);
+    body.addColorStop(0.48, gold);
     body.addColorStop(0.78, goldDeep);
-    body.addColorStop(1, rgbOf('#6b5420', 0.92));
+    body.addColorStop(1, '#5c4718');
     ctx.fillStyle = body;
     ctx.fill();
 
-    pathBloom(0.62);
-    var core = ctx.createRadialGradient(cx - 10, cy - 14, 2, cx, cy, 58);
-    core.addColorStop(0, 'rgba(255,248,220,0.95)');
-    core.addColorStop(0.45, rgbOf(goldSoft, 0.55));
+    // Soft facet highlights — crumpled leaf feel
+    ctx.globalCompositeOperation = 'lighter';
+    pathBloom(0.7, 0.84);
+    var facet = ctx.createRadialGradient(cx - 26, cy - 30, 2, cx - 8, cy - 6, 54);
+    facet.addColorStop(0, 'rgba(255,252,235,0.55)');
+    facet.addColorStop(0.55, rgbOf(goldSoft, 0.18));
+    facet.addColorStop(1, 'rgba(230,196,90,0)');
+    ctx.fillStyle = facet;
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+
+    pathBloom(0.48, 0.82);
+    var core = ctx.createRadialGradient(cx - 12, cy - 16, 1, cx, cy, 46);
+    core.addColorStop(0, 'rgba(255,250,230,0.9)');
+    core.addColorStop(0.5, rgbOf(goldSoft, 0.35));
     core.addColorStop(1, rgbOf(gold, 0));
     ctx.fillStyle = core;
     ctx.fill();
@@ -565,7 +583,7 @@
 
     if (voice && Date.now() - (rec.orbRippleAt || 0) > 200) {
       rec.orbRippleAt = Date.now();
-      rec.ripples.push({ r: 70, a: 0.28 + rec.amp * 0.25, rot: Math.random() * Math.PI });
+      rec.ripples.push({ r: 68, a: 0.26 + rec.amp * 0.25, rot: Math.random() * Math.PI });
       if (rec.ripples.length > 6) rec.ripples.shift();
     }
     for (var r = rec.ripples.length - 1; r >= 0; r--) {
@@ -577,17 +595,17 @@
         continue;
       }
       ctx.beginPath();
-      for (var j = 0; j <= 48; j++) {
-        var a2 = (j / 48) * Math.PI * 2 + (ring.rot || 0);
-        var rr = ring.r + Math.sin(a2 * 4 + t) * 5;
+      for (var j = 0; j <= 56; j++) {
+        var a2 = (j / 56) * Math.PI * 2 + (ring.rot || 0);
+        var rr = ring.r + Math.sin(a2 * 5 + t * 2) * 7;
         var x2 = cx + Math.cos(a2) * rr;
-        var y2 = cy + Math.sin(a2) * rr * 0.9;
+        var y2 = cy + Math.sin(a2) * rr * 0.88;
         if (j === 0) ctx.moveTo(x2, y2);
         else ctx.lineTo(x2, y2);
       }
       ctx.closePath();
       ctx.strokeStyle = rgbOf(gold, ring.a);
-      ctx.lineWidth = 1.6;
+      ctx.lineWidth = 1.4;
       ctx.stroke();
     }
   }
