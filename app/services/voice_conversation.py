@@ -347,6 +347,22 @@ def _substantial_line(text: str) -> bool:
     return len(words) >= 6 or any(h in t.lower() for h in _REASON_HINTS)
 
 
+def _levels_only_dump(text: str) -> bool:
+    """True when a line is mostly pair/side/levels — not a real thesis."""
+    t = _light_clean(text)
+    if not t:
+        return True
+    low = t.lower()
+    if any(h in low for h in _REASON_HINTS):
+        return False
+    has_levels = bool(
+        re.search(r"\b(long|short|buy|sell|bought|sold)\b", low)
+        and re.search(r"\b(stop|target|tp|sl|at)\b", low)
+        and re.search(r"\d", low)
+    )
+    return has_levels
+
+
 def _thin_reflection(text: str, key: str) -> bool:
     """True when a lessons/improve/thesis reply is too thin to keep."""
     t = _light_clean(text)
@@ -368,11 +384,15 @@ def _best_spoken_thesis(candidates: List[str]) -> str:
     """Pick the strongest user-spoken idea line (never a polished rewrite)."""
     for turn in reversed(candidates):
         low = turn.lower()
+        if _levels_only_dump(turn):
+            continue
         if _substantial_line(turn) and any(
             h in low for h in ("because", "idea", "thesis", "setup", "sweep", "break", "retest", "liquidity")
         ):
             return turn[:2000]
     for turn in reversed(candidates):
+        if _levels_only_dump(turn):
+            continue
         if _substantial_line(turn):
             return turn[:2000]
     return ""
@@ -543,7 +563,9 @@ def _fill_reflection_slot(draft: Dict[str, Any], key: str, text: str) -> Dict[st
         return draft
     if _thin_reflection(cleaned, key):
         return draft
-    if key == "thesis_notes" and not draft.get("thesis_notes"):
+    if key == "thesis_notes" and (
+        not draft.get("thesis_notes") or _levels_only_dump(str(draft.get("thesis_notes") or ""))
+    ):
         draft["thesis_notes"] = cleaned[:2000]
         draft["_just_reflected"] = key
     elif key == "lessons" and not draft.get("lessons"):
@@ -950,7 +972,8 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
     if draft.get("lot_size") is None and not draft.get("lot_skipped"):
         missing.append("lot_size")
     if not draft.get("reflection_skipped"):
-        if not (draft.get("thesis_notes") or "").strip():
+        thesis = (draft.get("thesis_notes") or "").strip()
+        if not thesis or thesis == "skipped" or _levels_only_dump(thesis):
             missing.append("thesis_notes")
         if not draft.get("followed_plan"):
             missing.append("followed_plan")
