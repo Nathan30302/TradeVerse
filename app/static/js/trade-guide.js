@@ -94,11 +94,11 @@
     if (statusEl) {
       statusEl.textContent =
         next === 'listening' ? 'Listening' :
-        next === 'thinking' ? 'Thinking' :
+        next === 'thinking' ? 'Gathering the page' :
         next === 'speaking' ? 'Speaking' :
         next === 'waiting' ? 'Add your charts' :
         next === 'review' ? 'Ready to save' :
-        'Tap when you’re ready';
+        'Tap the ink when you’re ready';
     }
     syncComposer();
   }
@@ -426,41 +426,33 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     var speaking = rec.voiceOn && (state === 'listening' || rec.recording);
-    var accent = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent-bright').trim() || '#14b8a6';
-    if (speaking && Date.now() - rec.rippleAt > 120) {
+    var gold = '#e6c45a';
+    if (speaking && Date.now() - rec.rippleAt > 160) {
       rec.rippleAt = Date.now();
       var cx = w / 2;
-      var cy = Math.min(h * 0.34, 210);
+      var cy = Math.min(h * 0.28, 190);
       rec.waterRipples.push({
-        x: cx, y: cy, r: 14, a: 0.38 + rec.voiceRms * 1.1,
-        grow: 1.5 + rec.voiceRms * 4.2, thick: 2.6
+        x: cx + (Math.random() - 0.5) * 36,
+        y: cy + (Math.random() - 0.5) * 24,
+        r: 6 + Math.random() * 10,
+        a: 0.16 + rec.voiceRms * 0.55,
+        grow: 0.55 + rec.voiceRms * 1.8,
+        thick: 1.2
       });
-      rec.waterRipples.push({
-        x: cx, y: cy, r: 28, a: 0.22 + rec.voiceRms * 0.7,
-        grow: 2.4 + rec.voiceRms * 5.5, thick: 1.4
-      });
-      if (rec.waterRipples.length > 22) rec.waterRipples.splice(0, rec.waterRipples.length - 22);
+      if (rec.waterRipples.length > 14) rec.waterRipples.splice(0, rec.waterRipples.length - 14);
     }
     for (var i = rec.waterRipples.length - 1; i >= 0; i--) {
       var p = rec.waterRipples[i];
       p.r += p.grow;
-      p.a *= 0.945;
-      if (p.a < 0.02 || p.r > Math.max(w, h) * 0.85) {
+      p.a *= 0.955;
+      if (p.a < 0.02 || p.r > 140) {
         rec.waterRipples.splice(i, 1);
         continue;
       }
       ctx.beginPath();
-      ctx.ellipse(p.x, p.y, p.r, p.r * 0.72, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = rgbOf(accent, p.a);
-      ctx.lineWidth = p.thick || 2.2;
-      ctx.stroke();
-    }
-    if (!speaking && rec.waterRipples.length === 0) {
-      ctx.beginPath();
-      ctx.strokeStyle = rgbOf(accent, 0.05);
-      ctx.lineWidth = 1;
-      ctx.arc(w / 2, Math.min(h * 0.36, 220), 90, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.fillStyle = rgbOf(gold, p.a * 0.35);
+      ctx.arc(p.x, p.y, p.r * 0.22, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
@@ -473,7 +465,17 @@
     }
     var rgb = c.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
     if (rgb) return 'rgba(' + rgb[1] + ',' + rgb[2] + ',' + rgb[3] + ',' + a + ')';
-    return 'rgba(20,184,166,' + a + ')';
+    return 'rgba(230,196,90,' + a + ')';
+  }
+
+  function bloomRadius(angle, t, amp) {
+    var base = 78 + amp * 34;
+    var n =
+      Math.sin(angle * 3 + t * 0.9) * (10 + amp * 8) +
+      Math.sin(angle * 5 - t * 1.15) * (7 + amp * 6) +
+      Math.cos(angle * 2 + t * 0.55) * (14 + amp * 10) +
+      Math.sin(angle * 7 + t * 1.7) * (4 + amp * 5);
+    return base + n;
   }
 
   function drawOrb() {
@@ -481,7 +483,7 @@
     drawWater();
     if (!canvas || !canvas.getContext) return;
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var css = 280;
+    var css = 320;
     if (canvas.width !== css * dpr || canvas.height !== css * dpr) {
       canvas.width = css * dpr;
       canvas.height = css * dpr;
@@ -496,60 +498,98 @@
 
     var listening = state === 'listening' || rec.recording;
     var voice = listening && rec.voiceOn;
-    var amp = 0.08;
+    var amp = 0.1;
     if (voice && rec.voiceRms) {
-      amp = Math.min(1, 0.12 + rec.voiceRms * 4);
+      amp = Math.min(1, 0.18 + rec.voiceRms * 4.2);
     } else if (state === 'speaking') {
-      amp = 0.28 + Math.sin(Date.now() / 160) * 0.1;
+      amp = 0.32 + Math.sin(Date.now() / 170) * 0.1;
     } else if (state === 'thinking') {
-      amp = 0.16 + Math.sin(Date.now() / 380) * 0.06;
+      amp = 0.18 + Math.sin(Date.now() / 420) * 0.07;
     } else {
-      amp = 0.08 + Math.sin(Date.now() / 1400) * 0.02;
+      amp = 0.1 + Math.sin(Date.now() / 1600) * 0.035;
     }
-    rec.amp = rec.amp * 0.72 + amp * 0.28;
+    rec.amp = rec.amp * 0.78 + amp * 0.22;
 
-    var accent = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent-bright').trim() || '#14b8a6';
-    var deep = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent').trim() || '#0f766e';
+    var t = Date.now() / 1000;
+    var gold = '#e6c45a';
+    var goldSoft = '#f3dfa0';
+    var goldDeep = '#b8922e';
 
-    var glow = ctx.createRadialGradient(cx, cy, 8, cx, cy, 118 + rec.amp * 40);
-    glow.addColorStop(0, rgbOf(accent, voice ? 0.32 + rec.amp * 0.4 : 0.12));
-    glow.addColorStop(0.55, rgbOf(deep, voice ? 0.12 + rec.amp * 0.12 : 0.06));
-    glow.addColorStop(1, rgbOf(accent, 0));
+    var glow = ctx.createRadialGradient(cx, cy, 12, cx, cy, 148 + rec.amp * 36);
+    glow.addColorStop(0, rgbOf(goldSoft, voice ? 0.38 + rec.amp * 0.35 : 0.18));
+    glow.addColorStop(0.45, rgbOf(gold, voice ? 0.16 + rec.amp * 0.14 : 0.08));
+    glow.addColorStop(1, rgbOf(gold, 0));
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
 
-    if (voice && Date.now() - (rec.orbRippleAt || 0) > 170) {
+    function pathBloom(scale) {
+      var steps = 72;
+      ctx.beginPath();
+      for (var i = 0; i <= steps; i++) {
+        var ang = (i / steps) * Math.PI * 2;
+        var r = bloomRadius(ang, t, rec.amp) * scale;
+        var x = cx + Math.cos(ang) * r;
+        var y = cy + Math.sin(ang) * r * 0.92;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    }
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.sin(t * 0.35) * 0.05);
+    ctx.translate(-cx, -cy);
+
+    pathBloom(1.08);
+    ctx.fillStyle = rgbOf(gold, 0.08 + rec.amp * 0.08);
+    ctx.fill();
+
+    pathBloom(1);
+    var body = ctx.createRadialGradient(cx - 18, cy - 22, 8, cx, cy, 110);
+    body.addColorStop(0, goldSoft);
+    body.addColorStop(0.35, gold);
+    body.addColorStop(0.78, goldDeep);
+    body.addColorStop(1, rgbOf('#6b5420', 0.92));
+    ctx.fillStyle = body;
+    ctx.fill();
+
+    pathBloom(0.62);
+    var core = ctx.createRadialGradient(cx - 10, cy - 14, 2, cx, cy, 58);
+    core.addColorStop(0, 'rgba(255,248,220,0.95)');
+    core.addColorStop(0.45, rgbOf(goldSoft, 0.55));
+    core.addColorStop(1, rgbOf(gold, 0));
+    ctx.fillStyle = core;
+    ctx.fill();
+    ctx.restore();
+
+    if (voice && Date.now() - (rec.orbRippleAt || 0) > 200) {
       rec.orbRippleAt = Date.now();
-      rec.ripples.push({ r: 42, a: 0.45 + rec.amp * 0.4 });
-      if (rec.ripples.length > 10) rec.ripples.shift();
+      rec.ripples.push({ r: 70, a: 0.28 + rec.amp * 0.25, rot: Math.random() * Math.PI });
+      if (rec.ripples.length > 6) rec.ripples.shift();
     }
     for (var r = rec.ripples.length - 1; r >= 0; r--) {
       var ring = rec.ripples[r];
-      ring.r += 1.8 + rec.amp * 2.2;
-      ring.a *= 0.955;
-      if (ring.a < 0.03 || ring.r > 132) {
+      ring.r += 1.4 + rec.amp * 1.8;
+      ring.a *= 0.94;
+      if (ring.a < 0.03 || ring.r > 150) {
         rec.ripples.splice(r, 1);
         continue;
       }
       ctx.beginPath();
-      ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
-      ctx.strokeStyle = rgbOf(accent, ring.a);
-      ctx.lineWidth = 2.6;
+      for (var j = 0; j <= 48; j++) {
+        var a2 = (j / 48) * Math.PI * 2 + (ring.rot || 0);
+        var rr = ring.r + Math.sin(a2 * 4 + t) * 5;
+        var x2 = cx + Math.cos(a2) * rr;
+        var y2 = cy + Math.sin(a2) * rr * 0.9;
+        if (j === 0) ctx.moveTo(x2, y2);
+        else ctx.lineTo(x2, y2);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = rgbOf(gold, ring.a);
+      ctx.lineWidth = 1.6;
       ctx.stroke();
     }
-
-    ctx.beginPath();
-    ctx.fillStyle = deep;
-    ctx.arc(cx, cy, 36 + rec.amp * 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.fillStyle = accent;
-    ctx.arc(cx, cy, 20 + rec.amp * 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    ctx.arc(cx - 8, cy - 10, 7 + rec.amp * 2, 0, Math.PI * 2);
-    ctx.fill();
   }
 
   function watchLoudness() {

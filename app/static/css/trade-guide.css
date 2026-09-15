@@ -1,12 +1,58 @@
 /**
- * Voice Journal — conversation surface. No form, no steps.
+ * Voice Journal — Ink Bloom
+ * A journal page, not a form: organic ink breathes as you speak;
+ * words set in a diary-like serif.
  */
 
-.tv-vj-page {
+@import url("https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Syne:wght@600;700&display=swap");
+
+body:has(.tv-vj-ink) {
+  --vj-ink: #0b1210;
+  --vj-ink-deep: #060a09;
+  --vj-gold: #e6c45a;
+  --vj-gold-soft: #f0d98a;
+  --vj-gold-dim: #a8903a;
+  --vj-paper: #f3efe4;
+  --vj-muted: #8b928c;
+  background: var(--vj-ink-deep) !important;
+}
+
+body:has(.tv-vj-ink) .navbar,
+body:has(.tv-vj-ink) .footer,
+body:has(.tv-vj-ink) footer {
+  background: color-mix(in srgb, var(--vj-ink) 92%, #000) !important;
+  border-color: color-mix(in srgb, var(--vj-gold) 12%, transparent) !important;
+}
+
+body:has(.tv-vj-ink) .navbar .navbar-brand,
+body:has(.tv-vj-ink) .navbar a,
+body:has(.tv-vj-ink) footer,
+body:has(.tv-vj-ink) footer a {
+  color: color-mix(in srgb, var(--vj-paper) 78%, transparent) !important;
+}
+
+.tv-vj-page.tv-vj-ink {
+  --vj-accent: #c9a227;
+  --vj-bright: var(--vj-gold);
   position: relative;
-  max-width: 460px;
+  isolation: isolate;
+  max-width: 440px;
   margin: 0 auto;
-  padding: 1.25rem 1rem calc(2.5rem + env(safe-area-inset-bottom, 0px));
+  min-height: calc(100vh - 7rem);
+  padding: 1rem 1.15rem calc(2rem + env(safe-area-inset-bottom, 0px));
+  color: var(--vj-paper);
+  font-family: "Syne", system-ui, sans-serif;
+}
+
+.tv-vj-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 22%, rgba(230, 196, 90, 0.11), transparent 62%),
+    radial-gradient(ellipse 90% 70% at 50% 100%, rgba(20, 40, 32, 0.9), transparent 55%),
+    linear-gradient(180deg, #0b1210 0%, #070c0a 48%, #050807 100%);
 }
 
 .tv-vj-water {
@@ -17,11 +63,11 @@
   pointer-events: none;
   z-index: 0;
   opacity: 0;
-  transition: opacity 280ms ease;
+  transition: opacity 420ms ease;
 }
 
 .tv-vj-page.is-voice .tv-vj-water {
-  opacity: 1;
+  opacity: 0.55;
 }
 
 .tv-vj-form {
@@ -31,118 +77,102 @@
 }
 
 .tv-vj-stage {
-  --vj-accent: var(--tv-accent, #0f766e);
-  --vj-bright: var(--tv-accent-bright, #14b8a6);
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  min-height: 72vh;
-  padding: 1.75rem 0 1.1rem;
-  color: var(--text-primary, #0c1b2a);
+  min-height: 68vh;
+  padding: 1.4rem 0 0.5rem;
 }
 
-.tv-vj-stage::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto auto 50%;
-  width: min(28rem, 92vw);
-  height: 22rem;
-  transform: translateX(-50%);
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at 50% 28%, color-mix(in srgb, var(--vj-bright) 22%, transparent), transparent 62%);
-  opacity: 0.9;
-}
-
-.tv-vj-kicker {
+.tv-vj-bloom-wrap {
   position: relative;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--vj-bright);
-  margin: 0 0 1.1rem;
-}
-
-.tv-vj-orb-wrap {
-  position: relative;
-  width: 280px;
-  height: 280px;
-}
-
-.tv-vj-orb-halo {
-  position: absolute;
-  inset: 18px;
-  border-radius: 50%;
-  pointer-events: none;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--vj-bright) 28%, transparent),
-    0 18px 48px color-mix(in srgb, var(--vj-accent) 28%, transparent);
-  transition: box-shadow 320ms ease, transform 320ms ease, opacity 320ms ease;
-}
-
-.tv-vj-stage[data-state="listening"] .tv-vj-orb-halo {
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--vj-bright) 28%, transparent),
-    0 18px 48px color-mix(in srgb, var(--vj-accent) 22%, transparent);
-}
-
-.tv-vj-stage.is-voice[data-state="listening"] .tv-vj-orb-halo {
-  animation: tv-vj-pulse 1.6s ease-out infinite;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--vj-bright) 55%, transparent),
-    0 0 42px color-mix(in srgb, var(--vj-bright) 38%, transparent);
-}
-
-.tv-vj-stage[data-state="thinking"] .tv-vj-orb-halo {
-  animation: tv-vj-think 1.1s ease-in-out infinite;
-}
-
-.tv-vj-stage[data-state="speaking"] .tv-vj-orb-halo {
-  animation: tv-vj-speak 1.2s ease-in-out infinite;
+  width: min(72vw, 280px);
+  height: min(72vw, 280px);
+  margin: 0.4rem 0 0.2rem;
 }
 
 .tv-vj-orb {
   position: relative;
-  width: 280px;
-  height: 280px;
+  width: 100%;
+  height: 100%;
   border: 0;
   padding: 0;
   background: transparent;
-  border-radius: 50%;
+  border-radius: 42% 58% 48% 52% / 52% 42% 58% 48%;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  animation: tv-vj-idle-breathe 4.8s ease-in-out infinite;
+}
+
+.tv-vj-stage.is-voice .tv-vj-orb,
+.tv-vj-stage[data-state="listening"] .tv-vj-orb,
+.tv-vj-stage[data-state="speaking"] .tv-vj-orb {
+  animation: tv-vj-voice-breathe 1.35s ease-in-out infinite;
+}
+
+.tv-vj-stage[data-state="thinking"] .tv-vj-orb {
+  animation: tv-vj-think-breathe 1.8s ease-in-out infinite;
 }
 
 .tv-vj-orb canvas {
   display: block;
-  width: 280px;
-  height: 280px;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 28px rgba(230, 196, 90, 0.28));
 }
 
-.tv-vj-orb-core {
-  display: none;
+.tv-vj-brand {
+  position: relative;
+  margin: 0.35rem 0 0.55rem;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--vj-gold);
+}
+
+.tv-vj-ai {
+  position: relative;
+  margin: 0 0.4rem;
+  max-width: 19rem;
+  min-height: 2.6em;
+  font-family: "Literata", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: clamp(1.45rem, 5.4vw, 1.85rem);
+  font-weight: 400;
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  color: var(--vj-paper);
+  opacity: 0.92;
+  transition: opacity 320ms ease, transform 360ms ease;
+}
+
+.tv-vj-ai.is-in {
+  opacity: 1;
+  animation: tv-vj-ink-in 420ms ease;
 }
 
 .tv-vj-status {
   position: relative;
   margin: 0.85rem 0 0;
-  min-height: 1.2em;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+  min-height: 1.1em;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--tv-muted, var(--text-secondary, #6b7280));
+  color: var(--vj-muted);
 }
 
-.tv-vj-stage[data-state="listening"] .tv-vj-status {
-  color: var(--vj-bright);
+.tv-vj-stage[data-state="listening"] .tv-vj-status,
+.tv-vj-stage[data-state="speaking"] .tv-vj-status {
+  color: var(--vj-gold-dim);
 }
 
 .tv-vj-stage[data-state="thinking"] .tv-vj-status {
-  background: linear-gradient(90deg, var(--tv-muted, #6b7280), var(--vj-bright), var(--tv-muted, #6b7280));
+  background: linear-gradient(90deg, var(--vj-muted), var(--vj-gold), var(--vj-muted));
   background-size: 160% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -150,41 +180,17 @@
   animation: tv-vj-shimmer 1.4s linear infinite;
 }
 
-.tv-vj-stage[data-state="waiting"] .tv-vj-status {
-  color: var(--vj-accent);
-}
-
-.tv-vj-ai {
-  position: relative;
-  margin: 0.7rem 1rem 0.25rem;
-  font-size: 1.32rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.35;
-  max-width: 22.5rem;
-  min-height: 1.7em;
-  color: var(--text-primary, #0c1b2a);
-  opacity: 0.88;
-  transition: opacity 280ms ease, transform 320ms ease;
-}
-
-.tv-vj-ai.is-in {
-  opacity: 1;
-}
-
 .tv-vj-live-wrap {
   position: relative;
-  width: min(22.5rem, calc(100% - 1.5rem));
-  margin-top: 0.55rem;
-  padding: 0.7rem 0.95rem 0.75rem;
-  border-radius: 16px;
-  text-align: left;
-  background: color-mix(in srgb, var(--vj-accent) 8%, var(--card-bg, transparent));
-  border: 1px solid color-mix(in srgb, var(--vj-accent) 16%, var(--card-border, transparent));
+  width: min(20rem, calc(100% - 1rem));
+  margin-top: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
   opacity: 0;
   transform: translateY(4px);
   pointer-events: none;
-  transition: opacity 240ms ease, transform 240ms ease;
+  transition: opacity 280ms ease, transform 280ms ease;
 }
 
 .tv-vj-live-wrap.is-on,
@@ -195,27 +201,25 @@
   pointer-events: auto;
 }
 
-.tv-vj-live-label {
-  display: block;
-  font-size: 0.62rem;
-  font-weight: 750;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--vj-bright);
-  margin-bottom: 0.2rem;
-}
-
 .tv-vj-live {
-  min-height: 1.45em;
+  min-height: 1.35em;
   margin: 0;
-  font-size: 1.02rem;
+  font-family: "Literata", Georgia, serif;
+  font-size: 1.12rem;
+  font-style: italic;
   line-height: 1.45;
-  color: var(--text-primary, #0c1b2a);
-  opacity: 0.55;
+  color: color-mix(in srgb, var(--vj-paper) 72%, var(--vj-gold));
+  opacity: 0.5;
 }
 
 .tv-vj-live.is-on {
   opacity: 1;
+}
+
+.tv-vj-stage[data-state="listening"] .tv-vj-live:not(.is-on)::before {
+  content: "The page is listening…";
+  font-style: italic;
+  color: var(--vj-muted);
 }
 
 .tv-vj-chips {
@@ -224,12 +228,11 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.4rem;
-  width: min(22.5rem, calc(100% - 1.5rem));
-  margin-top: 0.7rem;
-  min-height: 0;
+  width: min(22rem, calc(100% - 1rem));
+  margin-top: 1rem;
   opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 240ms ease, transform 240ms ease;
+  transform: translateY(6px);
+  transition: opacity 280ms ease, transform 280ms ease;
 }
 
 .tv-vj-chips.is-on {
@@ -238,27 +241,27 @@
 }
 
 .tv-vj-chip {
-  padding: 0.28rem 0.7rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 999px;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: 0.02em;
-  color: var(--text-primary, #0c1b2a);
-  background: color-mix(in srgb, var(--vj-accent) 12%, var(--card-bg, #fff));
-  border: 1px solid color-mix(in srgb, var(--vj-accent) 22%, transparent);
+  color: var(--vj-paper);
+  background: color-mix(in srgb, var(--vj-gold) 12%, #121a17);
+  border: 1px solid color-mix(in srgb, var(--vj-gold) 28%, transparent);
 }
 
 .tv-vj-chip.is-rr,
 .tv-vj-chip.is-win {
-  color: #047857;
-  background: color-mix(in srgb, #10b981 16%, var(--card-bg, #fff));
-  border-color: color-mix(in srgb, #10b981 28%, transparent);
+  color: #b7e4c7;
+  background: color-mix(in srgb, #2d6a4f 28%, #121a17);
+  border-color: color-mix(in srgb, #52b788 35%, transparent);
 }
 
 .tv-vj-chip.is-loss {
-  color: #b91c1c;
-  background: color-mix(in srgb, #ef4444 14%, var(--card-bg, #fff));
-  border-color: color-mix(in srgb, #ef4444 28%, transparent);
+  color: #f1b0a8;
+  background: color-mix(in srgb, #9b2226 26%, #121a17);
+  border-color: color-mix(in srgb, #e76f51 32%, transparent);
 }
 
 .tv-vj-chip.is-tap {
@@ -269,17 +272,17 @@
 .tv-vj-chip.is-tap:hover,
 .tv-vj-chip.is-tap:focus-visible {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--vj-accent) 22%, transparent);
+  box-shadow: 0 4px 18px rgba(230, 196, 90, 0.18);
   outline: none;
 }
 
 .tv-vj-chip-hint {
-  margin: 0.35rem 0 0;
-  font-size: 0.68rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.64rem;
   font-weight: 650;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--tv-muted, var(--text-secondary, #6b7280));
+  color: var(--vj-muted);
 }
 
 .tv-vj-pending {
@@ -291,33 +294,33 @@
   gap: 0.85rem;
   margin: 0 0 1rem;
   padding: 0.85rem 1rem;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--tv-accent, #0f766e) 10%, var(--card-bg, #fff));
-  border: 1px solid color-mix(in srgb, var(--tv-accent, #0f766e) 20%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--vj-gold) 8%, #121a17);
+  border: 1px solid color-mix(in srgb, var(--vj-gold) 22%, transparent);
 }
 
 .tv-vj-pending-title {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  color: var(--text-primary, #0c1b2a);
+  color: var(--vj-paper);
 }
 
 .tv-vj-pending-sub {
   margin: 0.15rem 0 0;
-  font-size: 0.78rem;
-  color: var(--tv-muted, var(--text-secondary, #6b7280));
+  font-size: 0.76rem;
+  color: var(--vj-muted);
 }
 
 .tv-vj-pending-link {
   flex-shrink: 0;
   padding: 0.55rem 0.95rem;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   text-decoration: none;
-  color: #fff;
-  background: var(--tv-accent, #0f766e);
+  color: #1a1608;
+  background: var(--vj-gold);
 }
 
 .tv-vj-composer {
@@ -325,25 +328,31 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  width: min(22.5rem, calc(100% - 1.5rem));
-  margin-top: 0.85rem;
+  width: min(22rem, calc(100% - 0.5rem));
+  margin-top: 1.15rem;
 }
 
 .tv-vj-type-input {
   flex: 1;
   min-height: 46px;
-  padding: 0.65rem 0.95rem;
+  padding: 0.65rem 1rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--vj-accent) 22%, var(--card-border, #e5e7eb));
-  background: color-mix(in srgb, var(--vj-accent) 6%, var(--card-bg, #fff));
-  color: var(--text-primary, #0c1b2a);
-  font-size: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--vj-gold) 22%, transparent);
+  background: color-mix(in srgb, #101714 88%, var(--vj-gold));
+  color: var(--vj-paper);
+  font-family: "Literata", Georgia, serif;
+  font-size: 0.98rem;
+}
+
+.tv-vj-type-input::placeholder {
+  color: color-mix(in srgb, var(--vj-muted) 80%, transparent);
+  font-style: italic;
 }
 
 .tv-vj-type-input:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--vj-bright) 55%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vj-bright) 18%, transparent);
+  border-color: color-mix(in srgb, var(--vj-gold) 55%, transparent);
+  box-shadow: 0 0 0 3px rgba(230, 196, 90, 0.14);
 }
 
 .tv-vj-type-send {
@@ -351,18 +360,20 @@
   padding: 0 1.05rem;
   border: 0;
   border-radius: 999px;
+  font-family: "Syne", system-ui, sans-serif;
   font-weight: 700;
-  color: #fff;
-  background: var(--vj-accent);
+  color: #1a1608;
+  background: var(--vj-gold);
 }
 
 .tv-vj-type-send:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
-.tv-vj-stage[data-state="listening"] .tv-vj-live:not(.is-on)::before {
-  content: "Speak naturally — I’m writing your words.";
-  color: var(--tv-muted, var(--text-secondary, #6b7280));
+.tv-vj-mic-err {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  color: #e9a7a0;
 }
 
 .tv-vj-shot {
@@ -377,9 +388,10 @@
 
 .tv-vj-shot-prompt {
   margin: 0 0 0.15rem;
-  font-size: 0.98rem;
-  font-weight: 600;
-  color: var(--text-primary, #0c1b2a);
+  font-family: "Literata", Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--vj-paper);
 }
 
 .tv-vj-shot-row {
@@ -393,26 +405,23 @@
   padding: 0.65rem 1.4rem;
   border-radius: 999px;
   border: 0;
+  font-family: "Syne", system-ui, sans-serif;
   font-weight: 650;
-  background: color-mix(in srgb, var(--vj-accent) 18%, var(--card-bg, #fff));
-  color: var(--text-primary, #0c1b2a);
+  background: color-mix(in srgb, var(--vj-gold) 16%, #141c18);
+  color: var(--vj-paper);
 }
 
-.tv-vj-shot-btn.is-active {
-  background: var(--vj-accent);
-  color: #fff;
-}
-
+.tv-vj-shot-btn.is-active,
 .tv-vj-save {
-  background: var(--vj-accent);
-  color: #fff;
+  background: var(--vj-gold);
+  color: #1a1608;
 }
 
 .tv-vj-shot-skip,
 .tv-vj-fix {
   border: 0;
   background: transparent;
-  color: var(--tv-muted, var(--text-secondary, #6b7280));
+  color: var(--vj-muted);
   font-weight: 600;
 }
 
@@ -427,13 +436,13 @@
   object-fit: cover;
   border-radius: 14px;
   margin-top: 0.35rem;
-  border: 1px solid color-mix(in srgb, var(--vj-accent) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vj-gold) 24%, transparent);
 }
 
 .tv-vj-journal {
   position: relative;
   width: 100%;
-  margin-top: 1.5rem;
+  margin-top: 1.35rem;
   animation: tv-vj-rise 400ms ease;
 }
 
@@ -441,17 +450,17 @@
   text-align: left;
   border-radius: 22px;
   padding: 1.15rem 1.2rem 1rem;
-  background: color-mix(in srgb, var(--vj-accent) 9%, var(--card-bg, #fff));
-  border: 1px solid color-mix(in srgb, var(--vj-accent) 18%, var(--card-border, #e5e7eb));
-  color: var(--text-primary, #0c1b2a);
+  background: color-mix(in srgb, var(--vj-gold) 7%, #121a17);
+  border: 1px solid color-mix(in srgb, var(--vj-gold) 18%, transparent);
+  color: var(--vj-paper);
 }
 
 .tv-vj-hero {
   margin: 0 0 0.95rem;
   padding: 0.85rem 0.95rem 0.8rem;
   border-radius: 16px;
-  background: color-mix(in srgb, var(--vj-accent) 14%, var(--card-bg, #fff));
-  border: 1px solid color-mix(in srgb, var(--vj-accent) 20%, transparent);
+  background: color-mix(in srgb, var(--vj-gold) 10%, #0f1613);
+  border: 1px solid color-mix(in srgb, var(--vj-gold) 16%, transparent);
 }
 
 .tv-vj-hero-kicker {
@@ -459,30 +468,32 @@
   font-weight: 750;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--tv-muted, var(--text-secondary, #6b7280));
+  color: var(--vj-muted);
   margin-bottom: 0.15rem;
 }
 
 .tv-vj-hero-value {
+  font-family: "Literata", Georgia, serif;
   font-size: 1.55rem;
-  font-weight: 750;
-  letter-spacing: -0.04em;
+  font-weight: 600;
+  letter-spacing: -0.03em;
   line-height: 1.15;
 }
 
-.tv-vj-hero-value.is-win { color: #047857; }
-.tv-vj-hero-value.is-loss { color: #b91c1c; }
+.tv-vj-hero-value.is-win { color: #95d5b2; }
+.tv-vj-hero-value.is-loss { color: #f1b0a8; }
 
 .tv-vj-hero-sub {
   margin-top: 0.2rem;
   font-size: 0.82rem;
-  color: var(--tv-muted, var(--text-secondary, #6b7280));
+  color: var(--vj-muted);
 }
 
 .tv-vj-card h2 {
-  font-size: 1.15rem;
-  font-weight: 750;
-  letter-spacing: -0.03em;
+  font-family: "Literata", Georgia, serif;
+  font-size: 1.18rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin: 0 0 0.85rem;
   display: flex;
   justify-content: space-between;
@@ -490,11 +501,12 @@
 }
 
 .tv-vj-card h2 span {
-  font-size: 0.78rem;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--vj-accent);
+  color: var(--vj-gold);
 }
 
 .tv-vj-row {
@@ -502,18 +514,19 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.42rem 0;
-  border-top: 1px solid color-mix(in srgb, var(--vj-accent) 10%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--vj-gold) 10%, transparent);
   font-size: 0.92rem;
 }
 
 .tv-vj-row span {
-  color: var(--tv-muted, var(--text-secondary, #6b7280));
+  color: var(--vj-muted);
 }
 
 .tv-vj-row strong {
-  font-weight: 650;
+  font-weight: 600;
   text-align: right;
   max-width: 62%;
+  font-family: "Literata", Georgia, serif;
 }
 
 .tv-vj-save {
@@ -521,11 +534,29 @@
   margin-top: 1rem;
 }
 
-.tv-vj-type {
+.tv-vj-tagline {
+  position: relative;
+  z-index: 1;
+  margin: 1.75rem 0 0.35rem;
   text-align: center;
-  font-size: 0.82rem;
-  color: var(--tv-muted, var(--text-secondary, #6b7280));
-  margin: 1.25rem 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--vj-muted);
+}
+
+.tv-vj-type {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--vj-muted) 80%, transparent);
+  margin: 0.35rem 0 0;
+}
+
+.tv-vj-type a {
+  color: var(--vj-gold-dim);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 @keyframes tv-vj-rise {
@@ -533,20 +564,24 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes tv-vj-pulse {
-  0% { transform: scale(1); opacity: 1; }
-  70% { transform: scale(1.08); opacity: 0.35; }
-  100% { transform: scale(1.1); opacity: 0.15; }
+@keyframes tv-vj-ink-in {
+  from { opacity: 0.35; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
 }
 
-@keyframes tv-vj-think {
-  0%, 100% { transform: scale(0.98); opacity: 0.7; }
+@keyframes tv-vj-idle-breathe {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.028) rotate(0.6deg); }
+}
+
+@keyframes tv-vj-voice-breathe {
+  0%, 100% { transform: scale(1) rotate(-0.4deg); }
+  50% { transform: scale(1.06) rotate(0.8deg); }
+}
+
+@keyframes tv-vj-think-breathe {
+  0%, 100% { transform: scale(0.985); opacity: 0.88; }
   50% { transform: scale(1.03); opacity: 1; }
-}
-
-@keyframes tv-vj-speak {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.045); }
 }
 
 @keyframes tv-vj-shimmer {
@@ -560,6 +595,11 @@ body:has(.tv-vj-page) .fab-container {
 
 @media (max-width: 576px) {
   .tv-vj-ai {
-    font-size: 1.15rem;
+    font-size: 1.4rem;
+  }
+
+  .tv-vj-bloom-wrap {
+    width: min(68vw, 250px);
+    height: min(68vw, 250px);
   }
 }

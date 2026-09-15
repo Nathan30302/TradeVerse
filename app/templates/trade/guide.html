@@ -3,7 +3,10 @@
 {% block title %}Voice Journal - {{ app_name }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-vj9">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-ink1">
 {% endblock %}
 
 {% block content %}
@@ -11,7 +14,8 @@
 {% set suggested_session = suggested_session|default({}) %}
 {% set voice_mode = voice_mode|default('') %}
 {% set journal_status = journal_status|default({}) %}
-<div class="tv-vj-page">
+<div class="tv-vj-page tv-vj-ink">
+    <div class="tv-vj-atmosphere" aria-hidden="true"></div>
     <canvas id="tv-vj-water" class="tv-vj-water" aria-hidden="true"></canvas>
     {% if accountability_required %}
     <div class="alert alert-info d-flex align-items-start justify-content-between gap-3 mb-3">
@@ -85,27 +89,26 @@
         <input type="file" class="d-none" id="after_screenshot" name="after_screenshot" accept="image/*">
 
         <div class="tv-vj-stage" data-state="idle" id="tv-vj-stage">
-            <p class="tv-vj-kicker">Voice Journal</p>
-            <div class="tv-vj-orb-wrap">
-                <span class="tv-vj-orb-halo" aria-hidden="true"></span>
+            <div class="tv-vj-bloom-wrap">
                 <button type="button" class="tv-vj-orb" id="tv-vj-orb" aria-label="Start conversation">
-                    <canvas id="tv-vj-canvas" width="280" height="280" aria-hidden="true"></canvas>
-                    <span class="tv-vj-orb-core" aria-hidden="true"></span>
+                    <canvas id="tv-vj-canvas" width="320" height="320" aria-hidden="true"></canvas>
                 </button>
             </div>
-            <p class="tv-vj-status" id="tv-vj-status">Tap when you’re ready</p>
+
+            <p class="tv-vj-brand">TradeVerse</p>
             <p class="tv-vj-ai" id="tv-vj-ai">Just talk.</p>
             <div class="tv-vj-live-wrap" id="tv-vj-live-wrap">
-                <span class="tv-vj-live-label">You</span>
                 <p class="tv-vj-live" id="tv-vj-live" aria-live="polite"></p>
             </div>
+            <p class="tv-vj-status" id="tv-vj-status">Tap the ink when you’re ready</p>
+
             <div class="tv-vj-chips" id="tv-vj-chips" aria-live="polite"></div>
             <p class="tv-vj-chip-hint d-none" id="tv-vj-chip-hint">Tap a chip to fix it</p>
-            <p class="small text-danger d-none mb-0" id="tv-vj-mic-err"></p>
+            <p class="tv-vj-mic-err d-none" id="tv-vj-mic-err"></p>
 
             <div class="tv-vj-composer" id="tv-vj-composer">
                 <label class="visually-hidden" for="tv-vj-type-input">Type a reply</label>
-                <input type="text" id="tv-vj-type-input" class="tv-vj-type-input" placeholder="Or type a reply…" autocomplete="off" enterkeyhint="send">
+                <input type="text" id="tv-vj-type-input" class="tv-vj-type-input" placeholder="Or write a line…" autocomplete="off" enterkeyhint="send">
                 <button type="button" class="tv-vj-type-send" id="tv-vj-type-send" aria-label="Send typed reply">Send</button>
             </div>
 
@@ -126,6 +129,7 @@
             </section>
         </div>
     </form>
+    <p class="tv-vj-tagline">A page of your journal, spoken</p>
     <p class="tv-vj-type">
         Prefer the full form? <a href="{{ url_for('trade.add') }}">Log Trade manually</a>.
     </p>
@@ -146,5 +150,5 @@
     'userId': current_user.id,
     'storageKey': 'tv-vj-draft-' ~ current_user.id
 } | tojson }}</script>
-<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj9"></script>
+<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-ink1"></script>
 {% endblock %}
