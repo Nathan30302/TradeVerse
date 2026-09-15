@@ -56,6 +56,7 @@ def test_guide_page_loads(logged_client):
     assert "tv-vj-water" in body
     assert "tv-vj-ink" in body
     assert "A page of your journal, spoken" in body
+    assert "tv-vj-progress" in body
     assert "tv-vj-shot-before" in body
     assert "tv-vj-shot-after" in body
     assert "tv-vj-chips" in body

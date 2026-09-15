@@ -46,6 +46,31 @@
   var typeSend = document.getElementById('tv-vj-type-send');
   var chipHint = document.getElementById('tv-vj-chip-hint');
   var pendingEl = document.getElementById('tv-vj-pending');
+  var progressEl = document.getElementById('tv-vj-progress');
+
+  if (boot.mode === 'quick') {
+    draft.voice_mode = 'quick';
+  }
+
+  function setPhase(phase) {
+    if (!progressEl) return;
+    var order = ['facts', 'reflect', 'charts', 'review'];
+    var idx = order.indexOf(phase || 'facts');
+    if (idx < 0) idx = 0;
+    progressEl.querySelectorAll('[data-phase]').forEach(function (el) {
+      var p = el.getAttribute('data-phase');
+      var i = order.indexOf(p);
+      el.classList.toggle('is-on', i === idx);
+      el.classList.toggle('is-done', i >= 0 && i < idx);
+    });
+  }
+
+  // Seed progress from restored draft / complete-trade deep link.
+  try {
+    if (boot.complete && boot.complete.symbol) setPhase('reflect');
+    else if (draft && (draft.thesis_notes || draft.followed_plan)) setPhase('reflect');
+    else if (draft && draft.symbol) setPhase('facts');
+  } catch (e) { /* ignore */ }
 
   var rec = {
     stream: null,
@@ -1187,8 +1212,10 @@
           return;
         }
         draft = data.draft || draft;
+        if (boot.mode === 'quick') draft.voice_mode = 'quick';
         applyForm(data.form, data.instrument);
         renderChips(draft, data.metrics || {});
+        setPhase(data.phase || (data.ask_screenshot ? 'charts' : (data.complete ? 'review' : '')));
         setVal('guide_voice_dump', transcriptDump.join('\n'));
         history.push({ role: 'assistant', content: data.reply || '' });
         persistDraft();
@@ -1206,6 +1233,7 @@
           if (reviewMode) return;
           if (data.ask_screenshot) {
             setState('waiting');
+            setPhase('charts');
             return;
           }
           startRec();
@@ -1222,6 +1250,7 @@
     stopTTS();
     reviewMode = true;
     setState('review');
+    setPhase('review');
     setLive('');
     if (shotEl && hasBefore && hasAfter) shotEl.classList.add('d-none');
     if (journalEl) journalEl.classList.remove('d-none');

@@ -100,6 +100,7 @@ _QUESTIONS = (
     ("entry_time", "About what time did you enter?"),
     ("take_profit", "Any target on it?"),
     ("exit_price", "Where did you get out?"),
+    ("lot_size", "What size were you trading?"),
     ("thesis_notes", "Why did you enter — what was the idea?"),
     ("followed_plan", "Did you follow your rules on this one?"),
     ("feeling_during", "How were you feeling during the trade?"),
@@ -131,12 +132,14 @@ _EMPTY = {
     "pnl": None,
     "voice_dump": None,
     "entry_time": None,
+    "voice_mode": None,
     "screenshot_prompted": False,
     "screenshot_before": False,
     "screenshot_after": False,
     "stop_skipped": False,
     "tp_skipped": False,
     "reflection_skipped": False,
+    "lot_skipped": False,
 }
 
 _SHORT_ANSWER = re.compile(
@@ -160,6 +163,7 @@ _FILLED_ASK = (
     ("status", ("still in it, or already", "already done?", "still in it or")),
     ("session_type", ("which session", "london, new york", "what session")),
     ("thesis_notes", ("the idea going in", "what was the idea", "why did you enter")),
+    ("lot_size", ("what size", "how many lots", "lot size", "position size")),
     ("followed_plan", ("follow your rules", "followed your rules", "follow the plan", "followed the plan")),
     ("feeling_during", ("feeling during", "feel during", "how were you feeling during")),
     ("feeling_after", ("feel about it now", "feeling after", "how do you feel about it now")),
@@ -343,6 +347,37 @@ def _substantial_line(text: str) -> bool:
     return len(words) >= 6 or any(h in t.lower() for h in _REASON_HINTS)
 
 
+def _thin_reflection(text: str, key: str) -> bool:
+    """True when a lessons/improve/thesis reply is too thin to keep."""
+    t = _light_clean(text)
+    if not t:
+        return True
+    words = t.split()
+    if key == "thesis_notes":
+        return _is_short_field_answer(t) and not any(h in t.lower() for h in _REASON_HINTS)
+    if key in ("lessons", "improve_next"):
+        if len(words) <= 1:
+            return True
+        if len(words) == 2 and parse_yes_no(t) in ("yes", "no"):
+            return True
+        return False
+    return False
+
+
+def _best_spoken_thesis(candidates: List[str]) -> str:
+    """Pick the strongest user-spoken idea line (never a polished rewrite)."""
+    for turn in reversed(candidates):
+        low = turn.lower()
+        if _substantial_line(turn) and any(
+            h in low for h in ("because", "idea", "thesis", "setup", "sweep", "break", "retest", "liquidity")
+        ):
+            return turn[:2000]
+    for turn in reversed(candidates):
+        if _substantial_line(turn):
+            return turn[:2000]
+    return ""
+
+
 def _capture_user_words(
     draft: Dict[str, Any],
     transcript: str,
@@ -364,28 +399,42 @@ def _capture_user_words(
     elif prev_dump:
         draft["voice_dump"] = prev_dump
 
-    blob = str(draft.get("voice_dump") or dump or "")
     existing = _light_clean(str(draft.get("thesis_notes") or ""))
-    latest = _light_clean(transcript)
-    if existing and blob and existing.lower() not in blob.lower() and _token_overlap(existing, blob) < 0.5:
+    if existing in ("skipped",):
         existing = ""
-
-    if existing:
-        if latest and _substantial_line(latest) and latest.lower() not in existing.lower():
-            draft["thesis_notes"] = (existing + " " + latest).strip()[:2000]
-        else:
-            draft["thesis_notes"] = existing[:2000]
-        return draft
-
+    latest = _light_clean(transcript)
+    blob = str(draft.get("voice_dump") or dump or "")
     candidates = list(turns)
     for line in reversed(blob.split("\n")):
         line = line.strip()
         if line and line not in candidates:
             candidates.append(line)
-    for turn in reversed(candidates):
-        if _substantial_line(turn):
-            draft["thesis_notes"] = turn[:2000]
+
+    # If thesis was rewritten away from spoken words, restore the user's line.
+    dump_l = blob.lower()
+    if existing and dump_l and existing.lower() not in dump_l:
+        restored = _best_spoken_thesis(candidates)
+        if restored:
+            draft["thesis_notes"] = restored
             return draft
+
+    hard = _hard_missing(draft, transcript)
+    # Freeze thesis once we already have one and we're on reflection prompts.
+    if existing and hard and hard[0] in _REFLECT_KEYS:
+        draft["thesis_notes"] = existing[:2000]
+        return draft
+
+    if existing:
+        why_like = any(h in latest.lower() for h in ("because", "idea", "thesis", "setup", "plan was"))
+        if latest and _substantial_line(latest) and why_like and latest.lower() not in existing.lower():
+            draft["thesis_notes"] = (existing + " " + latest).strip()[:2000]
+        else:
+            draft["thesis_notes"] = existing[:2000]
+        return draft
+
+    spoken = _best_spoken_thesis(candidates)
+    if spoken:
+        draft["thesis_notes"] = spoken
     return draft
 
 
@@ -413,6 +462,9 @@ def _one_question(reply: str) -> str:
 def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
     missing = missing_keys(draft)
     soft = {"take_profit"}
+    if (draft.get("voice_mode") or "") == "quick":
+        # Quick mode still gets thesis + rules; deeper feelings are soft.
+        soft |= {"feeling_during", "feeling_after", "lessons", "improve_next", "entry_time", "lot_size"}
     hard = [k for k in missing if k not in soft]
     t = (transcript or "").lower()
     if "stop_loss" in hard and (draft.get("stop_skipped") or re.search(r"\b(no stop|without a stop|flat)\b", t)):
@@ -421,6 +473,12 @@ def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
         hard = [k for k in hard if k != "take_profit"]
     if "entry_time" in hard and _skipped_time(t):
         hard = [k for k in hard if k != "entry_time"]
+    if "lot_size" in hard and (
+        draft.get("lot_skipped")
+        or re.search(r"\b(default size|standard size|skip(?:ped)? (?:size|lots?)|not sure (?:of |about )?size)\b", t)
+    ):
+        draft["lot_skipped"] = True
+        hard = [k for k in hard if k != "lot_size"]
     if draft.get("reflection_skipped"):
         hard = [k for k in hard if k not in _REFLECT_KEYS]
     return hard
@@ -469,26 +527,31 @@ def _fill_reflection_slot(draft: Dict[str, Any], key: str, text: str) -> Dict[st
         plan = _parse_followed_plan(cleaned)
         if plan:
             draft["followed_plan"] = plan
+            draft["_just_reflected"] = "followed_plan"
         return draft
-    # Feelings can be short ("calm", "nervous") — still keep exact words.
     if key in ("feeling_during", "feeling_after"):
-        if _CORR_RE.search(cleaned) or re.search(r"\d", cleaned):
+        if _CORR_RE.search(cleaned) and not re.search(
+            r"\b(feel|calm|nervous|anxious|proud|fear|patient|disciplin)\b", cleaned, re.I
+        ):
             return draft
         draft[key] = cleaned[:400]
+        draft["_just_reflected"] = key
         if key == "feeling_during":
             draft.setdefault("emotions", [])
             if isinstance(draft["emotions"], list) and cleaned[:40] not in draft["emotions"]:
                 draft["emotions"] = (draft["emotions"] + [cleaned[:40]])[:6]
         return draft
-    if _is_short_field_answer(cleaned) and key in ("lessons", "improve_next", "thesis_notes"):
-        # Too thin for a lesson — leave the slot open.
+    if _thin_reflection(cleaned, key):
         return draft
     if key == "thesis_notes" and not draft.get("thesis_notes"):
         draft["thesis_notes"] = cleaned[:2000]
+        draft["_just_reflected"] = key
     elif key == "lessons" and not draft.get("lessons"):
         draft["lessons"] = cleaned[:1200]
+        draft["_just_reflected"] = key
     elif key == "improve_next" and not draft.get("improve_next"):
         draft["improve_next"] = cleaned[:1200]
+        draft["_just_reflected"] = key
     return draft
 
 
@@ -524,6 +587,25 @@ def _apply_reflection_answer(draft: Dict[str, Any], text: str) -> Dict[str, Any]
 
 def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
     """A short spoken nod so the next question feels like a conversation."""
+    reflected = draft.pop("_just_reflected", None)
+    if reflected:
+        snippet = _light_clean(text)
+        if reflected == "followed_plan":
+            plan = draft.get("followed_plan")
+            if plan == "yes":
+                return "Good — you stayed with the rules."
+            if plan == "no":
+                return "Okay — noted you broke the rules."
+            if plan == "mostly":
+                return "Okay — mostly on plan."
+        if reflected in ("feeling_during", "feeling_after") and snippet:
+            bit = snippet.split(",")[0].strip()
+            if len(bit) > 42:
+                bit = bit[:40].rstrip() + "…"
+            return f"Got it — {bit}."
+        if reflected in ("lessons", "improve_next", "thesis_notes") and snippet:
+            return "Got it."
+        return "Got it."
     corr = draft.get("_just_corrected") or []
     if corr:
         labels: List[str] = []
@@ -535,11 +617,12 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
             "trade_type": "side",
             "symbol": "market",
             "session_type": "session",
+            "lot_size": "size",
         }
         for key in corr[:3]:
             if key == "trade_type":
                 labels.append("short" if draft.get("trade_type") == "SELL" else "long")
-            elif key in ("entry_price", "stop_loss", "take_profit", "exit_price") and draft.get(key) is not None:
+            elif key in ("entry_price", "stop_loss", "take_profit", "exit_price", "lot_size") and draft.get(key) is not None:
                 labels.append(f"{names[key]} {float(draft[key]):g}")
             elif key == "symbol" and draft.get("symbol"):
                 labels.append(str(draft["symbol"]))
@@ -569,6 +652,8 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
         bits.append(time_bit)
     if parsed.get("take_profit") is not None and len(bits) < 3:
         bits.append(f"target {float(parsed['take_profit']):g}")
+    if parsed.get("lot_size") is not None and len(bits) < 3:
+        bits.append(f"{float(parsed['lot_size']):g} lot")
     if not bits:
         if _is_short_field_answer(text) and (
             draft.get("symbol") or draft.get("trade_type") or draft.get("entry_price") is not None
@@ -727,9 +812,13 @@ def merge_draft(base: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any
                     )
                 else:
                     out[key] = prev_notes
-            elif key in ("screenshot_prompted", "screenshot_before", "screenshot_after", "stop_skipped", "tp_skipped", "reflection_skipped"):
+            elif key in ("screenshot_prompted", "screenshot_before", "screenshot_after", "stop_skipped", "tp_skipped", "reflection_skipped", "lot_skipped"):
                 if val:
                     out[key] = True
+            elif key == "voice_mode":
+                mode = str(val).strip().lower()
+                if mode in ("quick", "full", ""):
+                    out[key] = mode or None
             elif key == "followed_plan":
                 plan = str(val).strip().lower()
                 if plan in ("yes", "no", "mostly", "skipped"):
@@ -761,8 +850,12 @@ def merge_draft(base: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any
             out["tp_skipped"] = True
         if src.get("reflection_skipped"):
             out["reflection_skipped"] = True
+        if src.get("lot_skipped"):
+            out["lot_skipped"] = True
         if src.get("instrument_id"):
             out["instrument_id"] = src["instrument_id"]
+        if src.get("voice_mode"):
+            out["voice_mode"] = src["voice_mode"]
     if out.get("setup_tags") and not out.get("strategy"):
         out["strategy"] = strategy_from_setups(out["setup_tags"])
     return out
@@ -789,14 +882,44 @@ def apply_parse(draft: Dict[str, Any], parsed: Dict[str, Any]) -> Dict[str, Any]
     if parsed.get("emotions"):
         incoming["emotions"] = parsed["emotions"]
     if parsed.get("bare_number") is not None:
-        if incoming.get("entry_price") is None and draft.get("entry_price") is None:
-            incoming["entry_price"] = parsed["bare_number"]
+        bare = parsed["bare_number"]
+        # Prefer size when that is the open gap (bare "0.5" after exit is known).
+        need_lot = draft.get("lot_size") is None and not draft.get("lot_skipped")
+        exit_known = draft.get("exit_price") is not None or incoming.get("exit_price") is not None
+        facts_ready = (
+            draft.get("entry_price") is not None
+            and draft.get("stop_loss") is not None
+            and (draft.get("status") or parsed.get("status"))
+        )
+        if need_lot and (exit_known or facts_ready) and 0 < float(bare) <= 100:
+            # Small bare numbers after levels are usually lot size, not exit.
+            levels = [
+                draft.get("entry_price"),
+                draft.get("stop_loss"),
+                draft.get("take_profit"),
+                draft.get("exit_price"),
+            ]
+            large_levels = [float(x) for x in levels if x is not None and float(x) > 100]
+            if exit_known or large_levels or float(bare) <= 10:
+                incoming["lot_size"] = bare
+            elif incoming.get("exit_price") is None and (
+                draft.get("status") == "closed" or parsed.get("status") == "closed"
+            ):
+                incoming["exit_price"] = bare
+        elif incoming.get("entry_price") is None and draft.get("entry_price") is None:
+            incoming["entry_price"] = bare
         elif incoming.get("stop_loss") is None and draft.get("stop_loss") is None and draft.get("entry_price"):
-            incoming["stop_loss"] = parsed["bare_number"]
+            incoming["stop_loss"] = bare
         elif incoming.get("take_profit") is None and draft.get("take_profit") is None and draft.get("stop_loss"):
-            incoming["take_profit"] = parsed["bare_number"]
-        elif incoming.get("exit_price") is None and (draft.get("status") == "closed" or parsed.get("status") == "closed"):
-            incoming["exit_price"] = parsed["bare_number"]
+            incoming["take_profit"] = bare
+        elif (
+            incoming.get("exit_price") is None
+            and draft.get("exit_price") is None
+            and (draft.get("status") == "closed" or parsed.get("status") == "closed")
+        ):
+            incoming["exit_price"] = bare
+        elif need_lot and 0 < float(bare) <= 100:
+            incoming["lot_size"] = bare
     return merge_draft(draft, incoming)
 
 
@@ -824,20 +947,40 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
         missing.append("session_type")
     if not (draft.get("entry_time") or "").strip():
         missing.append("entry_time")
+    if draft.get("lot_size") is None and not draft.get("lot_skipped"):
+        missing.append("lot_size")
     if not draft.get("reflection_skipped"):
         if not (draft.get("thesis_notes") or "").strip():
             missing.append("thesis_notes")
         if not draft.get("followed_plan"):
             missing.append("followed_plan")
-        if not (draft.get("feeling_during") or "").strip():
-            missing.append("feeling_during")
-        if not (draft.get("feeling_after") or "").strip():
-            missing.append("feeling_after")
-        if not (draft.get("lessons") or "").strip():
-            missing.append("lessons")
-        if not (draft.get("improve_next") or "").strip():
-            missing.append("improve_next")
+        quick = (draft.get("voice_mode") or "") == "quick"
+        if not quick:
+            if not (draft.get("feeling_during") or "").strip():
+                missing.append("feeling_during")
+            if not (draft.get("feeling_after") or "").strip():
+                missing.append("feeling_after")
+            if not (draft.get("lessons") or "").strip():
+                missing.append("lessons")
+            if not (draft.get("improve_next") or "").strip():
+                missing.append("improve_next")
     return missing
+
+
+def journal_phase(draft: Dict[str, Any]) -> str:
+    """Coarse progress for the Ink Bloom page: facts → reflect → charts → review."""
+    hard = _hard_missing(draft)
+    if any(k not in _REFLECT_KEYS for k in hard):
+        return "facts"
+    if any(k in _REFLECT_KEYS for k in hard):
+        return "reflect"
+    if not draft.get("screenshot_before") and not draft.get("screenshot_after") and not draft.get("screenshot_prompted"):
+        return "charts"
+    if draft.get("screenshot_prompted") and not (
+        (draft.get("screenshot_before") and draft.get("screenshot_after"))
+    ):
+        return "charts"
+    return "review"
 
 
 def required_ready(draft: Dict[str, Any]) -> bool:
@@ -900,6 +1043,20 @@ def _apply_spoken_extras(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
         draft["tp_skipped"] = True
     if re.search(r"\b(no stop|without a stop|flat)\b", (text or "").lower()):
         draft["stop_skipped"] = True
+    # Fill size when that is the open question (bare "0.5" / "half lot").
+    hard = _hard_missing(draft, text)
+    if hard and hard[0] == "lot_size" and draft.get("lot_size") is None:
+        parsed = parse_voice_text(text)
+        if parsed.get("lot_size") is not None:
+            draft["lot_size"] = parsed["lot_size"]
+        elif parsed.get("bare_number") is not None:
+            n = float(parsed["bare_number"])
+            if 0 < n <= 100:
+                draft["lot_size"] = n
+        elif re.search(r"\bhalf\s*lot\b", (text or "").lower()):
+            draft["lot_size"] = 0.5
+        elif re.search(r"\b(one|1)\s*lot\b", (text or "").lower()):
+            draft["lot_size"] = 1.0
     return draft
 
 
@@ -985,6 +1142,7 @@ def fallback_turn(
         "ask_screenshot": nxt["ask_screenshot"],
         "screenshot_kind": nxt["screenshot_kind"],
         "uncertain": [],
+        "phase": journal_phase(draft),
         "source": "fallback",
     }
 
@@ -1187,6 +1345,7 @@ def run_turn(
         "ask_screenshot": nxt["ask_screenshot"],
         "screenshot_kind": nxt["screenshot_kind"],
         "uncertain": uncertain,
+        "phase": journal_phase(merged),
         "source": source,
     }
 
@@ -1199,13 +1358,21 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
     thesis = (draft.get("thesis_notes") or "").strip()
     if thesis in ("skipped",):
         thesis = ""
-    thesis = thesis or dump
-    if dump and thesis and _token_overlap(thesis, dump) < 0.4:
-        thesis = dump
+    # Never replace a clean thesis with the full multi-turn dump.
+    if not thesis and dump:
+        for line in dump.split("\n"):
+            low = line.lower()
+            if _substantial_line(line) and any(
+                h in low for h in ("because", "idea", "setup", "sweep", "break", "retest", "liquidity")
+            ):
+                thesis = line.strip()
+                break
+        if not thesis:
+            thesis = dump.split("\n")[0].strip()
     status = draft.get("status") or ("closed" if draft.get("exit_price") is not None else "open")
     strategy = draft.get("strategy") or strategy_from_setups(tags)
     when = (draft.get("entry_time") or "").strip()
-    if when and when != "unspecified" and when.lower() not in thesis.lower():
+    if when and when != "unspecified" and when.lower() not in (thesis or "").lower():
         thesis = (thesis + " Entered around " + when + ".").strip() if thesis else ("Entered around " + when + ".")
     during = (draft.get("feeling_during") or "").strip()
     after = (draft.get("feeling_after") or "").strip()

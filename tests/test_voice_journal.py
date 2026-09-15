@@ -249,11 +249,13 @@ def test_conversation_skips_fields_already_said():
     assert third["draft"]["session_type"]
     assert third["draft"]["entry_time"]
     assert "what did you trade" not in (third["reply"] or "").lower()
-    # Mechanics in — next is reflection (why / rules), not charts yet.
+    # Size, then reflection — not charts yet.
     assert third["ask_screenshot"] is False
     reply3 = (third["reply"] or "").lower()
     assert (
-        "why" in reply3
+        "size" in reply3
+        or "lot" in reply3
+        or "why" in reply3
         or "idea" in reply3
         or "rules" in reply3
         or "follow" in reply3
@@ -287,7 +289,8 @@ def test_conversation_completes_after_screenshot_skip():
     assert d["session_type"]
     assert d["entry_time"]
     assert required_ready(d)
-    # Fill reflection page
+    # Size then reflection page
+    d = fallback_turn("0.5", d)["draft"]
     d = fallback_turn("Swept the low then bought the reclaim", d)["draft"]
     d = fallback_turn("yes I followed my rules", d)["draft"]
     d = fallback_turn("a bit nervous but patient", d)["draft"]
@@ -375,12 +378,27 @@ def test_correction_overwrites_entry():
     assert "42510" in (nxt["reply"] or "")
 
 
+def test_bare_lot_does_not_overwrite_exit():
+    """After hit-TP, a bare size answer must fill lot — not replace exit."""
+    from app.services.voice_conversation import fallback_turn, journal_phase
+
+    d = fallback_turn(
+        "Long EURUSD at 1.1724 stop 1.1714 target 1.1744 closed London this morning hit my tp"
+    )["draft"]
+    assert d.get("exit_price") == 1.1744
+    nxt = fallback_turn("0.5", d)
+    assert nxt["draft"]["exit_price"] == 1.1744
+    assert nxt["draft"]["lot_size"] == 0.5
+    assert journal_phase(nxt["draft"]) in ("facts", "reflect")
+
+
 def test_wrap_includes_planned_return():
     from app.services.voice_conversation import fallback_turn
 
     d = fallback_turn(
         "Bought gold at 3650 stop 3640 target 3680, still in it this morning london because of the sweep"
     )["draft"]
+    d = fallback_turn("0.2", d)["draft"]
     d = fallback_turn("yes followed rules", d)["draft"]
     d = fallback_turn("calm", d)["draft"]
     d = fallback_turn("confident", d)["draft"]
@@ -400,6 +418,8 @@ def test_full_journal_asks_reflection_before_charts():
     d = fallback_turn(
         "Long EURUSD at 1.1724 stop 1.1714 target 1.1744 still open London this morning"
     )["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "lot_size":
+        d = fallback_turn("0.1", d)["draft"]
     # Drive each reflection slot explicitly.
     while missing_keys(d) and missing_keys(d)[0] == "thesis_notes":
         d = fallback_turn("London open retest of support", d)["draft"]
