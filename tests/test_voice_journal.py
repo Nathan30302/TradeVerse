@@ -571,6 +571,80 @@ def test_emotion_for_trade_fits_varchar50():
     assert emotion_for_trade("") is None
 
 
+def test_around_ten_is_clock_not_entry():
+    from app.services.voice_journal import parse_voice_text
+    from app.services.voice_conversation import apply_parse, empty_draft
+
+    parsed = parse_voice_text("around 10")
+    assert parsed.get("entry_price") is None
+    draft = empty_draft()
+    draft.update(
+        {
+            "symbol": "US30",
+            "trade_type": "BUY",
+            "entry_price": 42500,
+            "stop_loss": 42350,
+            "take_profit": 42800,
+            "status": "closed",
+            "exit_price": 42800,
+            "lot_size": 1,
+            "timeframe": "15M",
+        }
+    )
+    # Asking for entry time — clock answers must not overwrite entry.
+    nxt = apply_parse(draft, parse_voice_text("around 10"))
+    assert nxt["entry_price"] == 42500
+
+
+def test_long_spoken_emotion_does_not_crash_voice_save(logged_client, app):
+    """Reproduce the Postgres varchar(50) overflow from a real Voice Journal save."""
+    with app.app_context():
+        from app.models.instrument import Instrument
+
+        inst = Instrument.query.filter_by(symbol="US30").first()
+        assert inst is not None
+        iid = inst.id
+    long_feel = (
+        "I'm more relaxed I'm just chilled and I think I was trying to trade again "
+        "today but I just feel like maybe I should do it like the next day because "
+        "I want to stick to my rules and also not over trading"
+    )
+    r = logged_client.post(
+        "/trade/add",
+        data={
+            "from_guide": "1",
+            "from_voice": "1",
+            "symbol": "US30",
+            "instrument_id": str(iid),
+            "trade_type": "BUY",
+            "lot_size": "1",
+            "entry_price": "42500",
+            "stop_loss": "42350",
+            "take_profit": "42800",
+            "exit_price": "42800",
+            "trade_log_status": "closed",
+            "session_type": "London Session",
+            "emotion": long_feel,
+            "guide_feeling_after": long_feel,
+            "guide_why": "I was feeling relaxed I didn't risk much.",
+            "guide_what_happened": "Closed for a profit and stayed out.",
+            "lessons_learned": "Say and forget — let the chart play.",
+            "pre_trade_plan": "I was feeling relaxed I didn't risk much.",
+            "post_trade_notes": "Closed for a profit and stayed out.",
+        },
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303), r.get_data(as_text=True)[:500]
+    with app.app_context():
+        from app.models.trade import Trade
+
+        t = Trade.query.filter_by(symbol="US30").order_by(Trade.id.desc()).first()
+        assert t is not None
+        assert t.emotion is None or len(t.emotion) <= 50
+        assert t.emotion in (None, "Calm & Focused") or (t.emotion and len(t.emotion) <= 50)
+        assert "relaxed" in (t.pre_trade_plan or "").lower() or "relaxed" in (t.post_trade_notes or "").lower()
+
+
 def test_draft_form_keeps_why_review_lessons_apart():
     """Saved journal fields stay readable: why ≠ dump, lessons ≠ review."""
     from app.services.voice_conversation import draft_to_form_fields

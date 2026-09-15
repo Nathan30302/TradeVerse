@@ -602,7 +602,22 @@ def parse_voice_text(text: str) -> Dict[str, Any]:
         at_m = re.search(r"\b(?:at|around|from)\s+(\d{1,6}(?:[.,]\d{1,6})?)\b", raw, re.I)
         if at_m:
             at_val = _to_float(at_m.group(1))
-            if at_val is not None and at_val not in (out.get("stop_loss"), out.get("take_profit"), out.get("exit_price")):
+            # "around 10" / "at 9am-ish" without price context is clock time, not entry.
+            looks_like_clock = (
+                at_val is not None
+                and float(at_val).is_integer()
+                and 0 <= float(at_val) <= 24
+                and not re.search(
+                    r"\b(entry|price|bought|sold|long|short|stop|target|tp|sl|level)\b",
+                    raw,
+                    re.I,
+                )
+            )
+            if (
+                at_val is not None
+                and not looks_like_clock
+                and at_val not in (out.get("stop_loss"), out.get("take_profit"), out.get("exit_price"))
+            ):
                 out["entry_price"] = at_val
                 out["fields_found"].append("entry_price")
 

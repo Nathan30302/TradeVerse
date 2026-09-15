@@ -976,6 +976,22 @@ def apply_parse(draft: Dict[str, Any], parsed: Dict[str, Any]) -> Dict[str, Any]
         incoming["setup_tags"] = parsed["setup_tags"]
     if parsed.get("emotions"):
         incoming["emotions"] = parsed["emotions"]
+    # While asking for entry *time*, never treat "around 10" as a price fill.
+    hard_now = _hard_missing(draft, "")
+    if hard_now and hard_now[0] == "entry_time":
+        ep = incoming.get("entry_price")
+        try:
+            if ep is not None and float(ep).is_integer() and 0 <= float(ep) <= 24:
+                incoming.pop("entry_price", None)
+        except (TypeError, ValueError):
+            pass
+        bare_raw = parsed.get("bare_number")
+        try:
+            if bare_raw is not None and float(bare_raw).is_integer() and 0 <= float(bare_raw) <= 24:
+                parsed = dict(parsed)
+                parsed.pop("bare_number", None)
+        except (TypeError, ValueError):
+            pass
     if parsed.get("bare_number") is not None:
         bare = parsed["bare_number"]
         # Prefer size when that is the open gap (bare "0.5" after exit is known).
