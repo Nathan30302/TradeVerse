@@ -220,6 +220,7 @@ class Config:
     # Trading Strategies
     STRATEGIES = [
         'Price Action',
+        'Order Blocks',
         'Support & Resistance',
         'Trend Following',
         'Breakout Trading',
@@ -237,7 +238,7 @@ class Config:
         'Other'
     ]
     
-    # Trading Emotions
+    # Trading Emotions (manual chips + voice canonical list)
     EMOTIONS = [
         'Confident',
         'Calm & Focused',
@@ -253,6 +254,7 @@ class Config:
         'Frustrated',
         'Disciplined',
         'Patient',
+        'Bold',
         'Impulsive',
         'Tired',
         'Bored',

@@ -145,9 +145,17 @@ def test_add_trade_keeps_manual_form(logged_client):
     r = logged_client.get("/trade/add")
     assert r.status_code == 200
     body = r.get_data(as_text=True)
-    assert "Log trade" in body
+    assert "Journal a trade" in body
     assert "Voice Journal" in body
     assert "instrument-search" in body
+    assert "tv-journal-process" in body
+    assert "tv-emotion-chips" in body
+    assert "tv-confidence-scale" in body
+    assert "lessons_learned" in body
+    assert "Calm &amp; Focused" in body or "Calm & Focused" in body
+    assert "Order Blocks" in body
+    assert "Early exit" in body
+    assert "Size too big" in body
 
 
 def test_parse_voice_api_resolves_instrument(logged_client):
@@ -249,12 +257,13 @@ def test_conversation_skips_fields_already_said():
     assert third["draft"]["session_type"]
     assert third["draft"]["entry_time"]
     assert "what did you trade" not in (third["reply"] or "").lower()
-    # Size, then reflection — not charts yet.
+    # Size, then timeframe / reflection — not charts yet.
     assert third["ask_screenshot"] is False
     reply3 = (third["reply"] or "").lower()
     assert (
         "size" in reply3
         or "lot" in reply3
+        or "timeframe" in reply3
         or "why" in reply3
         or "idea" in reply3
         or "rules" in reply3
@@ -289,8 +298,9 @@ def test_conversation_completes_after_screenshot_skip():
     assert d["session_type"]
     assert d["entry_time"]
     assert required_ready(d)
-    # Size then reflection page
+    # Size then timeframe then reflection page
     d = fallback_turn("0.5", d)["draft"]
+    d = fallback_turn("15 minute", d)["draft"]
     d = fallback_turn("Swept the low then bought the reclaim", d)["draft"]
     d = fallback_turn("yes I followed my rules", d)["draft"]
     d = fallback_turn("a bit nervous but patient", d)["draft"]
@@ -399,6 +409,7 @@ def test_wrap_includes_planned_return():
         "Bought gold at 3650 stop 3640 target 3680, still in it this morning london because of the sweep"
     )["draft"]
     d = fallback_turn("0.2", d)["draft"]
+    d = fallback_turn("15m", d)["draft"]
     d = fallback_turn("yes followed rules", d)["draft"]
     d = fallback_turn("calm", d)["draft"]
     d = fallback_turn("confident", d)["draft"]
@@ -420,6 +431,8 @@ def test_full_journal_asks_reflection_before_charts():
     )["draft"]
     while missing_keys(d) and missing_keys(d)[0] == "lot_size":
         d = fallback_turn("0.1", d)["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "timeframe":
+        d = fallback_turn("15 minute", d)["draft"]
     # Drive each reflection slot explicitly.
     while missing_keys(d) and missing_keys(d)[0] == "thesis_notes":
         d = fallback_turn("London open retest of support", d)["draft"]

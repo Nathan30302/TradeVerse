@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'macros/mistake_chips.html' import mistake_chip_fields %}
+{% from 'macros/emotion_chips.html' import emotion_chip_fields, confidence_scale %}
 
 {% block title %}Add Trade - {{ app_name }}{% endblock %}
 
@@ -107,16 +108,23 @@
                 <div class="card-header tv-log-card-header py-3 px-3 px-md-4">
                     <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
                         <div>
-                            <h1 class="h4 mb-1 fw-bold">Log trade</h1>
-                            <p class="small text-muted mb-0">Pick instrument → direction → prices. P&amp;L is computed when you close with an exit.</p>
+                            <h1 class="h4 mb-1 fw-bold">Journal a trade</h1>
+                            <p class="small text-muted mb-0">Same process as Voice Journal — facts, setup, psychology, then review.</p>
                         </div>
                         <div class="d-flex flex-wrap gap-2 align-items-center">
                             <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('trade.guide') }}"><i class="fas fa-microphone me-1"></i>Voice Journal</a>
                             <div id="header-instrument-code" class="tv-live-symbol">No symbol</div>
                         </div>
                     </div>
+                    <ol class="tv-journal-process mb-0 mt-3" aria-label="Journal process">
+                        <li><span>1</span> Facts</li>
+                        <li><span>2</span> Setup</li>
+                        <li><span>3</span> Psychology</li>
+                        <li><span>4</span> Review</li>
+                    </ol>
                 </div>
                 <div class="card-body p-3 p-md-4">
+                    <div class="tv-journal-step-label mb-3"><span>1</span> Trade facts</div>
                     <input type="hidden" name="trade_log_status" id="trade_log_status" value="open">
 
                     <div class="mb-3 mb-md-4">
@@ -264,12 +272,27 @@
                         </div>
                     </div>
 
+                    <div class="row g-2 mb-4">
+                        <div class="col-md-6">
+                            <label for="entry_date" class="form-label fw-semibold text-uppercase small text-muted">Entry time</label>
+                            <input type="datetime-local" class="form-control" id="entry_date" name="entry_date">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label for="commission" class="form-label fw-semibold text-uppercase small text-muted">Commission</label>
+                            <input type="number" step="0.01" class="form-control" id="commission" name="commission" placeholder="0">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label for="swap" class="form-label fw-semibold text-uppercase small text-muted">Swap</label>
+                            <input type="number" step="0.01" class="form-control" id="swap" name="swap" placeholder="0">
+                        </div>
+                    </div>
+
                     {% if feature_playbook %}
-                    <div class="border rounded-3 p-3 mb-3 bg-body" id="tv-playbook-card">
+                    <div class="border rounded-3 p-3 mb-4 bg-body" id="tv-playbook-card">
                         <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
                             <div>
-                                <h6 class="mb-1 fw-bold"><i class="fas fa-book-open me-1"></i> Playbook setup</h6>
-                                <p class="small text-muted mb-0">Select the strategy you are following for this trade. Stay on-system — don’t trade blind.</p>
+                                <h6 class="mb-1 fw-bold"><i class="fas fa-book-open me-1"></i> Did you follow a saved setup?</h6>
+                                <p class="small text-muted mb-0">Tag the playbook you traded — stay on-system.</p>
                             </div>
                             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('playbook.new') }}">Add setup</a>
                         </div>
@@ -304,15 +327,15 @@
                     </div>
                     {% endif %}
 
-                    <div class="mt-4 pt-3 border-top border-secondary-subtle" id="tvMoreFields">
-                        <div class="tv-more-section">
-                            <h6 class="text-muted text-uppercase small fw-bold mb-2">Strategy &amp; session</h6>
-                            <p id="tv-strategy-notes-blurb" class="small text-muted mb-3">For <strong>open</strong> trades these are optional (log fast). For <strong>closed</strong> trades, strategy, pre-trade plan, and post-trade notes are required so coaching stays accurate.</p>
-                            <div class="row g-3 mb-4">
+                    <div class="mt-2" id="tvMoreFields">
+                        <section class="tv-journal-step mb-4" aria-labelledby="tv-step-setup">
+                            <div class="tv-journal-step-label" id="tv-step-setup"><span>2</span> Setup &amp; why</div>
+                            <p id="tv-strategy-notes-blurb" class="small text-muted mb-3">What made you enter — strategy, timeframe, and the plan. For <strong>closed</strong> trades, strategy + pre-trade plan are required.</p>
+                            <div class="row g-3 mb-3">
                                 <div class="col-md-4">
                                     <label for="strategy" class="form-label small fw-semibold">Strategy <span id="tv-strategy-required" class="text-danger d-none">*</span></label>
                                     <select class="form-select" id="strategy" name="strategy" aria-describedby="tv-strategy-field-err">
-                                        <option value="" selected id="tv-strategy-placeholder">Optional for open trades…</option>
+                                        <option value="" selected id="tv-strategy-placeholder">Price action, order blocks, SMC…</option>
                                         {% for strategy in config.STRATEGIES %}
                                             <option value="{{ strategy }}">{{ strategy }}</option>
                                         {% endfor %}
@@ -320,18 +343,9 @@
                                     <div id="tv-strategy-field-err" class="invalid-feedback d-none" role="alert"></div>
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="session_type" class="form-label small fw-semibold">Session</label>
-                                    <select class="form-select" id="session_type" name="session_type">
-                                        <option value="">Optional</option>
-                                        {% for session in config.SESSION_TYPES %}
-                                            <option value="{{ session }}">{{ session }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="timeframe" class="form-label small fw-semibold">Timeframe</label>
+                                    <label for="timeframe" class="form-label small fw-semibold">Focus timeframe</label>
                                     <select class="form-select" id="timeframe" name="timeframe">
-                                        <option value="">Optional</option>
+                                        <option value="">Which chart were you on?</option>
                                         <option value="1M">1M</option>
                                         <option value="5M">5M</option>
                                         <option value="15M">15M</option>
@@ -342,70 +356,57 @@
                                         <option value="1W">1W</option>
                                     </select>
                                 </div>
-                            </div>
-                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Psychology</h6>
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-6">
-                                    <label for="emotion" class="form-label small fw-semibold">Emotion</label>
-                                    <select class="form-select" id="emotion" name="emotion">
+                                <div class="col-md-4">
+                                    <label for="session_type" class="form-label small fw-semibold">Session</label>
+                                    <select class="form-select" id="session_type" name="session_type">
                                         <option value="">Optional</option>
-                                        {% for emotion in config.EMOTIONS %}
-                                            <option value="{{ emotion }}">{{ emotion }}</option>
+                                        {% for session in config.SESSION_TYPES %}
+                                            <option value="{{ session }}">{{ session }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="confidence_level" class="form-label small fw-semibold">Confidence</label>
-                                    <select class="form-select" id="confidence_level" name="confidence_level">
-                                        <option value="">Optional</option>
-                                        {% for i in range(10, 0, -1) %}
-                                            <option value="{{ i }}">{{ i }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label small fw-semibold">Mistakes <span class="text-muted fw-normal">(optional)</span></label>
-                                    {{ mistake_chip_fields([]) }}
-                                </div>
                             </div>
-                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Notes</h6>
-                            <div class="mb-3">
+                            <div class="mb-0">
                                 <label for="pre_trade_plan" class="form-label small fw-semibold">Pre-trade plan <span id="tv-pre-plan-required" class="text-danger d-none">*</span></label>
-                                <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" maxlength="8000" placeholder="What was the setup and plan?" aria-describedby="tv-pre-plan-hint tv-pre-plan-field-err"></textarea>
-                                <div id="tv-pre-plan-hint" class="form-text">Recommended always; required when the trade is Closed (min. 8 characters).</div>
+                                <textarea class="form-control" id="pre_trade_plan" name="pre_trade_plan" rows="3" maxlength="8000" placeholder="What was the setup and plan? Why this entry?" aria-describedby="tv-pre-plan-hint tv-pre-plan-field-err"></textarea>
+                                <div id="tv-pre-plan-hint" class="form-text">Same as Voice Journal “why” — required when Closed (min. 8 characters).</div>
                                 <div id="tv-pre-plan-field-err" class="invalid-feedback d-none" role="alert"></div>
                             </div>
+                        </section>
+
+                        <section class="tv-journal-step mb-4" aria-labelledby="tv-step-psych">
+                            <div class="tv-journal-step-label" id="tv-step-psych"><span>3</span> Psychology</div>
+                            <p class="small text-muted mb-3">How were you feeling, and how confident were you in the idea?</p>
+                            <label class="form-label small fw-semibold">Emotion</label>
+                            {{ emotion_chip_fields(prefill.get('emotion') if prefill else '') }}
+                            <div class="mt-3">
+                                <label class="form-label small fw-semibold">Confidence <span class="text-muted fw-normal">(1–10)</span></label>
+                                {{ confidence_scale(prefill.get('confidence_level') if prefill else '') }}
+                            </div>
+                        </section>
+
+                        <section class="tv-journal-step mb-2" aria-labelledby="tv-step-review">
+                            <div class="tv-journal-step-label" id="tv-step-review"><span>4</span> Review &amp; discipline</div>
+                            <p class="small text-muted mb-3">Outcome, lessons, and honesty checks — the same wrap-up Voice Journal asks for.</p>
                             <div class="mb-3">
-                                <label for="post_trade_notes" class="form-label small fw-semibold">Post-trade notes <span id="tv-post-notes-required" class="text-danger d-none">*</span></label>
-                                <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3" maxlength="8000" placeholder="Review, outcome, lessons" aria-describedby="tv-post-notes-hint tv-post-notes-field-err"></textarea>
+                                <label for="post_trade_notes" class="form-label small fw-semibold">Post-trade review <span id="tv-post-notes-required" class="text-danger d-none">*</span></label>
+                                <textarea class="form-control" id="post_trade_notes" name="post_trade_notes" rows="3" maxlength="8000" placeholder="What happened? Outcome vs plan?" aria-describedby="tv-post-notes-hint tv-post-notes-field-err"></textarea>
                                 <div id="tv-post-notes-hint" class="form-text">Required when position is <strong>Closed</strong> (min. 8 characters).</div>
                                 <div id="tv-post-notes-field-err" class="invalid-feedback d-none" role="alert"></div>
                             </div>
-                            <h6 class="text-muted text-uppercase small fw-bold mb-2">Compliance</h6>
-                            <p class="small text-muted mb-2">Honesty checks for score &amp; coaching — don’t game these; they only help you if they’re real.</p>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="checklist_completed" name="checklist_completed">
-                                        <label class="form-check-label small" for="checklist_completed">Pre-trade checklist done</label>
-                                    </div>
-                                </div>
+                            <div class="mb-3">
+                                <label for="lessons_learned" class="form-label small fw-semibold">Lessons <span class="text-muted fw-normal">(optional)</span></label>
+                                <textarea class="form-control" id="lessons_learned" name="lessons_learned" rows="2" maxlength="8000" placeholder="What will you do differently next time?"></textarea>
                             </div>
-                            <div class="row g-2 mt-3 pt-3 border-top border-secondary-subtle">
-                                <div class="col-md-6">
-                                    <label for="entry_date" class="form-label small fw-semibold">Entry time <span class="text-muted fw-normal">(optional)</span></label>
-                                    <input type="datetime-local" class="form-control form-control-sm" id="entry_date" name="entry_date">
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="commission" class="form-label small fw-semibold">Commission</label>
-                                    <input type="number" step="0.01" class="form-control form-control-sm" id="commission" name="commission" placeholder="0">
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="swap" class="form-label small fw-semibold">Swap</label>
-                                    <input type="number" step="0.01" class="form-control form-control-sm" id="swap" name="swap" placeholder="0">
-                                </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Mistakes <span class="text-muted fw-normal">(optional)</span></label>
+                                {{ mistake_chip_fields([]) }}
                             </div>
-                        </div>
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" id="checklist_completed" name="checklist_completed">
+                                <label class="form-check-label small" for="checklist_completed">I followed my pre-trade checklist</label>
+                            </div>
+                        </section>
                     </div>
                 </div>
             </div>
@@ -562,6 +563,7 @@
       }
     }
     if (typeof calculateRR === 'function') calculateRR();
+    if (typeof window.tvSyncJournalChips === 'function') window.tvSyncJournalChips();
   }
   function queueAfterDraftRestore() {
     setTimeout(function () {
@@ -1219,6 +1221,68 @@ function calculateRR() {
         }
       });
     }
+
+    /* Emotion + confidence chips (same choices Voice Journal uses) */
+    function syncEmotionChips() {
+      var hidden = document.getElementById('emotion');
+      var val = hidden ? String(hidden.value || '') : '';
+      document.querySelectorAll('#tv-emotion-chips [data-emotion]').forEach(function (btn) {
+        var on = btn.getAttribute('data-emotion') === val;
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    function syncConfidenceChips() {
+      var hidden = document.getElementById('confidence_level');
+      var val = hidden ? String(hidden.value || '') : '';
+      document.querySelectorAll('#tv-confidence-scale [data-conf]').forEach(function (btn) {
+        var on = String(btn.getAttribute('data-conf')) === val;
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    window.tvSyncJournalChips = function () {
+      syncEmotionChips();
+      syncConfidenceChips();
+      document.querySelectorAll('.tv-mistake-chips .tv-journal-chip-check').forEach(function (lab) {
+        var inp = lab.querySelector('input[type="checkbox"]');
+        lab.classList.toggle('is-on', !!(inp && inp.checked));
+      });
+    };
+    var emoWrap = document.getElementById('tv-emotion-chips');
+    if (emoWrap) {
+      emoWrap.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest && ev.target.closest('[data-emotion]');
+        if (!btn) return;
+        var hidden = document.getElementById('emotion');
+        var next = btn.getAttribute('data-emotion') || '';
+        if (hidden && String(hidden.value || '') === next) next = '';
+        if (hidden) hidden.value = next;
+        syncEmotionChips();
+        scheduleSave();
+      });
+    }
+    var confWrap = document.getElementById('tv-confidence-scale');
+    if (confWrap) {
+      confWrap.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest && ev.target.closest('[data-conf]');
+        if (!btn) return;
+        var hidden = document.getElementById('confidence_level');
+        var next = btn.getAttribute('data-conf') || '';
+        if (hidden && String(hidden.value || '') === next) next = '';
+        if (hidden) hidden.value = next;
+        syncConfidenceChips();
+        scheduleSave();
+      });
+    }
+    document.querySelectorAll('.tv-mistake-chips input[type="checkbox"]').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var lab = inp.closest('.tv-journal-chip-check');
+        if (lab) lab.classList.toggle('is-on', inp.checked);
+        scheduleSave();
+      });
+    });
+    window.tvSyncJournalChips();
   });
 }());
 </script>

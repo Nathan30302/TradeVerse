@@ -59,6 +59,7 @@
         <input type="hidden" name="take_profit" id="take_profit" value="{{ complete_prefill.take_profit if complete_prefill|default(none) else '' }}">
         <input type="hidden" name="exit_price" id="exit_price" value="{{ complete_prefill.exit_price if complete_prefill|default(none) else '' }}">
         <input type="hidden" name="emotion" id="emotion" value="">
+        <input type="hidden" name="confidence_level" id="confidence_level" value="">
         <input type="hidden" name="strategy" id="strategy" value="{{ complete_prefill.strategy if complete_prefill else '' }}">
         <input type="hidden" name="session_type" id="session_type" value="{{ complete_prefill.session_type if complete_prefill else '' }}">
         <input type="hidden" name="timeframe" id="timeframe" value="">

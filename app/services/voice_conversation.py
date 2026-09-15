@@ -101,10 +101,12 @@ _QUESTIONS = (
     ("take_profit", "Any target on it?"),
     ("exit_price", "Where did you get out?"),
     ("lot_size", "What size were you trading?"),
+    ("timeframe", "What timeframe were you mainly on?"),
     ("thesis_notes", "Why did you enter — what was the idea?"),
     ("followed_plan", "Did you follow your rules on this one?"),
     ("feeling_during", "How were you feeling during the trade?"),
     ("feeling_after", "And how do you feel about it now?"),
+    ("confidence_level", "How confident were you — one to ten?"),
     ("lessons", "What did you learn from this trade?"),
     ("improve_next", "What will you do differently next time?"),
 )
@@ -128,6 +130,8 @@ _EMPTY = {
     "improve_next": None,
     "emotions": [],
     "lot_size": None,
+    "timeframe": None,
+    "confidence_level": None,
     "outcome": None,
     "pnl": None,
     "voice_dump": None,
@@ -164,9 +168,11 @@ _FILLED_ASK = (
     ("session_type", ("which session", "london, new york", "what session")),
     ("thesis_notes", ("the idea going in", "what was the idea", "why did you enter")),
     ("lot_size", ("what size", "how many lots", "lot size", "position size")),
+    ("timeframe", ("what timeframe", "which timeframe", "mainly on", "focused on")),
     ("followed_plan", ("follow your rules", "followed your rules", "follow the plan", "followed the plan")),
     ("feeling_during", ("feeling during", "feel during", "how were you feeling during")),
     ("feeling_after", ("feel about it now", "feeling after", "how do you feel about it now")),
+    ("confidence_level", ("how confident", "one to ten", "1 to 10", "confidence")),
     ("lessons", ("what did you learn", "what have you learnt", "lesson")),
     ("improve_next", ("differently next time", "improve next", "next time")),
 )
@@ -481,10 +487,10 @@ def _one_question(reply: str) -> str:
 
 def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
     missing = missing_keys(draft)
-    soft = {"take_profit"}
+    soft = {"take_profit", "confidence_level"}
     if (draft.get("voice_mode") or "") == "quick":
         # Quick mode still gets thesis + rules; deeper feelings are soft.
-        soft |= {"feeling_during", "feeling_after", "lessons", "improve_next", "entry_time", "lot_size"}
+        soft |= {"feeling_during", "feeling_after", "lessons", "improve_next", "entry_time", "lot_size", "timeframe"}
     hard = [k for k in missing if k not in soft]
     t = (transcript or "").lower()
     if "stop_loss" in hard and (draft.get("stop_skipped") or re.search(r"\b(no stop|without a stop|flat)\b", t)):
@@ -493,6 +499,12 @@ def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
         hard = [k for k in hard if k != "take_profit"]
     if "entry_time" in hard and _skipped_time(t):
         hard = [k for k in hard if k != "entry_time"]
+    if "timeframe" in hard and re.search(
+        r"\b(skip(?:ped)?(?: timeframe| that| it)?|any timeframe|not sure(?: of| about)? timeframe|don't (?:remember|know) (?:the )?timeframe)\b",
+        t,
+    ):
+        draft["timeframe"] = "unspecified"
+        hard = [k for k in hard if k != "timeframe"]
     if "lot_size" in hard and (
         draft.get("lot_skipped")
         or re.search(r"\b(default size|standard size|skip(?:ped)? (?:size|lots?)|not sure (?:of |about )?size)\b", t)
@@ -971,6 +983,8 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
         missing.append("entry_time")
     if draft.get("lot_size") is None and not draft.get("lot_skipped"):
         missing.append("lot_size")
+    if not (draft.get("timeframe") or "").strip():
+        missing.append("timeframe")
     if not draft.get("reflection_skipped"):
         thesis = (draft.get("thesis_notes") or "").strip()
         if not thesis or thesis == "skipped" or _levels_only_dump(thesis):
@@ -983,6 +997,7 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
                 missing.append("feeling_during")
             if not (draft.get("feeling_after") or "").strip():
                 missing.append("feeling_after")
+            # confidence_level is soft / parse-only — never blocks lessons or wrap.
             if not (draft.get("lessons") or "").strip():
                 missing.append("lessons")
             if not (draft.get("improve_next") or "").strip():
@@ -1056,6 +1071,49 @@ def _mark_shots(
     return draft
 
 
+def _extract_timeframe(text: str) -> Optional[str]:
+    t = (text or "").lower()
+    patterns = (
+        (r"\b(1|one)\s*(?:min(?:ute)?s?|m)\b", "1M"),
+        (r"\b(5|five)\s*(?:min(?:ute)?s?|m)\b", "5M"),
+        (r"\b(15|fifteen)\s*(?:min(?:ute)?s?|m)\b", "15M"),
+        (r"\b(30|thirty)\s*(?:min(?:ute)?s?|m)\b", "30M"),
+        (r"\b(1|one)\s*(?:hour|hr|h)\b", "1H"),
+        (r"\b(4|four)\s*(?:hour|hr|h)\b", "4H"),
+        (r"\b(daily|1\s*d|day chart)\b", "1D"),
+        (r"\b(weekly|1\s*w|week chart)\b", "1W"),
+        (r"\b(15m|5m|1m|30m|1h|4h|1d|1w)\b", None),
+    )
+    for pat, fixed in patterns:
+        m = re.search(pat, t)
+        if not m:
+            continue
+        if fixed:
+            return fixed
+        raw = m.group(1).upper()
+        return raw if raw.endswith(("M", "H", "D", "W")) else raw
+    return None
+
+
+def _extract_confidence(text: str) -> Optional[int]:
+    t = (text or "").lower()
+    m = re.search(
+        r"\b(?:confidence|confident)?\s*(?:was\s+|of\s+|at\s+|about\s+)?(\d{1,2})\s*(?:/|out of)\s*10\b",
+        t,
+    )
+    if not m:
+        m = re.search(r"\b(?:confidence|confident)\s*(?:was\s+|of\s+|at\s+|about\s+)?(\d{1,2})\b", t)
+    if not m and re.search(r"\b(one to ten|1 to 10|how confident)\b", t):
+        return None
+    if not m:
+        # Bare 1–10 only when that is the open soft question — handled in extras.
+        return None
+    n = int(m.group(1))
+    if 1 <= n <= 10:
+        return n
+    return None
+
+
 def _apply_spoken_extras(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
     when = _extract_entry_time(text)
     if when and not draft.get("entry_time"):
@@ -1066,6 +1124,12 @@ def _apply_spoken_extras(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
         draft["tp_skipped"] = True
     if re.search(r"\b(no stop|without a stop|flat)\b", (text or "").lower()):
         draft["stop_skipped"] = True
+    tf = _extract_timeframe(text)
+    if tf and not draft.get("timeframe"):
+        draft["timeframe"] = tf
+    conf = _extract_confidence(text)
+    if conf is not None and draft.get("confidence_level") is None:
+        draft["confidence_level"] = conf
     # Fill size when that is the open question (bare "0.5" / "half lot").
     hard = _hard_missing(draft, text)
     if hard and hard[0] == "lot_size" and draft.get("lot_size") is None:
@@ -1080,6 +1144,25 @@ def _apply_spoken_extras(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
             draft["lot_size"] = 0.5
         elif re.search(r"\b(one|1)\s*lot\b", (text or "").lower()):
             draft["lot_size"] = 1.0
+    if hard and hard[0] == "timeframe" and not draft.get("timeframe"):
+        tf2 = _extract_timeframe(text)
+        if tf2:
+            draft["timeframe"] = tf2
+        elif re.search(r"\b(15|5|1|30|4)\b", (text or "").lower()) and len((text or "").split()) <= 4:
+            # "15" / "15m" style short answers while asking timeframe
+            bare = re.search(r"\b(15|5|1|30|4)\b", (text or "").lower())
+            if bare:
+                amap = {"1": "1M", "5": "5M", "15": "15M", "30": "30M", "4": "4H"}
+                draft["timeframe"] = amap.get(bare.group(1), bare.group(1))
+    if (
+        draft.get("confidence_level") is None
+        and (not hard or hard[0] == "confidence_level" or hard[0] in _REFLECT_KEYS)
+    ):
+        parsed = parse_voice_text(text)
+        if parsed.get("bare_number") is not None and hard and hard[0] == "confidence_level":
+            n = int(float(parsed["bare_number"]))
+            if 1 <= n <= 10:
+                draft["confidence_level"] = n
     return draft
 
 
@@ -1430,6 +1513,8 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
         "trade_log_status": status,
         "session_type": draft.get("session_type") or "",
         "strategy": strategy or "",
+        "timeframe": draft.get("timeframe") if draft.get("timeframe") not in (None, "unspecified") else "",
+        "confidence_level": draft.get("confidence_level") if draft.get("confidence_level") is not None else "",
         "guide_session": draft.get("session_type") or "",
         "guide_why": thesis,
         "guide_voice_dump": dump or thesis,

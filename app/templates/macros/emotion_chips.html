@@ -1,0 +1,23 @@
+{# Single-select emotion chips → hidden input name=emotion (matches config.EMOTIONS). #}
+{% macro emotion_chip_fields(selected='') %}
+<input type="hidden" name="emotion" id="emotion" value="{{ selected or '' }}">
+<div class="tv-journal-chips tv-emotion-chips" id="tv-emotion-chips" role="group" aria-label="How were you feeling">
+    {% for emotion in config.EMOTIONS %}
+    <button type="button" class="tv-journal-chip{% if selected == emotion %} is-on{% endif %}"
+            data-emotion="{{ emotion }}" aria-pressed="{{ 'true' if selected == emotion else 'false' }}">
+        {{ emotion }}
+    </button>
+    {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro confidence_scale(selected='') %}
+<input type="hidden" name="confidence_level" id="confidence_level" value="{{ selected or '' }}">
+<div class="tv-confidence-scale" id="tv-confidence-scale" role="group" aria-label="Confidence from 1 to 10">
+    {% for i in range(1, 11) %}
+    <button type="button" class="tv-conf-btn{% if selected|string == i|string %} is-on{% endif %}"
+            data-conf="{{ i }}" aria-pressed="{{ 'true' if selected|string == i|string else 'false' }}">{{ i }}</button>
+    {% endfor %}
+</div>
+<p class="form-text mb-0">1 = guessing · 10 = A+ conviction</p>
+{% endmacro %}
