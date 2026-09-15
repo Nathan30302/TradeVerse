@@ -145,6 +145,62 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 
+def _save_trade_screenshot(file_storage, prefix='trade'):
+    """Save a before/after chart upload; return relative path or None."""
+    if not (file_storage and getattr(file_storage, 'filename', None)):
+        return None
+    filename = (file_storage.filename or '').strip()
+    if not filename or not allowed_file(filename):
+        return None
+    from app.services.uploads_storage import put_file_storage
+
+    timestamp = utc_now().strftime('%Y%m%d_%H%M%S')
+    unique_name = f"{prefix}_{current_user.id}_{timestamp}_{secure_filename(filename)}"
+    rel = f"uploads/trade_screenshots/{unique_name}"
+    try:
+        return put_file_storage(rel, file_storage)
+    except OSError:
+        current_app.logger.warning('trade screenshot save failed', exc_info=True)
+        return None
+
+
+def _compose_guided_log_fields(form):
+    """Turn Voice Journal / guided answers into journal notes / emotion / flags."""
+    from app.services.voice_journal import compose_guided_fields
+
+    return compose_guided_fields(form)
+
+
+def _resolve_instrument_row(query: str):
+    """Match a spoken or typed symbol to an active Instrument row."""
+    raw = (query or '').strip()
+    if not raw:
+        return None
+    from app.services.voice_journal import normalize_symbol_guess
+
+    guessed, _ = normalize_symbol_guess(raw)
+    candidates = []
+    if guessed:
+        candidates.append(guessed)
+    compact = ''.join(ch for ch in raw if ch.isalnum()).upper()
+    if compact and compact not in candidates:
+        candidates.append(compact)
+    for sym in candidates:
+        row = Instrument.query.filter_by(symbol=sym, is_active=True).first()
+        if row:
+            return row
+    safe = raw[:40].replace('%', '').replace('_', '')
+    pattern = f"%{safe}%"
+    return (
+        Instrument.query.filter(
+            Instrument.is_active == True,
+            or_(Instrument.symbol.ilike(pattern), Instrument.name.ilike(pattern)),
+        )
+        .order_by(Instrument.symbol)
+        .first()
+    )
+
+
 def _playbook_setups_for_trade_form():
     """Empty when Playbook migrations are not installed (avoids 500 on missing tables/columns)."""
     if not current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready'):
@@ -252,10 +308,11 @@ def add():
     active_cooldown = get_active_cooldown(current_user.id)
     accountability_required = bool(session.get("tv_accountability_required"))
     playbook_setups = _playbook_setups_for_trade_form()
+    tpl = 'trade/guide.html' if request.form.get('from_guide') == '1' else 'trade/add.html'
     if request.method == 'GET':
         clear_add_trade_draft = bool(session.pop('tv_clear_add_trade_draft', None))
         return render_template(
-            'trade/add.html',
+            tpl,
             active_cooldown=active_cooldown,
             prefill=None,
             accountability_required=accountability_required,
@@ -270,7 +327,7 @@ def add():
             if not confirmed:
                 flash('Accountability mode: complete the pre-trade checklist before logging a trade.', 'warning')
                 return render_template(
-                    'trade/add.html',
+                    tpl,
                     active_cooldown=active_cooldown,
                     prefill=None,
                     accountability_required=True,
@@ -284,7 +341,7 @@ def add():
             flash('⏳ Cooldown active. You can’t log a new trade until it expires (or override with a reason).', 'warning')
             # Keep user on Add Trade with an inline banner instead of redirecting away.
             return render_template(
-                'trade/add.html',
+                tpl,
                 active_cooldown=active_cooldown,
                 prefill=None,
                 accountability_required=accountability_required,
@@ -299,7 +356,7 @@ def add():
                 'warning',
             )
             return render_template(
-                'trade/add.html',
+                tpl,
                 active_cooldown=active_cooldown,
                 prefill=None,
                 accountability_required=accountability_required,
@@ -322,7 +379,7 @@ def add():
             if not symbol or not instrument_id:
                 flash('Select an instrument from the list before saving your trade.', 'danger')
                 return render_template(
-                    'trade/add.html',
+                    tpl,
                     active_cooldown=active_cooldown,
                     prefill=None,
                     accountability_required=accountability_required,
@@ -343,7 +400,7 @@ def add():
                     'danger',
                 )
                 return render_template(
-                    'trade/add.html',
+                    tpl,
                     active_cooldown=active_cooldown,
                     prefill=None,
                     accountability_required=accountability_required,
@@ -377,7 +434,7 @@ def add():
             elif log_status == 'closed' and not (exit_price and str(exit_price).strip()):
                 flash('Closed trades need an exit price (or switch to Open).', 'danger')
                 return render_template(
-                    'trade/add.html',
+                    tpl,
                     active_cooldown=active_cooldown,
                     prefill=None,
                     accountability_required=accountability_required,
@@ -401,13 +458,38 @@ def add():
             # Get notes
             pre_trade_plan = request.form.get('pre_trade_plan', '').strip()
             post_trade_notes = request.form.get('post_trade_notes', '').strip()
+            lessons_learned = (request.form.get('lessons_learned') or '').strip()
+            guided = _compose_guided_log_fields(request.form)
+            from_guide = (request.form.get('from_guide') or '').strip() == '1'
+            if guided:
+                if not pre_trade_plan:
+                    pre_trade_plan = guided['pre_trade_plan']
+                if not post_trade_notes:
+                    post_trade_notes = guided['post_trade_notes']
+                if not emotion:
+                    emotion = guided['emotion']
+                if not strategy and guided.get('strategy'):
+                    strategy = guided['strategy']
+                if not session_type and guided.get('session_type'):
+                    session_type = guided['session_type']
+                if not lessons_learned and guided.get('lessons_learned'):
+                    lessons_learned = guided['lessons_learned']
+
+            # Voice Journal: never block save on optional reflection / strategy chips.
+            if from_guide and log_status == 'closed':
+                if not strategy:
+                    strategy = 'Other'
+                if len(pre_trade_plan or '') < 8:
+                    pre_trade_plan = (pre_trade_plan or '').strip() or 'Voice journaled.'
+                if len(post_trade_notes or '') < 8:
+                    post_trade_notes = (post_trade_notes or '').strip() or 'Logged via Voice Journal.'
 
             allowed_strategies = current_app.config.get('STRATEGIES') or []
             # Open trades: strategy/plan optional so logging is fast; closed trades keep the discipline bar.
             if strategy and allowed_strategies and strategy not in allowed_strategies:
                 flash('Select a valid strategy from the list (or leave it blank for now).', 'danger')
                 return render_template(
-                    'trade/add.html',
+                    tpl,
                     active_cooldown=active_cooldown,
                     prefill=None,
                     accountability_required=accountability_required,
@@ -417,7 +499,7 @@ def add():
                 if not strategy or (allowed_strategies and strategy not in allowed_strategies):
                     flash('Closed trades need a strategy from the list (helps Analytics and Patterns).', 'danger')
                     return render_template(
-                        'trade/add.html',
+                        tpl,
                         active_cooldown=active_cooldown,
                         prefill=None,
                         accountability_required=accountability_required,
@@ -426,7 +508,7 @@ def add():
                 if len(pre_trade_plan) < 8:
                     flash('Closed trades need a short pre-trade plan (at least 8 characters).', 'danger')
                     return render_template(
-                        'trade/add.html',
+                        tpl,
                         active_cooldown=active_cooldown,
                         prefill=None,
                         accountability_required=accountability_required,
@@ -435,7 +517,7 @@ def add():
             elif pre_trade_plan and len(pre_trade_plan) < 8:
                 flash('Pre-trade plan must be at least 8 characters if you fill it in.', 'danger')
                 return render_template(
-                    'trade/add.html',
+                    tpl,
                     active_cooldown=active_cooldown,
                     prefill=None,
                     accountability_required=accountability_required,
@@ -447,7 +529,7 @@ def add():
                     'danger',
                 )
                 return render_template(
-                    'trade/add.html',
+                    tpl,
                     active_cooldown=active_cooldown,
                     prefill=None,
                     accountability_required=accountability_required,
@@ -457,6 +539,9 @@ def add():
             # Get compliance
             checklist_completed = request.form.get('checklist_completed') == 'on'
             playbook_followed = request.form.get('playbook_followed') == 'on'
+            if guided:
+                checklist_completed = checklist_completed or guided['checklist_completed']
+                playbook_followed = playbook_followed or guided['playbook_followed']
             
             # Get risk info
             commission = request.form.get('commission')
@@ -476,9 +561,12 @@ def add():
                 emotion=emotion,
                 pre_trade_plan=pre_trade_plan if pre_trade_plan else None,
                 post_trade_notes=post_trade_notes if post_trade_notes else None,
+                lessons_learned=lessons_learned if lessons_learned else None,
                 checklist_completed=checklist_completed,
                 playbook_followed=playbook_followed
             )
+            if guided and guided.get('tags'):
+                trade.tags = guided['tags']
 
             if current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready'):
                 pb_setup_id = (request.form.get("playbook_setup_id") or "").strip()
@@ -534,6 +622,13 @@ def add():
 
             _apply_excursion_from_form(trade, request.form)
             _apply_mistake_tags_from_form(trade, request.form)
+
+            before_path = _save_trade_screenshot(request.files.get('before_screenshot'), 'before')
+            if before_path:
+                trade.before_screenshot = before_path
+            after_path = _save_trade_screenshot(request.files.get('after_screenshot'), 'after')
+            if after_path:
+                trade.after_screenshot = after_path
             
             # Calculate P/L and R:R if applicable
             if trade.exit_price:
@@ -567,6 +662,8 @@ def add():
                 if trade_needs_review(trade):
                     flash('Add a one-line lesson while it is fresh — it powers AI Buddy and your review queue.', 'info')
                     return redirect(url_for('trade.view', trade_id=trade.id, review=1))
+            if from_guide:
+                return redirect(url_for('trade.view', trade_id=trade.id, voice_note=1))
             return redirect(url_for('trade.view', trade_id=trade.id))
             
         except ValueError as e:
@@ -592,13 +689,192 @@ def add():
             prefill['playbook_setup_id'] = q_pb
 
     return render_template(
-        'trade/add.html',
+        tpl,
         active_cooldown=active_cooldown,
         prefill=prefill,
         playbook_setups=playbook_setups,
         accountability_required=accountability_required,
         clear_add_trade_draft=False,
     )
+
+
+@bp.route('/guide', methods=['GET'])
+@login_required
+def guide():
+    """Voice Journal — speak a trade, confirm, save through the same Add Trade path."""
+    from app.services.voice_journal import (
+        EMOTION_CHIPS,
+        SESSION_CHIPS,
+        SETUP_CHIPS,
+        suggest_session,
+        today_journal_status,
+    )
+
+    active_cooldown = get_active_cooldown(current_user.id)
+    accountability_required = bool(session.get("tv_accountability_required"))
+    playbook_setups = _playbook_setups_for_trade_form()
+    mode = (request.args.get('mode') or '').strip().lower()
+    if mode in ('30', '30s', 'fast'):
+        mode = 'quick'
+    complete_id = (request.args.get('complete') or '').strip()
+    complete_prefill = None
+    if complete_id.isdigit():
+        existing = Trade.query.filter_by(id=int(complete_id), user_id=current_user.id).first()
+        if existing:
+            complete_prefill = {
+                'id': existing.id,
+                'symbol': existing.symbol,
+                'instrument_id': existing.instrument_id,
+                'trade_type': existing.trade_type,
+                'lot_size': existing.lot_size,
+                'entry_price': existing.entry_price,
+                'stop_loss': existing.stop_loss,
+                'take_profit': existing.take_profit,
+                'exit_price': existing.exit_price,
+                'status': existing.status,
+                'session_type': existing.session_type,
+                'strategy': existing.strategy,
+                'emotion': existing.emotion,
+                'pre_trade_plan': existing.pre_trade_plan,
+                'post_trade_notes': existing.post_trade_notes,
+            }
+    tz_name = getattr(current_user, 'timezone', None) or 'UTC'
+    return render_template(
+        'trade/guide.html',
+        active_cooldown=active_cooldown,
+        prefill=None,
+        accountability_required=accountability_required,
+        playbook_setups=playbook_setups,
+        clear_add_trade_draft=False,
+        voice_mode=mode,
+        complete_prefill=complete_prefill,
+        emotion_chips=EMOTION_CHIPS,
+        setup_chips=SETUP_CHIPS,
+        session_chips=SESSION_CHIPS,
+        suggested_session=suggest_session(tz_name=tz_name),
+        journal_status=today_journal_status(current_user.id, tz_name),
+    )
+
+
+@bp.route('/voice', methods=['GET'])
+@login_required
+def voice():
+    """Alias for Voice Journal (bookmarks / one-tap dashboard)."""
+    return redirect(url_for('trade.guide', **request.args))
+
+
+@bp.route('/api/parse-voice', methods=['POST'])
+@login_required
+def parse_voice():
+    """Turn a transcript into structured trade fields for confirmation."""
+    from app.services.voice_journal import parse_voice_text, preview_metrics, suggest_session
+
+    payload = request.get_json(silent=True) or {}
+    text = str(payload.get('text') or '')[:8000]
+    parsed = parse_voice_text(text)
+    instrument = None
+    if parsed.get('symbol'):
+        row = _resolve_instrument_row(parsed['symbol'])
+        if row:
+            instrument = {'id': row.id, 'symbol': row.symbol, 'name': row.name}
+            parsed['symbol'] = row.symbol
+        else:
+            parsed['symbol_needs_confirm'] = True
+            if 'symbol' not in parsed['uncertain']:
+                parsed['uncertain'].append('symbol')
+    metrics = preview_metrics(
+        entry=parsed.get('entry_price'),
+        stop_loss=parsed.get('stop_loss'),
+        take_profit=parsed.get('take_profit'),
+        exit_price=parsed.get('exit_price'),
+        side=parsed.get('trade_type') or 'BUY',
+        lot_size=parsed.get('lot_size') or 1.0,
+        symbol=parsed.get('symbol') or '',
+    )
+    tz_name = getattr(current_user, 'timezone', None) or 'UTC'
+    return jsonify({
+        'ok': True,
+        'parsed': parsed,
+        'instrument': instrument,
+        'metrics': metrics,
+        'suggested_session': suggest_session(tz_name=tz_name),
+    })
+
+
+@bp.route('/api/extract-chart', methods=['POST'])
+@login_required
+def extract_chart():
+    """Best-effort screenshot extraction. Prices always come back as unconfirmed."""
+    from app.services.chart_extract import extract_trade_from_image
+
+    upload = (
+        request.files.get('image')
+        or request.files.get('before_screenshot')
+        or request.files.get('after_screenshot')
+    )
+    if not upload or not getattr(upload, 'filename', None):
+        return jsonify({'ok': False, 'error': 'No screenshot received.', 'fields': {}, 'uncertain': []}), 400
+    result = extract_trade_from_image(upload)
+    instrument = None
+    fields = result.get('fields') or {}
+    if fields.get('symbol'):
+        row = _resolve_instrument_row(fields['symbol'])
+        if row:
+            instrument = {'id': row.id, 'symbol': row.symbol, 'name': row.name}
+            fields['symbol'] = row.symbol
+            result['fields'] = fields
+    result['instrument'] = instrument
+    return jsonify(result)
+
+
+@bp.route('/api/journal-status', methods=['GET'])
+@login_required
+def journal_status():
+    """Today's journaled vs missing trades (dashboard + Voice Journal draft banner)."""
+    from app.services.voice_journal import today_journal_status
+
+    tz_name = getattr(current_user, 'timezone', None) or 'UTC'
+    return jsonify(today_journal_status(current_user.id, tz_name))
+
+
+@bp.route('/<int:trade_id>/voice-complete', methods=['POST'])
+@login_required
+def voice_complete(trade_id):
+    """Add journal fields to an existing trade (imported / closed, still unjournaled)."""
+    trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
+    guided = _compose_guided_log_fields(request.form) or {}
+    emotion = (request.form.get('emotion') or '').strip() or guided.get('emotion')
+    if emotion:
+        trade.emotion = emotion
+    session_type = (request.form.get('session_type') or '').strip() or guided.get('session_type')
+    if session_type:
+        trade.session_type = session_type
+    strategy = (request.form.get('strategy') or '').strip() or guided.get('strategy')
+    if strategy:
+        trade.strategy = strategy
+    pre = (request.form.get('pre_trade_plan') or '').strip() or guided.get('pre_trade_plan')
+    post = (request.form.get('post_trade_notes') or '').strip() or guided.get('post_trade_notes')
+    lessons = (request.form.get('lessons_learned') or '').strip() or guided.get('lessons_learned')
+    if pre:
+        trade.pre_trade_plan = ((trade.pre_trade_plan or '').strip() + '\n' + pre).strip() if (trade.pre_trade_plan or '').strip() and pre not in (trade.pre_trade_plan or '') else pre
+    if post:
+        existing_post = (trade.post_trade_notes or '').strip()
+        trade.post_trade_notes = (existing_post + '\n' + post).strip() if existing_post and post not in existing_post else post
+    if lessons:
+        trade.lessons_learned = lessons
+    if guided.get('tags'):
+        trade.tags = guided['tags']
+    if guided.get('playbook_followed'):
+        trade.playbook_followed = True
+    before_path = _save_trade_screenshot(request.files.get('before_screenshot'), 'before')
+    if before_path:
+        trade.before_screenshot = before_path
+    after_path = _save_trade_screenshot(request.files.get('after_screenshot'), 'after')
+    if after_path:
+        trade.after_screenshot = after_path
+    db.session.commit()
+    flash('Journal saved.', 'success')
+    return redirect(url_for('trade.view', trade_id=trade.id, voice_note=1))
 
 
 def _duplicate_prefill(user_id):
@@ -999,6 +1275,15 @@ def edit(trade_id):
                 flash('✅ Review saved.', 'success')
                 if cooldown_note:
                     flash(cooldown_note, 'warning')
+                return redirect(url_for('trade.view', trade_id=trade.id))
+
+            if (request.form.get('tv_voice_note') or '').strip() == '1':
+                extra = (request.form.get('voice_note') or '').strip()
+                if extra:
+                    existing = (trade.lessons_learned or '').strip()
+                    trade.lessons_learned = (existing + '\n' + extra).strip() if existing else extra
+                    db.session.commit()
+                    flash('Voice note saved.', 'success')
                 return redirect(url_for('trade.view', trade_id=trade.id))
 
             # Update basic info

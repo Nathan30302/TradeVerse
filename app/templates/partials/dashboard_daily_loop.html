@@ -19,6 +19,9 @@
             {% endif %}
         </div>
         <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('trade.guide', mode='quick') }}">
+                <i class="fas fa-microphone me-1"></i> Voice
+            </a>
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.weekly_review') }}">
                 <i class="fas fa-calendar-week me-1"></i> Weekly review
             </a>
@@ -102,4 +105,42 @@
             </div>
         </div>
     </div>
+
+    {% set js = daily.get('journal_status') or {} %}
+    {% if js.get('today_total', 0) or js.get('pending_count', 0) %}
+    <div class="tv-panel p-3 mt-3" id="tvJournalStatus">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+            <div>
+                <div class="small tv-muted text-uppercase fw-semibold mb-1" style="letter-spacing:0.08em;font-size:0.68rem;">Journal status</div>
+                <div class="fw-semibold mb-1">Today</div>
+                <p class="small mb-0">
+                    {{ js.get('today_total', 0) }} trade{% if js.get('today_total', 0) != 1 %}s{% endif %}
+                    · {{ js.get('today_journaled', 0) }} journaled
+                    {% if js.get('today_missing') %}
+                    · {{ js.get('today_missing') }} missing
+                    {% endif %}
+                </p>
+                {% if js.get('pending_count', 0) > 0 %}
+                <p class="small tv-muted mb-0 mt-2" id="tvJournalNag">{{ js.pending_count }} trade{% if js.pending_count != 1 %}s haven’t{% else %} hasn’t{% endif %} been journaled yet. Don’t lose today’s data.</p>
+                {% endif %}
+            </div>
+            <div class="d-flex flex-column gap-2">
+                {% if js.get('first_missing_id') %}
+                <a class="btn btn-sm btn-primary" href="{{ url_for('trade.guide', complete=js.first_missing_id, mode='quick') }}">Journal missing trades</a>
+                {% endif %}
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('trade.guide', mode='quick') }}">Log in 30 seconds</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
+<script>
+(function () {
+  try {
+    if (localStorage.getItem('tv_vj_reminders') === '0') {
+      var nag = document.getElementById('tvJournalNag');
+      if (nag) nag.classList.add('d-none');
+    }
+  } catch (e) {}
+})();
+</script>

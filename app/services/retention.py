@@ -302,6 +302,15 @@ def build_dashboard_daily_context(user, *, user_name: str = '') -> Dict[str, Any
         _rollback_quietly()
         focus_compliance = {}
 
+    journal_status = {}
+    try:
+        from app.services.voice_journal import today_journal_status
+
+        journal_status = today_journal_status(uid, tz)
+    except Exception:
+        _rollback_quietly()
+        journal_status = {}
+
     return {
         'review_queue': review_queue,
         'journaling_streak': get_journaling_streak(uid, tz),
@@ -309,6 +318,7 @@ def build_dashboard_daily_context(user, *, user_name: str = '') -> Dict[str, Any
         'weekly_score': weekly_score,
         'weekly_focus': wf,
         'focus_compliance': focus_compliance,
+        'journal_status': journal_status,
     }
 
 

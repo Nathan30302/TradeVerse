@@ -2178,6 +2178,18 @@
             bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
             right: 1.5rem;
             z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        .fab-voice {
+            width: 48px;
+            height: 48px;
+            font-size: 1.15rem;
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+            box-shadow: 0 4px 16px rgba(20, 184, 166, 0.35);
         }
         
         .fab {
@@ -2699,7 +2711,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}"
+                <a class="nav-link {% if request.endpoint in ('trade.add', 'trade.guide') %}active{% endif %}"
                    href="{{ url_for('trade.add') }}">
                     <i class="fas fa-plus-circle"></i> Add Trade
                 </a>
@@ -2866,7 +2878,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'trade.add' %}active{% endif %}" href="{{ url_for('trade.add') }}">
+                            <a class="nav-link {% if request.endpoint in ('trade.add', 'trade.guide') %}active{% endif %}" href="{{ url_for('trade.add') }}">
                                 <i class="fas fa-plus-circle"></i><span>Add Trade</span>
                             </a>
                         </li>
@@ -2979,8 +2991,11 @@
     </div>
 
     {% if current_user.is_authenticated %}
-    <!-- Floating Action Button for Quick Add -->
-    <div class="fab-container" title="Quick Add Trade">
+    <!-- One-tap log: Voice Journal + manual Add Trade -->
+    <div class="fab-container" title="Journal a trade">
+        <a href="{{ url_for('trade.guide') }}" class="fab fab-voice" aria-label="Voice journal">
+            <i class="fas fa-microphone"></i>
+        </a>
         <a href="{{ url_for('trade.add') }}" class="fab" aria-label="Add new trade">
             <i class="fas fa-plus"></i>
         </a>

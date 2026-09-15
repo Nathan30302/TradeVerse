@@ -214,6 +214,13 @@
                                            name="daily_max_trades" value="{{ profile_daily_max_trades if profile_daily_max_trades is not none else '' }}" placeholder="e.g. 5">
                                     <small class="text-muted">Leave blank for no cap. Cancelled trades do not count.</small>
                                 </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="tv-journal-reminders" checked>
+                                        <label class="form-check-label" for="tv-journal-reminders">Remind me to voice-journal after I close a trade</label>
+                                    </div>
+                                    <small class="text-muted">Quiet prompts only — never spam. Stored on this device.</small>
+                                </div>
                             </div>
                             <div class="mt-4">
                                 <button type="submit" class="btn btn-primary btn-lg rounded-pill px-4">
@@ -481,6 +488,17 @@
                 if (window.applyFont) window.applyFont(f, true, true);
             });
         });
+
+        const rem = document.getElementById('tv-journal-reminders');
+        if (rem) {
+            try {
+                const stored = localStorage.getItem('tv_vj_reminders');
+                rem.checked = stored !== '0';
+            } catch (e) {}
+            rem.addEventListener('change', function () {
+                try { localStorage.setItem('tv_vj_reminders', rem.checked ? '1' : '0'); } catch (e) {}
+            });
+        }
     });
 </script>
 {% endblock %}
