@@ -392,6 +392,14 @@ def parse_voice_text(text: str) -> Dict[str, Any]:
                 out["fields_found"].append("entry_price" if key == "entry" else key)
 
     if out.get("entry_price") is None:
+        at_m = re.search(r"\b(?:at|around|from)\s+(\d{1,6}(?:[.,]\d{1,6})?)\b", raw, re.I)
+        if at_m:
+            at_val = _to_float(at_m.group(1))
+            if at_val is not None and at_val not in (out.get("stop_loss"), out.get("take_profit"), out.get("exit_price")):
+                out["entry_price"] = at_val
+                out["fields_found"].append("entry_price")
+
+    if out.get("entry_price") is None:
         nums = [_to_float(x) for x in _PRICE_RE.findall(raw)]
         nums = [n for n in nums if n is not None]
         if len(nums) == 1:

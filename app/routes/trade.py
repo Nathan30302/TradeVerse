@@ -808,6 +808,75 @@ def parse_voice():
     })
 
 
+@bp.route('/api/voice-turn', methods=['POST'])
+@login_required
+def voice_turn():
+    """One spoken turn: extract Trade fields silently, return the next spoken line."""
+    from app.services.voice_conversation import (
+        active_instrument_symbols,
+        draft_to_form_fields,
+        run_turn,
+    )
+    from app.services.voice_journal import preview_metrics, suggest_session
+
+    payload = request.get_json(silent=True) or {}
+    transcript = str(payload.get('transcript') or payload.get('text') or '')[:4000]
+    raw_history = payload.get('history')
+    history = raw_history if isinstance(raw_history, builtins.list) else []
+    clean_history = []
+    for row in history[-12:]:
+        if not isinstance(row, dict):
+            continue
+        role = str(row.get('role') or 'user')
+        if role not in ('user', 'assistant'):
+            role = 'user'
+        content = str(row.get('content') or '')[:800]
+        if content:
+            clean_history.append({'role': role, 'content': content})
+    tz_name = getattr(current_user, 'timezone', None) or 'UTC'
+    session_hint = suggest_session(tz_name=tz_name)
+    raw_draft = payload.get('draft')
+    result = run_turn(
+        transcript,
+        raw_draft if isinstance(raw_draft, dict) else {},
+        history=clean_history,
+        has_screenshot=bool(payload.get('has_screenshot')),
+        session_hint=session_hint,
+        skip_screenshot=bool(payload.get('skip_screenshot')),
+        instruments=active_instrument_symbols(),
+    )
+    draft = result.get('draft') or {}
+    instrument = None
+    if draft.get('symbol'):
+        row = _resolve_instrument_row(str(draft['symbol']))
+        if row:
+            instrument = {'id': row.id, 'symbol': row.symbol, 'name': row.name}
+            draft['symbol'] = row.symbol
+            draft['instrument_id'] = row.id
+            result['draft'] = draft
+    metrics = preview_metrics(
+        entry=draft.get('entry_price'),
+        stop_loss=draft.get('stop_loss'),
+        take_profit=draft.get('take_profit'),
+        exit_price=draft.get('exit_price'),
+        side=draft.get('trade_type') or 'BUY',
+        lot_size=draft.get('lot_size') or 1.0,
+        symbol=draft.get('symbol') or '',
+    )
+    return jsonify({
+        'ok': True,
+        'reply': result.get('reply') or '',
+        'draft': draft,
+        'complete': bool(result.get('complete')),
+        'ask_screenshot': bool(result.get('ask_screenshot')),
+        'uncertain': result.get('uncertain') or [],
+        'instrument': instrument,
+        'metrics': metrics,
+        'form': draft_to_form_fields(draft),
+        'source': result.get('source') or 'fallback',
+    })
+
+
 @bp.route('/api/extract-chart', methods=['POST'])
 @login_required
 def extract_chart():

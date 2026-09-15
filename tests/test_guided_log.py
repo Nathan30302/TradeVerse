@@ -50,8 +50,9 @@ def test_guide_page_loads(logged_client):
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert "Voice Journal" in body
-    assert "Let’s log your trade" in body or "Let's log your trade" in body
     assert "Just talk" in body
+    assert "tv-vj-orb" in body
+    assert "tv-vj-canvas" in body
 
 
 def test_compose_guided_fields():

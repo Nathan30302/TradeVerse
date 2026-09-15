@@ -43,6 +43,18 @@ def app():
             is_active=True,
         )
         db.session.add(gold)
+        db.session.add(
+            Instrument(
+                symbol="US30",
+                name="Dow Jones",
+                instrument_type="index",
+                category="Indices",
+                pip_size=1.0,
+                contract_size=1,
+                tick_value=1.0,
+                is_active=True,
+            )
+        )
         db.session.commit()
         yield app
 
@@ -125,8 +137,8 @@ def test_voice_alias_and_quick_mode(logged_client):
     follow = logged_client.get("/trade/guide?mode=quick")
     assert follow.status_code == 200
     body = follow.get_data(as_text=True)
-    assert "Have 30 seconds" in body
     assert "Voice Journal" in body
+    assert "Just talk" in body
 
 
 def test_add_trade_keeps_manual_form(logged_client):
@@ -203,3 +215,67 @@ def test_dashboard_has_voice_and_journal_trade(logged_client):
     body = r.get_data(as_text=True)
     assert "Voice" in body
     assert "Journal Trade" in body or "Add Trade" in body
+
+
+def test_parse_at_price_as_entry():
+    out = parse_voice_text("I went long on US30 at 42500 stop 42350")
+    assert out["symbol"] == "US30"
+    assert out["trade_type"] == "BUY"
+    assert out["entry_price"] == 42500
+    assert out["stop_loss"] == 42350
+
+
+def test_conversation_skips_fields_already_said():
+    from app.services.voice_conversation import fallback_turn
+
+    first = fallback_turn("I went long on US30 at 42500 stop 42350")
+    d = first["draft"]
+    assert d["symbol"] == "US30"
+    assert d["trade_type"] == "BUY"
+    assert d["entry_price"] == 42500
+    assert d["stop_loss"] == 42350
+    assert first["complete"] is False
+    reply = (first["reply"] or "").lower()
+    assert "long" not in reply or "still" in reply or "done" in reply or "target" in reply or "chart" in reply
+    assert "what did you trade" not in reply
+
+    second = fallback_turn("still in it, breakout off the open", d)
+    assert second["draft"]["status"] == "open"
+    assert "Breakout" in (second["draft"].get("setup_tags") or [])
+    assert "long or short" not in (second["reply"] or "").lower()
+
+
+def test_voice_turn_api_extracts_and_asks_once(logged_client):
+    r = logged_client.post(
+        "/trade/api/voice-turn",
+        json={"transcript": "I went long on US30 at 42500 stop 42350"},
+    )
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data["ok"] is True
+    assert data["draft"]["trade_type"] == "BUY"
+    assert data["draft"]["entry_price"] == 42500
+    assert data["draft"]["symbol"] == "US30"
+    assert data["complete"] is False
+    assert data["reply"]
+    assert "field" not in data["reply"].lower()
+    assert "step" not in data["reply"].lower()
+
+
+def test_conversation_completes_after_screenshot_skip():
+    from app.services.voice_conversation import fallback_turn, required_ready
+
+    d = fallback_turn(
+        "Bought gold at 3650 stop 3640, still in it because it swept the low"
+    )["draft"]
+    assert d["symbol"] == "XAUUSD"
+    assert required_ready(d)
+    shot = fallback_turn("yeah that's it", d, has_screenshot=False)
+    if shot["ask_screenshot"]:
+        done = fallback_turn("no", shot["draft"], has_screenshot=False, skip_screenshot=True)
+        assert done["complete"] is True
+        assert done["ask_screenshot"] is False
+    else:
+        done = fallback_turn("no screenshot", d, has_screenshot=False, skip_screenshot=True)
+        assert done["complete"] is True
+

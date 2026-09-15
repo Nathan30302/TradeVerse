@@ -3,242 +3,101 @@
 {% block title %}Voice Journal - {{ app_name }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/instrument-picker-simple.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}">
 {% endblock %}
 
 {% block content %}
 {% set complete_prefill = complete_prefill|default(none) %}
-{% set emotion_chips = emotion_chips|default(['Calm', 'Confident', 'Nervous', 'Fearful', 'Greedy', 'Frustrated', 'Excited', 'Impatient', 'Revenge', 'Uncertain', 'Neutral']) %}
-{% set setup_chips = setup_chips|default(['Breakout', 'Retest', 'Liquidity sweep', 'Support/resistance', 'Market structure', 'Supply/demand', 'Trend continuation', 'Reversal', 'Other']) %}
-{% set session_chips = session_chips|default([('Asia', 'Asian Session'), ('London', 'London Session'), ('New York', 'New York Session'), ('London/New York overlap', 'Overlap Sessions'), ('Other', 'Overlap Sessions')]) %}
 {% set suggested_session = suggested_session|default({}) %}
 {% set voice_mode = voice_mode|default('') %}
-<div class="row justify-content-center tv-vj-page">
-    <div class="col-12 col-md-10 col-lg-7 col-xl-6">
-        {% if accountability_required %}
-        <div class="alert alert-info d-flex align-items-start justify-content-between gap-3">
-            <div>
-                <div class="fw-bold">Accountability mode</div>
-                <div class="small text-muted">Finish the checklist on Add Trade before logging.</div>
-            </div>
-            <a class="btn btn-outline-dark btn-sm" href="{{ url_for('trade.add') }}">Open Add Trade</a>
+<div class="tv-vj-page">
+    {% if accountability_required %}
+    <div class="alert alert-info d-flex align-items-start justify-content-between gap-3 mb-3">
+        <div>
+            <div class="fw-bold">Accountability mode</div>
+            <div class="small text-muted">Finish the checklist on Add Trade before logging.</div>
         </div>
-        {% endif %}
-        {% if active_cooldown %}
-        <div class="alert alert-warning">
-            <div class="fw-bold">Cooldown active</div>
-            <a class="btn btn-outline-dark btn-sm mt-2" href="{{ url_for('trade.cooldown_status') }}">View cooldown</a>
-        </div>
-        {% endif %}
-        {% if daily_risk and daily_risk.locked %}
-        <div class="alert alert-warning">
-            <div class="fw-bold">Daily risk lock</div>
-            {% for reason in daily_risk.reasons %}<div class="small">{{ reason }}</div>{% endfor %}
-        </div>
-        {% endif %}
-
-        <div id="tv-vj-draft-banner" class="tv-vj-draft d-none" role="status">
-            <div>
-                <div class="fw-semibold">Unfinished journal</div>
-                <div class="small tv-muted" id="tv-vj-draft-meta"></div>
-            </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-primary" id="tv-vj-draft-continue">Continue</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="tv-vj-draft-discard">Discard</button>
-            </div>
-        </div>
-
-        <form id="trade-guide-form" class="tv-vj-form" method="POST"
-              action="{{ url_for('trade.voice_complete', trade_id=complete_prefill.id) if complete_prefill|default(none) else url_for('trade.add') }}"
-              enctype="multipart/form-data" novalidate>
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="from_guide" value="1">
-            <input type="hidden" name="from_voice" value="1">
-            <input type="hidden" name="trade_log_status" id="trade_log_status" value="{{ 'closed' if complete_prefill|default(none) and complete_prefill.status == 'CLOSED' else 'open' }}">
-            <input type="hidden" name="instrument_id" id="instrument_id" value="{{ complete_prefill.instrument_id if complete_prefill|default(none) else '' }}">
-            <input type="hidden" name="symbol" id="symbol" value="{{ complete_prefill.symbol if complete_prefill|default(none) else '' }}">
-            <input type="hidden" name="lot_size" id="lot_size" value="{{ complete_prefill.lot_size if complete_prefill|default(none) else 1.0 }}">
-            <input type="hidden" name="entry_price" id="entry_price" value="{{ complete_prefill.entry_price if complete_prefill|default(none) else '' }}">
-            <input type="hidden" name="stop_loss" id="stop_loss" value="{{ complete_prefill.stop_loss if complete_prefill|default(none) else '' }}">
-            <input type="hidden" name="take_profit" id="take_profit" value="{{ complete_prefill.take_profit if complete_prefill|default(none) else '' }}">
-            <input type="hidden" name="exit_price" id="exit_price" value="{{ complete_prefill.exit_price if complete_prefill|default(none) else '' }}">
-            <input type="hidden" name="emotion" id="emotion" value="">
-            <input type="hidden" name="strategy" id="strategy" value="{{ complete_prefill.strategy if complete_prefill else '' }}">
-            <input type="hidden" name="session_type" id="session_type" value="{{ complete_prefill.session_type if complete_prefill else '' }}">
-            <input type="hidden" name="timeframe" id="timeframe" value="">
-            <input type="hidden" name="pre_trade_plan" id="pre_trade_plan" value="">
-            <input type="hidden" name="post_trade_notes" id="post_trade_notes" value="">
-            <input type="hidden" name="lessons_learned" id="lessons_learned" value="">
-            <input type="hidden" name="guide_feeling_before" id="guide_feeling_before" value="">
-            <input type="hidden" name="guide_feeling_after" id="guide_feeling_after" value="">
-            <input type="hidden" name="guide_why" id="guide_why" value="">
-            <input type="hidden" name="guide_what_happened" id="guide_what_happened" value="">
-            <input type="hidden" name="guide_followed_plan" id="guide_followed_plan" value="">
-            <input type="hidden" name="guide_emotions" id="guide_emotions" value="">
-            <input type="hidden" name="guide_setup_tags" id="guide_setup_tags" value="">
-            <input type="hidden" name="guide_session" id="guide_session" value="">
-            <input type="hidden" name="guide_reflection" id="guide_reflection" value="">
-            <input type="hidden" name="guide_voice_dump" id="guide_voice_dump" value="">
-            <input type="hidden" name="guide_moved_sl" id="guide_moved_sl" value="">
-            <input type="hidden" name="guide_early_close" id="guide_early_close" value="">
-            <input type="hidden" name="guide_partials" id="guide_partials" value="">
-            <input type="hidden" name="guide_added" id="guide_added" value="">
-            <input type="hidden" name="guide_mgmt_note" id="guide_mgmt_note" value="">
-            <input type="hidden" name="accountability_confirmed" value="{{ 'true' if not accountability_required else 'false' }}">
-            <select class="visually-hidden" id="trade_type" name="trade_type" tabindex="-1" aria-hidden="true">
-                <option value="BUY" {% if not complete_prefill or complete_prefill.trade_type != 'SELL' %}selected{% endif %}>BUY</option>
-                <option value="SELL" {% if complete_prefill and complete_prefill.trade_type == 'SELL' %}selected{% endif %}>SELL</option>
-            </select>
-            <input type="file" class="d-none" id="before_screenshot" name="before_screenshot" accept="image/*">
-            <input type="file" class="d-none" id="after_screenshot" name="after_screenshot" accept="image/*">
-
-            <div class="tv-vj-shell">
-                <header class="tv-vj-top">
-                    <div>
-                        <p class="tv-vj-kicker mb-1">Voice Journal</p>
-                        <h1 class="h4 fw-bold mb-0" id="tv-vj-heading">Let’s log your trade.</h1>
-                    </div>
-                    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('trade.add') }}">Full form</a>
-                </header>
-
-                <div class="tv-vj-progress" aria-hidden="true">
-                    <div class="tv-vj-dots" id="tv-vj-dots"></div>
-                    <div class="small tv-muted" id="tv-vj-progress-label"></div>
-                </div>
-
-                <p class="tv-vj-prompt" id="tv-vj-prompt">Just talk. I’ll guide you through it.</p>
-                <p class="tv-vj-hint small tv-muted mb-3" id="tv-vj-hint"></p>
-                <div id="tv-guide-step-err" class="alert alert-danger py-2 px-3 small d-none" role="alert"></div>
-                <div class="tv-vj-heard d-none" id="tv-vj-heard" aria-live="polite"></div>
-                <div class="tv-vj-captured" id="tv-vj-captured"></div>
-
-                <div class="tv-vj-stage" id="tv-vj-stage">
-                    <section class="tv-vj-step is-active" data-step="welcome">
-                        <div class="tv-vj-welcome">
-                            <button type="button" class="tv-vj-mic" id="tv-vj-welcome-mic" aria-label="Start voice journal">
-                                <span class="tv-vj-mic-rings" aria-hidden="true"></span>
-                                <i class="fas fa-microphone"></i>
-                            </button>
-                            <p class="tv-vj-lead">Tap once. I’ll ask. You answer. That’s the whole journal.</p>
-                            <button type="button" class="btn btn-primary btn-lg tv-vj-tap w-100" id="tv-vj-start-full">Start talking</button>
-                            <button type="button" class="btn btn-link tv-vj-quiet" id="tv-vj-start-quick">Have 30 seconds? Log it fast</button>
-                        </div>
-                    </section>
-
-                    <div class="tv-vj-recorder d-none" id="tv-vj-recorder">
-                        <button type="button" class="tv-vj-mic" id="tv-vj-mic" aria-label="Listening">
-                            <span class="tv-vj-mic-rings" aria-hidden="true"></span>
-                            <i class="fas fa-microphone" id="tv-vj-mic-icon"></i>
-                        </button>
-                        <div class="tv-vj-wave" id="tv-vj-wave" aria-hidden="true">
-                            <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-                        </div>
-                        <div class="tv-vj-timer" id="tv-vj-timer">Listening…</div>
-                        <div class="tv-vj-live" id="tv-vj-live" aria-live="polite"></div>
-                        <p class="small text-danger d-none mb-0" id="tv-vj-mic-err"></p>
-                    </div>
-
-                    <section class="tv-vj-step" data-step="symbol">
-                        <div class="tv-vj-fallback d-none" id="tv-vj-symbol-fallback">
-                            <input type="search" class="form-control form-control-lg tv-vj-search" id="instrument-search"
-                                   placeholder="Type EURUSD or gold…" autocomplete="off">
-                            <div class="tv-inst-chips mt-2" id="tv-inst-recents"></div>
-                            <div class="instrument-list tv-vj-inst-list" id="instrument-list"></div>
-                            <div class="d-none instrument-categories"></div>
-                            <div class="d-none" id="selected-instrument"></div>
-                            <div class="d-none" id="tv-inst-pinned"></div>
-                        </div>
-                    </section>
-
-                    <section class="tv-vj-step" data-step="direction">
-                        <div class="tv-vj-choice-grid tv-vj-fallback d-none" id="tv-vj-dir-fallback">
-                            <button type="button" class="tv-vj-choice" data-dir="BUY" id="tv-dir-buy">Buy</button>
-                            <button type="button" class="tv-vj-choice" data-dir="SELL" id="tv-dir-sell">Sell</button>
-                        </div>
-                    </section>
-
-                    <section class="tv-vj-step" data-step="status">
-                        <div class="tv-vj-choice-grid tv-vj-fallback d-none" id="tv-vj-status-fallback">
-                            <button type="button" class="tv-vj-choice" data-status="open">Still open</button>
-                            <button type="button" class="tv-vj-choice" data-status="closed">Already done</button>
-                        </div>
-                    </section>
-
-                    <section class="tv-vj-step" data-step="before_shot">
-                        <button type="button" class="tv-vj-upload" data-shot="before" data-pick="before">
-                            <div class="tv-vj-upload-empty" id="tv-vj-before-empty">
-                                <i class="fas fa-image mb-2"></i>
-                                <div class="fw-semibold">Tap to add before-trade chart</div>
-                                <div class="small tv-muted">Camera or photo library</div>
-                            </div>
-                            <img class="tv-vj-preview d-none" id="tv-vj-before-preview" alt="Before trade">
-                        </button>
-                    </section>
-
-                    <section class="tv-vj-step" data-step="shot_confirm">
-                        <div class="tv-vj-found" id="tv-vj-found"></div>
-                        <div class="tv-vj-choice-grid">
-                            <button type="button" class="tv-vj-choice" id="tv-vj-found-yes">Yes</button>
-                            <button type="button" class="tv-vj-choice" id="tv-vj-found-edit">Change</button>
-                        </div>
-                    </section>
-
-                    <section class="tv-vj-step" data-step="entry">
-                        <input type="number" step="any" inputmode="decimal" class="form-control form-control-lg tv-vj-fallback d-none" id="tv-vj-entry" placeholder="Entry">
-                    </section>
-                    <section class="tv-vj-step" data-step="stop_loss">
-                        <input type="number" step="any" inputmode="decimal" class="form-control form-control-lg tv-vj-fallback d-none" id="tv-vj-sl" placeholder="Stop loss">
-                    </section>
-                    <section class="tv-vj-step" data-step="take_profit">
-                        <input type="number" step="any" inputmode="decimal" class="form-control form-control-lg tv-vj-fallback d-none" id="tv-vj-tp" placeholder="Take profit">
-                    </section>
-                    <section class="tv-vj-step" data-step="exit">
-                        <input type="number" step="any" inputmode="decimal" class="form-control form-control-lg tv-vj-fallback d-none" id="tv-vj-exit" placeholder="Exit">
-                    </section>
-                    <input type="hidden" id="tv-vj-lot" value="1">
-
-                    <section class="tv-vj-step" data-step="talk"></section>
-                    <section class="tv-vj-step" data-step="why"></section>
-
-                    <section class="tv-vj-step" data-step="emotions">
-                        <div class="tv-vj-chips tv-vj-fallback d-none" id="tv-vj-emotion-chips">
-                            {% for chip in emotion_chips %}
-                            <button type="button" class="tv-vj-chip" data-emotion="{{ chip }}">{{ chip }}</button>
-                            {% endfor %}
-                        </div>
-                    </section>
-
-                    <section class="tv-vj-step" data-step="after_shot">
-                        <button type="button" class="tv-vj-upload" data-shot="after" data-pick="after">
-                            <div class="tv-vj-upload-empty" id="tv-vj-after-empty">
-                                <i class="fas fa-image mb-2"></i>
-                                <div class="fw-semibold">Tap to add after-trade chart</div>
-                                <div class="small tv-muted">The path, not just the P/L</div>
-                            </div>
-                            <img class="tv-vj-preview d-none" id="tv-vj-after-preview" alt="After trade">
-                        </button>
-                    </section>
-
-                    <section class="tv-vj-step" data-step="confirm">
-                        <div class="tv-vj-ready" id="tv-vj-summary"></div>
-                    </section>
-                </div>
-
-                <div class="tv-vj-footer">
-                    <button type="button" class="btn btn-outline-secondary tv-vj-tap" id="tv-guide-back">Back</button>
-                    <div class="d-flex gap-2 flex-grow-1 justify-content-end">
-                        <button type="button" class="btn btn-outline-secondary tv-vj-tap d-none" id="tv-guide-skip">Skip</button>
-                        <button type="button" class="btn btn-outline-secondary tv-vj-tap d-none" id="tv-guide-next">Continue</button>
-                        <button type="submit" class="btn btn-primary tv-vj-tap d-none" id="tv-guide-save">Save trade</button>
-                    </div>
-                </div>
-            </div>
-        </form>
-        <p class="text-center small tv-muted mt-3 mb-5">
-            Prefer typing? <a href="{{ url_for('trade.add') }}">Use the full Log Trade form</a>.
-        </p>
+        <a class="btn btn-outline-dark btn-sm" href="{{ url_for('trade.add') }}">Open Add Trade</a>
     </div>
+    {% endif %}
+    {% if active_cooldown %}
+    <div class="alert alert-warning mb-3">
+        <div class="fw-bold">Cooldown active</div>
+        <a class="btn btn-outline-dark btn-sm mt-2" href="{{ url_for('trade.cooldown_status') }}">View cooldown</a>
+    </div>
+    {% endif %}
+
+    <form id="trade-guide-form" class="tv-vj-form" method="POST"
+          action="{{ url_for('trade.voice_complete', trade_id=complete_prefill.id) if complete_prefill|default(none) else url_for('trade.add') }}"
+          enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="from_guide" value="1">
+        <input type="hidden" name="from_voice" value="1">
+        <input type="hidden" name="trade_log_status" id="trade_log_status" value="{{ 'closed' if complete_prefill|default(none) and complete_prefill.status == 'CLOSED' else 'open' }}">
+        <input type="hidden" name="instrument_id" id="instrument_id" value="{{ complete_prefill.instrument_id if complete_prefill|default(none) else '' }}">
+        <input type="hidden" name="symbol" id="symbol" value="{{ complete_prefill.symbol if complete_prefill|default(none) else '' }}">
+        <input type="hidden" name="lot_size" id="lot_size" value="{{ complete_prefill.lot_size if complete_prefill|default(none) else 1.0 }}">
+        <input type="hidden" name="entry_price" id="entry_price" value="{{ complete_prefill.entry_price if complete_prefill|default(none) else '' }}">
+        <input type="hidden" name="stop_loss" id="stop_loss" value="{{ complete_prefill.stop_loss if complete_prefill|default(none) else '' }}">
+        <input type="hidden" name="take_profit" id="take_profit" value="{{ complete_prefill.take_profit if complete_prefill|default(none) else '' }}">
+        <input type="hidden" name="exit_price" id="exit_price" value="{{ complete_prefill.exit_price if complete_prefill|default(none) else '' }}">
+        <input type="hidden" name="emotion" id="emotion" value="">
+        <input type="hidden" name="strategy" id="strategy" value="{{ complete_prefill.strategy if complete_prefill else '' }}">
+        <input type="hidden" name="session_type" id="session_type" value="{{ complete_prefill.session_type if complete_prefill else '' }}">
+        <input type="hidden" name="timeframe" id="timeframe" value="">
+        <input type="hidden" name="pre_trade_plan" id="pre_trade_plan" value="">
+        <input type="hidden" name="post_trade_notes" id="post_trade_notes" value="">
+        <input type="hidden" name="lessons_learned" id="lessons_learned" value="">
+        <input type="hidden" name="guide_feeling_before" id="guide_feeling_before" value="">
+        <input type="hidden" name="guide_feeling_after" id="guide_feeling_after" value="">
+        <input type="hidden" name="guide_why" id="guide_why" value="">
+        <input type="hidden" name="guide_what_happened" id="guide_what_happened" value="">
+        <input type="hidden" name="guide_followed_plan" id="guide_followed_plan" value="">
+        <input type="hidden" name="guide_emotions" id="guide_emotions" value="">
+        <input type="hidden" name="guide_setup_tags" id="guide_setup_tags" value="">
+        <input type="hidden" name="guide_session" id="guide_session" value="">
+        <input type="hidden" name="guide_reflection" id="guide_reflection" value="">
+        <input type="hidden" name="guide_voice_dump" id="guide_voice_dump" value="">
+        <input type="hidden" name="guide_moved_sl" id="guide_moved_sl" value="">
+        <input type="hidden" name="guide_early_close" id="guide_early_close" value="">
+        <input type="hidden" name="guide_partials" id="guide_partials" value="">
+        <input type="hidden" name="guide_added" id="guide_added" value="">
+        <input type="hidden" name="guide_mgmt_note" id="guide_mgmt_note" value="">
+        <input type="hidden" name="accountability_confirmed" value="{{ 'true' if not accountability_required else 'false' }}">
+        <select class="visually-hidden" id="trade_type" name="trade_type" tabindex="-1" aria-hidden="true">
+            <option value="BUY" {% if not complete_prefill or complete_prefill.trade_type != 'SELL' %}selected{% endif %}>BUY</option>
+            <option value="SELL" {% if complete_prefill and complete_prefill.trade_type == 'SELL' %}selected{% endif %}>SELL</option>
+        </select>
+        <input type="file" class="d-none" id="before_screenshot" name="before_screenshot" accept="image/*">
+        <input type="file" class="d-none" id="after_screenshot" name="after_screenshot" accept="image/*">
+
+        <div class="tv-vj-stage" data-state="idle" id="tv-vj-stage">
+            <p class="tv-vj-kicker">Voice Journal</p>
+            <button type="button" class="tv-vj-orb" id="tv-vj-orb" aria-label="Start conversation">
+                <canvas id="tv-vj-canvas" width="280" height="280" aria-hidden="true"></canvas>
+                <span class="tv-vj-orb-core" aria-hidden="true"></span>
+            </button>
+            <p class="tv-vj-ai" id="tv-vj-ai">Just talk.</p>
+            <p class="tv-vj-live" id="tv-vj-live" aria-live="polite"></p>
+            <p class="tv-vj-status" id="tv-vj-status">Tap when you’re ready</p>
+            <p class="small text-danger d-none mb-0" id="tv-vj-mic-err"></p>
+
+            <div class="tv-vj-shot d-none" id="tv-vj-shot">
+                <button type="button" class="tv-vj-shot-btn" id="tv-vj-shot-pick">Add chart</button>
+                <button type="button" class="tv-vj-shot-skip" id="tv-vj-shot-skip">Not this time</button>
+                <div class="tv-vj-shot-previews" id="tv-vj-shot-previews"></div>
+            </div>
+
+            <section class="tv-vj-journal d-none" id="tv-vj-journal" aria-label="Trade journal">
+                <div id="tv-vj-summary"></div>
+                <button type="submit" class="btn btn-primary tv-vj-save" id="tv-guide-save">Save to journal</button>
+                <button type="button" class="btn btn-link tv-vj-fix" id="tv-vj-fix">Change something</button>
+            </section>
+        </div>
+    </form>
+    <p class="tv-vj-type">
+        Prefer typing? <a href="{{ url_for('trade.add') }}">Use the full Log Trade form</a>.
+    </p>
 </div>
 {% endblock %}
 
@@ -247,12 +106,12 @@
     'mode': voice_mode or '',
     'complete': complete_prefill,
     'session': suggested_session or {},
-    'parseUrl': url_for('trade.parse_voice'),
+    'turnUrl': url_for('trade.voice_turn'),
     'extractUrl': url_for('trade.extract_chart'),
     'transcribeUrl': url_for('api_voice.transcribe'),
     'transcribeEnabled': voice_transcribe_enabled,
+    'speakUrl': url_for('api_voice.speak'),
     'userId': current_user.id
 } | tojson }}</script>
-<script src="{{ url_for('static', filename='js/instrument-picker-simple.js') }}"></script>
-<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj3"></script>
+<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj4"></script>
 {% endblock %}

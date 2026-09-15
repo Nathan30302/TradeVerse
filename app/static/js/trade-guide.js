@@ -1,5 +1,6 @@
 /**
- * Voice Journal — ask → listen → fill → next. Same Trade POST as Log Trade.
+ * Voice Journal — conversation is the interface.
+ * Same Trade POST as Log Trade. Structured data is extracted in the background.
  */
 (function () {
   'use strict';
@@ -15,57 +16,25 @@
     boot = {};
   }
 
-  var uid = String(boot.userId || (document.body && document.body.getAttribute('data-user-id')) || 'anon');
-  var DRAFT_KEY = 'tv_voice_journal_draft_' + uid;
-
-  var FULL = ['symbol', 'direction', 'status', 'before_shot', 'shot_confirm', 'entry', 'stop_loss', 'take_profit', 'exit', 'why', 'emotions', 'after_shot', 'confirm'];
-  var QUICK = ['before_shot', 'shot_confirm', 'talk', 'confirm'];
-
-  var mode = boot.mode === 'quick' ? 'quick' : 'full';
-  var started = false;
-  var skipped = {};
-  var misses = {};
-  var extracted = {};
-  var confirmed = {};
-  var beforeUrl = '';
-  var afterUrl = '';
-  var lastAsked = '';
-  var restoring = false;
-  var pickerReady = false;
-  var committing = false;
-
-  var errEl = document.getElementById('tv-guide-step-err');
-  var nextBtn = document.getElementById('tv-guide-next');
-  var backBtn = document.getElementById('tv-guide-back');
-  var skipBtn = document.getElementById('tv-guide-skip');
-  var saveBtn = document.getElementById('tv-guide-save');
-  var heading = document.getElementById('tv-vj-heading');
-  var promptEl = document.getElementById('tv-vj-prompt');
-  var hintEl = document.getElementById('tv-vj-hint');
-  var dotsEl = document.getElementById('tv-vj-dots');
-  var progressLabel = document.getElementById('tv-vj-progress-label');
-  var recorderEl = document.getElementById('tv-vj-recorder');
+  var stage = document.getElementById('tv-vj-stage');
+  var orbBtn = document.getElementById('tv-vj-orb');
+  var canvas = document.getElementById('tv-vj-canvas');
+  var aiEl = document.getElementById('tv-vj-ai');
   var liveEl = document.getElementById('tv-vj-live');
-  var heardEl = document.getElementById('tv-vj-heard');
-  var capturedEl = document.getElementById('tv-vj-captured');
+  var statusEl = document.getElementById('tv-vj-status');
+  var errEl = document.getElementById('tv-vj-mic-err');
+  var shotEl = document.getElementById('tv-vj-shot');
+  var journalEl = document.getElementById('tv-vj-journal');
+  var summaryEl = document.getElementById('tv-vj-summary');
 
-  var COPY = {
-    welcome: ['Let’s log your trade.', 'Just talk. I’ll guide you through it.'],
-    symbol: ['What did you trade?', 'Say the pair — gold, EURUSD, NAS100…'],
-    direction: ['Buy or sell?', 'Just say it.'],
-    status: ['Still open, or already done?', 'Say open, or closed.'],
-    before_shot: ['Upload the before-trade screenshot.', 'I’ll read the levels from the chart.'],
-    shot_confirm: ['I found these details. Correct?', 'Say yes, or say change.'],
-    entry: ['What was your entry?', 'Say the number.'],
-    stop_loss: ['What was your stop loss?', 'Say the number.'],
-    take_profit: ['What was your take profit?', 'Say the number.'],
-    exit: ['Where did you get out?', 'Say the fill.'],
-    talk: ['Tell me what happened.', 'Instrument, side, levels, why — I’ll sort it.'],
-    why: ['Why did you take this trade?', 'One sentence is enough.'],
-    emotions: ['How were you feeling?', 'Say it naturally.'],
-    after_shot: ['Now the after-trade screenshot.', 'Before → after is the journal.'],
-    confirm: ['Trade ready.', 'Check it, then save.']
-  };
+  var state = 'idle';
+  var draft = {};
+  var history = [];
+  var transcriptDump = [];
+  var hasShot = false;
+  var skipShot = false;
+  var committing = false;
+  var lastReply = '';
 
   var rec = {
     stream: null,
@@ -81,7 +50,10 @@
     srcNode: null,
     analyser: null,
     loudWatch: null,
-    gen: 0
+    gen: 0,
+    raf: 0,
+    amp: 0,
+    freq: null
   };
 
   function csrf() {
@@ -90,18 +62,27 @@
     return el ? el.value : '';
   }
 
-  function val(id) {
-    var el = document.getElementById(id);
-    return el ? String(el.value || '').trim() : '';
-  }
-
   function setVal(id, value) {
     var el = document.getElementById(id);
     if (el) el.value = value == null ? '' : String(value);
   }
 
-  function isClosed() {
-    return val('trade_log_status') === 'closed';
+  function val(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  function setState(next) {
+    state = next;
+    if (stage) stage.setAttribute('data-state', next);
+    if (statusEl) {
+      statusEl.textContent =
+        next === 'listening' ? '' :
+        next === 'thinking' ? '' :
+        next === 'speaking' ? '' :
+        next === 'review' ? '' :
+        'Tap when you’re ready';
+    }
   }
 
   function showErr(msg) {
@@ -115,150 +96,18 @@
     errEl.classList.remove('d-none');
   }
 
-  function extractedHasValues() {
-    return !!(extracted.symbol || extracted.trade_type || extracted.entry_price || extracted.stop_loss || extracted.take_profit);
-  }
-
-  function isFilled(key) {
-    if (skipped[key]) return true;
-    if (key === 'symbol') return !!(val('instrument_id') && val('symbol'));
-    if (key === 'direction') return !!confirmed.side && (val('trade_type') === 'BUY' || val('trade_type') === 'SELL');
-    if (key === 'status') return !!confirmed.status;
-    if (key === 'before_shot') return false;
-    if (key === 'shot_confirm') return !extractedHasValues() || !!confirmed.extract;
-    if (key === 'entry') return !!val('entry_price');
-    if (key === 'stop_loss') return !!val('stop_loss') || !!skipped.stop_loss;
-    if (key === 'take_profit') return !!val('take_profit') || !!skipped.take_profit;
-    if (key === 'exit') return !isClosed() || !!val('exit_price');
-    if (key === 'talk') return !!val('guide_voice_dump');
-    if (key === 'why') return !!val('guide_why');
-    if (key === 'emotions') return !!val('guide_emotions') || !!skipped.emotions;
-    if (key === 'after_shot') return !isClosed();
-    if (key === 'confirm') return false;
-    return false;
-  }
-
-  function optionalStep(key) {
-    return ['before_shot', 'after_shot', 'stop_loss', 'take_profit', 'why', 'emotions', 'talk'].indexOf(key) !== -1;
-  }
-
-  function voiceStep(key) {
-    return ['symbol', 'direction', 'status', 'shot_confirm', 'entry', 'stop_loss', 'take_profit', 'exit', 'talk', 'why', 'emotions'].indexOf(key) !== -1;
-  }
-
-  function queue() {
-    var list = mode === 'quick' ? QUICK.slice() : FULL.slice();
-    return list.filter(function (key) { return !isFilled(key); });
-  }
-
-  function currentKey() {
-    if (!started) return 'welcome';
-    return queue()[0] || 'confirm';
-  }
-
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
-      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
-    });
-  }
-
-  function renderCaptured() {
-    if (!capturedEl) return;
-    var bits = [];
-    if (val('symbol')) bits.push(val('symbol'));
-    if (confirmed.side) bits.push(val('trade_type'));
-    if (confirmed.status) bits.push(isClosed() ? 'Closed' : 'Open');
-    if (val('entry_price')) bits.push('In ' + val('entry_price'));
-    capturedEl.textContent = bits.join(' · ');
-  }
-
-  function showHeard(text) {
-    if (!heardEl) return;
-    if (!text) {
-      heardEl.classList.add('d-none');
-      heardEl.textContent = '';
-      return;
-    }
-    heardEl.textContent = 'Heard: “' + text + '”';
-    heardEl.classList.remove('d-none');
-  }
-
-  function paint() {
-    var key = currentKey();
-    document.querySelectorAll('.tv-vj-step').forEach(function (el) {
-      el.classList.toggle('is-active', el.getAttribute('data-step') === key);
-    });
-    var copy = COPY[key] || ['Voice Journal', ''];
-    if (mode === 'quick' && (key === 'before_shot' || key === 'talk')) {
-      copy = ['Have 30 seconds? Let’s log this trade.', copy[1]];
-    }
-    if (heading) heading.textContent = key === 'welcome' ? 'Let’s log your trade.' : 'Voice Journal';
-    if (promptEl) promptEl.textContent = copy[0];
-    if (hintEl) hintEl.textContent = copy[1] || '';
-    var list = queue();
-    if (dotsEl) {
-      dotsEl.textContent = '';
-      var shown = (mode === 'quick' ? QUICK : FULL).filter(function (k) { return k !== 'confirm'; });
-      var now = shown.indexOf(key);
-      shown.forEach(function (k, i) {
-        var d = document.createElement('span');
-        if (isFilled(k) || (now !== -1 && i < now)) d.className = 'is-done';
-        if (k === key) d.className = 'is-now';
-        dotsEl.appendChild(d);
-      });
-    }
-    if (progressLabel) {
-      progressLabel.textContent = key === 'confirm' ? 'Ready to save.' : (list.length <= 3 ? 'Almost there.' : '');
-    }
-    var last = key === 'confirm';
-    if (backBtn) backBtn.disabled = key === 'welcome';
-    if (nextBtn) nextBtn.classList.toggle('d-none', last || voiceStep(key));
-    if (saveBtn) saveBtn.classList.toggle('d-none', !last);
-    if (skipBtn) skipBtn.classList.toggle('d-none', last || key === 'welcome' || !optionalStep(key));
-    if (recorderEl) recorderEl.classList.toggle('d-none', !started || !voiceStep(key));
-    document.querySelectorAll('.tv-vj-fallback').forEach(function (el) {
-      var step = el.closest('.tv-vj-step');
-      var sk = step ? step.getAttribute('data-step') : '';
-      el.classList.toggle('d-none', !(misses[sk] >= 1 && sk === key));
-    });
-    if (key === 'shot_confirm') renderFound();
-    if (last) renderSummary();
-    renderCaptured();
-    showErr('');
-    if (!restoring) saveDraft();
-    if (started && voiceStep(key) && key !== lastAsked && !rec.recording && !committing) {
-      lastAsked = key;
-      askThenListen(copy[0]);
+  function setAi(text) {
+    lastReply = String(text || '');
+    if (aiEl) {
+      aiEl.textContent = lastReply;
+      aiEl.classList.add('is-in');
     }
   }
 
-  function stopTTS() {
-    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
-  }
-
-  function askThenListen(question) {
-    stopRec(true);
-    stopTTS();
-    var spoken = false;
-    function listen() {
-      setTimeout(function () {
-        if (started && voiceStep(currentKey())) startRec();
-      }, 350);
-    }
-    if (window.speechSynthesis && question) {
-      try {
-        var u = new SpeechSynthesisUtterance(question);
-        u.rate = 1.04;
-        u.pitch = 1;
-        spoken = true;
-        u.onend = listen;
-        u.onerror = listen;
-        window.speechSynthesis.speak(u);
-      } catch (e) {
-        spoken = false;
-      }
-    }
-    if (!spoken) listen();
+  function setLive(text) {
+    if (!liveEl) return;
+    liveEl.textContent = text || '';
+    liveEl.classList.toggle('is-on', !!text);
   }
 
   function pickMime() {
@@ -287,18 +136,88 @@
     });
   }
 
-  function setLive(on) {
-    rec.recording = !!on;
-    if (recorderEl) recorderEl.classList.toggle('is-live', !!on);
-    var mic = document.getElementById('tv-vj-mic');
-    if (mic) mic.classList.toggle('is-live', !!on);
-    var icon = document.getElementById('tv-vj-mic-icon');
-    if (icon) icon.className = on ? 'fas fa-stop' : 'fas fa-microphone';
-    var timer = document.getElementById('tv-vj-timer');
-    if (timer) timer.textContent = on ? 'Listening… tap when you’re done' : 'Tap to speak';
+  function unlockAudio() {
+    try {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.resume();
+        var unlock = new SpeechSynthesisUtterance(' ');
+        unlock.volume = 0;
+        window.speechSynthesis.speak(unlock);
+      }
+    } catch (e) {}
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        if (!rec.ctx) rec.ctx = new AC();
+        rec.ctx.resume();
+      }
+    } catch (e) {}
   }
 
-  function watchLoudness(stream) {
+  function stopTTS() {
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
+    var a = document.getElementById('tv-vj-tts');
+    if (a) {
+      try { a.pause(); } catch (e) {}
+      a.remove();
+    }
+  }
+
+  function speak(text, then) {
+    var line = String(text || '').trim();
+    if (!line) {
+      setTimeout(function () { if (typeof then === 'function') then(); }, 0);
+      return;
+    }
+    setState('speaking');
+    setAi(line);
+    stopTTS();
+    var wrapped = function () {
+      setTimeout(function () { if (typeof then === 'function') then(); }, 280);
+    };
+    var done = wrapped;
+
+    function browserSpeak() {
+      if (!window.speechSynthesis) { done(); return; }
+      try {
+        var u = new SpeechSynthesisUtterance(line);
+        u.rate = 1.04;
+        u.pitch = 1;
+        u.onend = done;
+        u.onerror = done;
+        window.speechSynthesis.speak(u);
+      } catch (e) {
+        done();
+      }
+    }
+
+    if (!boot.speakUrl) {
+      browserSpeak();
+      return;
+    }
+    fetch(boot.speakUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+      body: JSON.stringify({ text: line })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('tts');
+      return r.blob();
+    }).then(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var audio = document.createElement('audio');
+      audio.id = 'tv-vj-tts';
+      audio.src = url;
+      audio.addEventListener('ended', done, { once: true });
+      audio.addEventListener('error', function () { browserSpeak(); }, { once: true });
+      document.body.appendChild(audio);
+      var play = audio.play();
+      if (play && play.catch) play.catch(function () { browserSpeak(); });
+    }).catch(function () {
+      browserSpeak();
+    });
+  }
+
+  function attachAnalyser(stream) {
     try {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -307,44 +226,103 @@
       if (!rec.srcNode) {
         rec.srcNode = rec.ctx.createMediaStreamSource(stream);
         rec.analyser = rec.ctx.createAnalyser();
-        rec.analyser.fftSize = 512;
+        rec.analyser.fftSize = 256;
+        rec.analyser.smoothingTimeConstant = 0.72;
         rec.srcNode.connect(rec.analyser);
       }
-      var analyser = rec.analyser;
-      var data = new Uint8Array(analyser.fftSize);
-      var quiet = 0;
-      var heard = false;
-      clearInterval(rec.loudWatch);
-      rec.loudWatch = setInterval(function () {
-        if (!rec.recording) {
-          clearInterval(rec.loudWatch);
-          return;
-        }
-        analyser.getByteTimeDomainData(data);
-        var sum = 0;
-        for (var i = 0; i < data.length; i++) {
-          var v = (data[i] - 128) / 128;
-          sum += v * v;
-        }
-        var rms = Math.sqrt(sum / data.length);
-        if (rms > 0.055) {
-          heard = true;
-          quiet = 0;
-        } else {
-          quiet += 100;
-        }
-        if (heard && quiet >= 2000) stopRec(false);
-        else if (!heard && quiet >= 5500) stopRec(false);
-      }, 100);
+      rec.freq = new Uint8Array(rec.analyser.frequencyBinCount);
     } catch (e) { /* ignore */ }
   }
 
-  function armSilence() {
-    clearTimeout(rec.silence);
-    if (!rec.text) return;
-    rec.silence = setTimeout(function () {
-      if (rec.recording && rec.text) stopRec(false);
-    }, 1400);
+  function drawOrb() {
+    rec.raf = requestAnimationFrame(drawOrb);
+    if (!canvas || !canvas.getContext) return;
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+    var cx = w / 2;
+    var cy = h / 2;
+    ctx.clearRect(0, 0, w, h);
+
+    var amp = 0.08;
+    if (rec.analyser && rec.freq && (state === 'listening' || rec.recording)) {
+      rec.analyser.getByteFrequencyData(rec.freq);
+      var sum = 0;
+      for (var i = 0; i < rec.freq.length; i++) sum += rec.freq[i];
+      amp = Math.min(1, (sum / rec.freq.length) / 90);
+    } else if (state === 'speaking') {
+      amp = 0.28 + Math.sin(Date.now() / 180) * 0.12;
+    } else if (state === 'thinking') {
+      amp = 0.16 + Math.sin(Date.now() / 420) * 0.06;
+    } else {
+      amp = 0.12 + Math.sin(Date.now() / 900) * 0.04;
+    }
+    rec.amp = rec.amp * 0.72 + amp * 0.28;
+
+    var accent = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent-bright').trim() || '#14b8a6';
+    var deep = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent').trim() || '#0f766e';
+
+    var glow = ctx.createRadialGradient(cx, cy, 10, cx, cy, 120 + rec.amp * 40);
+    glow.addColorStop(0, 'rgba(20, 184, 166, ' + (0.22 + rec.amp * 0.35) + ')');
+    glow.addColorStop(1, 'rgba(20, 184, 166, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+
+    var bars = rec.freq && state === 'listening' ? 36 : 24;
+    var radius = 62 + rec.amp * 18;
+    for (var b = 0; b < bars; b++) {
+      var mag = rec.freq && state === 'listening'
+        ? rec.freq[Math.floor(b * (rec.freq.length / bars))] / 255
+        : 0.22 + Math.sin(Date.now() / 280 + b) * 0.08;
+      var len = 8 + mag * (36 + rec.amp * 28);
+      var ang = (b / bars) * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.strokeStyle = b % 2 ? accent : deep;
+      ctx.globalAlpha = 0.35 + mag * 0.55;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.moveTo(cx + Math.cos(ang) * radius, cy + Math.sin(ang) * radius);
+      ctx.lineTo(cx + Math.cos(ang) * (radius + len), cy + Math.sin(ang) * (radius + len));
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.fillStyle = deep;
+    ctx.arc(cx, cy, 38 + rec.amp * 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.fillStyle = accent;
+    ctx.arc(cx, cy, 22 + rec.amp * 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function watchLoudness() {
+    if (!rec.analyser) return;
+    var data = new Uint8Array(rec.analyser.fftSize);
+    var quiet = 0;
+    var heard = false;
+    clearInterval(rec.loudWatch);
+    rec.loudWatch = setInterval(function () {
+      if (!rec.recording) {
+        clearInterval(rec.loudWatch);
+        return;
+      }
+      rec.analyser.getByteTimeDomainData(data);
+      var sum = 0;
+      for (var i = 0; i < data.length; i++) {
+        var v = (data[i] - 128) / 128;
+        sum += v * v;
+      }
+      var rms = Math.sqrt(sum / data.length);
+      if (rms > 0.055) {
+        heard = true;
+        quiet = 0;
+      } else {
+        quiet += 100;
+      }
+      if (heard && quiet >= 1800) stopRec(false);
+      else if (!heard && quiet >= 8000) stopRec(false);
+    }, 100);
   }
 
   function startSpeech() {
@@ -364,10 +342,15 @@
           else interim += t;
         }
         if (finalTxt) rec.text = (rec.text + ' ' + finalTxt).trim();
-        if (liveEl) liveEl.textContent = rec.text || interim || 'Listening…';
-        if (rec.text || interim) armSilence();
+        setLive(rec.text || interim);
+        if (rec.text || interim) {
+          clearTimeout(rec.silence);
+          rec.silence = setTimeout(function () {
+            if (rec.recording) stopRec(false);
+          }, 1400);
+        }
       };
-      rec.sr.onerror = function () { /* Whisper still running */ };
+      rec.sr.onerror = function () {};
       rec.sr.start();
       return true;
     } catch (e) {
@@ -376,16 +359,16 @@
   }
 
   function startRec() {
-    if (rec.recording || committing) return;
-    var err = document.getElementById('tv-vj-mic-err');
-    if (err) { err.classList.add('d-none'); err.textContent = ''; }
+    if (rec.recording || committing || state === 'review') return;
     rec.text = '';
     rec.chunks = [];
     rec.gen += 1;
     var gen = rec.gen;
-    if (liveEl) liveEl.textContent = 'Listening…';
+    setLive('');
+    showErr('');
     ensureStream().then(function (stream) {
       if (gen !== rec.gen) return;
+      attachAnalyser(stream);
       rec.mime = pickMime();
       try {
         rec.mr = rec.mime ? new MediaRecorder(stream, { mimeType: rec.mime }) : new MediaRecorder(stream);
@@ -397,21 +380,18 @@
       };
       try { rec.mr.start(250); } catch (e) { rec.mr.start(); }
       startSpeech();
-      setLive(true);
-      watchLoudness(stream);
+      rec.recording = true;
+      setState('listening');
+      watchLoudness();
       clearTimeout(rec.maxTimer);
       rec.maxTimer = setTimeout(function () {
         if (rec.recording) stopRec(false);
-      }, currentKey() === 'why' || currentKey() === 'talk' ? 25000 : 12000);
+      }, 25000);
     }).catch(function () {
-      if (err) {
-        err.textContent = window.isSecureContext
-          ? 'Allow the microphone, then tap the button again.'
-          : 'Voice needs HTTPS.';
-        err.classList.remove('d-none');
-      }
-      misses[currentKey()] = (misses[currentKey()] || 0) + 1;
-      paint();
+      showErr(window.isSecureContext
+        ? 'Allow the microphone, then tap again.'
+        : 'Voice needs HTTPS.');
+      setState('idle');
     });
   }
 
@@ -424,7 +404,6 @@
       return;
     }
     rec.recording = false;
-    setLive(false);
     try { if (rec.sr) rec.sr.stop(); } catch (e) {}
     rec.sr = null;
     var mr = rec.mr;
@@ -449,16 +428,28 @@
     }
   }
 
+  function looksLikeEcho(text) {
+    var q = lastReply.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    var a = String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!a || !q || a.length < 8) return false;
+    return a === q || a.indexOf(q) !== -1;
+  }
+
   function finishUtterance(srText, blob) {
     var local = String(srText || '').trim();
-    if (liveEl) liveEl.textContent = local ? ('“' + local + '”') : 'Working it out…';
+    if (looksLikeEcho(local)) local = '';
     var useWhisper = !!(blob && blob.size > 400 && boot.transcribeEnabled);
     if (!useWhisper) {
-      if (local) commitAnswer(local);
-      else missAndRetry();
+      if (local) sendTurn(local);
+      else {
+        setLive('');
+        startRec();
+      }
       return;
     }
     committing = true;
+    setState('thinking');
+    setLive(local || '…');
     var fd = new FormData();
     fd.append('audio', blob, blobName(blob.type || rec.mime));
     fetch(boot.transcribeUrl || '/api/voice/transcribe', {
@@ -469,486 +460,220 @@
       .then(function (res) {
         committing = false;
         var whispered = res && res.d && res.d.text ? String(res.d.text).trim() : '';
+        if (looksLikeEcho(whispered)) whispered = '';
         var text = whispered || local;
-        if (text) commitAnswer(text);
-        else missAndRetry(res && res.d && res.d.error);
+        if (text) sendTurn(text);
+        else startRec();
       })
       .catch(function () {
         committing = false;
-        if (local) commitAnswer(local);
-        else missAndRetry();
+        if (local) sendTurn(local);
+        else startRec();
       });
   }
 
-  function missAndRetry(msg) {
-    var key = currentKey();
-    misses[key] = (misses[key] || 0) + 1;
-    showErr(msg || 'I didn’t catch that. Say it again — or tap an option below.');
-    paint();
-    if (voiceStep(key) && misses[key] < 3) {
-      setTimeout(function () { if (currentKey() === key) startRec(); }, 500);
-    }
-  }
-
-  function applyInstrument(id, symbol, name) {
-    setVal('instrument_id', id);
-    setVal('symbol', symbol);
-    if (window.simpleInstrumentPicker && window.simpleInstrumentPicker.selectInstrument) {
-      try { window.simpleInstrumentPicker.selectInstrument(id, symbol, name || symbol); } catch (e) {}
-    }
-  }
-
-  function applyParsed(parsed, instrument) {
-    if (!parsed) return;
-    if (instrument && instrument.id) applyInstrument(instrument.id, instrument.symbol, instrument.name);
-    else if (parsed.symbol) setVal('symbol', parsed.symbol);
-    if (parsed.trade_type) {
-      setVal('trade_type', parsed.trade_type);
-      confirmed.side = true;
-    }
-    if (parsed.status === 'open' || parsed.status === 'closed') {
-      setVal('trade_log_status', parsed.status);
-      confirmed.status = true;
-    }
-    ['entry_price', 'stop_loss', 'take_profit', 'exit_price', 'lot_size'].forEach(function (k) {
-      if (parsed[k] != null && parsed[k] !== '') setVal(k, parsed[k]);
+  function applyForm(fields, instrument) {
+    if (!fields) return;
+    Object.keys(fields).forEach(function (k) {
+      if (k === 'from_guide' || k === 'from_voice') return;
+      if (document.getElementById(k)) setVal(k, fields[k]);
     });
-    if (parsed.session_type) {
-      setVal('session_type', parsed.session_type);
-      setVal('guide_session', parsed.session_type);
-    }
-    if (parsed.emotions && parsed.emotions.length) {
-      setVal('guide_emotions', parsed.emotions.join(', '));
-      setVal('guide_feeling_before', parsed.emotions[0]);
-      setVal('emotion', parsed.emotions[0]);
-    }
-    if (parsed.setup_tags && parsed.setup_tags.length) {
-      setVal('guide_setup_tags', parsed.setup_tags.join(', '));
-    }
-  }
-
-  function takeNumber(parsed, text) {
-    if (parsed && parsed.bare_number != null) return parsed.bare_number;
-    var m = String(text || '').replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
-    return m ? m[1] : '';
-  }
-
-  function resolveSymbol(parsed, instrument) {
     if (instrument && instrument.id) {
-      applyInstrument(instrument.id, instrument.symbol, instrument.name);
-      return Promise.resolve(true);
+      setVal('instrument_id', instrument.id);
+      setVal('symbol', instrument.symbol);
+      draft.instrument_id = instrument.id;
+      draft.symbol = instrument.symbol;
     }
-    var q = (parsed && parsed.symbol) || val('symbol');
-    if (!q) return Promise.resolve(false);
-    return fetch('/api/db/instruments/search?q=' + encodeURIComponent(q) + '&limit=5')
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var row = (data && data.results && data.results[0]) || null;
-        if (!row) return false;
-        applyInstrument(row.id, row.symbol, row.name);
-        return true;
-      })
-      .catch(function () { return false; });
   }
 
-  function stepSatisfied(key, parsed, text) {
-    var t = String(text || '').trim();
-    if (key === 'symbol') return !!(val('instrument_id') && val('symbol'));
-    if (key === 'direction') return !!confirmed.side;
-    if (key === 'status') return !!confirmed.status;
-    if (key === 'shot_confirm') return !!confirmed.extract;
-    if (key === 'entry') return !!val('entry_price');
-    if (key === 'stop_loss') return !!val('stop_loss');
-    if (key === 'take_profit') return !!val('take_profit');
-    if (key === 'exit') return !!val('exit_price');
-    if (key === 'talk' || key === 'why') return t.length >= 4;
-    if (key === 'emotions') return !!val('guide_emotions') || t.length >= 3;
-    return false;
+  function renderJournal(data) {
+    if (!summaryEl) return;
+    var d = (data && data.draft) || draft;
+    var m = (data && data.metrics) || {};
+    var side = d.trade_type === 'SELL' ? 'Short' : 'Long';
+    var status = d.status === 'closed' ? 'Closed' : 'Open';
+    var rows = [
+      [side + ' ' + (d.symbol || ''), status],
+      ['In', d.entry_price != null ? d.entry_price : '—'],
+      ['Stop', d.stop_loss != null ? d.stop_loss : '—'],
+      ['Target', d.take_profit != null ? d.take_profit : '—']
+    ];
+    if (d.status === 'closed') rows.push(['Out', d.exit_price != null ? d.exit_price : '—']);
+    if (m.rr_label) rows.push(['R:R', m.rr_label]);
+    if (d.session_type) rows.push(['Session', d.session_type]);
+    if (d.setup_tags && d.setup_tags.length) rows.push(['Setup', d.setup_tags.join(', ')]);
+    if (d.thesis_notes) rows.push(['Thesis', d.thesis_notes]);
+    var html = '<article class="tv-vj-card">';
+    rows.forEach(function (row, i) {
+      if (i === 0) html += '<h2>' + esc(row[0]) + ' <span>' + esc(row[1]) + '</span></h2>';
+      else html += '<div class="tv-vj-row"><span>' + esc(row[0]) + '</span><strong>' + esc(row[1]) + '</strong></div>';
+    });
+    html += '</article>';
+    summaryEl.innerHTML = html;
   }
 
-  function looksLikeEcho(text) {
-    var q = ((COPY[currentKey()] || [])[0] || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    var a = String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    if (!a || !q || a.length < 8) return false;
-    return a === q || a.indexOf(q) !== -1 || (a.length > 10 && q.indexOf(a) !== -1);
-  }
-
-  function commitAnswer(text) {
-    var key = currentKey();
-    if (looksLikeEcho(text)) {
-      missAndRetry();
-      return;
-    }
-    showHeard(text);
-    if (liveEl) liveEl.textContent = '“' + text + '”';
-    committing = true;
-    parseTranscript(text, key).then(function (data) {
-      var parsed = (data && data.parsed) || {};
-      applyParsed(parsed, data && data.instrument);
-
-      if (key === 'direction' && parsed.trade_type) confirmed.side = true;
-      if (key === 'status') {
-        if (parsed.status) {
-          setVal('trade_log_status', parsed.status);
-          confirmed.status = true;
-        } else if (/open|still/i.test(text)) {
-          setVal('trade_log_status', 'open');
-          confirmed.status = true;
-        } else if (/close|done|finish/i.test(text)) {
-          setVal('trade_log_status', 'closed');
-          confirmed.status = true;
-        }
-      }
-      if (key === 'shot_confirm') {
-        if (parsed.yes_no === 'yes' || /^\s*y/i.test(text)) confirmed.extract = true;
-        if (parsed.yes_no === 'no' || /change|wrong|edit/i.test(text)) {
-          confirmed.extract = false;
-          skipped.shot_confirm = true;
-          committing = false;
-          paint();
-          return;
-        }
-      }
-      if (key === 'entry' && !val('entry_price')) setVal('entry_price', takeNumber(parsed, text));
-      if (key === 'stop_loss' && !val('stop_loss')) setVal('stop_loss', takeNumber(parsed, text));
-      if (key === 'take_profit' && !val('take_profit')) setVal('take_profit', takeNumber(parsed, text));
-      if (key === 'exit' && !val('exit_price')) setVal('exit_price', takeNumber(parsed, text));
-      if (key === 'why' || key === 'talk') {
-        setVal('guide_why', val('guide_why') || text);
-        setVal('guide_voice_dump', text);
-      }
-      if (key === 'emotions') {
-        setVal('guide_emotions', val('guide_emotions') || text);
-        setVal('guide_feeling_before', val('guide_feeling_before') || text);
-      }
-
-      var done = Promise.resolve(true);
-      if (key === 'symbol' && !val('instrument_id')) {
-        done = resolveSymbol(parsed, data && data.instrument);
-      }
-      return done.then(function () {
-        committing = false;
-        if (stepSatisfied(key, parsed, text)) {
-          misses[key] = 0;
-          paint();
-        } else {
-          missAndRetry();
-        }
-      });
-    }).catch(function () {
-      committing = false;
-      missAndRetry();
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
     });
   }
 
-  function parseTranscript(text, focus) {
-    if (!text || !boot.parseUrl) return Promise.resolve(null);
-    return fetch(boot.parseUrl, {
+  function sendTurn(text) {
+    committing = true;
+    setState('thinking');
+    setLive(text);
+    transcriptDump.push(text);
+    history.push({ role: 'user', content: text });
+    setVal('guide_voice_dump', transcriptDump.join('\n'));
+    fetch(boot.turnUrl || '/trade/api/voice-turn', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf(), 'X-CSRF-Token': csrf() },
-      body: JSON.stringify({ text: text, focus: focus || '' })
-    }).then(function (r) { return r.json(); });
-  }
-
-  function renderFound() {
-    var el = document.getElementById('tv-vj-found');
-    if (!el) return;
-    el.innerHTML =
-      '<div class="fw-bold mb-2">' + esc(extracted.symbol || val('symbol') || '—') + ' · ' +
-      esc(extracted.trade_type || val('trade_type') || '—') + '</div>' +
-      '<div class="small">Entry <strong>' + esc(extracted.entry_price || val('entry_price') || '—') + '</strong></div>' +
-      '<div class="small">Stop <strong>' + esc(extracted.stop_loss || val('stop_loss') || '—') + '</strong></div>' +
-      '<div class="small">Target <strong>' + esc(extracted.take_profit || val('take_profit') || '—') + '</strong></div>';
-  }
-
-  function renderSummary() {
-    var el = document.getElementById('tv-vj-summary');
-    if (!el) return;
-    var rows = [
-      ['Instrument', val('symbol') || '—'],
-      ['Side', val('trade_type') || '—'],
-      ['Status', isClosed() ? 'Closed' : 'Open'],
-      ['Entry', val('entry_price') || '—'],
-      ['Stop', val('stop_loss') || '—'],
-      ['Target', val('take_profit') || '—']
-    ];
-    if (isClosed()) rows.push(['Exit', val('exit_price') || '—']);
-    var entry = parseFloat(val('entry_price'));
-    var sl = parseFloat(val('stop_loss'));
-    var tp = parseFloat(val('take_profit'));
-    if (entry && sl && tp) {
-      var r = val('trade_type') === 'SELL' ? (sl - entry) : (entry - sl);
-      var w = val('trade_type') === 'SELL' ? (entry - tp) : (tp - entry);
-      if (r > 0 && w > 0) rows.push(['RR', '1:' + (w / r).toFixed(2).replace(/\.00$/, '')]);
-    }
-    if (val('guide_emotions')) rows.push(['Emotion', val('guide_emotions')]);
-    if (val('guide_why')) rows.push(['Why', val('guide_why')]);
-    var html = '<div class="fw-bold mb-2">' + esc(val('symbol') || 'Trade') + ' · ' + esc(val('trade_type') || '') + '</div><dl>';
-    rows.forEach(function (row) {
-      html += '<dt>' + esc(row[0]) + '</dt><dd>' + esc(row[1]) + '</dd>';
-    });
-    html += '</dl>';
-    if (beforeUrl || afterUrl) {
-      html += '<div class="tv-vj-shots">';
-      if (beforeUrl) html += '<img src="' + beforeUrl + '" alt="Before">';
-      if (afterUrl) html += '<img src="' + afterUrl + '" alt="After">';
-      html += '</div>';
-    }
-    el.innerHTML = html;
-  }
-
-  function saveDraft() {
-    try {
-      if (!started && !val('symbol')) {
-        localStorage.removeItem(DRAFT_KEY);
-        return;
-      }
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({
-        started: started, mode: mode, skipped: skipped, confirmed: confirmed,
-        symbol: val('symbol'), instrument_id: val('instrument_id'), trade_type: val('trade_type'),
-        entry_price: val('entry_price'), stop_loss: val('stop_loss'), take_profit: val('take_profit'),
-        exit_price: val('exit_price'), trade_log_status: val('trade_log_status'),
-        guide_why: val('guide_why'), guide_emotions: val('guide_emotions'),
-        guide_voice_dump: val('guide_voice_dump'), savedAt: Date.now()
-      }));
-    } catch (e) {}
-  }
-
-  function loadDraft() {
-    try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { return null; }
-  }
-
-  function extractShot(file) {
-    if (!boot.extractUrl) return;
-    var fd = new FormData();
-    fd.append('image', file, file.name || 'chart.jpg');
-    fetch(boot.extractUrl, {
-      method: 'POST',
-      headers: { 'X-CSRFToken': csrf() },
-      body: fd
-    }).then(function (r) { return r.json(); }).then(function (data) {
-      extracted = (data && data.fields) || {};
-      if (data && data.instrument) extracted._instrument = data.instrument;
-      if (extractedHasValues()) {
-        applyParsed(extracted, data.instrument);
-        confirmed.extract = false;
-      }
-      skipped.before_shot = true;
-      paint();
-    }).catch(function () {
-      skipped.before_shot = true;
-      paint();
-    });
-  }
-
-  function bindShot(which) {
-    var input = document.getElementById(which + '_screenshot');
-    if (!input) return;
-    input.addEventListener('change', function () {
-      var file = input.files && input.files[0];
-      if (!file) return;
-      var url = URL.createObjectURL(file);
-      if (which === 'before') beforeUrl = url; else afterUrl = url;
-      var preview = document.getElementById('tv-vj-' + which + '-preview');
-      var empty = document.getElementById('tv-vj-' + which + '-empty');
-      if (preview) { preview.src = url; preview.classList.remove('d-none'); }
-      if (empty) empty.classList.add('d-none');
-      if (which === 'before') extractShot(file);
-      else {
-        skipped.after_shot = true;
-        paint();
-      }
-    });
-  }
-
-  function unlockAudio() {
-    try {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.resume();
-        var unlock = new SpeechSynthesisUtterance(' ');
-        unlock.volume = 0;
-        window.speechSynthesis.speak(unlock);
-      }
-    } catch (e) {}
-    try {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) {
-        if (!rec.ctx) rec.ctx = new AC();
-        rec.ctx.resume();
-      }
-    } catch (e) {}
-  }
-
-  function begin(quick) {
-    mode = quick ? 'quick' : 'full';
-    unlockAudio();
-    ensureStream().then(function () {
-      started = true;
-      paint();
-    }).catch(function () {
-      started = true;
-      misses.symbol = 1;
-      paint();
-    });
-  }
-
-  document.getElementById('tv-vj-start-full') && document.getElementById('tv-vj-start-full').addEventListener('click', function () { begin(false); });
-  document.getElementById('tv-vj-welcome-mic') && document.getElementById('tv-vj-welcome-mic').addEventListener('click', function () { begin(false); });
-  document.getElementById('tv-vj-start-quick') && document.getElementById('tv-vj-start-quick').addEventListener('click', function () { begin(true); });
-
-  document.getElementById('tv-vj-mic') && document.getElementById('tv-vj-mic').addEventListener('click', function () {
-    if (rec.recording) stopRec(false);
-    else startRec();
-  });
-
-  if (skipBtn) skipBtn.addEventListener('click', function () {
-    skipped[currentKey()] = true;
-    lastAsked = '';
-    stopRec(true);
-    stopTTS();
-    paint();
-  });
-  if (backBtn) backBtn.addEventListener('click', function () {
-    stopRec(true);
-    stopTTS();
-    lastAsked = '';
-    var order = mode === 'quick' ? QUICK : FULL;
-    var key = currentKey();
-    var i = order.indexOf(key);
-    if (i > 0) {
-      var prev = order[i - 1];
-      skipped[prev] = false;
-      if (prev === 'symbol') { setVal('instrument_id', ''); setVal('symbol', ''); }
-      if (prev === 'direction') confirmed.side = false;
-      if (prev === 'status') confirmed.status = false;
-    } else {
-      started = false;
-    }
-    paint();
-  });
-
-  document.querySelectorAll('[data-dir]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      setVal('trade_type', btn.getAttribute('data-dir'));
-      confirmed.side = true;
-      paint();
-    });
-  });
-  document.querySelectorAll('[data-status]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      setVal('trade_log_status', btn.getAttribute('data-status'));
-      confirmed.status = true;
-      paint();
-    });
-  });
-  document.querySelectorAll('#tv-vj-emotion-chips [data-emotion]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      btn.classList.toggle('is-on');
-      var picked = [];
-      document.querySelectorAll('#tv-vj-emotion-chips [data-emotion].is-on').forEach(function (b) {
-        picked.push(b.getAttribute('data-emotion'));
+      body: JSON.stringify({
+        transcript: text,
+        draft: draft,
+        history: history,
+        has_screenshot: hasShot,
+        skip_screenshot: skipShot
+      })
+    }).then(function (r) { return r.json(); })
+      .then(function (data) {
+        committing = false;
+        if (!data || !data.ok) {
+          setAi('Say that once more?');
+          speak('Say that once more?', startRec);
+          return;
+        }
+        draft = data.draft || draft;
+        applyForm(data.form, data.instrument);
+        history.push({ role: 'assistant', content: data.reply || '' });
+        if (data.ask_screenshot && shotEl) shotEl.classList.remove('d-none');
+        if (data.complete && !data.ask_screenshot) {
+          if (!(data.instrument && data.instrument.id) && !val('instrument_id')) {
+            speak('I didn’t catch the market — say the ticker once more?', startRec);
+            return;
+          }
+          enterReview(data);
+          return;
+        }
+        speak(data.reply, function () {
+          if (state === 'review') return;
+          startRec();
+        });
+      })
+      .catch(function () {
+        committing = false;
+        speak('I missed that — try once more.', startRec);
       });
-      setVal('guide_emotions', picked.join(', '));
-      if (picked[0]) setVal('guide_feeling_before', picked[0]);
-      if (picked.length) paint();
+  }
+
+  function enterReview(data) {
+    stopRec(true);
+    stopTTS();
+    setState('review');
+    setLive('');
+    if (shotEl && hasShot) shotEl.classList.add('d-none');
+    if (journalEl) journalEl.classList.remove('d-none');
+    renderJournal(data);
+    speak(data && data.reply ? data.reply : 'Got it — that’s everything I need.');
+  }
+
+  function begin() {
+    if (state !== 'idle' && state !== 'review') return;
+    if (journalEl) journalEl.classList.add('d-none');
+    unlockAudio();
+    var opening = boot.mode === 'quick'
+      ? 'Give me the short version — pair, side, levels.'
+      : (boot.complete && boot.complete.symbol
+        ? ('Let’s finish the notes on ' + boot.complete.symbol + '.')
+        : 'Hey — tell me about the trade.');
+    ensureStream().then(function (stream) {
+      attachAnalyser(stream);
+      if (!rec.raf) drawOrb();
+      speak(opening, startRec);
+    }).catch(function () {
+      showErr(window.isSecureContext
+        ? 'Allow the microphone, then tap again.'
+        : 'Voice needs HTTPS.');
     });
-  });
-  document.getElementById('tv-vj-found-yes') && document.getElementById('tv-vj-found-yes').addEventListener('click', function () {
-    confirmed.extract = true;
-    if (extracted._instrument) applyInstrument(extracted._instrument.id, extracted._instrument.symbol, extracted._instrument.name);
-    paint();
-  });
-  document.getElementById('tv-vj-found-edit') && document.getElementById('tv-vj-found-edit').addEventListener('click', function () {
-    confirmed.extract = false;
-    skipped.shot_confirm = true;
-    paint();
-  });
+  }
 
-  ['tv-vj-entry', 'tv-vj-sl', 'tv-vj-tp', 'tv-vj-exit'].forEach(function (id) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('change', function () {
-      var map = { 'tv-vj-entry': 'entry_price', 'tv-vj-sl': 'stop_loss', 'tv-vj-tp': 'take_profit', 'tv-vj-exit': 'exit_price' };
-      if (el.value) setVal(map[id], el.value);
-      paint();
+  if (orbBtn) {
+    orbBtn.addEventListener('click', function () {
+      if (state === 'idle' || state === 'review') begin();
+      else if (state === 'listening') stopRec(false);
+      else if (state === 'speaking') {
+        stopTTS();
+        startRec();
+      }
     });
+  }
+
+  document.getElementById('tv-vj-shot-pick') && document.getElementById('tv-vj-shot-pick').addEventListener('click', function () {
+    var input = document.getElementById('before_screenshot');
+    if (input) input.click();
+  });
+  document.getElementById('tv-vj-shot-skip') && document.getElementById('tv-vj-shot-skip').addEventListener('click', function () {
+    skipShot = true;
+    if (shotEl) shotEl.classList.add('d-none');
+    sendTurn('no screenshot');
   });
 
-  document.querySelectorAll('[data-pick]').forEach(function (btn) {
-    btn.addEventListener('click', function (ev) {
-      ev.preventDefault();
-      var which = btn.getAttribute('data-pick');
-      var input = document.getElementById(which + '_screenshot');
-      if (input) input.click();
+  var beforeInput = document.getElementById('before_screenshot');
+  if (beforeInput) {
+    beforeInput.addEventListener('change', function () {
+      var file = beforeInput.files && beforeInput.files[0];
+      if (!file) return;
+      hasShot = true;
+      var url = URL.createObjectURL(file);
+      var previews = document.getElementById('tv-vj-shot-previews');
+      if (previews) {
+        previews.innerHTML = '<img src="' + url + '" alt="Chart">';
+      }
+      if (boot.extractUrl) {
+        var fd = new FormData();
+        fd.append('image', file, file.name || 'chart.jpg');
+        fetch(boot.extractUrl, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrf() },
+          body: fd
+        }).then(function (r) { return r.json(); }).then(function (data) {
+          var fields = (data && data.fields) || {};
+          draft = Object.assign({}, draft, fields);
+          if (data && data.instrument) {
+            draft.instrument_id = data.instrument.id;
+            draft.symbol = data.instrument.symbol;
+          }
+          sendTurn('I uploaded the chart.');
+        }).catch(function () {
+          sendTurn('I uploaded the chart.');
+        });
+      } else {
+        sendTurn('I uploaded the chart.');
+      }
     });
-  });
-  bindShot('before');
-  bindShot('after');
+  }
 
-  document.addEventListener('tv-instrument-selected', function (ev) {
-    if (ev.detail && ev.detail.symbol) setVal('symbol', ev.detail.symbol);
-    paint();
+  document.getElementById('tv-vj-fix') && document.getElementById('tv-vj-fix').addEventListener('click', function () {
+    if (journalEl) journalEl.classList.add('d-none');
+    skipShot = true;
+    speak('What should I change?', startRec);
   });
 
-  form.addEventListener('submit', function (ev) {
-    if (currentKey() !== 'confirm') {
-      ev.preventDefault();
-      return;
-    }
+  form.addEventListener('submit', function () {
     if (!val('lot_size')) setVal('lot_size', '1');
     var why = val('guide_why') || val('guide_voice_dump');
     if (why && !val('pre_trade_plan')) setVal('pre_trade_plan', why);
-    var post = val('guide_reflection') || val('guide_voice_dump') || why;
+    var post = val('guide_voice_dump') || why;
     if (post && !val('post_trade_notes')) setVal('post_trade_notes', post);
-    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
-    if (rec.stream) rec.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (err) {} });
+    if (rec.stream) rec.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
     stopTTS();
   });
 
-  var draft = loadDraft();
-  if (draft && draft.symbol) {
-    var banner = document.getElementById('tv-vj-draft-banner');
-    if (banner) {
-      banner.classList.remove('d-none');
-      var meta = document.getElementById('tv-vj-draft-meta');
-      if (meta) meta.textContent = draft.symbol + (draft.trade_type ? ' · ' + draft.trade_type : '');
-      document.getElementById('tv-vj-draft-continue').addEventListener('click', function () {
-        restoring = true;
-        ['symbol', 'instrument_id', 'trade_type', 'entry_price', 'stop_loss', 'take_profit', 'exit_price', 'trade_log_status', 'guide_why', 'guide_emotions', 'guide_voice_dump'].forEach(function (k) {
-          if (draft[k]) setVal(k, draft[k]);
-        });
-        confirmed = draft.confirmed || {};
-        skipped = draft.skipped || {};
-        mode = draft.mode === 'quick' ? 'quick' : 'full';
-        started = true;
-        banner.classList.add('d-none');
-        restoring = false;
-        ensureStream().then(function () { paint(); }).catch(function () { paint(); });
-      });
-      document.getElementById('tv-vj-draft-discard').addEventListener('click', function () {
-        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
-        banner.classList.add('d-none');
-      });
-    }
-  }
-
-  if (boot.complete) {
-    confirmed.side = true;
-    confirmed.status = true;
-    if (boot.complete.status === 'CLOSED') setVal('trade_log_status', 'closed');
-  }
-  if (boot.mode === 'quick') mode = 'quick';
-
-  if (typeof SimpleInstrumentPicker === 'function') {
-    window.simpleInstrumentPicker = new SimpleInstrumentPicker();
-    pickerReady = true;
-  }
+  if (!rec.raf) drawOrb();
 
   window.addEventListener('pagehide', function () {
-    saveDraft();
     stopTTS();
     if (rec.stream) rec.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+    cancelAnimationFrame(rec.raf);
   });
-
-  paint();
 })();
