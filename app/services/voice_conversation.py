@@ -24,68 +24,38 @@ from app.services.voice_journal import (
 )
 
 
-SYSTEM_PROMPT = """You are a trading journal voice assistant. You have a natural, warm,
-conversational tone — like a knowledgeable trading buddy, not a form.
+SYSTEM_PROMPT = """You are a premium trading journal voice coach. Warm, concise, professional —
+like a mentor reviewing the trade with them, never a form wizard.
 
-GOAL: Through natural conversation, collect the following data points
-about the trade the user just took or is planning:
-- Instrument (e.g. US30, EURUSD, XAUUSD)
+GOAL: Collect a COMPLETE journal page through natural conversation:
+TRADE FACTS
+- Instrument (e.g. US30, EURUSD, XAUUSD, gold)
 - Direction (buy/long or sell/short)
-- Entry price
-- Stop loss
-- Take profit / exit price (if trade is closed)
-- Session (Asian/London/New York) — ask if they have not said it
-- Setup/strategy used (e.g. support/resistance, breakout, order block)
-- Reasoning/thesis for entering (freeform, capture in their words)
-- Outcome (win/loss/breakeven, and P&L if mentioned)
-- Emotional state or trade management notes (if volunteered)
-- Screenshot of the BEFORE chart, then the AFTER chart (prompt when the
-  rest of the trade is in)
+- Entry, stop, take profit / exit (if closed)
+- Session + rough entry time
+- Setup/strategy tags if mentioned
+REFLECTION (always ask these if missing — this is the journal)
+- Why they entered (thesis — their words verbatim)
+- Whether they followed their rules / playbook
+- How they felt DURING the trade
+- How they felt AFTER (or now, if still open)
+- What they learned
+- How they will improve next time
+Then BEFORE chart, then AFTER chart (skip only if they decline).
 
-RULES FOR CONVERSATION:
-1. Never say things like "field," "enter," "next step," or "form."
-   Speak like a person logging with a buddy: "Nice — what was your
-   entry?" not "Please state your entry price."
-2. Ask ONE question at a time. Keep questions short.
-3. Acknowledge the last answer in a few words, then ask whatever is
-   still missing. Example: they said "long gold 3650" → "Got it — long
-   gold. Where was the stop?"
-4. If the user volunteers multiple data points in one answer, do NOT
-   ask about those again. E.g. if they say "I went long on US30 at
-   42500," you now have instrument, direction, and entry price —
-   move on to whatever's still missing.
-5. thesis_notes MUST be the user's own words from latest_user /
-   recent_turns — verbatim, or only um/uh stripped. Never paraphrase
-   into a different sentence, never "improve" their phrasing, never
-   substitute jargon they did not say.
-6. Look at already_captured / draft_so_far. NEVER ask about a key
-   that is already filled. Ask exactly one item from still_need.
-7. When the trade details are in, prompt for a BEFORE-trade screenshot,
-   then the AFTER. Skip only if they say they don't have charts.
-8. Keep your own responses SHORT — one sentence, sometimes two.
-   You are not narrating what you're doing internally.
-9. Never repeat back a robotic summary mid-conversation. Save the
-   full structured summary for the very end.
-10. If audio is unclear or a value seems ambiguous (e.g. a number
-    that could be misheard), ask a quick clarifying question rather
-    than guessing and logging wrong data. Trading data must be
-    accurate — a misheard entry price is worse than an extra question.
-11. End with a brief, human confirmation of what was logged, in
-    plain spoken language, not a bulleted readout.
-12. Ask at most ONE question (one question mark).
+RULES:
+1. Never say "field," "step," "form," or "next question."
+2. Ask ONE short question at a time. Acknowledge briefly, then ask.
+3. Never re-ask a key already in already_captured / draft_so_far.
+4. thesis_notes, lessons, improve_next, feeling_during, feeling_after MUST be
+   the user's own words (light um/uh clean only). Never paraphrase.
+5. followed_plan is yes / no / mostly from their answer.
+6. Prefer clarifying a misheard PRICE over guessing. Trading numbers must be exact.
+7. Keep replies to one sentence, sometimes two. One question mark max.
+8. Know trading vocabulary: liquidity sweep, BOS, CHoCH, order block, FVG,
+   retest, breakout, partials, trailing stop, R:R, pip, lot, session open.
 
-VOCABULARY:
-- Directions: long, buy, went long, short, sell, sold, went short → trade_type BUY or SELL
-- Sessions: Asian session, London session, New York session, London/NY overlap
-- Setups: support/resistance, supply/demand, order block, breakout, retest, liquidity grab, trendline break, NFP/news
-- Management: stop loss, take profit, trailing stop, breakeven, partial close, scaled out, floating P&L, drawdown
-- Outcome: "it hit TP," "I got stopped out," "I closed early," "I'm still in it," "breakeven"
-
-Prioritize correctly parsing a number that follows an instrument or price-related
-word (entry, stop, target, exit, at, around). These are the highest-value,
-highest-risk-of-error tokens. Never invent a price.
-
-OUTPUT: Return JSON only:
+OUTPUT JSON only:
 {
   "reply": "short spoken response",
   "draft": {
@@ -100,6 +70,11 @@ OUTPUT: Return JSON only:
     "setup_tags": [string],
     "strategy": string | null,
     "thesis_notes": string | null,
+    "followed_plan": "yes" | "no" | "mostly" | null,
+    "feeling_during": string | null,
+    "feeling_after": string | null,
+    "lessons": string | null,
+    "improve_next": string | null,
     "emotions": [string],
     "lot_size": number | null,
     "outcome": "open" | "win" | "loss" | "breakeven" | null,
@@ -111,13 +86,8 @@ OUTPUT: Return JSON only:
   "uncertain": []
 }
 
-Only set complete=true when symbol, trade_type, and entry_price are present
-and you have either status or a clear sense they are still in the trade.
-Set ask_screenshot=true and screenshot_kind="before" then "after" when the
-entry is otherwise complete. Do not ask emotions unless they bring it up.
-Ask session (London / New York / Asia) and roughly what time if they have
-not said it. Clock hint is only a guess — confirm with them, do not
-silently assume.
+complete=true only when trade facts + reflection keys are filled (or clearly
+skipped by the user) and screenshots are done or declined.
 """
 
 _QUESTIONS = (
@@ -130,7 +100,12 @@ _QUESTIONS = (
     ("entry_time", "About what time did you enter?"),
     ("take_profit", "Any target on it?"),
     ("exit_price", "Where did you get out?"),
-    ("thesis_notes", "What was the idea going in?"),
+    ("thesis_notes", "Why did you enter — what was the idea?"),
+    ("followed_plan", "Did you follow your rules on this one?"),
+    ("feeling_during", "How were you feeling during the trade?"),
+    ("feeling_after", "And how do you feel about it now?"),
+    ("lessons", "What did you learn from this trade?"),
+    ("improve_next", "What will you do differently next time?"),
 )
 
 _EMPTY = {
@@ -145,6 +120,11 @@ _EMPTY = {
     "setup_tags": [],
     "strategy": None,
     "thesis_notes": None,
+    "followed_plan": None,
+    "feeling_during": None,
+    "feeling_after": None,
+    "lessons": None,
+    "improve_next": None,
     "emotions": [],
     "lot_size": None,
     "outcome": None,
@@ -156,6 +136,7 @@ _EMPTY = {
     "screenshot_after": False,
     "stop_skipped": False,
     "tp_skipped": False,
+    "reflection_skipped": False,
 }
 
 _SHORT_ANSWER = re.compile(
@@ -179,17 +160,34 @@ _FILLED_ASK = (
     ("status", ("still in it, or already", "already done?", "still in it or")),
     ("session_type", ("which session", "london, new york", "what session")),
     ("thesis_notes", ("the idea going in", "what was the idea", "why did you enter")),
+    ("followed_plan", ("follow your rules", "followed your rules", "follow the plan", "followed the plan")),
+    ("feeling_during", ("feeling during", "feel during", "how were you feeling during")),
+    ("feeling_after", ("feel about it now", "feeling after", "how do you feel about it now")),
+    ("lessons", ("what did you learn", "what have you learnt", "lesson")),
+    ("improve_next", ("differently next time", "improve next", "next time")),
 )
 
 _REASON_HINTS = (
     "because", "setup", "broke", "liquidity", "retest", "idea", "plan",
     "swept", "bos", "order block", "support", "resistance", "breakout",
+    "fvg", "fair value", "choch", "rules", "discipline",
+)
+
+_REFLECT_KEYS = (
+    "thesis_notes",
+    "followed_plan",
+    "feeling_during",
+    "feeling_after",
+    "lessons",
+    "improve_next",
 )
 
 _TIME_RE = re.compile(
     r"\b(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|this morning|this afternoon|"
     r"this evening|last night|overnight|london open|ny open|"
-    r"new york open|asia open|around \d{1,2})\b",
+    r"new york open|asia open|around \d{1,2}|"
+    r"(?:london|ny|new york|asia)?\s*morning|"
+    r"(?:london|ny|new york|asia)?\s*afternoon)\b",
     re.I,
 )
 
@@ -414,7 +412,7 @@ def _one_question(reply: str) -> str:
 
 def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
     missing = missing_keys(draft)
-    soft = {"take_profit", "thesis_notes"}
+    soft = {"take_profit"}
     hard = [k for k in missing if k not in soft]
     t = (transcript or "").lower()
     if "stop_loss" in hard and (draft.get("stop_skipped") or re.search(r"\b(no stop|without a stop|flat)\b", t)):
@@ -423,8 +421,106 @@ def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
         hard = [k for k in hard if k != "take_profit"]
     if "entry_time" in hard and _skipped_time(t):
         hard = [k for k in hard if k != "entry_time"]
+    if draft.get("reflection_skipped"):
+        hard = [k for k in hard if k not in _REFLECT_KEYS]
     return hard
 
+
+def _parse_followed_plan(text: str) -> Optional[str]:
+    t = (text or "").lower()
+    # Avoid "no target" / "no stop" flipping the rules answer.
+    if re.search(r"\bno\s+(target|tp|stop|screenshot|chart)\b", t):
+        t = re.sub(r"\bno\s+(target|tp|stop|screenshot|chart)\b", " ", t)
+    if re.search(r"\b(mostly|kinda|kind of|sort of|partially)\b", t):
+        return "mostly"
+    if re.search(r"\b(followed|stuck to|disciplined|by the book)\b", t) and not re.search(
+        r"\b(didn't|did not|broke)\b", t
+    ):
+        return "yes"
+    if re.search(r"\b(broke (?:my |the )?rules|didn't follow|did not follow|revenge|fomo'd|fomoed)\b", t):
+        return "no"
+    yn = parse_yes_no(t)
+    if yn == "yes":
+        return "yes"
+    if yn == "no" and re.search(r"\b(rules?|plan|playbook|follow)\b", t):
+        return "no"
+    if yn == "no" and len(t.split()) <= 3:
+        return "no"
+    if yn == "yes" and len(t.split()) <= 3:
+        return "yes"
+    return None
+
+
+def _skipped_reflection(text: str) -> bool:
+    t = (text or "").lower().strip()
+    return bool(re.search(
+        r"\b(skip(?:ped)?(?: reflection| that| it)?|nothing to add|no lesson|"
+        r"not sure|don't know|dont know|no idea|pass)\b",
+        t,
+    ))
+
+
+def _fill_reflection_slot(draft: Dict[str, Any], key: str, text: str) -> Dict[str, Any]:
+    """Store the user's exact words into the open reflection slot."""
+    cleaned = _light_clean(text)
+    if not cleaned:
+        return draft
+    if key == "followed_plan":
+        plan = _parse_followed_plan(cleaned)
+        if plan:
+            draft["followed_plan"] = plan
+        return draft
+    # Feelings can be short ("calm", "nervous") — still keep exact words.
+    if key in ("feeling_during", "feeling_after"):
+        if _CORR_RE.search(cleaned) or re.search(r"\d", cleaned):
+            return draft
+        draft[key] = cleaned[:400]
+        if key == "feeling_during":
+            draft.setdefault("emotions", [])
+            if isinstance(draft["emotions"], list) and cleaned[:40] not in draft["emotions"]:
+                draft["emotions"] = (draft["emotions"] + [cleaned[:40]])[:6]
+        return draft
+    if _is_short_field_answer(cleaned) and key in ("lessons", "improve_next", "thesis_notes"):
+        # Too thin for a lesson — leave the slot open.
+        return draft
+    if key == "thesis_notes" and not draft.get("thesis_notes"):
+        draft["thesis_notes"] = cleaned[:2000]
+    elif key == "lessons" and not draft.get("lessons"):
+        draft["lessons"] = cleaned[:1200]
+    elif key == "improve_next" and not draft.get("improve_next"):
+        draft["improve_next"] = cleaned[:1200]
+    return draft
+
+
+def _apply_reflection_answer(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
+    """When the open question is reflection, capture the reply into that slot."""
+    if _skipped_reflection(text):
+        facts_left = [k for k in _hard_missing(draft, text) if k not in _REFLECT_KEYS]
+        if not facts_left:
+            draft["reflection_skipped"] = True
+            for key in _REFLECT_KEYS:
+                if not draft.get(key):
+                    draft[key] = "skipped" if key != "followed_plan" else "mostly"
+            return draft
+    hard = _hard_missing(draft, text)
+    if not hard or hard[0] not in _REFLECT_KEYS:
+        why_hints = ("because", "idea", "thesis", "i entered", "went in because", "my plan")
+        low = (text or "").lower()
+        if (
+            not draft.get("thesis_notes")
+            and _substantial_line(text)
+            and any(h in low for h in why_hints)
+        ):
+            draft["thesis_notes"] = _light_clean(text)[:2000]
+        plan = _parse_followed_plan(text)
+        if (
+            plan
+            and not draft.get("followed_plan")
+            and re.search(r"\b(rules?|plan|playbook|disciplin|follow)\b", low)
+        ):
+            draft["followed_plan"] = plan
+        return draft
+    return _fill_reflection_slot(draft, hard[0], text)
 
 def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
     """A short spoken nod so the next question feels like a conversation."""
@@ -631,9 +727,26 @@ def merge_draft(base: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any
                     )
                 else:
                     out[key] = prev_notes
-            elif key in ("screenshot_prompted", "screenshot_before", "screenshot_after", "stop_skipped", "tp_skipped"):
+            elif key in ("screenshot_prompted", "screenshot_before", "screenshot_after", "stop_skipped", "tp_skipped", "reflection_skipped"):
                 if val:
                     out[key] = True
+            elif key == "followed_plan":
+                plan = str(val).strip().lower()
+                if plan in ("yes", "no", "mostly", "skipped"):
+                    out[key] = plan
+            elif key in ("feeling_during", "feeling_after", "lessons", "improve_next"):
+                incoming_notes = str(val).strip()
+                prev_notes = str(out.get(key) or "").strip()
+                if not prev_notes:
+                    out[key] = incoming_notes[:1200]
+                elif incoming_notes and _token_overlap(incoming_notes, prev_notes) >= 0.35:
+                    out[key] = (
+                        incoming_notes[:1200]
+                        if len(incoming_notes) >= len(prev_notes) * 0.7
+                        else prev_notes
+                    )
+                else:
+                    out[key] = prev_notes
             else:
                 out[key] = val
         if src.get("screenshot_prompted"):
@@ -646,6 +759,8 @@ def merge_draft(base: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any
             out["stop_skipped"] = True
         if src.get("tp_skipped"):
             out["tp_skipped"] = True
+        if src.get("reflection_skipped"):
+            out["reflection_skipped"] = True
         if src.get("instrument_id"):
             out["instrument_id"] = src["instrument_id"]
     if out.get("setup_tags") and not out.get("strategy"):
@@ -709,8 +824,19 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
         missing.append("session_type")
     if not (draft.get("entry_time") or "").strip():
         missing.append("entry_time")
-    if not (draft.get("thesis_notes") or "").strip():
-        missing.append("thesis_notes")
+    if not draft.get("reflection_skipped"):
+        if not (draft.get("thesis_notes") or "").strip():
+            missing.append("thesis_notes")
+        if not draft.get("followed_plan"):
+            missing.append("followed_plan")
+        if not (draft.get("feeling_during") or "").strip():
+            missing.append("feeling_during")
+        if not (draft.get("feeling_after") or "").strip():
+            missing.append("feeling_after")
+        if not (draft.get("lessons") or "").strip():
+            missing.append("lessons")
+        if not (draft.get("improve_next") or "").strip():
+            missing.append("improve_next")
     return missing
 
 
@@ -840,6 +966,7 @@ def fallback_turn(
         draft = _apply_spoken_extras(draft, text)
         draft = _mark_shots(draft, text, has_before=has_before, has_after=has_after)
         draft = _capture_user_words(draft, text)
+        draft = _apply_reflection_answer(draft, text)
 
     has_before = bool(has_before or draft.get("screenshot_before"))
     has_after = bool(has_after or draft.get("screenshot_after"))
@@ -1020,6 +1147,7 @@ def run_turn(
     seeded = _apply_spoken_extras(seeded, text)
     seeded = _mark_shots(seeded, text, has_before=has_before, has_after=has_after)
     seeded = _capture_user_words(seeded, text, history)
+    seeded = _apply_reflection_answer(seeded, text)
     has_before = bool(has_before or seeded.get("screenshot_before"))
     has_after = bool(has_after or seeded.get("screenshot_after"))
 
@@ -1039,6 +1167,7 @@ def run_turn(
         merged = _capture_user_words(llm.get("draft") or seeded, text, history)
         merged = _apply_spoken_extras(merged, text)
         merged = _mark_shots(merged, text, has_before=has_before, has_after=has_after)
+        merged = _apply_reflection_answer(merged, text)
         source = llm.get("source") or "llm"
         uncertain = llm.get("uncertain") or []
     if corr:
@@ -1067,7 +1196,10 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
     tags = draft.get("setup_tags") or []
     emotions = draft.get("emotions") or []
     dump = (draft.get("voice_dump") or "").strip()
-    thesis = (draft.get("thesis_notes") or "").strip() or dump
+    thesis = (draft.get("thesis_notes") or "").strip()
+    if thesis in ("skipped",):
+        thesis = ""
+    thesis = thesis or dump
     if dump and thesis and _token_overlap(thesis, dump) < 0.4:
         thesis = dump
     status = draft.get("status") or ("closed" if draft.get("exit_price") is not None else "open")
@@ -1075,6 +1207,27 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
     when = (draft.get("entry_time") or "").strip()
     if when and when != "unspecified" and when.lower() not in thesis.lower():
         thesis = (thesis + " Entered around " + when + ".").strip() if thesis else ("Entered around " + when + ".")
+    during = (draft.get("feeling_during") or "").strip()
+    after = (draft.get("feeling_after") or "").strip()
+    lessons = (draft.get("lessons") or "").strip()
+    improve = (draft.get("improve_next") or "").strip()
+    for skip_val in ("skipped",):
+        if during == skip_val:
+            during = ""
+        if after == skip_val:
+            after = ""
+        if lessons == skip_val:
+            lessons = ""
+        if improve == skip_val:
+            improve = ""
+    followed = draft.get("followed_plan") or ""
+    if followed == "skipped":
+        followed = ""
+    feeling_before = during or (emotions[0] if emotions else "")
+    happened = lessons or ""
+    emotion_line = ", ".join(
+        [e for e in ([during, after] + list(emotions)) if e and e != "skipped"]
+    )
     return {
         "symbol": draft.get("symbol") or "",
         "instrument_id": draft.get("instrument_id") or "",
@@ -1090,10 +1243,18 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
         "guide_session": draft.get("session_type") or "",
         "guide_why": thesis,
         "guide_voice_dump": dump or thesis,
-        "guide_emotions": ", ".join(emotions),
-        "guide_feeling_before": emotions[0] if emotions else "",
+        "guide_emotions": emotion_line,
+        "guide_feeling_before": feeling_before,
+        "guide_feeling_after": after,
+        "guide_followed_plan": followed,
+        "guide_what_happened": happened,
+        "guide_reflection": improve,
         "guide_setup_tags": ", ".join(tags),
         "pre_trade_plan": thesis,
+        "post_trade_notes": "\n".join(
+            [p for p in (happened, f"Feeling after: {after}" if after else "", f"Next time: {improve}" if improve else "") if p]
+        ).strip(),
+        "lessons_learned": improve or lessons,
         "from_guide": "1",
         "from_voice": "1",
     }

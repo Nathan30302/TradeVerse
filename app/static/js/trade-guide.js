@@ -427,32 +427,76 @@
     ctx.clearRect(0, 0, w, h);
     var speaking = rec.voiceOn && (state === 'listening' || rec.recording);
     var gold = '#e6c45a';
-    if (speaking && Date.now() - rec.rippleAt > 160) {
+    var corners = [
+      { x: 0, y: 0 },
+      { x: w, y: 0 },
+      { x: 0, y: h },
+      { x: w, y: h }
+    ];
+    // Soft corner wells always present; bloom brighter while speaking.
+    corners.forEach(function (c, idx) {
+      var pulse = speaking ? (0.1 + rec.voiceRms * 0.55 + Math.sin(Date.now() / 420 + idx) * 0.04) : 0.045;
+      var rad = speaking ? (140 + rec.voiceRms * 220) : 110;
+      var g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, rad);
+      g.addColorStop(0, rgbOf(gold, pulse));
+      g.addColorStop(0.45, rgbOf(gold, pulse * 0.35));
+      g.addColorStop(1, rgbOf(gold, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    if (speaking && Date.now() - rec.rippleAt > 90) {
       rec.rippleAt = Date.now();
       var cx = w / 2;
       var cy = Math.min(h * 0.28, 190);
+      // Center motes
       rec.waterRipples.push({
-        x: cx + (Math.random() - 0.5) * 36,
-        y: cy + (Math.random() - 0.5) * 24,
-        r: 6 + Math.random() * 10,
-        a: 0.16 + rec.voiceRms * 0.55,
-        grow: 0.55 + rec.voiceRms * 1.8,
-        thick: 1.2
+        x: cx + (Math.random() - 0.5) * 40,
+        y: cy + (Math.random() - 0.5) * 28,
+        r: 4 + Math.random() * 8,
+        a: 0.2 + rec.voiceRms * 0.55,
+        grow: 0.7 + rec.voiceRms * 2.2,
+        kind: 'mote'
       });
-      if (rec.waterRipples.length > 14) rec.waterRipples.splice(0, rec.waterRipples.length - 14);
+      // Corner ink blooms
+      corners.forEach(function (c) {
+        if (Math.random() > 0.55) return;
+        rec.waterRipples.push({
+          x: c.x + (c.x === 0 ? 28 : -28) + (Math.random() - 0.5) * 18,
+          y: c.y + (c.y === 0 ? 28 : -28) + (Math.random() - 0.5) * 18,
+          r: 10 + Math.random() * 16,
+          a: 0.22 + rec.voiceRms * 0.5,
+          grow: 1.1 + rec.voiceRms * 3.4,
+          kind: 'corner'
+        });
+      });
+      if (rec.waterRipples.length > 36) rec.waterRipples.splice(0, rec.waterRipples.length - 36);
     }
     for (var i = rec.waterRipples.length - 1; i >= 0; i--) {
       var p = rec.waterRipples[i];
       p.r += p.grow;
-      p.a *= 0.955;
-      if (p.a < 0.02 || p.r > 140) {
+      p.a *= p.kind === 'corner' ? 0.952 : 0.96;
+      if (p.a < 0.02 || p.r > (p.kind === 'corner' ? 220 : 130)) {
         rec.waterRipples.splice(i, 1);
         continue;
       }
-      ctx.beginPath();
-      ctx.fillStyle = rgbOf(gold, p.a * 0.35);
-      ctx.arc(p.x, p.y, p.r * 0.22, 0, Math.PI * 2);
-      ctx.fill();
+      if (p.kind === 'corner') {
+        ctx.beginPath();
+        ctx.strokeStyle = rgbOf(gold, p.a);
+        ctx.lineWidth = 1.4;
+        ctx.ellipse(p.x, p.y, p.r, p.r * 0.72, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.fillStyle = rgbOf(gold, p.a * 0.18);
+        ctx.ellipse(p.x, p.y, p.r * 0.35, p.r * 0.28, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.fillStyle = rgbOf(gold, p.a * 0.4);
+        ctx.arc(p.x, p.y, Math.max(1.2, p.r * 0.18), 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
@@ -649,14 +693,26 @@
       rec.sr.continuous = true;
       rec.sr.interimResults = true;
       rec.sr.lang = 'en-US';
-      rec.sr.maxAlternatives = 1;
+      rec.sr.maxAlternatives = 3;
       rec.sr.onresult = function (ev) {
         var finalTxt = '';
         var interim = '';
         for (var i = ev.resultIndex; i < ev.results.length; i++) {
-          var t = ev.results[i][0].transcript;
-          if (ev.results[i].isFinal) finalTxt += t;
-          else interim += t;
+          var best = ev.results[i][0].transcript;
+          // Prefer the alternative that knows more trading words.
+          if (ev.results[i].length > 1) {
+            var topScore = tradingScore(best);
+            for (var a = 1; a < ev.results[i].length; a++) {
+              var alt = ev.results[i][a].transcript;
+              var sc = tradingScore(alt);
+              if (sc > topScore) {
+                best = alt;
+                topScore = sc;
+              }
+            }
+          }
+          if (ev.results[i].isFinal) finalTxt += best;
+          else interim += best;
         }
         if (finalTxt) rec.text = (rec.text + ' ' + finalTxt).trim();
         var shown = (rec.text + (interim ? ' ' + interim : '')).replace(/\s+/g, ' ').trim();
@@ -665,7 +721,7 @@
           clearTimeout(rec.silence);
           rec.silence = setTimeout(function () {
             if (rec.recording) stopRec(false);
-          }, 2200);
+          }, 2600);
         }
       };
       rec.sr.onerror = function () {};
@@ -815,55 +871,86 @@
     return t.indexOf('trading journal') !== -1 || t.indexOf('symbols: eurusd') !== -1;
   }
 
+  var TRADE_WORDS = [
+    'long', 'short', 'buy', 'sell', 'entry', 'stop', 'target', 'tp', 'sl',
+    'gold', 'eurusd', 'gbpusd', 'us30', 'nas100', 'xauusd', 'bitcoin',
+    'london', 'asia', 'overlap', 'breakout', 'retest', 'liquidity', 'sweep',
+    'order block', 'bos', 'choch', 'fvg', 'partials', 'lot', 'pips', 'session'
+  ];
+
+  function tradingScore(text) {
+    var t = String(text || '').toLowerCase();
+    var n = 0;
+    TRADE_WORDS.forEach(function (w) {
+      if (t.indexOf(w) !== -1) n += 1;
+    });
+    // Prefer keeping precise decimals / prices
+    if (/\d+\.\d+/.test(t)) n += 2;
+    if (/\b\d{3,5}\b/.test(t)) n += 1;
+    return n;
+  }
+
   function pickTranscript(whisper, local) {
     whisper = String(whisper || '').trim();
     local = String(local || '').trim();
     if (isPromptLeak(whisper)) whisper = '';
     if (looksLikeEcho(whisper)) whisper = '';
     if (looksLikeEcho(local)) local = '';
-    if (local.replace(/\s/g, '').length >= 2) return local;
-    return whisper || local;
+    if (!whisper) return local;
+    if (!local) return whisper;
+    var localWords = tokensOf(local).length;
+    // Short confirms / single numbers: keep the live caption exact.
+    if (localWords <= 4) return local;
+    var ws = tradingScore(whisper);
+    var ls = tradingScore(local);
+    var wl = whisper.replace(/\s/g, '').length;
+    var ll = local.replace(/\s/g, '').length;
+    // Prefer the fuller, more trading-aware transcript so we keep exact words.
+    if (ws > ls && wl >= ll * 0.85) return whisper;
+    if (wl > ll * 1.35 && ws >= ls) return whisper;
+    if (ll >= 2) return local;
+    return whisper;
   }
 
   function finishUtterance(srText, blob) {
     var local = String(srText || '').trim();
     if (looksLikeEcho(local)) local = '';
+    var blobOk = !!(blob && blob.size > 900 && boot.transcribeEnabled);
+    // Always reconcile with Whisper when we can — keeps exact spoken words.
+    if (blobOk) {
+      committing = true;
+      setState('thinking');
+      setLive(local || '…');
+      var fd = new FormData();
+      fd.append('audio', blob, blobName(blob.type || rec.mime));
+      fetch(boot.transcribeUrl || '/api/voice/transcribe', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf() },
+        body: fd
+      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          committing = false;
+          var whispered = res && res.ok && res.d && res.d.text ? String(res.d.text).trim() : '';
+          var text = pickTranscript(whispered, local);
+          if (text) {
+            setLive(text);
+            sendTurn(text);
+          } else startRec();
+        })
+        .catch(function () {
+          committing = false;
+          if (local) sendTurn(local);
+          else startRec();
+        });
+      return;
+    }
     if (local && local.replace(/\s/g, '').length >= 2) {
       setLive(local);
       sendTurn(local);
       return;
     }
-    var blobOk = !!(blob && blob.size > 1200 && boot.transcribeEnabled);
-    if (!blobOk) {
-      if (local) sendTurn(local);
-      else {
-        setLive('');
-        startRec();
-      }
-      return;
-    }
-    committing = true;
-    setState('thinking');
-    setLive(local || '…');
-    var fd = new FormData();
-    fd.append('audio', blob, blobName(blob.type || rec.mime));
-    fetch(boot.transcribeUrl || '/api/voice/transcribe', {
-      method: 'POST',
-      headers: { 'X-CSRFToken': csrf() },
-      body: fd
-    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
-      .then(function (res) {
-        committing = false;
-        var whispered = res && res.ok && res.d && res.d.text ? String(res.d.text).trim() : '';
-        var text = pickTranscript(whispered, local);
-        if (text) sendTurn(text);
-        else startRec();
-      })
-      .catch(function () {
-        committing = false;
-        if (local) sendTurn(local);
-        else startRec();
-      });
+    setLive('');
+    startRec();
   }
 
   function applyForm(fields, instrument) {
@@ -965,7 +1052,14 @@
     if (d.entry_time && d.entry_time !== 'unspecified') rows.push(['Time', d.entry_time]);
     if (d.setup_tags && d.setup_tags.length) rows.push(['Setup', d.setup_tags.join(', ')]);
     if (d.emotions && d.emotions.length) rows.push(['Feel', d.emotions.join(', ')]);
-    if (d.thesis_notes) rows.push(['Thesis', d.thesis_notes]);
+    if (d.thesis_notes && d.thesis_notes !== 'skipped') rows.push(['Why', d.thesis_notes]);
+    if (d.followed_plan && d.followed_plan !== 'skipped') {
+      rows.push(['Rules', d.followed_plan === 'yes' ? 'Followed' : (d.followed_plan === 'mostly' ? 'Mostly' : 'Broke rules')]);
+    }
+    if (d.feeling_during && d.feeling_during !== 'skipped') rows.push(['During', d.feeling_during]);
+    if (d.feeling_after && d.feeling_after !== 'skipped') rows.push(['After', d.feeling_after]);
+    if (d.lessons && d.lessons !== 'skipped') rows.push(['Learned', d.lessons]);
+    if (d.improve_next && d.improve_next !== 'skipped') rows.push(['Next time', d.improve_next]);
     var html = '<article class="tv-vj-card">' + hero;
     rows.forEach(function (row, i) {
       if (i === 0) html += '<h2>' + esc(row[0]) + ' <span>' + esc(row[1]) + '</span></h2>';

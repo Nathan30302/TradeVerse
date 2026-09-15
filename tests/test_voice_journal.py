@@ -237,7 +237,6 @@ def test_conversation_skips_fields_already_said():
     assert first["complete"] is False
     reply = (first["reply"] or "").lower()
     assert "got it" in reply
-    assert "long" not in reply or "still" in reply or "done" in reply or "target" in reply or "chart" in reply
     assert "what did you trade" not in reply
 
     second = fallback_turn("still in it, breakout off the open", d)
@@ -250,8 +249,15 @@ def test_conversation_skips_fields_already_said():
     assert third["draft"]["session_type"]
     assert third["draft"]["entry_time"]
     assert "what did you trade" not in (third["reply"] or "").lower()
-    assert third["ask_screenshot"] is True
-    assert third["screenshot_kind"] == "before"
+    # Mechanics in — next is reflection (why / rules), not charts yet.
+    assert third["ask_screenshot"] is False
+    reply3 = (third["reply"] or "").lower()
+    assert (
+        "why" in reply3
+        or "idea" in reply3
+        or "rules" in reply3
+        or "follow" in reply3
+    )
 
 
 def test_voice_turn_api_extracts_and_asks_once(logged_client):
@@ -281,6 +287,13 @@ def test_conversation_completes_after_screenshot_skip():
     assert d["session_type"]
     assert d["entry_time"]
     assert required_ready(d)
+    # Fill reflection page
+    d = fallback_turn("Swept the low then bought the reclaim", d)["draft"]
+    d = fallback_turn("yes I followed my rules", d)["draft"]
+    d = fallback_turn("a bit nervous but patient", d)["draft"]
+    d = fallback_turn("calm and focused now", d)["draft"]
+    d = fallback_turn("wait for confirmation next time", d)["draft"]
+    d = fallback_turn("size down when unsure", d)["draft"]
     shot = fallback_turn("yeah that's it", d, has_screenshot=False)
     assert shot["ask_screenshot"] is True
     assert shot["screenshot_kind"] == "before"
@@ -290,6 +303,9 @@ def test_conversation_completes_after_screenshot_skip():
     done = fallback_turn("no", after["draft"], has_before=True, skip_screenshot=True)
     assert done["complete"] is True
     assert done["ask_screenshot"] is False
+    assert done["draft"].get("followed_plan") == "yes"
+    assert done["draft"].get("feeling_during")
+    assert done["draft"].get("improve_next")
 
 
 def test_does_not_infer_session_from_clock():
@@ -363,14 +379,49 @@ def test_wrap_includes_planned_return():
     from app.services.voice_conversation import fallback_turn
 
     d = fallback_turn(
-        "Bought gold at 3650 stop 3640 target 3680, still in it this morning london"
+        "Bought gold at 3650 stop 3640 target 3680, still in it this morning london because of the sweep"
     )["draft"]
+    d = fallback_turn("yes followed rules", d)["draft"]
+    d = fallback_turn("calm", d)["draft"]
+    d = fallback_turn("confident", d)["draft"]
+    d = fallback_turn("trust the open sweep", d)["draft"]
+    d = fallback_turn("wait for close confirmation", d)["draft"]
     done = fallback_turn("no screenshot", d, skip_screenshot=True)
     assert done["complete"] is True
     reply = (done["reply"] or "").lower()
     assert "1:" in reply or "planned" in reply
     assert "journal" in reply
     assert "save" in reply
+
+
+def test_full_journal_asks_reflection_before_charts():
+    from app.services.voice_conversation import fallback_turn, draft_to_form_fields, missing_keys
+
+    d = fallback_turn(
+        "Long EURUSD at 1.1724 stop 1.1714 target 1.1744 still open London this morning"
+    )["draft"]
+    # Drive each reflection slot explicitly.
+    while missing_keys(d) and missing_keys(d)[0] == "thesis_notes":
+        d = fallback_turn("London open retest of support", d)["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "followed_plan":
+        d = fallback_turn("yes I followed my rules", d)["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "feeling_during":
+        d = fallback_turn("nervous but disciplined", d)["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "feeling_after":
+        d = fallback_turn("relieved and calm", d)["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "lessons":
+        d = fallback_turn("patience pays on the open", d)["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "improve_next":
+        d = fallback_turn("take only A plus setups", d)["draft"]
+    assert d.get("followed_plan") == "yes"
+    assert d.get("feeling_during")
+    assert d.get("improve_next")
+    # Charts come after the reflection page.
+    nxt = fallback_turn("okay", d)
+    assert nxt["ask_screenshot"] is True
+    fields = draft_to_form_fields(d)
+    assert fields["guide_followed_plan"] == "yes"
+    assert "take only" in fields["guide_reflection"].lower()
 
 
 def test_draft_from_existing_seeds_complete_trade():

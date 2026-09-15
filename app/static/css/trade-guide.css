@@ -50,9 +50,18 @@ body:has(.tv-vj-ink) footer a {
   z-index: 0;
   pointer-events: none;
   background:
+    radial-gradient(ellipse 42% 36% at 0% 0%, rgba(230, 196, 90, 0.09), transparent 70%),
+    radial-gradient(ellipse 42% 36% at 100% 0%, rgba(230, 196, 90, 0.08), transparent 70%),
+    radial-gradient(ellipse 48% 40% at 0% 100%, rgba(230, 196, 90, 0.07), transparent 72%),
+    radial-gradient(ellipse 48% 40% at 100% 100%, rgba(230, 196, 90, 0.07), transparent 72%),
     radial-gradient(ellipse 70% 45% at 50% 22%, rgba(230, 196, 90, 0.11), transparent 62%),
     radial-gradient(ellipse 90% 70% at 50% 100%, rgba(20, 40, 32, 0.9), transparent 55%),
     linear-gradient(180deg, #0b1210 0%, #070c0a 48%, #050807 100%);
+  transition: filter 420ms ease, opacity 420ms ease;
+}
+
+.tv-vj-page.is-voice .tv-vj-atmosphere {
+  filter: saturate(1.15) brightness(1.06);
 }
 
 .tv-vj-water {
@@ -62,12 +71,12 @@ body:has(.tv-vj-ink) footer a {
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  opacity: 0;
+  opacity: 0.35;
   transition: opacity 420ms ease;
 }
 
 .tv-vj-page.is-voice .tv-vj-water {
-  opacity: 0.55;
+  opacity: 1;
 }
 
 .tv-vj-form {
