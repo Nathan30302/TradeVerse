@@ -173,7 +173,50 @@
     } catch (e) {}
   }
 
+  function clearBargeIn() {
+    clearInterval(rec.bargeWatch);
+    rec.bargeWatch = null;
+    rec.bargeHits = 0;
+  }
+
+  function armBargeIn() {
+    clearBargeIn();
+    rec.bargeFired = false;
+    rec.bargeArmedAt = Date.now() + 480;
+    rec.bargeHits = 0;
+    if (!rec.analyser) return;
+    var data = new Uint8Array(rec.analyser.fftSize);
+    rec.bargeWatch = setInterval(function () {
+      if (state !== 'speaking' || rec.bargeFired) {
+        clearBargeIn();
+        return;
+      }
+      rec.analyser.getByteTimeDomainData(data);
+      var sum = 0;
+      for (var i = 0; i < data.length; i++) {
+        var v = (data[i] - 128) / 128;
+        sum += v * v;
+      }
+      var rms = Math.sqrt(sum / data.length);
+      if (Date.now() < rec.bargeArmedAt) return;
+      if (rms > 0.1) rec.bargeHits += 1;
+      else rec.bargeHits = 0;
+      if (rec.bargeHits >= 3) {
+        rec.bargeFired = true;
+        clearBargeIn();
+        try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
+        var a = document.getElementById('tv-vj-tts');
+        if (a) {
+          try { a.pause(); } catch (e2) {}
+          a.remove();
+        }
+        startRec();
+      }
+    }, 80);
+  }
+
   function stopTTS() {
+    clearBargeIn();
     try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
     var a = document.getElementById('tv-vj-tts');
     if (a) {
@@ -191,7 +234,10 @@
     setState('speaking');
     setAi(line);
     stopTTS();
+    armBargeIn();
     var wrapped = function () {
+      clearBargeIn();
+      if (rec.bargeFired) return;
       setTimeout(function () { if (typeof then === 'function') then(); }, 520);
     };
     var done = wrapped;
@@ -288,34 +334,32 @@
     ctx.clearRect(0, 0, w, h);
     var speaking = rec.voiceOn && (state === 'listening' || rec.recording);
     var accent = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent-bright').trim() || '#14b8a6';
-    if (speaking && Date.now() - rec.rippleAt > 150) {
+    if (speaking && Date.now() - rec.rippleAt > 120) {
       rec.rippleAt = Date.now();
+      var cx = w / 2;
+      var cy = Math.min(h * 0.34, 210);
       rec.waterRipples.push({
-        x: w / 2,
-        y: Math.min(h * 0.36, 220),
-        r: 18,
-        a: 0.32 + rec.voiceRms * 1.2,
-        grow: 1.8 + rec.voiceRms * 5
+        x: cx, y: cy, r: 14, a: 0.38 + rec.voiceRms * 1.1,
+        grow: 1.5 + rec.voiceRms * 4.2, thick: 2.6
       });
-      if (rec.waterRipples.length > 16) rec.waterRipples.shift();
+      rec.waterRipples.push({
+        x: cx, y: cy, r: 28, a: 0.22 + rec.voiceRms * 0.7,
+        grow: 2.4 + rec.voiceRms * 5.5, thick: 1.4
+      });
+      if (rec.waterRipples.length > 22) rec.waterRipples.splice(0, rec.waterRipples.length - 22);
     }
     for (var i = rec.waterRipples.length - 1; i >= 0; i--) {
       var p = rec.waterRipples[i];
       p.r += p.grow;
-      p.a *= 0.96;
-      if (p.a < 0.02 || p.r > Math.max(w, h)) {
+      p.a *= 0.945;
+      if (p.a < 0.02 || p.r > Math.max(w, h) * 0.85) {
         rec.waterRipples.splice(i, 1);
         continue;
       }
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.ellipse(p.x, p.y, p.r, p.r * 0.72, 0, 0, Math.PI * 2);
       ctx.strokeStyle = rgbOf(accent, p.a);
-      ctx.lineWidth = 2.4;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r * 0.7, 0, Math.PI * 2);
-      ctx.strokeStyle = rgbOf(accent, p.a * 0.4);
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = p.thick || 2.2;
       ctx.stroke();
     }
     if (!speaking && rec.waterRipples.length === 0) {
@@ -684,12 +728,54 @@
     }
   }
 
+  function renderChips(d, m) {
+    var el = document.getElementById('tv-vj-chips');
+    if (!el) return;
+    d = d || draft;
+    m = m || {};
+    var chips = [];
+    if (d.symbol) chips.push({ t: d.symbol, k: '' });
+    if (d.trade_type) chips.push({ t: d.trade_type === 'SELL' ? 'Short' : 'Long', k: '' });
+    if (d.entry_price != null) chips.push({ t: 'In ' + d.entry_price, k: '' });
+    if (d.stop_loss != null) chips.push({ t: 'SL ' + d.stop_loss, k: '' });
+    if (d.take_profit != null) chips.push({ t: 'TP ' + d.take_profit, k: '' });
+    if (d.status === 'closed' && d.exit_price != null) chips.push({ t: 'Out ' + d.exit_price, k: '' });
+    if (m.rr_label) chips.push({ t: m.rr_label, k: 'is-rr' });
+    if (m.profit_loss != null) {
+      var pnl = Number(m.profit_loss);
+      chips.push({ t: (pnl >= 0 ? '+' : '') + pnl, k: pnl >= 0 ? 'is-win' : 'is-loss' });
+    }
+    if (d.session_type) chips.push({ t: String(d.session_type).replace(' Session', ''), k: '' });
+    el.innerHTML = chips.map(function (c) {
+      return '<span class="tv-vj-chip ' + c.k + '">' + esc(c.t) + '</span>';
+    }).join('');
+    el.classList.toggle('is-on', chips.length > 0);
+  }
+
   function renderJournal(data) {
     if (!summaryEl) return;
     var d = (data && data.draft) || draft;
     var m = (data && data.metrics) || {};
     var side = d.trade_type === 'SELL' ? 'Short' : 'Long';
     var status = d.status === 'closed' ? 'Closed' : 'Open';
+    var hero = '';
+    if (d.status === 'closed' && m.profit_loss != null) {
+      var pnl = Number(m.profit_loss);
+      var cls = pnl >= 0 ? 'is-win' : 'is-loss';
+      hero = '<div class="tv-vj-hero"><div class="tv-vj-hero-kicker">Result</div>' +
+        '<div class="tv-vj-hero-value ' + cls + '">' + esc((pnl >= 0 ? '+' : '') + pnl) + '</div>' +
+        '<div class="tv-vj-hero-sub">' + esc(m.rr_label ? ('R:R ' + m.rr_label) : (status + ' trade')) + '</div></div>';
+    } else if (m.rr_label) {
+      var sub = m.sl_pips != null ? ('Stop ' + m.sl_pips + ' away') : 'Planned return';
+      if (m.tp_pips != null) sub = 'Risk ' + m.sl_pips + ' to make ' + m.tp_pips;
+      hero = '<div class="tv-vj-hero"><div class="tv-vj-hero-kicker">Planned return</div>' +
+        '<div class="tv-vj-hero-value">' + esc(m.rr_label) + '</div>' +
+        '<div class="tv-vj-hero-sub">' + esc(sub) + '</div></div>';
+    } else if (m.sl_pips != null) {
+      hero = '<div class="tv-vj-hero"><div class="tv-vj-hero-kicker">Risk</div>' +
+        '<div class="tv-vj-hero-value">' + esc(m.sl_pips + ' to stop') + '</div>' +
+        '<div class="tv-vj-hero-sub">Target not set yet</div></div>';
+    }
     var rows = [
       [side + ' ' + (d.symbol || ''), status],
       ['In', d.entry_price != null ? d.entry_price : '—'],
@@ -698,11 +784,12 @@
     ];
     if (d.status === 'closed') rows.push(['Out', d.exit_price != null ? d.exit_price : '—']);
     if (m.rr_label) rows.push(['R:R', m.rr_label]);
+    if (m.profit_loss != null) rows.push(['P/L', m.profit_loss]);
     if (d.session_type) rows.push(['Session', d.session_type]);
     if (d.entry_time && d.entry_time !== 'unspecified') rows.push(['Time', d.entry_time]);
     if (d.setup_tags && d.setup_tags.length) rows.push(['Setup', d.setup_tags.join(', ')]);
     if (d.thesis_notes) rows.push(['Thesis', d.thesis_notes]);
-    var html = '<article class="tv-vj-card">';
+    var html = '<article class="tv-vj-card">' + hero;
     rows.forEach(function (row, i) {
       if (i === 0) html += '<h2>' + esc(row[0]) + ' <span>' + esc(row[1]) + '</span></h2>';
       else html += '<div class="tv-vj-row"><span>' + esc(row[0]) + '</span><strong>' + esc(row[1]) + '</strong></div>';
@@ -804,6 +891,7 @@
         }
         draft = data.draft || draft;
         applyForm(data.form, data.instrument);
+        renderChips(draft, data.metrics || {});
         setVal('guide_voice_dump', transcriptDump.join('\n'));
         history.push({ role: 'assistant', content: data.reply || '' });
         if (data.ask_screenshot && shotEl) showShot(data.screenshot_kind || 'before');

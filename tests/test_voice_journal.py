@@ -347,3 +347,27 @@ def test_voice_turn_keeps_verbatim_dump(logged_client):
     assert "swept the London open" in why
     assert "what did you trade" not in (data.get("reply") or "").lower()
 
+
+def test_correction_overwrites_entry():
+    from app.services.voice_conversation import fallback_turn
+
+    d = fallback_turn("I went long on US30 at 42500 stop 42350")["draft"]
+    nxt = fallback_turn("actually the entry was 42510", d)
+    assert nxt["draft"]["entry_price"] == 42510
+    assert nxt["draft"]["stop_loss"] == 42350
+    assert "updated" in (nxt["reply"] or "").lower()
+    assert "42510" in (nxt["reply"] or "")
+
+
+def test_wrap_includes_planned_return():
+    from app.services.voice_conversation import fallback_turn
+
+    d = fallback_turn(
+        "Bought gold at 3650 stop 3640 target 3680, still in it this morning london"
+    )["draft"]
+    done = fallback_turn("no screenshot", d, skip_screenshot=True)
+    assert done["complete"] is True
+    reply = (done["reply"] or "").lower()
+    assert "1:" in reply or "planned" in reply
+    assert "journal" in reply
+

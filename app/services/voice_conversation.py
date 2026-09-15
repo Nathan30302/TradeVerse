@@ -154,6 +154,8 @@ _EMPTY = {
     "screenshot_prompted": False,
     "screenshot_before": False,
     "screenshot_after": False,
+    "stop_skipped": False,
+    "tp_skipped": False,
 }
 
 _SHORT_ANSWER = re.compile(
@@ -200,6 +202,47 @@ def _extract_entry_time(text: str) -> Optional[str]:
 def _skipped_time(text: str) -> bool:
     t = (text or "").lower()
     return bool(re.search(r"\b(not sure|don't remember|dont remember|no idea|skip(?:ped)? it)\b", t))
+
+
+_CORR_RE = re.compile(
+    r"\b(actually|wait|correction|meant|make that|change(?:d)?(?: that| the| it)?|"
+    r"wrong|not that|update(?:d)?)\b",
+    re.I,
+)
+
+
+def _skipped_target(text: str) -> bool:
+    t = (text or "").lower()
+    return bool(re.search(
+        r"\b(no target|no tp|without a target|didn't set (?:a )?target|"
+        r"dont set (?:a )?target|no take profit|didn't have a target)\b",
+        t,
+    ))
+
+
+def _declines_shot(text: str, prompted: bool) -> bool:
+    if not prompted:
+        return False
+    t = (text or "").lower()
+    if re.search(r"\b(no screenshot|not this time|don't have|dont have|skip(?:ped)? (?:it|the chart))\b", t):
+        return True
+    if _CORR_RE.search(t) or re.search(r"\d", t):
+        return False
+    return parse_yes_no(t) == "no"
+
+
+def _draft_metrics(draft: Dict[str, Any]) -> Dict[str, Any]:
+    from app.services.voice_journal import preview_metrics
+
+    return preview_metrics(
+        entry=draft.get("entry_price"),
+        stop_loss=draft.get("stop_loss"),
+        take_profit=draft.get("take_profit"),
+        exit_price=draft.get("exit_price"),
+        side=draft.get("trade_type") or "BUY",
+        lot_size=draft.get("lot_size") or 1.0,
+        symbol=draft.get("symbol") or "",
+    )
 
 
 def empty_draft() -> Dict[str, Any]:
@@ -332,8 +375,10 @@ def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
     soft = {"take_profit", "thesis_notes"}
     hard = [k for k in missing if k not in soft]
     t = (transcript or "").lower()
-    if "stop_loss" in hard and re.search(r"\b(no stop|without a stop|flat)\b", t):
+    if "stop_loss" in hard and (draft.get("stop_skipped") or re.search(r"\b(no stop|without a stop|flat)\b", t)):
         hard = [k for k in hard if k != "stop_loss"]
+    if "take_profit" in hard and (draft.get("tp_skipped") or _skipped_target(t)):
+        hard = [k for k in hard if k != "take_profit"]
     if "entry_time" in hard and _skipped_time(t):
         hard = [k for k in hard if k != "entry_time"]
     return hard
@@ -341,6 +386,30 @@ def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
 
 def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
     """A short spoken nod so the next question feels like a conversation."""
+    corr = draft.get("_just_corrected") or []
+    if corr:
+        labels: List[str] = []
+        names = {
+            "entry_price": "entry",
+            "stop_loss": "stop",
+            "take_profit": "target",
+            "exit_price": "exit",
+            "trade_type": "side",
+            "symbol": "market",
+            "session_type": "session",
+        }
+        for key in corr[:3]:
+            if key == "trade_type":
+                labels.append("short" if draft.get("trade_type") == "SELL" else "long")
+            elif key in ("entry_price", "stop_loss", "take_profit", "exit_price") and draft.get(key) is not None:
+                labels.append(f"{names[key]} {float(draft[key]):g}")
+            elif key == "symbol" and draft.get("symbol"):
+                labels.append(str(draft["symbol"]))
+            elif key in names:
+                labels.append(names[key])
+        if labels:
+            return "Updated — " + ", ".join(labels) + "."
+        return "Updated."
     parsed = parse_voice_text(text or "")
     bits: List[str] = []
     if parsed.get("symbol"):
@@ -360,11 +429,13 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
     time_bit = _extract_entry_time(text or "")
     if time_bit and "entry_time" not in "".join(bits).lower():
         bits.append(time_bit)
+    if parsed.get("take_profit") is not None and len(bits) < 3:
+        bits.append(f"target {float(parsed['take_profit']):g}")
     if not bits:
         if _is_short_field_answer(text) and (
             draft.get("symbol") or draft.get("trade_type") or draft.get("entry_price") is not None
         ):
-            return "Got it."
+            return "Okay."
         return ""
     return "Got it — " + ", ".join(bits[:3]) + "."
 
@@ -406,6 +477,7 @@ def conversational_next(
     else:
         reply = _spoken_wrap(draft)
         complete = required_ready(draft)
+    draft.pop("_just_corrected", None)
     return {
         "reply": reply,
         "ask_screenshot": ask_shot,
@@ -517,7 +589,7 @@ def merge_draft(base: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any
                     )
                 else:
                     out[key] = prev_notes
-            elif key in ("screenshot_prompted", "screenshot_before", "screenshot_after"):
+            elif key in ("screenshot_prompted", "screenshot_before", "screenshot_after", "stop_skipped", "tp_skipped"):
                 if val:
                     out[key] = True
             else:
@@ -528,6 +600,10 @@ def merge_draft(base: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any
             out["screenshot_before"] = True
         if src.get("screenshot_after"):
             out["screenshot_after"] = True
+        if src.get("stop_skipped"):
+            out["stop_skipped"] = True
+        if src.get("tp_skipped"):
+            out["tp_skipped"] = True
         if src.get("instrument_id"):
             out["instrument_id"] = src["instrument_id"]
     if out.get("setup_tags") and not out.get("strategy"):
@@ -576,7 +652,7 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
         missing.append("trade_type")
     if draft.get("entry_price") is None:
         missing.append("entry_price")
-    if draft.get("stop_loss") is None:
+    if draft.get("stop_loss") is None and not draft.get("stop_skipped"):
         missing.append("stop_loss")
     status = draft.get("status")
     if not status:
@@ -585,7 +661,7 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
         if draft.get("take_profit") is None:
             missing.append("take_profit")
         missing.append("exit_price")
-    elif status == "open" and draft.get("take_profit") is None:
+    elif status == "open" and draft.get("take_profit") is None and not draft.get("tp_skipped"):
         missing.append("take_profit")
     if not draft.get("session_type"):
         missing.append("session_type")
@@ -652,6 +728,45 @@ def _apply_spoken_extras(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
         draft["entry_time"] = when
     if _skipped_time(text) and not draft.get("entry_time"):
         draft["entry_time"] = "unspecified"
+    if _skipped_target(text):
+        draft["tp_skipped"] = True
+    if re.search(r"\b(no stop|without a stop|flat)\b", (text or "").lower()):
+        draft["stop_skipped"] = True
+    return draft
+
+
+def _apply_corrections(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
+    """Overwrite a filled level when they change their mind mid-conversation."""
+    if not _CORR_RE.search(text or ""):
+        return draft
+    parsed = parse_voice_text(text)
+    incoming: Dict[str, Any] = {}
+    t = (text or "").lower()
+    for key in (
+        "symbol",
+        "trade_type",
+        "entry_price",
+        "stop_loss",
+        "take_profit",
+        "exit_price",
+        "session_type",
+        "status",
+    ):
+        if parsed.get(key) not in (None, "", []):
+            incoming[key] = parsed[key]
+    if parsed.get("bare_number") is not None:
+        n = parsed["bare_number"]
+        if re.search(r"\b(stop|sl)\b", t):
+            incoming["stop_loss"] = n
+        elif re.search(r"\b(target|tp|take profit)\b", t):
+            incoming["take_profit"] = n
+        elif re.search(r"\b(exit|got out)\b", t):
+            incoming["exit_price"] = n
+        else:
+            incoming["entry_price"] = n
+    if incoming:
+        draft = merge_draft(draft, incoming)
+        draft["_just_corrected"] = list(incoming.keys())
     return draft
 
 
@@ -668,13 +783,13 @@ def fallback_turn(
     """Deterministic conversation when the LLM is unavailable."""
     draft = merge_draft(empty_draft(), draft)
     text = (transcript or "").strip()
-    yn = parse_yes_no(text) if text else None
     has_before = bool(has_before or has_screenshot or draft.get("screenshot_before"))
     has_after = bool(has_after or draft.get("screenshot_after"))
     if text:
         parsed = parse_voice_text(text)
         draft = apply_parse(draft, parsed)
-        if yn == "no" and draft.get("screenshot_prompted"):
+        draft = _apply_corrections(draft, text)
+        if _declines_shot(text, bool(draft.get("screenshot_prompted"))):
             skip_screenshot = True
         draft = _infer_closed_exit(draft, text)
         guessed, _ = normalize_symbol_guess(text)
@@ -716,7 +831,16 @@ def _spoken_wrap(draft: Dict[str, Any]) -> str:
         bits.append(str(draft["session_type"]).replace(" Session", ""))
     state = "still open" if draft.get("status") != "closed" else "closed"
     core = " ".join(bits) if bits else "the trade"
-    return f"Got it — {core}, {state}. I’ll put that in your journal."
+    extra = ""
+    metrics = _draft_metrics(draft)
+    if draft.get("status") == "closed" and metrics.get("profit_loss") is not None:
+        pnl = metrics["profit_loss"]
+        extra = f" That’s about {pnl:+g}."
+    elif metrics.get("rr_label"):
+        extra = f" Planned {metrics['rr_label']}."
+    elif metrics.get("sl_pips"):
+        extra = f" Stop is {metrics['sl_pips']:g} away."
+    return f"Got it — {core}, {state}.{extra} I’ll put that in your journal."
 
 
 def _llm_allowed() -> bool:
@@ -844,8 +968,9 @@ def run_turn(
     has_after = bool(has_after or draft.get("screenshot_after"))
     parsed = parse_voice_text(text)
     seeded = apply_parse(draft, parsed)
+    seeded = _apply_corrections(seeded, text)
     seeded = _infer_closed_exit(seeded, text)
-    if parse_yes_no(text) == "no" and seeded.get("screenshot_prompted"):
+    if _declines_shot(text, bool(seeded.get("screenshot_prompted"))):
         skip_screenshot = True
     seeded = _apply_spoken_extras(seeded, text)
     seeded = _mark_shots(seeded, text, has_before=has_before, has_after=has_after)
@@ -864,12 +989,15 @@ def run_turn(
     merged = seeded
     source = "fallback"
     uncertain: List[Any] = []
+    corr = list(seeded.get("_just_corrected") or [])
     if llm:
         merged = _capture_user_words(llm.get("draft") or seeded, text, history)
         merged = _apply_spoken_extras(merged, text)
         merged = _mark_shots(merged, text, has_before=has_before, has_after=has_after)
         source = llm.get("source") or "llm"
         uncertain = llm.get("uncertain") or []
+    if corr:
+        merged["_just_corrected"] = corr
 
     nxt = conversational_next(
         merged,

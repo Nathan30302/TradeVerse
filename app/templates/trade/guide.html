@@ -3,7 +3,7 @@
 {% block title %}Voice Journal - {{ app_name }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-vj7">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-vj8">
 {% endblock %}
 
 {% block content %}
@@ -87,6 +87,7 @@
                 <span class="tv-vj-live-label">You</span>
                 <p class="tv-vj-live" id="tv-vj-live" aria-live="polite"></p>
             </div>
+            <div class="tv-vj-chips" id="tv-vj-chips" aria-live="polite"></div>
             <p class="small text-danger d-none mb-0" id="tv-vj-mic-err"></p>
 
             <div class="tv-vj-shot d-none" id="tv-vj-shot">
@@ -124,5 +125,5 @@
     'speakUrl': url_for('api_voice.speak'),
     'userId': current_user.id
 } | tojson }}</script>
-<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj7"></script>
+<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj8"></script>
 {% endblock %}

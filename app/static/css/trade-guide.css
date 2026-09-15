@@ -218,6 +218,49 @@
   opacity: 1;
 }
 
+.tv-vj-chips {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  width: min(22.5rem, calc(100% - 1.5rem));
+  margin-top: 0.7rem;
+  min-height: 0;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+
+.tv-vj-chips.is-on {
+  opacity: 1;
+  transform: none;
+}
+
+.tv-vj-chip {
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary, #0c1b2a);
+  background: color-mix(in srgb, var(--vj-accent) 12%, var(--card-bg, #fff));
+  border: 1px solid color-mix(in srgb, var(--vj-accent) 22%, transparent);
+}
+
+.tv-vj-chip.is-rr,
+.tv-vj-chip.is-win {
+  color: #047857;
+  background: color-mix(in srgb, #10b981 16%, var(--card-bg, #fff));
+  border-color: color-mix(in srgb, #10b981 28%, transparent);
+}
+
+.tv-vj-chip.is-loss {
+  color: #b91c1c;
+  background: color-mix(in srgb, #ef4444 14%, var(--card-bg, #fff));
+  border-color: color-mix(in srgb, #ef4444 28%, transparent);
+}
+
 .tv-vj-stage[data-state="listening"] .tv-vj-live:not(.is-on)::before {
   content: "Speak naturally — I’m writing your words.";
   color: var(--tv-muted, var(--text-secondary, #6b7280));
@@ -302,6 +345,39 @@
   background: color-mix(in srgb, var(--vj-accent) 9%, var(--card-bg, #fff));
   border: 1px solid color-mix(in srgb, var(--vj-accent) 18%, var(--card-border, #e5e7eb));
   color: var(--text-primary, #0c1b2a);
+}
+
+.tv-vj-hero {
+  margin: 0 0 0.95rem;
+  padding: 0.85rem 0.95rem 0.8rem;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--vj-accent) 14%, var(--card-bg, #fff));
+  border: 1px solid color-mix(in srgb, var(--vj-accent) 20%, transparent);
+}
+
+.tv-vj-hero-kicker {
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tv-muted, var(--text-secondary, #6b7280));
+  margin-bottom: 0.15rem;
+}
+
+.tv-vj-hero-value {
+  font-size: 1.55rem;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.tv-vj-hero-value.is-win { color: #047857; }
+.tv-vj-hero-value.is-loss { color: #b91c1c; }
+
+.tv-vj-hero-sub {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  color: var(--tv-muted, var(--text-secondary, #6b7280));
 }
 
 .tv-vj-card h2 {
