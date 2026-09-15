@@ -763,6 +763,31 @@ def profile():
                 except Exception:
                     pass
 
+            if 'daily_loss_limit_r' in request.form:
+                raw_r = (request.form.get('daily_loss_limit_r') or '').strip()
+                try:
+                    if not raw_r:
+                        user.daily_loss_limit_r = None
+                    else:
+                        parsed_r = float(raw_r)
+                        user.daily_loss_limit_r = parsed_r if parsed_r > 0 else None
+                except (TypeError, ValueError):
+                    field_msgs.append('Daily loss limit must be a number in R.')
+                except Exception:
+                    pass
+            if 'daily_max_trades' in request.form:
+                raw_n = (request.form.get('daily_max_trades') or '').strip()
+                try:
+                    if not raw_n:
+                        user.daily_max_trades = None
+                    else:
+                        parsed_n = int(raw_n)
+                        user.daily_max_trades = parsed_n if parsed_n > 0 else None
+                except (TypeError, ValueError):
+                    field_msgs.append('Max trades per day must be a whole number.')
+                except Exception:
+                    pass
+
             if pending_avatar[0] == 'clear':
                 user.avatar_url = None
             elif pending_avatar[0] == 'set':
@@ -813,6 +838,8 @@ def profile():
         profile_stats=_profile_stats_for_user(current_user),
         profile_country_code=(_safe_user_col(current_user, 'country_code', None) or ''),
         profile_phone_number=(_safe_user_col(current_user, 'phone_number', None) or ''),
+        profile_daily_loss_limit_r=_safe_user_col(current_user, 'daily_loss_limit_r', None),
+        profile_daily_max_trades=_safe_user_col(current_user, 'daily_max_trades', None),
     )
 
 # ==================== Forgot / reset password (logged out) ====================
@@ -1031,6 +1058,8 @@ def settings():
         'auth/account_settings.html',
         profile_country_code=(_safe_user_col(current_user, 'country_code', None) or ''),
         profile_phone_number=(_safe_user_col(current_user, 'phone_number', None) or ''),
+        profile_daily_loss_limit_r=_safe_user_col(current_user, 'daily_loss_limit_r', None),
+        profile_daily_max_trades=_safe_user_col(current_user, 'daily_max_trades', None),
     )
 
 

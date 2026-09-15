@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'macros/trade_marks.html' import pnl_chip, side_chip, result_badge %}
+{% from 'macros/mistake_chips.html' import mistake_chip_fields, mistake_badges %}
 
 {% block title %}Trade Details - {{ app_name }}{% endblock %}
 
@@ -120,6 +121,10 @@
                 <div class="col-md-4">
                     <label class="form-label">One lesson learned</label>
                     <input class="form-control" type="text" name="lessons_learned" value="{{ trade.lessons_learned or '' }}" placeholder="e.g. Waited for confirmation">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Mistakes <span class="text-muted">(optional)</span></label>
+                    {{ mistake_chip_fields(trade.get_mistake_keys()) }}
                 </div>
             </div>
             <div class="d-flex gap-2 mt-3">
@@ -273,6 +278,38 @@
                         </div>
                     </div>
                 </div>
+                {% if trade.mae_price is not none or trade.mfe_price is not none %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="text-muted small">MAE (worst against)</label>
+                            <div class="h4">
+                                {% if trade.mae_price is not none %}
+                                    {{ "%.5f"|format(trade.mae_price) }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="text-muted small">MFE (best in favor)</label>
+                            <div class="h4">
+                                {% if trade.mfe_price is not none %}
+                                    {{ "%.5f"|format(trade.mfe_price) }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </div>
+                            {% set leftover_r = trade.leftover_on_table_r() %}
+                            {% if leftover_r %}
+                            <small class="text-muted">Left on the table: {{ "%.2f"|format(leftover_r) }}R</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -307,6 +344,7 @@
                                 <span class="text-muted">Not specified</span>
                             {% endif %}
                         </div>
+                        <div class="mt-2">{{ mistake_badges(trade) }}</div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="text-muted small">Session</label>
@@ -643,6 +681,14 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold" for="close_exit_date">Exit Date/Time</label>
                         <input type="datetime-local" class="form-control" id="close_exit_date" name="exit_date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" for="close_mae_price">MAE <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="number" step="any" inputmode="decimal" class="form-control" id="close_mae_price" name="mae_price" placeholder="Worst price against you">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" for="close_mfe_price">MFE <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="number" step="any" inputmode="decimal" class="form-control" id="close_mfe_price" name="mfe_price" placeholder="Best price in your favor">
                     </div>
                 </div>
                 <div class="modal-footer">

@@ -349,7 +349,12 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
             resultContent.appendChild(row);
 
             const actions = el('div', 'mt-3 text-center');
-            const a = el('a', 'btn btn-primary', 'Go to Dashboard');
+            if (data.review_url) {
+                const review = el('a', 'btn btn-primary', 'Review imported trades');
+                review.href = data.review_url;
+                actions.appendChild(review);
+            }
+            const a = el('a', data.review_url ? 'btn btn-outline-secondary ms-2' : 'btn btn-primary', 'Go to Dashboard');
             a.href = '/dashboard';
             const more = el('button', 'btn btn-outline-secondary ms-2', 'Import More');
             more.type = 'button';

@@ -48,6 +48,8 @@ _DEFERRED_NONE = (
     "signup_utm_source",
     "country_code",
     "phone_number",
+    "daily_loss_limit_r",
+    "daily_max_trades",
 )
 
 

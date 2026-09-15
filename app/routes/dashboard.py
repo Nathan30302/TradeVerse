@@ -476,13 +476,47 @@ def analytics():
         rq = {}
     insights_next_action = build_insights_next_action(page='analytics', review_queue=rq)
 
+    leftover_strip = None
+    tv = current_app.extensions.get('tradeverse_schema') or {}
+    omit_t = tv.get('omit_trade_cols') or frozenset()
+    if 'mfe_price' not in omit_t:
+        try:
+            from app.services.analytics_engine import leftover_strip_stats
+            from sqlalchemy.orm import load_only as _load_only
+
+            leftover_rows = (
+                Trade.query.filter(
+                    Trade.user_id == current_user.id,
+                    Trade.status == 'CLOSED',
+                    Trade.mfe_price.isnot(None),
+                    Trade.exit_price.isnot(None),
+                )
+                .options(
+                    _load_only(
+                        Trade.id,
+                        Trade.trade_type,
+                        Trade.entry_price,
+                        Trade.exit_price,
+                        Trade.stop_loss,
+                        Trade.lot_size,
+                        Trade.risk_amount,
+                        Trade.mfe_price,
+                    )
+                )
+                .all()
+            )
+            leftover_strip = leftover_strip_stats(leftover_rows)
+        except Exception:
+            leftover_strip = None
+
     return render_template('dashboard/analytics.html',
                            instrument_stats=instrument_stats,
                            strategy_stats=strategy_stats,
                            emotion_stats=emotion_stats,
                            session_stats=session_stats,
                            day_stats=day_stats,
-                           insights_next_action=insights_next_action)
+                           insights_next_action=insights_next_action,
+                           leftover_strip=leftover_strip)
 
 
 @bp.route('/api/advanced-metrics')

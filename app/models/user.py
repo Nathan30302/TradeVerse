@@ -62,6 +62,9 @@ class User(UserMixin, db.Model):
     signup_utm_source = deferred(db.Column(db.String(255)))  # Optional acquisition tag (?utm_source= on signup)
     country_code = deferred(db.Column(db.String(2), nullable=True))  # ISO 3166-1 alpha-2, optional at signup
     phone_number = deferred(db.Column(db.String(32), nullable=True))  # E.164-ish stored digits/+ only
+    # Daily risk lock (prop-style). None = unset / unlimited.
+    daily_loss_limit_r = deferred(db.Column(db.Float, nullable=True))
+    daily_max_trades = deferred(db.Column(db.Integer, nullable=True))
 
     # ==================== Timestamps ====================
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)

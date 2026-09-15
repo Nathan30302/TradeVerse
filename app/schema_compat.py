@@ -28,6 +28,8 @@ USER_OPTIONAL_COLUMNS: FrozenSet[str] = frozenset(
         "country_code",
         "phone_number",
         "ui_font",
+        "daily_loss_limit_r",
+        "daily_max_trades",
     }
 )
 
@@ -46,9 +48,19 @@ _USER_COLUMN_DDL: Dict[str, Tuple[str, Optional[str]]] = {
     "country_code": ("VARCHAR(2)", None),
     "phone_number": ("VARCHAR(32)", None),
     "ui_font": ("VARCHAR(20)", "'jakarta'"),
+    "daily_loss_limit_r": ("FLOAT", None),
+    "daily_max_trades": ("INTEGER", None),
 }
 
-TRADE_OPTIONAL_COLUMNS: FrozenSet[str] = frozenset({"playbook_setup_id"})
+TRADE_OPTIONAL_COLUMNS: FrozenSet[str] = frozenset(
+    {"playbook_setup_id", "mae_price", "mfe_price", "mistake_tags"}
+)
+
+_TRADE_COLUMN_DDL: Dict[str, Tuple[str, Optional[str]]] = {
+    "mae_price": ("FLOAT", None),
+    "mfe_price": ("FLOAT", None),
+    "mistake_tags": ("VARCHAR(255)", None),
+}
 
 # Stamp target when the live DB already has app tables but alembic_version is empty/stuck.
 _TARGET_ALEMBIC_REV = "20260718_focus_set_at"
@@ -196,6 +208,46 @@ def ensure_user_optional_columns(app: Any) -> bool:
         return True
     except Exception as exc:
         app.logger.warning("schema_compat: ensure_user_optional_columns failed: %s", exc)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return False
+
+
+def ensure_trade_optional_columns(app: Any) -> bool:
+    """Add missing trades.* optional columns (MAE/MFE, mistake chips)."""
+    from app import db
+
+    try:
+        insp = sa.inspect(db.engine)
+        if not insp.has_table("trades"):
+            return False
+        dialect = _dialect_name(db.engine)
+        have = {c.get("name") for c in insp.get_columns("trades")}
+        missing = [c for c in _TRADE_COLUMN_DDL if c not in have]
+        if not missing:
+            return True
+
+        app.logger.warning("schema_compat: adding missing trades columns: %s", missing)
+        with db.engine.begin() as conn:
+            for col in missing:
+                coltype, default = _TRADE_COLUMN_DDL[col]
+                sql = _add_column_sql(dialect, "trades", col, coltype, default)
+                try:
+                    conn.execute(sa.text(sql))
+                    app.logger.warning("schema_compat: added trades.%s", col)
+                except Exception as exc:
+                    app.logger.warning("schema_compat: could not add trades.%s: %s", col, exc)
+
+        _clear_insp(insp)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return True
+    except Exception as exc:
+        app.logger.warning("schema_compat: ensure_trade_optional_columns failed: %s", exc)
         try:
             db.session.rollback()
         except Exception:
@@ -451,6 +503,7 @@ def ensure_lagging_schema(app: Any) -> None:
     ensure_user_optional_columns(app)
     ensure_ai_coaching_notes(app)
     ensure_playbook_schema(app)
+    ensure_trade_optional_columns(app)
     refresh(app)
 
 

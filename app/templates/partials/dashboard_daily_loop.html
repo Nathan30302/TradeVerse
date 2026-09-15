@@ -12,6 +12,11 @@
             <div class="tv-section-kicker">Session</div>
             <div class="tv-section-title mb-1">Today's loop</div>
             <div class="small tv-muted">Brief → review → focus. One rhythm for every trading day.</div>
+            {% if daily_risk and daily_risk.enabled and daily_risk.label %}
+            <div class="mt-2">
+                <span class="tv-chip {% if daily_risk.locked %}danger{% elif daily_risk.used_r < 0 %}warning{% endif %}">{{ daily_risk.label }} today</span>
+            </div>
+            {% endif %}
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.weekly_review') }}">

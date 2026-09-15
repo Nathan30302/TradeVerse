@@ -174,3 +174,12 @@ body[data-theme="dark"] .tv-more-section {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+.tv-add-trade-page .form-label.small {
+  min-height: 1.25rem;
+}
+
+.tv-add-trade-page .row.g-2 > [class*="col-"] {
+  display: flex;
+  flex-direction: column;
+}

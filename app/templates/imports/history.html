@@ -32,6 +32,7 @@
                             <th>Skipped</th>
                             <th>Failed</th>
                             <th>Status</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -72,6 +73,11 @@
                                 <span class="badge bg-warning">In Progress</span>
                                 {% else %}
                                 <span class="badge bg-secondary">{{ imp.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if imp.trades_imported %}
+                                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('imports.review_import', import_id=imp.id) }}">Review</a>
                                 {% endif %}
                             </td>
                         </tr>

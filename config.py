@@ -258,6 +258,16 @@ class Config:
         'Bored',
     ]
 
+    # Filterable process tags (stored on Trade.mistake_tags). Free-text notes stay.
+    MISTAKE_CHIP_CHOICES = (
+        ('early_exit', 'Early exit'),
+        ('moved_stop', 'Moved stop'),
+        ('no_sl', 'No stop loss'),
+        ('off_playbook', 'Off playbook'),
+        ('news_fade', 'News fade'),
+        ('size_too_big', 'Size too big'),
+    )
+
     # --- Impulse protection (cooldown) — single source of truth for rules ---
     # Emotions listed here never start a cooldown (aligned with EMOTIONS pick-list).
     COOLDOWN_EMOTIONS_EXEMPT = frozenset(

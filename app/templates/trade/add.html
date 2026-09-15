@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/mistake_chips.html' import mistake_chip_fields %}
 
 {% block title %}Add Trade - {{ app_name }}{% endblock %}
 
@@ -70,6 +71,24 @@
                         </div>
                     </form>
                 </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if daily_risk and daily_risk.locked %}
+        <div class="alert alert-warning d-flex align-items-start justify-content-between gap-3">
+            <div>
+                <div class="fw-bold">Daily risk lock</div>
+                <div class="small text-muted">
+                    {% for reason in daily_risk.reasons %}
+                    <div>{{ reason }}</div>
+                    {% endfor %}
+                </div>
+                <div class="small mt-1">Logging a new trade resumes tomorrow. You can still close or edit existing trades.</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-dark btn-sm" href="{{ url_for('auth.settings') }}">
+                    <i class="fas fa-sliders-h"></i> Settings
+                </a>
             </div>
         </div>
         {% endif %}
@@ -200,14 +219,22 @@
                         </div>
                     </div>
                     <div class="row g-2 mb-3 d-none" id="tv-exit-wrap">
-                        <div class="col-12 col-md-6">
+                        <div class="col-6 col-md-3">
                             <label for="exit_price" class="form-label small fw-semibold">Exit price <span class="text-danger">*</span> <span class="text-muted fw-normal">(realized P&amp;L)</span></label>
                             <div id="tv-exit-inline-err" class="text-danger small mb-1 d-none" role="status"></div>
                             <input type="number" step="0.00001" class="form-control" id="exit_price" name="exit_price" placeholder="Fill when closed">
                         </div>
-                        <div class="col-12 col-md-6">
+                        <div class="col-6 col-md-3">
                             <label for="exit_date" class="form-label small fw-semibold">Exit time <span class="text-muted fw-normal">(optional)</span></label>
                             <input type="datetime-local" class="form-control" id="exit_date" name="exit_date">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label for="mae_price" class="form-label small fw-semibold">MAE <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="number" step="0.00001" class="form-control" id="mae_price" name="mae_price" placeholder="Worst against">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label for="mfe_price" class="form-label small fw-semibold">MFE <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="number" step="0.00001" class="form-control" id="mfe_price" name="mfe_price" placeholder="Best in favor">
                         </div>
                     </div>
                     <div id="tv-closed-req-banner" class="alert alert-info py-2 px-3 small d-none mb-3" role="status">
@@ -329,6 +356,10 @@
                                             <option value="{{ i }}">{{ i }}</option>
                                         {% endfor %}
                                     </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small fw-semibold">Mistakes <span class="text-muted fw-normal">(optional)</span></label>
+                                    {{ mistake_chip_fields([]) }}
                                 </div>
                             </div>
                             <h6 class="text-muted text-uppercase small fw-bold mb-3">Notes</h6>

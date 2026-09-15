@@ -13,6 +13,43 @@
 
 {% include 'partials/insights_next_action.html' %}
 
+{% if leftover_strip %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-chart-line"></i> Left on the table</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="stat-card info tv-stat-kpi">
+                    <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Trades with MFE</div>
+                    <div class="stat-value">{{ leftover_strip.count|int }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card warning tv-stat-kpi">
+                    <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Avg leftover (R)</div>
+                    <div class="stat-value">{{ "%.2f"|format(leftover_strip.avg_r) }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card tv-stat-kpi">
+                    <div class="tv-stat-kpi-body">
+                    <div class="stat-label">Total leftover (R)</div>
+                    <div class="stat-value">{{ "%.2f"|format(leftover_strip.sum_r) }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <small class="text-muted d-block mt-3">From recorded MFE vs exit. Add MAE/MFE when you close a trade.</small>
+    </div>
+</div>
+{% endif %}
+
 {% with feature_key='advanced_analytics', title='Trader-grade metrics preview', body='Unlock expectancy (R), drawdown depth, and R-multiple win rate — included with Pro.' %}
 {% include 'partials/upgrade_preview.html' %}
 {% endwith %}

@@ -63,6 +63,66 @@ def compute_r_multiple(trade) -> Optional[float]:
     return float(pnl) / risk_proxy
 
 
+def leftover_price(trade) -> Optional[float]:
+    """Uncaptured favorable move: distance from exit to MFE (0 if none)."""
+    mfe = getattr(trade, "mfe_price", None)
+    exit_p = getattr(trade, "exit_price", None)
+    if mfe is None or exit_p is None:
+        return None
+    direction = (getattr(trade, "trade_type", None) or "BUY").upper()
+    try:
+        if direction == "SELL":
+            leftover = float(exit_p) - float(mfe)
+        else:
+            leftover = float(mfe) - float(exit_p)
+    except (TypeError, ValueError):
+        return None
+    return leftover if leftover > 0 else 0.0
+
+
+def leftover_r(trade) -> Optional[float]:
+    """Left-on-the-table distance expressed in R using the same risk proxy as compute_r_multiple."""
+    leftover = leftover_price(trade)
+    if leftover is None or leftover <= 0:
+        return leftover
+    risk_amount = getattr(trade, "risk_amount", None)
+    try:
+        if risk_amount and float(risk_amount) > 0:
+            return leftover / float(risk_amount)
+    except (TypeError, ValueError):
+        pass
+    entry = getattr(trade, "entry_price", None)
+    sl = getattr(trade, "stop_loss", None)
+    lot = getattr(trade, "lot_size", None)
+    if entry is None or sl is None or lot is None:
+        return None
+    try:
+        risk_proxy = abs(float(entry) - float(sl)) * float(lot)
+    except (TypeError, ValueError):
+        return None
+    if risk_proxy <= 0:
+        return None
+    return leftover / risk_proxy
+
+
+def leftover_strip_stats(trades: Iterable) -> Optional[Dict[str, float]]:
+    """Aggregate leftover-R for closed trades that recorded MFE. None if no data."""
+    rs: List[float] = []
+    for t in trades:
+        r_val = leftover_r(t)
+        if r_val is None:
+            continue
+        rs.append(float(r_val))
+    if not rs:
+        return None
+    total = sum(rs)
+    return {
+        "count": float(len(rs)),
+        "avg_r": total / len(rs),
+        "sum_r": total,
+    }
+
+
 def equity_curve_points(trades: Iterable) -> List[EquityPoint]:
     equity: float = 0.0
     out: List[EquityPoint] = []

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'macros/trade_marks.html' import pnl_chip %}
+{% from 'macros/mistake_chips.html' import mistake_chip_fields %}
 
 {% block title %}Edit Trade - {{ app_name }}{% endblock %}
 
@@ -95,6 +96,16 @@
                             <label for="exit_price" class="form-label fw-bold">Exit Price</label>
                             <input type="number" step="0.00001" class="form-control" id="exit_price" 
                                    name="exit_price" value="{{ trade.exit_price or '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="mae_price" class="form-label fw-bold">MAE <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="number" step="0.00001" class="form-control" id="mae_price"
+                                   name="mae_price" value="{{ trade.mae_price or '' }}" placeholder="Worst against">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="mfe_price" class="form-label fw-bold">MFE <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="number" step="0.00001" class="form-control" id="mfe_price"
+                                   name="mfe_price" value="{{ trade.mfe_price or '' }}" placeholder="Best in favor">
                         </div>
                     </div>
 
@@ -229,6 +240,10 @@
                                     </option>
                                 {% endfor %}
                             </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Mistakes <span class="text-muted fw-normal">(optional)</span></label>
+                            {{ mistake_chip_fields(trade.get_mistake_keys()) }}
                         </div>
                     </div>
                 </div>

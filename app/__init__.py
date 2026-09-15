@@ -723,6 +723,21 @@ def register_context_processors(app):
         return {'global_active_cooldown': cd}
 
     @app.context_processor
+    def inject_daily_risk():
+        """Today's R / trade-count lock for Add Trade and the dashboard chip."""
+        if not getattr(current_user, 'is_authenticated', False):
+            return {'daily_risk': None}
+        try:
+            from app.services.daily_risk import get_daily_risk_snapshot
+            return {'daily_risk': get_daily_risk_snapshot(current_user)}
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            return {'daily_risk': None}
+
+    @app.context_processor
     def inject_tradeverse_optional_features():
         """Expose feature flags for Playbook/Replay in templates."""
         tv = app.extensions.get("tradeverse_schema") or {}

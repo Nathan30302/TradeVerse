@@ -34,6 +34,43 @@ bp = Blueprint('trade', __name__, url_prefix='/trade')
 
 # ==================== Helper Functions ====================
 
+def _omit_trade_cols():
+    return (current_app.extensions.get('tradeverse_schema') or {}).get('omit_trade_cols') or frozenset()
+
+
+def _optional_float(raw):
+    s = (raw or '').strip() if raw is not None else ''
+    if not s:
+        return None
+    return float(s)
+
+
+def _apply_excursion_from_form(trade, form):
+    omit = _omit_trade_cols()
+    if 'mae_price' not in omit and 'mae_price' in form:
+        try:
+            trade.mae_price = _optional_float(form.get('mae_price'))
+        except (TypeError, ValueError):
+            pass
+    if 'mfe_price' not in omit and 'mfe_price' in form:
+        try:
+            trade.mfe_price = _optional_float(form.get('mfe_price'))
+        except (TypeError, ValueError):
+            pass
+
+
+def _apply_mistake_tags_from_form(trade, form):
+    if 'mistake_tags' in _omit_trade_cols():
+        return
+    if (form.get('mistake_chips') or '').strip() != '1':
+        return
+    from app.services.mistake_tags import serialize_mistake_tags
+
+    trade.mistake_tags = serialize_mistake_tags(
+        form.getlist('mistake_tag'),
+        choices=current_app.config.get('MISTAKE_CHIP_CHOICES'),
+    )
+
 class _ManualPagination:
     """Minimal pagination object for templates when Query.paginate() can't be used safely."""
 
@@ -128,6 +165,7 @@ def _filtered_trades_query(user_id):
     status_filter = request.args.get('status', 'all')
     symbol_filter = request.args.get('symbol', '')
     strategy_filter = request.args.get('strategy', '')
+    mistake_filter = (request.args.get('mistake') or '').strip()
 
     query = Trade.query.filter_by(user_id=user_id)
     if status_filter != 'all':
@@ -136,6 +174,12 @@ def _filtered_trades_query(user_id):
         query = query.filter(Trade.symbol.contains(symbol_filter.upper()))
     if strategy_filter:
         query = query.filter_by(strategy=strategy_filter)
+    if mistake_filter and 'mistake_tags' not in _omit_trade_cols():
+        from app.services.mistake_tags import allowed_keys
+
+        allow = allowed_keys(current_app.config.get('MISTAKE_CHIP_CHOICES'))
+        if mistake_filter in allow:
+            query = query.filter(Trade.mistake_tags.contains(mistake_filter))
     return query.order_by(Trade.entry_date.desc())
 
 
@@ -239,6 +283,21 @@ def add():
         if active_cooldown and not override:
             flash('⏳ Cooldown active. You can’t log a new trade until it expires (or override with a reason).', 'warning')
             # Keep user on Add Trade with an inline banner instead of redirecting away.
+            return render_template(
+                'trade/add.html',
+                active_cooldown=active_cooldown,
+                prefill=None,
+                accountability_required=accountability_required,
+                playbook_setups=playbook_setups,
+            )
+
+        from app.services.daily_risk import daily_risk_blocks_new_trade
+
+        if daily_risk_blocks_new_trade(current_user):
+            flash(
+                'Daily risk lock is on. You’ve hit today’s max loss or trade count. Logging resumes tomorrow.',
+                'warning',
+            )
             return render_template(
                 'trade/add.html',
                 active_cooldown=active_cooldown,
@@ -472,6 +531,9 @@ def add():
             
             if swap:
                 trade.swap = float(swap)
+
+            _apply_excursion_from_form(trade, request.form)
+            _apply_mistake_tags_from_form(trade, request.form)
             
             # Calculate P/L and R:R if applicable
             if trade.exit_price:
@@ -676,6 +738,7 @@ def list():
     status_filter = request.args.get('status', 'all')
     symbol_filter = request.args.get('symbol', '')
     strategy_filter = request.args.get('strategy', '')
+    mistake_filter = (request.args.get('mistake') or '').strip()
     page = request.args.get('page', 1, type=int)
 
     query = _filtered_trades_query(current_user.id)
@@ -684,22 +747,23 @@ def list():
     # Flask-SQLAlchemy pagination can SELECT missing columns (e.g. playbook_setup_id)
     # even though it's "just" a count. Restrict the query columns to the ones this
     # page actually needs.
-    query = query.options(
-        load_only(
-            Trade.id,
-            Trade.entry_date,
-            Trade.symbol,
-            Trade.emotion,
-            Trade.trade_type,
-            Trade.entry_price,
-            Trade.exit_price,
-            Trade.lot_size,
-            Trade.profit_loss,
-            Trade.risk_reward,
-            Trade.strategy,
-            Trade.status,
-        )
-    )
+    load_cols = [
+        Trade.id,
+        Trade.entry_date,
+        Trade.symbol,
+        Trade.emotion,
+        Trade.trade_type,
+        Trade.entry_price,
+        Trade.exit_price,
+        Trade.lot_size,
+        Trade.profit_loss,
+        Trade.risk_reward,
+        Trade.strategy,
+        Trade.status,
+    ]
+    if 'mistake_tags' not in _omit_trade_cols():
+        load_cols.append(Trade.mistake_tags)
+    query = query.options(load_only(*load_cols))
 
     # Paginate (manual): Flask-SQLAlchemy Query.paginate() calls Query.count(),
     # which can SELECT missing columns when migrations lag behind prod DB.
@@ -713,7 +777,8 @@ def list():
                            trades=trades,
                            status_filter=status_filter,
                            symbol_filter=symbol_filter,
-                           strategy_filter=strategy_filter)
+                           strategy_filter=strategy_filter,
+                           mistake_filter=mistake_filter)
 
 
 @bp.route('/export.csv')
@@ -759,7 +824,8 @@ def list_export_csv():
         w.writerow([
             'id', 'symbol', 'trade_type', 'status', 'entry_date', 'exit_date',
             'entry_price', 'exit_price', 'stop_loss', 'take_profit', 'lot_size',
-            'profit_loss', 'risk_reward', 'strategy', 'emotion', 'session_type'
+            'profit_loss', 'risk_reward', 'strategy', 'emotion', 'session_type',
+            'mae_price', 'mfe_price', 'mistake_tags',
         ])
         for t in trades:
             w.writerow([
@@ -779,6 +845,9 @@ def list_export_csv():
                 t.strategy or '',
                 t.emotion or '',
                 t.session_type or '',
+                getattr(t, 'mae_price', None) if getattr(t, 'mae_price', None) is not None else '',
+                getattr(t, 'mfe_price', None) if getattr(t, 'mfe_price', None) is not None else '',
+                getattr(t, 'mistake_tags', None) or '',
             ])
 
         resp = Response(buf.getvalue(), mimetype='text/csv; charset=utf-8')
@@ -924,6 +993,7 @@ def edit(trade_id):
                 if ll is not None:
                     v = (ll or '').strip()
                     trade.lessons_learned = v or None
+                _apply_mistake_tags_from_form(trade, request.form)
                 db.session.commit()
                 cooldown_note = _apply_post_trade_cooldowns(current_user.id, trade.emotion, trade)
                 flash('✅ Review saved.', 'success')
@@ -961,6 +1031,9 @@ def edit(trade_id):
             
             take_profit = request.form.get('take_profit')
             trade.take_profit = float(take_profit) if take_profit else None
+
+            _apply_excursion_from_form(trade, request.form)
+            _apply_mistake_tags_from_form(trade, request.form)
             
             # Update strategy and session
             trade.strategy = request.form.get('strategy')
@@ -1064,7 +1137,9 @@ def close(trade_id):
         exit_date_str = request.form.get('exit_date')
         
         exit_date = parse_datetime_optional(exit_date_str) or utc_now()
-        
+
+        _apply_excursion_from_form(trade, request.form)
+        _apply_mistake_tags_from_form(trade, request.form)
         trade.close_trade(exit_price, exit_date)
         
         cooldown_note = _apply_post_trade_cooldowns(current_user.id, trade.emotion, trade)
@@ -1101,6 +1176,14 @@ def quick_add():
     Minimal form for quick trade logging (AJAX)
     """
     try:
+        from app.services.daily_risk import daily_risk_blocks_new_trade
+
+        if daily_risk_blocks_new_trade(current_user):
+            return jsonify({
+                'success': False,
+                'message': 'Daily risk lock is on. You’ve hit today’s max loss or trade count.',
+            }), 403
+
         data = request.get_json()
         
         trade = Trade(

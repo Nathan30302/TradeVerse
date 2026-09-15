@@ -36,6 +36,15 @@ def get_file_hash(file_content):
     return hashlib.sha256(file_content).hexdigest()
 
 
+def _import_review_url(import_id, trades_imported=0):
+    if not import_id or int(trades_imported or 0) <= 0:
+        return None
+    try:
+        return url_for('imports.review_import', import_id=int(import_id))
+    except Exception:
+        return None
+
+
 @bp.route('', methods=['GET'])
 @bp.route('/', methods=['GET'])
 @login_required
@@ -249,7 +258,8 @@ def upload_file():
             'import_id': import_source.id,
             'trades_imported': imported_count,
             'trades_skipped': skipped_count,
-            'trades_failed': failed_count
+            'trades_failed': failed_count,
+            'review_url': _import_review_url(import_source.id, imported_count),
         })
         
     except Exception as e:
@@ -402,7 +412,8 @@ def api_import(credential_id):
             'message': f'Successfully imported {imported_count} trades',
             'import_id': import_source.id,
             'trades_imported': imported_count,
-            'trades_skipped': skipped_count
+            'trades_skipped': skipped_count,
+            'review_url': _import_review_url(import_source.id, imported_count),
         })
         
     except Exception as e:
@@ -464,3 +475,78 @@ def api_get_import(import_id):
         'import': import_source.to_dict(),
         'trades_count': len(trades)
     })
+
+
+@bp.route('/review/<int:import_id>', methods=['GET', 'POST'])
+@login_required
+def review_import(import_id):
+    """Attach playbook (or skip) imported trades using the existing journal cards."""
+    from app.models.playbook_setup import PlaybookSetup
+
+    import_source = ImportedTradeSource.query.filter_by(
+        id=import_id,
+        user_id=current_user.id,
+    ).first_or_404()
+
+    if request.method == 'POST':
+        trade_id = request.form.get('trade_id', type=int)
+        action = (request.form.get('action') or 'save').strip().lower()
+        trade = Trade.query.filter_by(
+            id=trade_id,
+            user_id=current_user.id,
+            imported_source_id=import_source.id,
+        ).first()
+        if not trade:
+            flash('That imported trade was not found.', 'danger')
+            return redirect(url_for('imports.review_import', import_id=import_id))
+
+        try:
+            if action == 'skip':
+                trade.cancel_trade('Skipped after import')
+                flash(f'Skipped {trade.symbol}.', 'info')
+            else:
+                pb_raw = (request.form.get('playbook_setup_id') or '').strip()
+                playbook_ready = current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready')
+                if playbook_ready:
+                    if pb_raw:
+                        try:
+                            pb_id = int(pb_raw)
+                            ok = PlaybookSetup.query.filter_by(
+                                id=pb_id, user_id=current_user.id
+                            ).first()
+                            trade.playbook_setup_id = pb_id if ok else None
+                        except (TypeError, ValueError):
+                            trade.playbook_setup_id = None
+                    else:
+                        trade.playbook_setup_id = None
+                db.session.commit()
+                flash(f'Updated {trade.symbol}.', 'success')
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Import review save failed')
+            flash('Could not update that trade. Please try again.', 'danger')
+        return redirect(url_for('imports.review_import', import_id=import_id))
+
+    trades = (
+        Trade.query.filter_by(user_id=current_user.id, imported_source_id=import_source.id)
+        .filter(Trade.status != 'CANCELLED')
+        .order_by(Trade.entry_date.desc())
+        .all()
+    )
+    playbook_setups = []
+    if current_app.extensions.get('tradeverse_schema', {}).get('playbook_ready'):
+        try:
+            playbook_setups = (
+                PlaybookSetup.query.filter_by(user_id=current_user.id, is_active=True)
+                .order_by(PlaybookSetup.updated_at.desc().nullslast(), PlaybookSetup.created_at.desc())
+                .all()
+            )
+        except Exception:
+            playbook_setups = []
+
+    return render_template(
+        'imports/review.html',
+        import_source=import_source,
+        trades=trades,
+        playbook_setups=playbook_setups,
+    )

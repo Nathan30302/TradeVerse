@@ -236,9 +236,16 @@ async function startAPIImport(credentialId) {
             row.appendChild(mkCol('text-danger', data.trades_failed || 0, 'Failed'));
             executeContent.appendChild(row);
 
-            const a = el('a', 'btn btn-primary', 'Go to Dashboard');
+            const actions = el('div', 'mt-3 text-center');
+            if (data.review_url) {
+                const review = el('a', 'btn btn-primary', 'Review imported trades');
+                review.href = data.review_url;
+                actions.appendChild(review);
+            }
+            const a = el('a', data.review_url ? 'btn btn-outline-secondary ms-2' : 'btn btn-primary', 'Go to Dashboard');
             a.href = '/dashboard';
-            executeContent.appendChild(a);
+            actions.appendChild(a);
+            executeContent.appendChild(actions);
         } else {
             clearEl(executeContent);
             const alert = el('div', 'alert alert-danger');

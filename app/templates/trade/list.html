@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'macros/trade_marks.html' import pnl_chip, side_chip, result_badge %}
+{% from 'macros/mistake_chips.html' import mistake_badges %}
 
 {% block title %}My Trades - {{ app_name }}{% endblock %}
 
@@ -8,6 +9,9 @@
   /* Prevent action buttons from "slipping away" due to row hover transforms */
   .table-container .tv-clickrow:hover { transform: none !important; }
   .table-container .btn-group .btn { transform: none !important; }
+  .table-container.tv-table-premium .table th,
+  .table-container.tv-table-premium .table td { vertical-align: middle; }
+  .table-container.tv-table-premium .table td { padding-top: 0.7rem; padding-bottom: 0.7rem; }
 </style>
 <!-- Page Header -->
 <div class="tv-page-hero">
@@ -21,7 +25,7 @@
             </div>
         <div class="col-auto d-flex flex-wrap gap-2 justify-content-end">
             {% if has_feature('exports') %}
-            <a href="{{ url_for('trade.list_export_csv', status=status_filter, symbol=symbol_filter, strategy=strategy_filter) }}" class="btn btn-outline-secondary btn-lg">
+            <a href="{{ url_for('trade.list_export_csv', status=status_filter, symbol=symbol_filter, strategy=strategy_filter, mistake=mistake_filter) }}" class="btn btn-outline-secondary btn-lg">
                 <i class="fas fa-file-csv"></i> Export CSV
             </a>
             {% else %}
@@ -44,6 +48,7 @@
 <div class="card tv-surface soft mb-4">
     <div class="card-body">
         <form method="GET" action="{{ url_for('trade.list') }}" class="row g-3">
+            <input type="hidden" name="mistake" value="{{ mistake_filter }}">
             <div class="col-md-3">
                 <label class="form-label fw-bold">Status</label>
                 <select name="status" class="form-select">
@@ -75,6 +80,17 @@
                 <button type="submit" class="btn btn-secondary w-100">
                     <i class="fas fa-filter"></i> Apply Filters
                 </button>
+            </div>
+            <div class="col-12">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="small text-muted">Mistake</span>
+                    <a class="btn btn-sm btn-outline-secondary {% if not mistake_filter %}active{% endif %}"
+                       href="{{ url_for('trade.list', status=status_filter, symbol=symbol_filter, strategy=strategy_filter) }}">All</a>
+                    {% for key, label in config.MISTAKE_CHIP_CHOICES %}
+                    <a class="btn btn-sm btn-outline-secondary {% if mistake_filter == key %}active{% endif %}"
+                       href="{{ url_for('trade.list', status=status_filter, symbol=symbol_filter, strategy=strategy_filter, mistake=key) }}">{{ label }}</a>
+                    {% endfor %}
+                </div>
             </div>
         </form>
     </div>
@@ -159,6 +175,7 @@
                             {% if trade.emotion %}
                                 <br><small class="text-muted">{{ trade.emotion }}</small>
                             {% endif %}
+                            <div class="mt-1">{{ mistake_badges(trade) }}</div>
                         </td>
                         <td>
                             {{ side_chip(trade.trade_type) }}
@@ -241,7 +258,7 @@
             <ul class="pagination justify-content-center mb-0">
                 {% if trades.has_prev %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('trade.list', page=trades.prev_num, status=status_filter, symbol=symbol_filter, strategy=strategy_filter) }}">
+                        <a class="page-link" href="{{ url_for('trade.list', page=trades.prev_num, status=status_filter, symbol=symbol_filter, strategy=strategy_filter, mistake=mistake_filter) }}">
                             <i class="fas fa-chevron-left"></i> Previous
                         </a>
                     </li>
@@ -250,7 +267,7 @@
                 {% for page_num in trades.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
                     {% if page_num %}
                         <li class="page-item {% if page_num == trades.page %}active{% endif %}">
-                            <a class="page-link" href="{{ url_for('trade.list', page=page_num, status=status_filter, symbol=symbol_filter, strategy=strategy_filter) }}">
+                            <a class="page-link" href="{{ url_for('trade.list', page=page_num, status=status_filter, symbol=symbol_filter, strategy=strategy_filter, mistake=mistake_filter) }}">
                                 {{ page_num }}
                             </a>
                         </li>
@@ -261,7 +278,7 @@
 
                 {% if trades.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('trade.list', page=trades.next_num, status=status_filter, symbol=symbol_filter, strategy=strategy_filter) }}">
+                        <a class="page-link" href="{{ url_for('trade.list', page=trades.next_num, status=status_filter, symbol=symbol_filter, strategy=strategy_filter, mistake=mistake_filter) }}">
                             Next <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>
@@ -278,7 +295,7 @@
             <div class="tv-empty-icon"><i class="fas fa-inbox"></i></div>
             <h4 class="mb-2">No trades found</h4>
             <p class="tv-muted mb-4 mx-auto" style="max-width: 28rem;">
-                {% if status_filter != 'all' or symbol_filter or strategy_filter %}
+                {% if status_filter != 'all' or symbol_filter or strategy_filter or mistake_filter %}
                     Try adjusting your filters or add a new trade.
                 {% else %}
                     Start your trading journal by logging your first trade.
@@ -323,6 +340,16 @@
                                class="form-control"
                                id="exit_date_{{ trade.id }}"
                                name="exit_date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" for="mae_price_{{ trade.id }}">MAE <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="number" step="any" inputmode="decimal" class="form-control"
+                               id="mae_price_{{ trade.id }}" name="mae_price" placeholder="Worst against">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" for="mfe_price_{{ trade.id }}">MFE <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="number" step="any" inputmode="decimal" class="form-control"
+                               id="mfe_price_{{ trade.id }}" name="mfe_price" placeholder="Best in favor">
                     </div>
                 </div>
                 <div class="modal-footer">

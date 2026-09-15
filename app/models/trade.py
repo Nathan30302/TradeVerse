@@ -101,6 +101,12 @@ class Trade(db.Model):
     playbook_setup_id = deferred(
         db.Column(db.Integer, db.ForeignKey("playbook_setups.id"), nullable=True)
     )
+
+    # ==================== Excursion & mistake chips ====================
+    # Optional close-time prices (worst against / best in favor). Deferred for schema lag.
+    mae_price = deferred(db.Column(db.Float, nullable=True))
+    mfe_price = deferred(db.Column(db.Float, nullable=True))
+    mistake_tags = deferred(db.Column(db.String(255), nullable=True))  # comma-separated chip keys
     
     # ==================== Table Constraints ====================
     __table_args__ = (
@@ -333,13 +339,43 @@ class Trade(db.Model):
         emotional_flags = ['Revenge Trading', 'FOMO', 'Greedy', 'Anxious', 'Fearful']
         if self.emotion in emotional_flags:
             mistakes.append(f"😰 Emotional trading detected: {self.emotion}")
-        
+
         # Moving stop loss (if notes mention it)
         if self.post_trade_notes and 'moved stop' in self.post_trade_notes.lower():
             mistakes.append("🔄 Stop loss was moved (against the plan)")
-        
+
         return mistakes
-    
+
+    def get_mistake_keys(self):
+        """Chip keys stored on this trade (empty list if unset)."""
+        try:
+            from flask import current_app, has_app_context
+
+            if has_app_context():
+                omit = (current_app.extensions.get("tradeverse_schema") or {}).get("omit_trade_cols") or ()
+                if "mistake_tags" in omit:
+                    return []
+        except Exception:
+            pass
+        from app.services.mistake_tags import parse_mistake_tags
+
+        return parse_mistake_tags(getattr(self, "mistake_tags", None))
+
+    def leftover_on_table_r(self):
+        """Uncaptured favorable excursion in R, if MFE was recorded."""
+        try:
+            from flask import current_app, has_app_context
+
+            if has_app_context():
+                omit = (current_app.extensions.get("tradeverse_schema") or {}).get("omit_trade_cols") or ()
+                if "mfe_price" in omit:
+                    return None
+        except Exception:
+            pass
+        from app.services.analytics_engine import leftover_r
+
+        return leftover_r(self)
+
     # ==================== Trade Duration ====================
     def get_duration(self):
         """
