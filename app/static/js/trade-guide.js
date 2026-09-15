@@ -1014,7 +1014,13 @@
       chips.push({ t: (pnl >= 0 ? '+' : '') + pnl, k: pnl >= 0 ? 'is-win' : 'is-loss', f: '' });
     }
     if (d.session_type) chips.push({ t: String(d.session_type).replace(' Session', ''), k: '', f: 'session_type' });
+    if (d.timeframe && d.timeframe !== 'unspecified') chips.push({ t: d.timeframe, k: '', f: 'timeframe' });
     if (d.lot_size != null && Number(d.lot_size) !== 1) chips.push({ t: d.lot_size + ' lot', k: '', f: 'lot_size' });
+    if (d.confidence_level != null && d.confidence_level !== '') chips.push({ t: d.confidence_level + '/10', k: '', f: 'confidence_level' });
+    if (d.thesis_notes && d.thesis_notes !== 'skipped') {
+      var why = String(d.thesis_notes);
+      chips.push({ t: why.length > 28 ? (why.slice(0, 26) + '…') : why, k: 'is-why', f: '' });
+    }
     el.innerHTML = chips.map(function (c) {
       var tap = c.f ? ' is-tap' : '';
       var attr = c.f ? ' data-fix="' + esc(c.f) + '" role="button" tabindex="0"' : '';
@@ -1035,7 +1041,9 @@
       take_profit: 'What was the target?',
       exit_price: 'Where did you get out?',
       session_type: 'Which session?',
-      lot_size: 'What size were you trading?'
+      lot_size: 'What size were you trading?',
+      timeframe: 'What timeframe were you on?',
+      confidence_level: 'Confidence from one to ten?'
     };
     var line = prompts[fixField] || 'What should I change?';
     if (journalEl) journalEl.classList.add('d-none');
@@ -1058,8 +1066,8 @@
         '<div class="tv-vj-hero-sub">' + esc(m.rr_label ? ('R:R ' + m.rr_label) : (status + ' trade')) + '</div></div>';
     } else if (m.rr_label) {
       var sub = m.sl_pips != null ? ('Stop ' + m.sl_pips + ' away') : 'Planned return';
-      if (m.tp_pips != null) sub = 'Risk ' + m.sl_pips + ' to make ' + m.tp_pips;
-      hero = '<div class="tv-vj-hero"><div class="tv-vj-hero-kicker">Planned return</div>' +
+      if (m.tp_pips != null && m.sl_pips != null) sub = 'Risk ' + m.sl_pips + ' to make ' + m.tp_pips;
+      hero = '<div class="tv-vj-hero"><div class="tv-vj-hero-kicker">Planned R:R</div>' +
         '<div class="tv-vj-hero-value">' + esc(m.rr_label) + '</div>' +
         '<div class="tv-vj-hero-sub">' + esc(sub) + '</div></div>';
     } else if (m.sl_pips != null) {
@@ -1067,32 +1075,56 @@
         '<div class="tv-vj-hero-value">' + esc(m.sl_pips + ' to stop') + '</div>' +
         '<div class="tv-vj-hero-sub">Target not set yet</div></div>';
     }
-    var rows = [
+    var facts = [
       [side + ' ' + (d.symbol || ''), status],
       ['In', d.entry_price != null ? d.entry_price : '—'],
       ['Stop', d.stop_loss != null ? d.stop_loss : '—'],
       ['Target', d.take_profit != null ? d.take_profit : '—']
     ];
-    if (d.status === 'closed') rows.push(['Out', d.exit_price != null ? d.exit_price : '—']);
-    if (m.rr_label) rows.push(['R:R', m.rr_label]);
-    if (m.profit_loss != null) rows.push(['P/L', m.profit_loss]);
-    if (d.session_type) rows.push(['Session', d.session_type]);
-    if (d.entry_time && d.entry_time !== 'unspecified') rows.push(['Time', d.entry_time]);
-    if (d.setup_tags && d.setup_tags.length) rows.push(['Setup', d.setup_tags.join(', ')]);
-    if (d.emotions && d.emotions.length) rows.push(['Feel', d.emotions.join(', ')]);
-    if (d.thesis_notes && d.thesis_notes !== 'skipped') rows.push(['Why', d.thesis_notes]);
-    if (d.followed_plan && d.followed_plan !== 'skipped') {
-      rows.push(['Rules', d.followed_plan === 'yes' ? 'Followed' : (d.followed_plan === 'mostly' ? 'Mostly' : 'Broke rules')]);
+    if (d.status === 'closed') facts.push(['Out', d.exit_price != null ? d.exit_price : '—']);
+    if (m.rr_label) facts.push(['R:R', m.rr_label]);
+    if (m.profit_loss != null) facts.push(['P/L', m.profit_loss]);
+    if (d.lot_size != null) facts.push(['Size', d.lot_size]);
+    if (d.session_type) facts.push(['Session', d.session_type]);
+    if (d.timeframe && d.timeframe !== 'unspecified') facts.push(['Timeframe', d.timeframe]);
+    if (d.entry_time && d.entry_time !== 'unspecified') facts.push(['Time', d.entry_time]);
+    if (d.confidence_level != null && d.confidence_level !== '') facts.push(['Confidence', d.confidence_level + '/10']);
+
+    function section(title, rows) {
+      if (!rows.length) return '';
+      var h = '<div class="tv-vj-story-block"><h3>' + esc(title) + '</h3>';
+      rows.forEach(function (row) {
+        h += '<div class="tv-vj-row"><span>' + esc(row[0]) + '</span><strong>' + esc(row[1]) + '</strong></div>';
+      });
+      return h + '</div>';
     }
-    if (d.feeling_during && d.feeling_during !== 'skipped') rows.push(['During', d.feeling_during]);
-    if (d.feeling_after && d.feeling_after !== 'skipped') rows.push(['After', d.feeling_after]);
-    if (d.lessons && d.lessons !== 'skipped') rows.push(['Learned', d.lessons]);
-    if (d.improve_next && d.improve_next !== 'skipped') rows.push(['Next time', d.improve_next]);
+
+    function narrative(label, text) {
+      if (!text || text === 'skipped') return '';
+      return '<div class="tv-vj-story-block">' +
+        '<span class="tv-vj-story-label">' + esc(label) + '</span>' +
+        '<p class="tv-vj-story-text">' + esc(text) + '</p></div>';
+    }
+
+    var meta = [];
+    if (d.setup_tags && d.setup_tags.length) meta.push(['Setup', d.setup_tags.join(', ')]);
+    if (d.followed_plan && d.followed_plan !== 'skipped') {
+      meta.push(['Rules', d.followed_plan === 'yes' ? 'Followed' : (d.followed_plan === 'mostly' ? 'Mostly' : 'Broke rules')]);
+    }
+    if (d.feeling_during && d.feeling_during !== 'skipped') meta.push(['During', d.feeling_during]);
+    if (d.feeling_after && d.feeling_after !== 'skipped') meta.push(['After', d.feeling_after]);
+    if (d.emotions && d.emotions.length) meta.push(['Feel', d.emotions.join(', ')]);
+
     var html = '<article class="tv-vj-card">' + hero;
-    rows.forEach(function (row, i) {
-      if (i === 0) html += '<h2>' + esc(row[0]) + ' <span>' + esc(row[1]) + '</span></h2>';
-      else html += '<div class="tv-vj-row"><span>' + esc(row[0]) + '</span><strong>' + esc(row[1]) + '</strong></div>';
+    html += '<h2>' + esc(facts[0][0]) + ' <span>' + esc(facts[0][1]) + '</span></h2>';
+    facts.slice(1).forEach(function (row) {
+      html += '<div class="tv-vj-row"><span>' + esc(row[0]) + '</span><strong>' + esc(row[1]) + '</strong></div>';
     });
+    html += narrative('Why this trade', d.thesis_notes);
+    html += section('Context', meta);
+    html += narrative('Lesson', d.lessons);
+    html += narrative('Next time', d.improve_next);
+    html += '<p class="tv-vj-save-hint">Looks right? Save to journal — tap a chip to fix a level.</p>';
     html += '</article>';
     summaryEl.innerHTML = html;
   }
@@ -1379,10 +1411,20 @@
 
   form.addEventListener('submit', function () {
     if (!val('lot_size')) setVal('lot_size', '1');
-    var why = val('guide_why') || val('guide_voice_dump');
+    var why = val('guide_why') || val('pre_trade_plan');
     if (why && !val('pre_trade_plan')) setVal('pre_trade_plan', why);
-    var post = val('guide_voice_dump') || why;
+    // Structured review — never paste the full multi-turn dump into notes.
+    var post = val('guide_what_happened') || val('post_trade_notes');
+    if (!post && val('guide_feeling_after')) post = 'Feeling after: ' + val('guide_feeling_after');
     if (post && !val('post_trade_notes')) setVal('post_trade_notes', post);
+    var lessons = val('lessons_learned');
+    if (!lessons) {
+      var bits = [];
+      if (draft && draft.lessons && draft.lessons !== 'skipped') bits.push(draft.lessons);
+      if (val('guide_reflection')) bits.push('Next time: ' + val('guide_reflection'));
+      lessons = bits.join('\n');
+      if (lessons) setVal('lessons_learned', lessons);
+    }
     clearPersisted();
     if (rec.stream) rec.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
     stopTTS();

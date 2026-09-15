@@ -1662,10 +1662,25 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
     if followed == "skipped":
         followed = ""
     feeling_before = during or (emotions[0] if emotions else "")
-    happened = lessons or ""
+    # Keep "what happened" separate from lessons / next-time.
+    happened_bits: List[str] = []
+    if status == "closed":
+        if draft.get("outcome"):
+            happened_bits.append(f"Outcome: {draft['outcome']}")
+        elif draft.get("exit_price") is not None:
+            happened_bits.append(f"Closed at {float(draft['exit_price']):g}")
+    if after:
+        happened_bits.append(after if after.lower().startswith("feel") else f"Feeling after: {after}")
+    happened = "\n".join(happened_bits).strip()
+    lesson_bits = [p for p in (lessons, f"Next time: {improve}" if improve else "") if p]
+    lessons_out = "\n".join(lesson_bits).strip()
     emotion_line = ", ".join(
         [e for e in ([during, after] + list(emotions)) if e and e != "skipped"]
     )
+    # Keep Review (what happened) separate from Lessons — both show on trade view.
+    post_notes = happened
+    if not thesis and dump:
+        thesis = dump.split("\n")[0].strip()[:2000]
     return {
         "symbol": draft.get("symbol") or "",
         "instrument_id": draft.get("instrument_id") or "",
@@ -1691,10 +1706,9 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
         "guide_reflection": improve,
         "guide_setup_tags": ", ".join(tags),
         "pre_trade_plan": thesis,
-        "post_trade_notes": "\n".join(
-            [p for p in (happened, f"Feeling after: {after}" if after else "", f"Next time: {improve}" if improve else "") if p]
-        ).strip(),
-        "lessons_learned": improve or lessons,
+        "post_trade_notes": post_notes,
+        "lessons_learned": lessons_out or improve or lessons,
+        "emotion": (during or (emotions[0] if emotions else "") or after or ""),
         "from_guide": "1",
         "from_voice": "1",
     }

@@ -554,3 +554,114 @@ def test_guide_page_has_composer_and_pending_hooks(logged_client, app):
     assert "EURUSD" in body2
     assert f'"id": {tid}' in body2 or f'"id":{tid}' in body2
 
+
+def test_draft_form_keeps_why_review_lessons_apart():
+    """Saved journal fields stay readable: why ≠ dump, lessons ≠ review."""
+    from app.services.voice_conversation import draft_to_form_fields
+
+    fields = draft_to_form_fields(
+        {
+            "symbol": "US30",
+            "trade_type": "BUY",
+            "entry_price": 42500,
+            "stop_loss": 42350,
+            "take_profit": 42800,
+            "status": "closed",
+            "exit_price": 42800,
+            "outcome": "win",
+            "thesis_notes": "Swept London low then BOS into NY open.",
+            "feeling_during": "nervous but patient",
+            "feeling_after": "relieved",
+            "lessons": "Wait for the sweep to finish.",
+            "improve_next": "Size down when confidence is below 7",
+            "voice_dump": "Long US30\nSwept London low then BOS into NY open.\nWait for the sweep to finish.",
+            "followed_plan": "yes",
+            "timeframe": "15m",
+            "confidence_level": 8,
+            "session_type": "New York Session",
+        }
+    )
+    assert "Swept London low" in fields["guide_why"]
+    assert "Swept London low" in fields["pre_trade_plan"]
+    assert "Outcome: win" in fields["post_trade_notes"] or "Feeling after" in fields["post_trade_notes"]
+    assert "Wait for the sweep" in fields["lessons_learned"]
+    assert "Next time:" in fields["lessons_learned"]
+    # Lessons must not be stuffed into the review notes.
+    assert "Wait for the sweep" not in (fields["post_trade_notes"] or "")
+    assert "Size down" not in (fields["post_trade_notes"] or "")
+    assert fields["timeframe"] == "15m"
+    assert fields["confidence_level"] == 8
+    assert fields["emotion"]
+
+
+def test_planned_rr_recomputes_without_stored_value():
+    from app.models.trade import Trade
+
+    t = Trade(
+        symbol="EURUSD",
+        trade_type="BUY",
+        entry_price=1.1000,
+        stop_loss=1.0950,
+        take_profit=1.1100,
+        lot_size=1,
+        risk_reward=None,
+    )
+    assert t.planned_rr() == 2.0
+
+
+def test_voice_save_story_and_rr_on_view(logged_client, app):
+    """Voice Journal save lands as a readable story with working R:R."""
+    with app.app_context():
+        from app.models.instrument import Instrument
+
+        inst = Instrument.query.filter_by(symbol="EURUSD").first()
+        iid = inst.id
+    r = logged_client.post(
+        "/trade/add",
+        data={
+            "from_guide": "1",
+            "from_voice": "1",
+            "symbol": "EURUSD",
+            "instrument_id": str(iid),
+            "trade_type": "BUY",
+            "lot_size": "0.5",
+            "entry_price": "1.10000",
+            "stop_loss": "1.09500",
+            "take_profit": "1.11000",
+            "exit_price": "1.11000",
+            "trade_log_status": "closed",
+            "timeframe": "15m",
+            "confidence_level": "7",
+            "guide_why": "London open retest of support after the sweep.",
+            "guide_feeling_before": "Disciplined",
+            "guide_feeling_after": "Calm & Focused",
+            "guide_what_happened": "Hit TP without moving stop.",
+            "guide_followed_plan": "yes",
+            "guide_setup_tags": "Liquidity sweep",
+            "lessons_learned": "Patience on the open pays.\nNext time: skip mid-range entries.",
+            "pre_trade_plan": "London open retest of support after the sweep.",
+            "post_trade_notes": "Hit TP without moving stop.",
+        },
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    with app.app_context():
+        from app.models.trade import Trade
+
+        t = Trade.query.filter_by(symbol="EURUSD").order_by(Trade.id.desc()).first()
+        assert t is not None
+        tid = t.id
+        assert t.risk_reward == 2.0
+        assert "London open retest" in (t.pre_trade_plan or "")
+        assert "Hit TP" in (t.post_trade_notes or "")
+        assert "Patience on the open" in (t.lessons_learned or "")
+        assert "Patience on the open" not in (t.post_trade_notes or "")
+    view = logged_client.get(f"/trade/{tid}")
+    assert view.status_code == 200
+    body = view.get_data(as_text=True)
+    assert "Journal story" in body
+    assert "Why this trade" in body
+    assert "London open retest" in body
+    assert "Patience on the open" in body
+    assert "1:2" in body or "2.0" in body
+

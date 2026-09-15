@@ -479,10 +479,25 @@ def add():
             if from_guide and log_status == 'closed':
                 if not strategy:
                     strategy = 'Other'
+                dump = (request.form.get('guide_voice_dump') or '').strip()
+                what = (request.form.get('guide_what_happened') or '').strip()
+                after_feel = (request.form.get('guide_feeling_after') or '').strip()
                 if len(pre_trade_plan or '') < 8:
-                    pre_trade_plan = (pre_trade_plan or '').strip() or 'Voice journaled.'
+                    why = (request.form.get('guide_why') or '').strip()
+                    pre_trade_plan = (
+                        (pre_trade_plan or '').strip()
+                        or why
+                        or (dump.split('\n')[0].strip()[:500] if dump else '')
+                        or 'Voice journaled.'
+                    )
                 if len(post_trade_notes or '') < 8:
-                    post_trade_notes = (post_trade_notes or '').strip() or 'Logged via Voice Journal.'
+                    # Keep lessons in lessons_learned — Review is outcome / feeling after.
+                    post_trade_notes = (
+                        (post_trade_notes or '').strip()
+                        or what
+                        or (f'Feeling after: {after_feel}' if after_feel else '')
+                        or 'Logged via Voice Journal.'
+                    )
 
             allowed_strategies = current_app.config.get('STRATEGIES') or []
             # Open trades: strategy/plan optional so logging is fast; closed trades keep the discipline bar.
@@ -935,9 +950,26 @@ def voice_complete(trade_id):
     strategy = (request.form.get('strategy') or '').strip() or guided.get('strategy')
     if strategy:
         trade.strategy = strategy
+    timeframe = (request.form.get('timeframe') or '').strip()
+    if timeframe and timeframe.lower() != 'unspecified':
+        trade.timeframe = timeframe
+    confidence_level = (request.form.get('confidence_level') or '').strip()
+    if confidence_level:
+        try:
+            trade.confidence_level = int(confidence_level)
+        except (TypeError, ValueError):
+            pass
     pre = (request.form.get('pre_trade_plan') or '').strip() or guided.get('pre_trade_plan')
     post = (request.form.get('post_trade_notes') or '').strip() or guided.get('post_trade_notes')
     lessons = (request.form.get('lessons_learned') or '').strip() or guided.get('lessons_learned')
+    dump = (request.form.get('guide_voice_dump') or '').strip()
+    why = (request.form.get('guide_why') or '').strip()
+    what = (request.form.get('guide_what_happened') or '').strip()
+    after_feel = (request.form.get('guide_feeling_after') or '').strip()
+    if (not pre or len(pre) < 8) and (why or dump):
+        pre = why or (dump.split('\n')[0].strip()[:500] if dump else pre)
+    if (not post or len(post) < 8):
+        post = what or (f'Feeling after: {after_feel}' if after_feel else post) or post
     if pre:
         trade.pre_trade_plan = ((trade.pre_trade_plan or '').strip() + '\n' + pre).strip() if (trade.pre_trade_plan or '').strip() and pre not in (trade.pre_trade_plan or '') else pre
     if post:
@@ -949,6 +981,11 @@ def voice_complete(trade_id):
         trade.tags = guided['tags']
     if guided.get('playbook_followed'):
         trade.playbook_followed = True
+    # Levels may already exist — still compute R:R so the trade view matches the review card.
+    if trade.stop_loss and trade.take_profit and trade.entry_price is not None:
+        trade.calculate_risk_reward()
+    if trade.exit_price and trade.entry_price is not None:
+        trade.calculate_pnl()
     before_path = _save_trade_screenshot(request.files.get('before_screenshot'), 'before')
     if before_path:
         trade.before_screenshot = before_path

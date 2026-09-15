@@ -791,28 +791,31 @@ def compose_guided_fields(form) -> Optional[Dict[str, Any]]:
     setup_tags = [p.strip() for p in setups_raw.split(",") if p.strip()]
 
     pre_bits: List[str] = []
-    if before:
-        pre_bits.append(f"Feeling before: {before}")
-    if emotion_chips:
-        pre_bits.append("Emotions: " + ", ".join(emotion_chips))
     if why:
         pre_bits.append(why)
     elif voice_dump:
         pre_bits.append(voice_dump[:2000])
+    if before:
+        pre_bits.append(f"Feeling during: {before}")
+    if emotion_chips and not before:
+        pre_bits.append("Emotions: " + ", ".join(emotion_chips))
     if setup_tags:
         pre_bits.append("Setup: " + ", ".join(setup_tags))
     if session:
         pre_bits.append(f"Session: {session}")
     if followed:
-        pre_bits.append(f"Followed the plan: {followed}")
+        label = {"yes": "Followed rules", "mostly": "Mostly followed rules", "no": "Broke rules"}.get(
+            followed, f"Followed the plan: {followed}"
+        )
+        pre_bits.append(label)
     if confirms:
         pre_bits.append("Checked: " + ", ".join(confirms))
 
     post_bits: List[str] = []
-    if after:
-        post_bits.append(f"Feeling after: {after}")
     if happened:
         post_bits.append(happened)
+    if after:
+        post_bits.append(f"Feeling after: {after}")
     mgmt_bits = []
     if moved_sl in ("yes", "true", "1"):
         mgmt_bits.append("Moved stop")
@@ -826,15 +829,17 @@ def compose_guided_fields(form) -> Optional[Dict[str, Any]]:
         post_bits.append("Management: " + ", ".join(mgmt_bits))
     if mgmt_note:
         post_bits.append(mgmt_note)
-    if reflection:
-        post_bits.append("Next time: " + reflection)
 
     pre = "\n".join(pre_bits).strip()
     post = "\n".join(post_bits).strip()
     if not pre and voice_dump:
-        pre = voice_dump[:2000]
-    if not post and voice_dump and len(voice_dump) > 20:
-        post = voice_dump[:2000]
+        # Last resort: first substantive line of the spoken dump as the why.
+        for line in voice_dump.split("\n"):
+            if len(line.strip()) >= 12:
+                pre = line.strip()[:2000]
+                break
+        if not pre:
+            pre = voice_dump[:500]
 
     canon = None
     for chip in emotion_chips:
@@ -853,7 +858,8 @@ def compose_guided_fields(form) -> Optional[Dict[str, Any]]:
     )
     strategy = strategy_from_setups(setup_tags)
     tags = ", ".join(setup_tags)[:255] if setup_tags else None
-    lessons = reflection or None
+    lessons_form = (form.get("lessons_learned") or "").strip()
+    lessons = lessons_form or (f"Next time: {reflection}" if reflection else None)
 
     return {
         "pre_trade_plan": pre,

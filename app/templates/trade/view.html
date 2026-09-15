@@ -212,21 +212,24 @@
             <div class="tv-stat-kpi-body">
             <div class="stat-label"><abbr class="tv-abbr-metric" title="Risk to reward">R:R</abbr></div>
             <div class="stat-value">
-                {% if trade.risk_reward %}
-                    {{ trade.risk_reward|rr_ratio }}
+                {% set display_rr = trade.planned_rr() %}
+                {% if display_rr %}
+                    {{ display_rr|rr_ratio }}
                 {% else %}
                     <span class="text-muted">N/A</span>
                 {% endif %}
             </div>
             <div class="stat-change text-muted">
-                {% if trade.risk_reward %}
-                    {% if trade.risk_reward >= 2 %}
+                {% if display_rr %}
+                    {% if display_rr >= 2 %}
                         <i class="fas fa-bullseye text-success me-1" aria-hidden="true"></i>Strong setup
-                    {% elif trade.risk_reward >= 1 %}
+                    {% elif display_rr >= 1 %}
                         <i class="fas fa-check text-success me-1" aria-hidden="true"></i>Solid
                     {% else %}
                         <i class="fas fa-triangle-exclamation text-warning me-1" aria-hidden="true"></i>Tight R:R
                     {% endif %}
+                {% elif trade.entry_price and trade.stop_loss and not trade.take_profit %}
+                    <span>Target not set</span>
                 {% endif %}
             </div>
             </div>
@@ -489,23 +492,33 @@
         </div>
         {% endif %}
 
-        <!-- Notes -->
-        {% if trade.pre_trade_plan or trade.post_trade_notes %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-sticky-note"></i> Trade Notes</h5>
+        <!-- Journal story -->
+        {% if trade.pre_trade_plan or trade.post_trade_notes or trade.lessons_learned %}
+        <div class="card mb-4 tv-journal-story">
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h5 class="mb-0"><i class="fas fa-book-open me-1"></i> Journal story</h5>
+                {% set display_rr = trade.planned_rr() %}
+                {% if display_rr %}
+                <span class="badge text-bg-dark">Planned {{ display_rr|rr_ratio }}</span>
+                {% endif %}
             </div>
             <div class="card-body">
                 {% if trade.pre_trade_plan %}
-                    <div class="mb-3">
-                        <h6 class="fw-bold">Pre-Trade Plan</h6>
-                        <p class="mb-0" style="white-space: pre-wrap;">{{ trade.pre_trade_plan }}</p>
+                    <div class="tv-journal-story-block {% if trade.post_trade_notes or trade.lessons_learned %}mb-3 pb-3 border-bottom border-secondary-subtle{% endif %}">
+                        <h6 class="tv-journal-story-label">Why this trade</h6>
+                        <p class="tv-journal-story-text mb-0">{{ trade.pre_trade_plan }}</p>
                     </div>
                 {% endif %}
                 {% if trade.post_trade_notes %}
-                    <div>
-                        <h6 class="fw-bold">Post-Trade Notes</h6>
-                        <p class="mb-0" style="white-space: pre-wrap;">{{ trade.post_trade_notes }}</p>
+                    <div class="tv-journal-story-block {% if trade.lessons_learned %}mb-3 pb-3 border-bottom border-secondary-subtle{% endif %}">
+                        <h6 class="tv-journal-story-label">Review</h6>
+                        <p class="tv-journal-story-text mb-0">{{ trade.post_trade_notes }}</p>
+                    </div>
+                {% endif %}
+                {% if trade.lessons_learned %}
+                    <div class="tv-journal-story-block">
+                        <h6 class="tv-journal-story-label">Lessons</h6>
+                        <p class="tv-journal-story-text mb-0">{{ trade.lessons_learned }}</p>
                     </div>
                 {% endif %}
             </div>

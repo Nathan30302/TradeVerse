@@ -216,6 +216,26 @@ class Trade(db.Model):
 
         self.risk_reward = round(reward / risk, 2)
         return self.risk_reward
+
+    def planned_rr(self):
+        """Display R:R from stored value or recompute from levels (does not persist)."""
+        if self.risk_reward:
+            return float(self.risk_reward)
+        if self.entry_price is None or not self.stop_loss or not self.take_profit:
+            return None
+        entry = float(self.entry_price)
+        sl = float(self.stop_loss)
+        tp = float(self.take_profit)
+        direction = (self.trade_type or 'BUY').upper()
+        if direction == 'SELL':
+            risk = sl - entry
+            reward = entry - tp
+        else:
+            risk = entry - sl
+            reward = tp - entry
+        if risk <= 0 or reward <= 0:
+            return None
+        return round(reward / risk, 2)
     
     def calculate_risk_amount(self, account_balance):
         """

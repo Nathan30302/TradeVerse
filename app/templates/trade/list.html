@@ -124,10 +124,14 @@
                 {% else %}
                     {{ pnl_chip(none) }}
                 {% endif %}
-                {% if trade.risk_reward %}
-                <span class="badge bg-secondary">{{ trade.risk_reward|rr_ratio }}</span>
+                {% set card_rr = trade.planned_rr() %}
+                {% if card_rr %}
+                <span class="badge bg-secondary">{{ card_rr|rr_ratio }}</span>
                 {% endif %}
             </div>
+            {% if trade.pre_trade_plan %}
+            <p class="tv-trade-card__why small text-muted mb-0 mt-2">{{ trade.pre_trade_plan[:110] }}{% if trade.pre_trade_plan|length > 110 %}…{% endif %}</p>
+            {% endif %}
         </a>
         <div class="tv-trade-card__actions">
             <a href="{{ url_for('trade.view', trade_id=trade.id) }}" class="btn btn-outline-primary btn-sm">View</a>
@@ -178,6 +182,9 @@
                             {% if trade.emotion %}
                                 <br><small class="text-muted">{{ trade.emotion }}</small>
                             {% endif %}
+                            {% if trade.pre_trade_plan %}
+                                <br><small class="text-muted tv-trade-why-snip">{{ trade.pre_trade_plan[:72] }}{% if trade.pre_trade_plan|length > 72 %}…{% endif %}</small>
+                            {% endif %}
                             <div class="mt-1">{{ mistake_badges(trade) }}</div>
                         </td>
                         <td>
@@ -200,8 +207,9 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if trade.risk_reward %}
-                                {{ trade.risk_reward|rr_ratio }}
+                            {% set list_rr = trade.planned_rr() %}
+                            {% if list_rr %}
+                                {{ list_rr|rr_ratio }}
                             {% else %}
                                 <span class="text-muted">—</span>
                             {% endif %}

@@ -339,6 +339,15 @@ body:has(.tv-vj-ink) .main-content > .alert {
   border-color: color-mix(in srgb, #e76f51 32%, transparent);
 }
 
+.tv-vj-chip.is-why {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--vj-gold) 90%, #fff);
+  border-color: color-mix(in srgb, var(--vj-gold) 36%, transparent);
+}
+
 .tv-vj-chip.is-tap {
   cursor: pointer;
   transition: transform 160ms ease, box-shadow 160ms ease;
@@ -602,6 +611,45 @@ body:has(.tv-vj-ink) .main-content > .alert {
   text-align: right;
   max-width: 62%;
   font-family: "Literata", Georgia, serif;
+}
+
+.tv-vj-story-block {
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid color-mix(in srgb, var(--vj-gold) 12%, transparent);
+}
+
+.tv-vj-story-block h3,
+.tv-vj-story-label {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--vj-gold) 78%, var(--vj-muted));
+}
+
+.tv-vj-story-text {
+  margin: 0;
+  font-family: "Literata", Georgia, serif;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--vj-paper) 94%, transparent);
+  white-space: pre-wrap;
+}
+
+.tv-vj-story-block .tv-vj-row:first-of-type {
+  border-top: 0;
+  padding-top: 0.15rem;
+}
+
+.tv-vj-save-hint {
+  margin: 0.85rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--vj-muted);
 }
 
 .tv-vj-save {
