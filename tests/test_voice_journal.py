@@ -555,6 +555,22 @@ def test_guide_page_has_composer_and_pending_hooks(logged_client, app):
     assert f'"id": {tid}' in body2 or f'"id":{tid}' in body2
 
 
+def test_emotion_for_trade_fits_varchar50():
+    from app.services.voice_journal import emotion_for_trade
+
+    long_feel = (
+        "I'm more relaxed I'm just chilled and I think I was trying to trade again "
+        "today but I just feel like maybe I should do it like the next day because "
+        "I want to stick to my rules and also not over trading"
+    )
+    out = emotion_for_trade(long_feel)
+    assert out is not None
+    assert len(out) <= 50
+    assert "Calm" in out or "Focused" in out
+    assert emotion_for_trade("Nervous") == "Nervous"
+    assert emotion_for_trade("") is None
+
+
 def test_draft_form_keeps_why_review_lessons_apart():
     """Saved journal fields stay readable: why ≠ dump, lessons ≠ review."""
     from app.services.voice_conversation import draft_to_form_fields

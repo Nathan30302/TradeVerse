@@ -17,6 +17,7 @@ import requests
 
 from app.models.instrument import Instrument
 from app.services.voice_journal import (
+    emotion_for_trade,
     normalize_symbol_guess,
     parse_voice_text,
     parse_yes_no,
@@ -1708,7 +1709,7 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
         "pre_trade_plan": thesis,
         "post_trade_notes": post_notes,
         "lessons_learned": lessons_out or improve or lessons,
-        "emotion": (during or (emotions[0] if emotions else "") or after or ""),
+        "emotion": emotion_for_trade(during or (emotions[0] if emotions else "") or after or "") or "",
         "from_guide": "1",
         "from_voice": "1",
     }

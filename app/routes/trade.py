@@ -171,6 +171,23 @@ def _compose_guided_log_fields(form):
     return compose_guided_fields(form)
 
 
+def _clip_str(value, limit: int):
+    """Trim optional string fields to DB column limits."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return text[:limit]
+
+
+def _safe_trade_emotion(raw):
+    """Map / clip emotion so varchar(50) never rejects a Voice Journal save."""
+    from app.services.voice_journal import emotion_for_trade
+
+    return emotion_for_trade(raw)
+
+
 def _resolve_instrument_row(query: str):
     """Match a spoken or typed symbol to an active Instrument row."""
     raw = (query or '').strip()
@@ -474,6 +491,11 @@ def add():
                     session_type = guided['session_type']
                 if not lessons_learned and guided.get('lessons_learned'):
                     lessons_learned = guided['lessons_learned']
+
+            emotion = _safe_trade_emotion(emotion)
+            session_type = _clip_str(session_type, 50)
+            timeframe = _clip_str(timeframe, 10)
+            strategy = _clip_str(strategy, 100)
 
             # Voice Journal: never block save on optional reflection / strategy chips.
             if from_guide and log_status == 'closed':
@@ -941,16 +963,16 @@ def voice_complete(trade_id):
     """Add journal fields to an existing trade (imported / closed, still unjournaled)."""
     trade = Trade.query.filter_by(id=trade_id, user_id=current_user.id).first_or_404()
     guided = _compose_guided_log_fields(request.form) or {}
-    emotion = (request.form.get('emotion') or '').strip() or guided.get('emotion')
+    emotion = _safe_trade_emotion((request.form.get('emotion') or '').strip() or guided.get('emotion'))
     if emotion:
         trade.emotion = emotion
-    session_type = (request.form.get('session_type') or '').strip() or guided.get('session_type')
+    session_type = _clip_str((request.form.get('session_type') or '').strip() or guided.get('session_type'), 50)
     if session_type:
         trade.session_type = session_type
-    strategy = (request.form.get('strategy') or '').strip() or guided.get('strategy')
+    strategy = _clip_str((request.form.get('strategy') or '').strip() or guided.get('strategy'), 100)
     if strategy:
         trade.strategy = strategy
-    timeframe = (request.form.get('timeframe') or '').strip()
+    timeframe = _clip_str((request.form.get('timeframe') or '').strip(), 10)
     if timeframe and timeframe.lower() != 'unspecified':
         trade.timeframe = timeframe
     confidence_level = (request.form.get('confidence_level') or '').strip()

@@ -326,6 +326,9 @@ EMOTION_TO_CANONICAL: Dict[str, str] = {
     "patient": "Patient",
     "bold": "Bold",
     "overconfident": "Overconfident",
+    "relaxed": "Calm & Focused",
+    "chilled": "Calm & Focused",
+    "chill": "Calm & Focused",
     "bored": "Bored",
 }
 
@@ -461,7 +464,29 @@ def canonical_emotion(chip_or_label: str) -> Optional[str]:
     key = re.sub(r"[^a-z]+", " ", (chip_or_label or "").lower()).strip()
     if not key:
         return None
-    return EMOTION_TO_CANONICAL.get(key) or EMOTION_TO_CANONICAL.get(key.replace(" ", ""))
+    direct = EMOTION_TO_CANONICAL.get(key) or EMOTION_TO_CANONICAL.get(key.replace(" ", ""))
+    if direct:
+        return direct
+    # Spoken sentences: pick the strongest matching emotion word.
+    padded = f" {key} "
+    for needle, canon in sorted(EMOTION_TO_CANONICAL.items(), key=lambda kv: -len(kv[0])):
+        if needle and f" {needle} " in padded:
+            return canon
+    return None
+
+
+def emotion_for_trade(raw: Optional[str]) -> Optional[str]:
+    """Fit spoken feelings into Trade.emotion (varchar 50) without DB overflow."""
+    text = (raw or "").strip()
+    if not text:
+        return None
+    mapped = canonical_emotion(text)
+    if mapped:
+        return mapped[:50]
+    if len(text) <= 50:
+        return text
+    # Long free-form feelings belong in notes — never crash the save.
+    return None
 
 
 def strategy_from_setups(tags: List[str]) -> Optional[str]:
@@ -843,12 +868,16 @@ def compose_guided_fields(form) -> Optional[Dict[str, Any]]:
 
     canon = None
     for chip in emotion_chips:
-        canon = canonical_emotion(chip)
+        canon = emotion_for_trade(chip)
         if canon:
             break
     if not canon:
-        canon = canonical_emotion(after) or canonical_emotion(before) or canonical_emotion(form.get("emotion") or "")
-    emotion = canon or after or before or (form.get("emotion") or "").strip() or None
+        canon = (
+            emotion_for_trade(after)
+            or emotion_for_trade(before)
+            or emotion_for_trade(form.get("emotion") or "")
+        )
+    emotion = canon
 
     checklist = form.get("checklist_completed") == "on" or "confirmed" in confirms or "premarket" in confirms
     playbook = (
