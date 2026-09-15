@@ -38,6 +38,14 @@
   var skipShot = false;
   var committing = false;
   var lastReply = '';
+  var lastMetrics = {};
+  var fixField = '';
+  var reviewMode = false;
+  var storageKey = boot.storageKey || ('tv-vj-draft-' + (boot.userId || 'anon'));
+  var typeInput = document.getElementById('tv-vj-type-input');
+  var typeSend = document.getElementById('tv-vj-type-send');
+  var chipHint = document.getElementById('tv-vj-chip-hint');
+  var pendingEl = document.getElementById('tv-vj-pending');
 
   var rec = {
     stream: null,
@@ -92,6 +100,91 @@
         next === 'review' ? 'Ready to save' :
         'Tap when you’re ready';
     }
+    syncComposer();
+  }
+
+  function syncComposer() {
+    var busy = committing || state === 'thinking' || state === 'speaking';
+    if (typeSend) typeSend.disabled = busy;
+    if (typeInput) typeInput.disabled = busy && state !== 'review';
+  }
+
+  function looksLikeSaveConfirm(text) {
+    var t = String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!t) return false;
+    if (/\b(change|fix|wrong|edit|update|wait|actually|meant)\b/.test(t)) return false;
+    return /\b(save(?: it)?|log(?: it)?|looks good|that'?s (?:it|right|correct)|confirm|submit|go ahead|yes(?: please)?|yep|yeah|perfect)\b/.test(t);
+  }
+
+  function persistDraft() {
+    try {
+      if (!draft || (!draft.symbol && draft.entry_price == null && history.length < 1)) {
+        sessionStorage.removeItem(storageKey);
+        return;
+      }
+      sessionStorage.setItem(storageKey, JSON.stringify({
+        draft: draft,
+        history: history.slice(-16),
+        transcriptDump: transcriptDump.slice(-24),
+        hasBefore: hasBefore,
+        hasAfter: hasAfter,
+        skipShot: skipShot,
+        state: state === 'review' ? 'review' : 'active'
+      }));
+    } catch (e) {}
+  }
+
+  function clearPersisted() {
+    try { sessionStorage.removeItem(storageKey); } catch (e) {}
+  }
+
+  function seedFromBoot() {
+    if (boot.complete && typeof boot.complete === 'object') {
+      var c = boot.complete;
+      draft = {
+        symbol: c.symbol || null,
+        instrument_id: c.instrument_id || null,
+        trade_type: c.trade_type || null,
+        entry_price: c.entry_price != null ? Number(c.entry_price) : null,
+        stop_loss: c.stop_loss != null ? Number(c.stop_loss) : null,
+        take_profit: c.take_profit != null ? Number(c.take_profit) : null,
+        exit_price: c.exit_price != null ? Number(c.exit_price) : null,
+        lot_size: c.lot_size != null ? Number(c.lot_size) : null,
+        session_type: c.session_type || null,
+        strategy: c.strategy || null,
+        status: c.status === 'CLOSED' ? 'closed' : (c.status === 'OPEN' ? 'open' : null),
+        thesis_notes: c.pre_trade_plan || null,
+        voice_dump: c.post_trade_notes || c.pre_trade_plan || null,
+        setup_tags: [],
+        emotions: []
+      };
+      renderChips(draft, {});
+      return;
+    }
+    try {
+      var raw = sessionStorage.getItem(storageKey);
+      if (!raw) return;
+      var saved = JSON.parse(raw);
+      if (!saved || !saved.draft) return;
+      draft = saved.draft || {};
+      history = Array.isArray(saved.history) ? saved.history : [];
+      transcriptDump = Array.isArray(saved.transcriptDump) ? saved.transcriptDump : [];
+      hasBefore = !!saved.hasBefore;
+      hasAfter = !!saved.hasAfter;
+      skipShot = !!saved.skipShot;
+      hasShot = hasBefore || hasAfter;
+      renderChips(draft, {});
+      if (aiEl && history.length) {
+        var lastAsst = '';
+        for (var i = history.length - 1; i >= 0; i--) {
+          if (history[i] && history[i].role === 'assistant') {
+            lastAsst = history[i].content || '';
+            break;
+          }
+        }
+        if (lastAsst) setAi(lastAsst);
+      }
+    } catch (e) {}
   }
 
   function showErr(msg) {
@@ -531,7 +624,8 @@
   }
 
   function startRec() {
-    if (rec.recording || committing || state === 'review') return;
+    if (rec.recording || committing) return;
+    if (state === 'thinking') return;
     rec.text = '';
     rec.chunks = [];
     rec.gen += 1;
@@ -559,12 +653,12 @@
       clearTimeout(rec.maxTimer);
       rec.maxTimer = setTimeout(function () {
         if (rec.recording) stopRec(false);
-      }, 25000);
+      }, reviewMode ? 12000 : 25000);
     }).catch(function () {
       showErr(window.isSecureContext
-        ? 'Allow the microphone, then tap again.'
-        : 'Voice needs HTTPS.');
-      setState('idle');
+        ? 'Allow the microphone, then tap again — or type below.'
+        : 'Voice needs HTTPS — you can still type below.');
+      if (state !== 'review') setState('idle');
     });
   }
 
@@ -732,24 +826,48 @@
     var el = document.getElementById('tv-vj-chips');
     if (!el) return;
     d = d || draft;
-    m = m || {};
+    m = m || lastMetrics || {};
+    lastMetrics = m;
     var chips = [];
-    if (d.symbol) chips.push({ t: d.symbol, k: '' });
-    if (d.trade_type) chips.push({ t: d.trade_type === 'SELL' ? 'Short' : 'Long', k: '' });
-    if (d.entry_price != null) chips.push({ t: 'In ' + d.entry_price, k: '' });
-    if (d.stop_loss != null) chips.push({ t: 'SL ' + d.stop_loss, k: '' });
-    if (d.take_profit != null) chips.push({ t: 'TP ' + d.take_profit, k: '' });
-    if (d.status === 'closed' && d.exit_price != null) chips.push({ t: 'Out ' + d.exit_price, k: '' });
-    if (m.rr_label) chips.push({ t: m.rr_label, k: 'is-rr' });
+    if (d.symbol) chips.push({ t: d.symbol, k: '', f: 'symbol' });
+    if (d.trade_type) chips.push({ t: d.trade_type === 'SELL' ? 'Short' : 'Long', k: '', f: 'trade_type' });
+    if (d.entry_price != null) chips.push({ t: 'In ' + d.entry_price, k: '', f: 'entry_price' });
+    if (d.stop_loss != null) chips.push({ t: 'SL ' + d.stop_loss, k: '', f: 'stop_loss' });
+    if (d.take_profit != null) chips.push({ t: 'TP ' + d.take_profit, k: '', f: 'take_profit' });
+    if (d.status === 'closed' && d.exit_price != null) chips.push({ t: 'Out ' + d.exit_price, k: '', f: 'exit_price' });
+    if (m.rr_label) chips.push({ t: m.rr_label, k: 'is-rr', f: '' });
     if (m.profit_loss != null) {
       var pnl = Number(m.profit_loss);
-      chips.push({ t: (pnl >= 0 ? '+' : '') + pnl, k: pnl >= 0 ? 'is-win' : 'is-loss' });
+      chips.push({ t: (pnl >= 0 ? '+' : '') + pnl, k: pnl >= 0 ? 'is-win' : 'is-loss', f: '' });
     }
-    if (d.session_type) chips.push({ t: String(d.session_type).replace(' Session', ''), k: '' });
+    if (d.session_type) chips.push({ t: String(d.session_type).replace(' Session', ''), k: '', f: 'session_type' });
+    if (d.lot_size != null && Number(d.lot_size) !== 1) chips.push({ t: d.lot_size + ' lot', k: '', f: 'lot_size' });
     el.innerHTML = chips.map(function (c) {
-      return '<span class="tv-vj-chip ' + c.k + '">' + esc(c.t) + '</span>';
+      var tap = c.f ? ' is-tap' : '';
+      var attr = c.f ? ' data-fix="' + esc(c.f) + '" role="button" tabindex="0"' : '';
+      return '<span class="tv-vj-chip ' + c.k + tap + '"' + attr + '>' + esc(c.t) + '</span>';
     }).join('');
     el.classList.toggle('is-on', chips.length > 0);
+    if (chipHint) chipHint.classList.toggle('d-none', chips.filter(function (c) { return c.f; }).length < 1);
+  }
+
+  function askFix(field) {
+    fixField = field || '';
+    reviewMode = false;
+    var prompts = {
+      symbol: 'What market was it?',
+      trade_type: 'Long or short?',
+      entry_price: 'What was the entry?',
+      stop_loss: 'Where was the stop?',
+      take_profit: 'What was the target?',
+      exit_price: 'Where did you get out?',
+      session_type: 'Which session?',
+      lot_size: 'What size were you trading?'
+    };
+    var line = prompts[fixField] || 'What should I change?';
+    if (journalEl) journalEl.classList.add('d-none');
+    skipShot = true;
+    speak(line, startRec);
   }
 
   function renderJournal(data) {
@@ -788,6 +906,7 @@
     if (d.session_type) rows.push(['Session', d.session_type]);
     if (d.entry_time && d.entry_time !== 'unspecified') rows.push(['Time', d.entry_time]);
     if (d.setup_tags && d.setup_tags.length) rows.push(['Setup', d.setup_tags.join(', ')]);
+    if (d.emotions && d.emotions.length) rows.push(['Feel', d.emotions.join(', ')]);
     if (d.thesis_notes) rows.push(['Thesis', d.thesis_notes]);
     var html = '<article class="tv-vj-card">' + hero;
     rows.forEach(function (row, i) {
@@ -863,17 +982,43 @@
   }
 
   function sendTurn(text) {
+    var spoken = String(text || '').trim();
+    if (!spoken) return;
+    if (reviewMode && looksLikeSaveConfirm(spoken)) {
+      clearPersisted();
+      if (form.requestSubmit) form.requestSubmit();
+      else form.submit();
+      return;
+    }
+    if (fixField) {
+      var labels = {
+        symbol: 'market',
+        trade_type: 'side',
+        entry_price: 'entry',
+        stop_loss: 'stop',
+        take_profit: 'target',
+        exit_price: 'exit',
+        session_type: 'session',
+        lot_size: 'size'
+      };
+      spoken = 'actually the ' + (labels[fixField] || fixField) + ' was ' + spoken;
+      fixField = '';
+    }
+    if (reviewMode) {
+      reviewMode = false;
+      if (journalEl) journalEl.classList.add('d-none');
+    }
     committing = true;
     setState('thinking');
-    setLive(text);
-    transcriptDump.push(text);
-    history.push({ role: 'user', content: text });
+    setLive(spoken);
+    transcriptDump.push(spoken);
+    history.push({ role: 'user', content: spoken });
     setVal('guide_voice_dump', transcriptDump.join('\n'));
     fetch(boot.turnUrl || '/trade/api/voice-turn', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf(), 'X-CSRF-Token': csrf() },
       body: JSON.stringify({
-        transcript: text,
+        transcript: spoken,
         draft: draft,
         history: history,
         has_screenshot: hasBefore && hasAfter,
@@ -894,6 +1039,8 @@
         renderChips(draft, data.metrics || {});
         setVal('guide_voice_dump', transcriptDump.join('\n'));
         history.push({ role: 'assistant', content: data.reply || '' });
+        persistDraft();
+        if (pendingEl && (draft.symbol || draft.entry_price != null)) pendingEl.classList.add('d-none');
         if (data.ask_screenshot && shotEl) showShot(data.screenshot_kind || 'before');
         if (data.complete && !data.ask_screenshot) {
           if (!(data.instrument && data.instrument.id) && !val('instrument_id')) {
@@ -904,7 +1051,7 @@
           return;
         }
         speak(data.reply, function () {
-          if (state === 'review') return;
+          if (reviewMode) return;
           if (data.ask_screenshot) {
             setState('waiting');
             return;
@@ -921,33 +1068,51 @@
   function enterReview(data) {
     stopRec(true);
     stopTTS();
+    reviewMode = true;
     setState('review');
     setLive('');
     if (shotEl && hasBefore && hasAfter) shotEl.classList.add('d-none');
     if (journalEl) journalEl.classList.remove('d-none');
     setVal('guide_voice_dump', transcriptDump.join('\n'));
     renderJournal(data);
-    speak(data && data.reply ? data.reply : 'Got it — that’s everything I need.');
+    persistDraft();
+    speak(data && data.reply ? data.reply : 'Got it — say save when it looks right.', function () {
+      if (reviewMode) startRec();
+    });
   }
 
   function begin() {
-    if (state !== 'idle' && state !== 'review') return;
+    if (state !== 'idle' && state !== 'review' && !reviewMode) return;
+    reviewMode = false;
     if (journalEl) journalEl.classList.add('d-none');
     unlockAudio();
     var opening = boot.mode === 'quick'
       ? 'Give me the short version — pair, side, levels.'
       : (boot.complete && boot.complete.symbol
-        ? ('Let’s finish the notes on ' + boot.complete.symbol + '.')
-        : 'Hey — tell me about the trade.');
+        ? ('Let’s finish the notes on ' + boot.complete.symbol + '. What happened?')
+        : (draft && draft.symbol
+          ? ('Picking up on ' + draft.symbol + ' — what else?')
+          : 'Hey — tell me about the trade.'));
     ensureStream().then(function (stream) {
       attachAnalyser(stream);
       if (!rec.raf) drawOrb();
       speak(opening, startRec);
     }).catch(function () {
       showErr(window.isSecureContext
-        ? 'Allow the microphone, then tap again.'
-        : 'Voice needs HTTPS.');
+        ? 'Allow the microphone, then tap again — or type below.'
+        : 'Voice needs HTTPS — you can still type below.');
+      setState('idle');
     });
+  }
+
+  function submitTyped() {
+    if (!typeInput || committing) return;
+    var text = String(typeInput.value || '').trim();
+    if (!text) return;
+    typeInput.value = '';
+    stopRec(true);
+    stopTTS();
+    sendTurn(text);
   }
 
   if (orbBtn) {
@@ -958,6 +1123,32 @@
       else if (state === 'speaking') {
         stopTTS();
         setTimeout(startRec, 220);
+      }
+    });
+  }
+
+  var chipsEl = document.getElementById('tv-vj-chips');
+  if (chipsEl) {
+    chipsEl.addEventListener('click', function (ev) {
+      var node = ev.target.closest('[data-fix]');
+      if (!node) return;
+      askFix(node.getAttribute('data-fix'));
+    });
+    chipsEl.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      var node = ev.target.closest('[data-fix]');
+      if (!node) return;
+      ev.preventDefault();
+      askFix(node.getAttribute('data-fix'));
+    });
+  }
+
+  if (typeSend) typeSend.addEventListener('click', submitTyped);
+  if (typeInput) {
+    typeInput.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        submitTyped();
       }
     });
   }
@@ -991,6 +1182,7 @@
 
   document.getElementById('tv-vj-fix') && document.getElementById('tv-vj-fix').addEventListener('click', function () {
     if (journalEl) journalEl.classList.add('d-none');
+    reviewMode = false;
     skipShot = true;
     speak('What should I change?', startRec);
   });
@@ -1001,13 +1193,17 @@
     if (why && !val('pre_trade_plan')) setVal('pre_trade_plan', why);
     var post = val('guide_voice_dump') || why;
     if (post && !val('post_trade_notes')) setVal('post_trade_notes', post);
+    clearPersisted();
     if (rec.stream) rec.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
     stopTTS();
   });
 
+  seedFromBoot();
   if (!rec.raf) drawOrb();
+  syncComposer();
 
   window.addEventListener('pagehide', function () {
+    persistDraft();
     stopTTS();
     if (rec.stream) rec.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
     cancelAnimationFrame(rec.raf);

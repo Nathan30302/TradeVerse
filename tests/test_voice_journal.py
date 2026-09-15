@@ -370,4 +370,74 @@ def test_wrap_includes_planned_return():
     reply = (done["reply"] or "").lower()
     assert "1:" in reply or "planned" in reply
     assert "journal" in reply
+    assert "save" in reply
+
+
+def test_draft_from_existing_seeds_complete_trade():
+    from app.services.voice_conversation import draft_from_existing, fallback_turn, missing_keys
+
+    seeded = draft_from_existing(
+        {
+            "symbol": "EURUSD",
+            "instrument_id": 9,
+            "trade_type": "BUY",
+            "entry_price": 1.1724,
+            "stop_loss": 1.1714,
+            "take_profit": 1.1744,
+            "lot_size": 0.5,
+            "status": "OPEN",
+            "session_type": "London Session",
+            "pre_trade_plan": "Retest of London open.",
+        }
+    )
+    assert seeded["symbol"] == "EURUSD"
+    assert seeded["entry_price"] == 1.1724
+    assert seeded["status"] == "open"
+    assert seeded["instrument_id"] == 9
+    hard = [k for k in missing_keys(seeded) if k not in ("thesis_notes", "take_profit", "entry_time")]
+    assert "symbol" not in hard
+    assert "entry_price" not in hard
+    nxt = fallback_turn("still in it, felt confident", seeded)
+    assert nxt["draft"]["symbol"] == "EURUSD"
+    assert "what did you trade" not in (nxt["reply"] or "").lower()
+
+
+def test_is_save_confirm():
+    from app.services.voice_conversation import is_save_confirm
+
+    assert is_save_confirm("save it")
+    assert is_save_confirm("looks good")
+    assert is_save_confirm("yes")
+    assert not is_save_confirm("actually the entry was 1.17")
+    assert not is_save_confirm("change the stop")
+
+
+def test_guide_page_has_composer_and_pending_hooks(logged_client, app):
+    with app.app_context():
+        u = User.query.filter_by(username="vjuser").first()
+        inst = Instrument.query.filter_by(symbol="EURUSD").first()
+        t = Trade(
+            user_id=u.id,
+            instrument_id=inst.id,
+            symbol="EURUSD",
+            trade_type="BUY",
+            lot_size=0.1,
+            entry_price=1.1,
+            status="CLOSED",
+            exit_price=1.11,
+        )
+        db.session.add(t)
+        db.session.commit()
+        tid = t.id
+    r = logged_client.get("/trade/guide")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "tv-vj-type-input" in body
+    assert "tv-vj-composer" in body
+    assert "tv-vj-pending" in body or "still need notes" in body
+    r2 = logged_client.get(f"/trade/guide?complete={tid}")
+    assert r2.status_code == 200
+    body2 = r2.get_data(as_text=True)
+    assert "EURUSD" in body2
+    assert f'"id": {tid}' in body2 or f'"id":{tid}' in body2
 

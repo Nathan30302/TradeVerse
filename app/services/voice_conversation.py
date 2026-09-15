@@ -250,6 +250,48 @@ def empty_draft() -> Dict[str, Any]:
     return dict(_EMPTY, setup_tags=[], emotions=[])
 
 
+def draft_from_existing(prefill: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Seed a conversation draft from an open trade the user is finishing."""
+    if not isinstance(prefill, dict) or not prefill:
+        return empty_draft()
+    status = str(prefill.get("status") or "").upper()
+    seeded = {
+        "symbol": prefill.get("symbol"),
+        "instrument_id": prefill.get("instrument_id"),
+        "trade_type": prefill.get("trade_type"),
+        "entry_price": prefill.get("entry_price"),
+        "stop_loss": prefill.get("stop_loss"),
+        "take_profit": prefill.get("take_profit"),
+        "exit_price": prefill.get("exit_price"),
+        "lot_size": prefill.get("lot_size"),
+        "session_type": prefill.get("session_type"),
+        "strategy": prefill.get("strategy"),
+        "status": "closed" if status == "CLOSED" else ("open" if status == "OPEN" else None),
+        "thesis_notes": (prefill.get("pre_trade_plan") or "").strip() or None,
+        "voice_dump": (prefill.get("post_trade_notes") or prefill.get("pre_trade_plan") or "").strip() or None,
+    }
+    return merge_draft(empty_draft(), seeded)
+
+
+_SAVE_CONFIRM_RE = re.compile(
+    r"\b(save(?:\s+it)?|log(?:\s+it)?|looks good|that'?s (?:it|right|correct)|"
+    r"confirm|submit|go ahead|yes(?: please)?|yep|yeah|perfect)\b",
+    re.I,
+)
+
+
+def is_save_confirm(text: str) -> bool:
+    """True when the trader is confirming the review card should be saved."""
+    t = _light_clean(text or "")
+    if not t:
+        return False
+    if _CORR_RE.search(t):
+        return False
+    if re.search(r"\b(change|fix|wrong|edit|update|wait)\b", t, re.I):
+        return False
+    return bool(_SAVE_CONFIRM_RE.search(t))
+
+
 def _token_set(text: str) -> set:
     return set(re.findall(r"[a-z0-9]+", (text or "").lower()))
 
@@ -840,7 +882,10 @@ def _spoken_wrap(draft: Dict[str, Any]) -> str:
         extra = f" Planned {metrics['rr_label']}."
     elif metrics.get("sl_pips"):
         extra = f" Stop is {metrics['sl_pips']:g} away."
-    return f"Got it — {core}, {state}.{extra} I’ll put that in your journal."
+    return (
+        f"Got it — {core}, {state}.{extra} "
+        "I’ll put that in your journal — say save when it looks right."
+    )
 
 
 def _llm_allowed() -> bool:

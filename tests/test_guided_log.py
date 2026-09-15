@@ -57,6 +57,8 @@ def test_guide_page_loads(logged_client):
     assert "tv-vj-shot-before" in body
     assert "tv-vj-shot-after" in body
     assert "tv-vj-chips" in body
+    assert "tv-vj-type-input" in body
+    assert "tv-vj-composer" in body
 
 
 def test_compose_guided_fields():

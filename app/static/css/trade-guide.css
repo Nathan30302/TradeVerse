@@ -261,6 +261,105 @@
   border-color: color-mix(in srgb, #ef4444 28%, transparent);
 }
 
+.tv-vj-chip.is-tap {
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.tv-vj-chip.is-tap:hover,
+.tv-vj-chip.is-tap:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--vj-accent) 22%, transparent);
+  outline: none;
+}
+
+.tv-vj-chip-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tv-muted, var(--text-secondary, #6b7280));
+}
+
+.tv-vj-pending {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--tv-accent, #0f766e) 10%, var(--card-bg, #fff));
+  border: 1px solid color-mix(in srgb, var(--tv-accent, #0f766e) 20%, transparent);
+}
+
+.tv-vj-pending-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary, #0c1b2a);
+}
+
+.tv-vj-pending-sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--tv-muted, var(--text-secondary, #6b7280));
+}
+
+.tv-vj-pending-link {
+  flex-shrink: 0;
+  padding: 0.55rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: #fff;
+  background: var(--tv-accent, #0f766e);
+}
+
+.tv-vj-composer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: min(22.5rem, calc(100% - 1.5rem));
+  margin-top: 0.85rem;
+}
+
+.tv-vj-type-input {
+  flex: 1;
+  min-height: 46px;
+  padding: 0.65rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--vj-accent) 22%, var(--card-border, #e5e7eb));
+  background: color-mix(in srgb, var(--vj-accent) 6%, var(--card-bg, #fff));
+  color: var(--text-primary, #0c1b2a);
+  font-size: 0.95rem;
+}
+
+.tv-vj-type-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--vj-bright) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vj-bright) 18%, transparent);
+}
+
+.tv-vj-type-send {
+  min-height: 46px;
+  padding: 0 1.05rem;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--vj-accent);
+}
+
+.tv-vj-type-send:disabled {
+  opacity: 0.45;
+}
+
 .tv-vj-stage[data-state="listening"] .tv-vj-live:not(.is-on)::before {
   content: "Speak naturally — I’m writing your words.";
   color: var(--tv-muted, var(--text-secondary, #6b7280));

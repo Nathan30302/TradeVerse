@@ -3,13 +3,14 @@
 {% block title %}Voice Journal - {{ app_name }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-vj8">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-vj9">
 {% endblock %}
 
 {% block content %}
 {% set complete_prefill = complete_prefill|default(none) %}
 {% set suggested_session = suggested_session|default({}) %}
 {% set voice_mode = voice_mode|default('') %}
+{% set journal_status = journal_status|default({}) %}
 <div class="tv-vj-page">
     <canvas id="tv-vj-water" class="tv-vj-water" aria-hidden="true"></canvas>
     {% if accountability_required %}
@@ -25,6 +26,17 @@
     <div class="alert alert-warning mb-3">
         <div class="fw-bold">Cooldown active</div>
         <a class="btn btn-outline-dark btn-sm mt-2" href="{{ url_for('trade.cooldown_status') }}">View cooldown</a>
+    </div>
+    {% endif %}
+    {% if journal_status.get('pending_count', 0) > 0 and not complete_prefill %}
+    <div class="tv-vj-pending" id="tv-vj-pending">
+        <div>
+            <p class="tv-vj-pending-title">{{ journal_status.pending_count }} trade{% if journal_status.pending_count != 1 %}s{% endif %} still need notes</p>
+            <p class="tv-vj-pending-sub">Finish them while the setups are fresh.</p>
+        </div>
+        {% if journal_status.get('first_missing_id') %}
+        <a class="tv-vj-pending-link" href="{{ url_for('trade.guide', complete=journal_status.first_missing_id) }}">Continue</a>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -88,7 +100,14 @@
                 <p class="tv-vj-live" id="tv-vj-live" aria-live="polite"></p>
             </div>
             <div class="tv-vj-chips" id="tv-vj-chips" aria-live="polite"></div>
+            <p class="tv-vj-chip-hint d-none" id="tv-vj-chip-hint">Tap a chip to fix it</p>
             <p class="small text-danger d-none mb-0" id="tv-vj-mic-err"></p>
+
+            <div class="tv-vj-composer" id="tv-vj-composer">
+                <label class="visually-hidden" for="tv-vj-type-input">Type a reply</label>
+                <input type="text" id="tv-vj-type-input" class="tv-vj-type-input" placeholder="Or type a reply…" autocomplete="off" enterkeyhint="send">
+                <button type="button" class="tv-vj-type-send" id="tv-vj-type-send" aria-label="Send typed reply">Send</button>
+            </div>
 
             <div class="tv-vj-shot d-none" id="tv-vj-shot">
                 <p class="tv-vj-shot-prompt" id="tv-vj-shot-prompt">Got a before-trade screenshot?</p>
@@ -108,7 +127,7 @@
         </div>
     </form>
     <p class="tv-vj-type">
-        Prefer typing? <a href="{{ url_for('trade.add') }}">Use the full Log Trade form</a>.
+        Prefer the full form? <a href="{{ url_for('trade.add') }}">Log Trade manually</a>.
     </p>
 </div>
 {% endblock %}
@@ -118,12 +137,14 @@
     'mode': voice_mode or '',
     'complete': complete_prefill,
     'session': suggested_session or {},
+    'journal': journal_status or {},
     'turnUrl': url_for('trade.voice_turn'),
     'extractUrl': url_for('trade.extract_chart'),
     'transcribeUrl': url_for('api_voice.transcribe'),
     'transcribeEnabled': voice_transcribe_enabled,
     'speakUrl': url_for('api_voice.speak'),
-    'userId': current_user.id
+    'userId': current_user.id,
+    'storageKey': 'tv-vj-draft-' ~ current_user.id
 } | tojson }}</script>
-<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj8"></script>
+<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj9"></script>
 {% endblock %}
