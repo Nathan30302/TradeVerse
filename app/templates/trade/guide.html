@@ -31,7 +31,7 @@
     {% if journal_status.get('pending_count', 0) > 0 and not complete_prefill %}
     <div class="tv-vj-pending" id="tv-vj-pending">
         <div>
-            <p class="tv-vj-pending-title">{{ journal_status.pending_count }} trade{% if journal_status.pending_count != 1 %}s{% endif %} still need notes</p>
+            <p class="tv-vj-pending-title">{{ journal_status.pending_count }} trade{% if journal_status.pending_count != 1 %}s still need{% else %} still needs{% endif %} notes</p>
             <p class="tv-vj-pending-sub">Finish them while the setups are fresh.</p>
         </div>
         {% if journal_status.get('first_missing_id') %}
