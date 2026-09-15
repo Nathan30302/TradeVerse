@@ -3,12 +3,30 @@
  */
 
 .tv-vj-page {
+  position: relative;
   max-width: 460px;
   margin: 0 auto;
   padding: 1.25rem 1rem calc(2.5rem + env(safe-area-inset-bottom, 0px));
 }
 
+.tv-vj-water {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+
+.tv-vj-page.is-voice .tv-vj-water {
+  opacity: 1;
+}
+
 .tv-vj-form {
+  position: relative;
+  z-index: 1;
   margin: 0;
 }
 
@@ -66,6 +84,12 @@
 }
 
 .tv-vj-stage[data-state="listening"] .tv-vj-orb-halo {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--vj-bright) 28%, transparent),
+    0 18px 48px color-mix(in srgb, var(--vj-accent) 22%, transparent);
+}
+
+.tv-vj-stage.is-voice[data-state="listening"] .tv-vj-orb-halo {
   animation: tv-vj-pulse 1.6s ease-out infinite;
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--vj-bright) 55%, transparent),
@@ -126,7 +150,7 @@
   animation: tv-vj-shimmer 1.4s linear infinite;
 }
 
-.tv-vj-stage[data-state="speaking"] .tv-vj-status {
+.tv-vj-stage[data-state="waiting"] .tv-vj-status {
   color: var(--vj-accent);
 }
 
@@ -209,6 +233,18 @@
   animation: tv-vj-rise 360ms ease;
 }
 
+.tv-vj-shot-prompt {
+  margin: 0 0 0.15rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text-primary, #0c1b2a);
+}
+
+.tv-vj-shot-row {
+  display: flex;
+  gap: 0.55rem;
+}
+
 .tv-vj-shot-btn,
 .tv-vj-save {
   min-height: 48px;
@@ -216,6 +252,16 @@
   border-radius: 999px;
   border: 0;
   font-weight: 650;
+  background: color-mix(in srgb, var(--vj-accent) 18%, var(--card-bg, #fff));
+  color: var(--text-primary, #0c1b2a);
+}
+
+.tv-vj-shot-btn.is-active {
+  background: var(--vj-accent);
+  color: #fff;
+}
+
+.tv-vj-save {
   background: var(--vj-accent);
   color: #fff;
 }
@@ -228,12 +274,18 @@
   font-weight: 600;
 }
 
+.tv-vj-shot-previews {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .tv-vj-shot-previews img {
-  width: 160px;
-  height: 96px;
+  width: 120px;
+  height: 80px;
   object-fit: cover;
   border-radius: 14px;
   margin-top: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--vj-accent) 22%, transparent);
 }
 
 .tv-vj-journal {

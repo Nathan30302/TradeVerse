@@ -32,6 +32,9 @@
   var history = [];
   var transcriptDump = [];
   var hasShot = false;
+  var hasBefore = false;
+  var hasAfter = false;
+  var shotKind = 'before';
   var skipShot = false;
   var committing = false;
   var lastReply = '';
@@ -53,7 +56,12 @@
     gen: 0,
     raf: 0,
     amp: 0,
-    freq: null
+    freq: null,
+    voiceOn: false,
+    voiceRms: 0,
+    ripples: [],
+    waterRipples: [],
+    rippleAt: 0
   };
 
   function csrf() {
@@ -80,6 +88,7 @@
         next === 'listening' ? 'Listening' :
         next === 'thinking' ? 'Thinking' :
         next === 'speaking' ? 'Speaking' :
+        next === 'waiting' ? 'Add your charts' :
         next === 'review' ? 'Ready to save' :
         'Tap when you’re ready';
     }
@@ -244,6 +253,80 @@
     } catch (e) { /* ignore */ }
   }
 
+  function setVoiceVisual(on, rms) {
+    rec.voiceOn = !!on;
+    rec.voiceRms = rms || 0;
+    var live = rec.voiceOn && (state === 'listening' || rec.recording);
+    if (stage) stage.classList.toggle('is-voice', live);
+    var page = document.querySelector('.tv-vj-page');
+    if (page) page.classList.toggle('is-voice', live);
+  }
+
+  function sizeWater() {
+    var water = document.getElementById('tv-vj-water');
+    if (!water || !water.getContext) return null;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = window.innerWidth || 1;
+    var h = window.innerHeight || 1;
+    if (water.width !== Math.floor(w * dpr) || water.height !== Math.floor(h * dpr)) {
+      water.width = Math.floor(w * dpr);
+      water.height = Math.floor(h * dpr);
+      water.style.width = w + 'px';
+      water.style.height = h + 'px';
+    }
+    return water;
+  }
+
+  function drawWater() {
+    var water = sizeWater();
+    if (!water) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var ctx = water.getContext('2d');
+    var w = water.width / dpr;
+    var h = water.height / dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    var speaking = rec.voiceOn && (state === 'listening' || rec.recording);
+    var accent = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent-bright').trim() || '#14b8a6';
+    if (speaking && Date.now() - rec.rippleAt > 150) {
+      rec.rippleAt = Date.now();
+      rec.waterRipples.push({
+        x: w / 2,
+        y: Math.min(h * 0.36, 220),
+        r: 18,
+        a: 0.32 + rec.voiceRms * 1.2,
+        grow: 1.8 + rec.voiceRms * 5
+      });
+      if (rec.waterRipples.length > 16) rec.waterRipples.shift();
+    }
+    for (var i = rec.waterRipples.length - 1; i >= 0; i--) {
+      var p = rec.waterRipples[i];
+      p.r += p.grow;
+      p.a *= 0.96;
+      if (p.a < 0.02 || p.r > Math.max(w, h)) {
+        rec.waterRipples.splice(i, 1);
+        continue;
+      }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.strokeStyle = rgbOf(accent, p.a);
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 0.7, 0, Math.PI * 2);
+      ctx.strokeStyle = rgbOf(accent, p.a * 0.4);
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+    if (!speaking && rec.waterRipples.length === 0) {
+      ctx.beginPath();
+      ctx.strokeStyle = rgbOf(accent, 0.05);
+      ctx.lineWidth = 1;
+      ctx.arc(w / 2, Math.min(h * 0.36, 220), 90, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
   function rgbOf(color, a) {
     var c = String(color || '').trim();
     var hex = c.match(/^#([0-9a-f]{6})$/i);
@@ -258,6 +341,7 @@
 
   function drawOrb() {
     rec.raf = requestAnimationFrame(drawOrb);
+    drawWater();
     if (!canvas || !canvas.getContext) return;
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     var css = 280;
@@ -273,60 +357,61 @@
     var cy = h / 2;
     ctx.clearRect(0, 0, w, h);
 
+    var listening = state === 'listening' || rec.recording;
+    var voice = listening && rec.voiceOn;
     var amp = 0.08;
-    if (rec.analyser && rec.freq && (state === 'listening' || rec.recording)) {
-      rec.analyser.getByteFrequencyData(rec.freq);
-      var sum = 0;
-      for (var i = 0; i < rec.freq.length; i++) sum += rec.freq[i];
-      amp = Math.min(1, (sum / rec.freq.length) / 90);
+    if (voice && rec.voiceRms) {
+      amp = Math.min(1, 0.12 + rec.voiceRms * 4);
     } else if (state === 'speaking') {
-      amp = 0.34 + Math.sin(Date.now() / 160) * 0.14;
+      amp = 0.28 + Math.sin(Date.now() / 160) * 0.1;
     } else if (state === 'thinking') {
-      amp = 0.18 + Math.sin(Date.now() / 380) * 0.08;
+      amp = 0.16 + Math.sin(Date.now() / 380) * 0.06;
     } else {
-      amp = 0.12 + Math.sin(Date.now() / 900) * 0.04;
+      amp = 0.08 + Math.sin(Date.now() / 1400) * 0.02;
     }
     rec.amp = rec.amp * 0.72 + amp * 0.28;
 
     var accent = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent-bright').trim() || '#14b8a6';
     var deep = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent').trim() || '#0f766e';
 
-    var glow = ctx.createRadialGradient(cx, cy, 8, cx, cy, 128 + rec.amp * 46);
-    glow.addColorStop(0, rgbOf(accent, 0.28 + rec.amp * 0.38));
-    glow.addColorStop(0.55, rgbOf(deep, 0.12 + rec.amp * 0.12));
+    var glow = ctx.createRadialGradient(cx, cy, 8, cx, cy, 118 + rec.amp * 40);
+    glow.addColorStop(0, rgbOf(accent, voice ? 0.32 + rec.amp * 0.4 : 0.12));
+    glow.addColorStop(0.55, rgbOf(deep, voice ? 0.12 + rec.amp * 0.12 : 0.06));
     glow.addColorStop(1, rgbOf(accent, 0));
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
 
-    var bars = rec.freq && state === 'listening' ? 40 : 28;
-    var radius = 64 + rec.amp * 16;
-    for (var b = 0; b < bars; b++) {
-      var mag = rec.freq && state === 'listening'
-        ? rec.freq[Math.floor(b * (rec.freq.length / bars))] / 255
-        : 0.22 + Math.sin(Date.now() / 260 + b) * 0.1;
-      var len = 10 + mag * (38 + rec.amp * 30);
-      var ang = (b / bars) * Math.PI * 2 - Math.PI / 2;
+    if (voice && Date.now() - (rec.orbRippleAt || 0) > 170) {
+      rec.orbRippleAt = Date.now();
+      rec.ripples.push({ r: 42, a: 0.45 + rec.amp * 0.4 });
+      if (rec.ripples.length > 10) rec.ripples.shift();
+    }
+    for (var r = rec.ripples.length - 1; r >= 0; r--) {
+      var ring = rec.ripples[r];
+      ring.r += 1.8 + rec.amp * 2.2;
+      ring.a *= 0.955;
+      if (ring.a < 0.03 || ring.r > 132) {
+        rec.ripples.splice(r, 1);
+        continue;
+      }
       ctx.beginPath();
-      ctx.strokeStyle = b % 2 ? accent : deep;
-      ctx.globalAlpha = 0.38 + mag * 0.55;
-      ctx.lineWidth = 3.2;
-      ctx.lineCap = 'round';
-      ctx.moveTo(cx + Math.cos(ang) * radius, cy + Math.sin(ang) * radius);
-      ctx.lineTo(cx + Math.cos(ang) * (radius + len), cy + Math.sin(ang) * (radius + len));
+      ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
+      ctx.strokeStyle = rgbOf(accent, ring.a);
+      ctx.lineWidth = 2.6;
       ctx.stroke();
     }
-    ctx.globalAlpha = 1;
+
     ctx.beginPath();
     ctx.fillStyle = deep;
-    ctx.arc(cx, cy, 40 + rec.amp * 10, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 36 + rec.amp * 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
     ctx.fillStyle = accent;
-    ctx.arc(cx, cy, 23 + rec.amp * 8, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 20 + rec.amp * 6, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
     ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    ctx.arc(cx - 8, cy - 10, 8 + rec.amp * 2, 0, Math.PI * 2);
+    ctx.arc(cx - 8, cy - 10, 7 + rec.amp * 2, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -348,11 +433,13 @@
         sum += v * v;
       }
       var rms = Math.sqrt(sum / data.length);
-      if (rms > 0.042) {
+      if (rms > 0.038) {
         heard = true;
         quiet = 0;
+        setVoiceVisual(true, rms);
       } else {
         quiet += 100;
+        if (quiet >= 180) setVoiceVisual(false, rms);
       }
       if (heard && quiet >= 2400) stopRec(false);
       else if (!heard && quiet >= 10000) stopRec(false);
@@ -367,6 +454,7 @@
       rec.sr.continuous = true;
       rec.sr.interimResults = true;
       rec.sr.lang = 'en-US';
+      rec.sr.maxAlternatives = 1;
       rec.sr.onresult = function (ev) {
         var finalTxt = '';
         var interim = '';
@@ -376,15 +464,21 @@
           else interim += t;
         }
         if (finalTxt) rec.text = (rec.text + ' ' + finalTxt).trim();
-        setLive(rec.text || interim);
-        if (rec.text || interim) {
+        var shown = (rec.text + (interim ? ' ' + interim : '')).replace(/\s+/g, ' ').trim();
+        setLive(shown);
+        if (shown) {
           clearTimeout(rec.silence);
           rec.silence = setTimeout(function () {
             if (rec.recording) stopRec(false);
-          }, 2500);
+          }, 2200);
         }
       };
       rec.sr.onerror = function () {};
+      rec.sr.onend = function () {
+        if (rec.recording && rec.sr) {
+          try { rec.sr.start(); } catch (e) {}
+        }
+      };
       rec.sr.start();
       return true;
     } catch (e) {
@@ -397,6 +491,7 @@
     rec.text = '';
     rec.chunks = [];
     rec.gen += 1;
+    setVoiceVisual(false, 0);
     var gen = rec.gen;
     setLive('');
     showErr('');
@@ -412,7 +507,7 @@
       rec.mr.ondataavailable = function (e) {
         if (e.data && e.data.size) rec.chunks.push(e.data);
       };
-      try { rec.mr.start(); } catch (e) { rec.mr.start(); }
+      try { rec.mr.start(250); } catch (e) { rec.mr.start(); }
       startSpeech();
       rec.recording = true;
       setState('listening');
@@ -438,6 +533,7 @@
       return;
     }
     rec.recording = false;
+    setVoiceVisual(false, 0);
     var gen = rec.gen;
     var box = { blob: null, recDone: false, srDone: false, silent: !!silent };
 
@@ -529,18 +625,18 @@
     if (isPromptLeak(whisper)) whisper = '';
     if (looksLikeEcho(whisper)) whisper = '';
     if (looksLikeEcho(local)) local = '';
-    if (whisper && !local) return whisper;
-    if (local && !whisper) return local;
-    if (!whisper && !local) return '';
-    var ov = tokenOverlap(whisper, local);
-    if (ov >= 0.4) return whisper;
-    if (ov < 0.28) return local;
-    return whisper;
+    if (local.replace(/\s/g, '').length >= 2) return local;
+    return whisper || local;
   }
 
   function finishUtterance(srText, blob) {
     var local = String(srText || '').trim();
     if (looksLikeEcho(local)) local = '';
+    if (local && local.replace(/\s/g, '').length >= 2) {
+      setLive(local);
+      sendTurn(local);
+      return;
+    }
     var blobOk = !!(blob && blob.size > 1200 && boot.transcribeEnabled);
     if (!blobOk) {
       if (local) sendTurn(local);
@@ -603,6 +699,7 @@
     if (d.status === 'closed') rows.push(['Out', d.exit_price != null ? d.exit_price : '—']);
     if (m.rr_label) rows.push(['R:R', m.rr_label]);
     if (d.session_type) rows.push(['Session', d.session_type]);
+    if (d.entry_time && d.entry_time !== 'unspecified') rows.push(['Time', d.entry_time]);
     if (d.setup_tags && d.setup_tags.length) rows.push(['Setup', d.setup_tags.join(', ')]);
     if (d.thesis_notes) rows.push(['Thesis', d.thesis_notes]);
     var html = '<article class="tv-vj-card">';
@@ -620,6 +717,64 @@
     });
   }
 
+  function showShot(kind) {
+    shotKind = kind === 'after' ? 'after' : 'before';
+    if (!shotEl) return;
+    shotEl.classList.remove('d-none');
+    var prompt = document.getElementById('tv-vj-shot-prompt');
+    if (prompt) {
+      prompt.textContent = shotKind === 'after'
+        ? 'And the after chart?'
+        : 'Got a before-trade screenshot?';
+    }
+    var beforeBtn = document.getElementById('tv-vj-shot-before');
+    var afterBtn = document.getElementById('tv-vj-shot-after');
+    if (beforeBtn) beforeBtn.classList.toggle('is-active', shotKind !== 'after');
+    if (afterBtn) afterBtn.classList.toggle('is-active', shotKind === 'after');
+  }
+
+  function previewShot(kind, file) {
+    var previews = document.getElementById('tv-vj-shot-previews');
+    if (!previews || !file) return;
+    var url = URL.createObjectURL(file);
+    var existing = previews.querySelector('[data-kind="' + kind + '"]');
+    var img = existing || document.createElement('img');
+    img.src = url;
+    img.alt = kind === 'after' ? 'After chart' : 'Before chart';
+    img.setAttribute('data-kind', kind);
+    if (!existing) previews.appendChild(img);
+  }
+
+  function handleShotFile(kind, file) {
+    if (!file) return;
+    if (kind === 'after') hasAfter = true;
+    else hasBefore = true;
+    hasShot = hasBefore || hasAfter;
+    previewShot(kind, file);
+    var said = kind === 'after' ? 'I uploaded the after chart.' : 'I uploaded the before chart.';
+    if (kind === 'before' && boot.extractUrl) {
+      var fd = new FormData();
+      fd.append('image', file, file.name || 'chart.jpg');
+      fetch(boot.extractUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf() },
+        body: fd
+      }).then(function (r) { return r.json(); }).then(function (data) {
+        var fields = (data && data.fields) || {};
+        draft = Object.assign({}, draft, fields);
+        if (data && data.instrument) {
+          draft.instrument_id = data.instrument.id;
+          draft.symbol = data.instrument.symbol;
+        }
+        sendTurn(said);
+      }).catch(function () {
+        sendTurn(said);
+      });
+    } else {
+      sendTurn(said);
+    }
+  }
+
   function sendTurn(text) {
     committing = true;
     setState('thinking');
@@ -634,7 +789,9 @@
         transcript: text,
         draft: draft,
         history: history,
-        has_screenshot: hasShot,
+        has_screenshot: hasBefore && hasAfter,
+        has_before: hasBefore,
+        has_after: hasAfter,
         skip_screenshot: skipShot
       })
     }).then(function (r) { return r.json(); })
@@ -649,7 +806,7 @@
         applyForm(data.form, data.instrument);
         setVal('guide_voice_dump', transcriptDump.join('\n'));
         history.push({ role: 'assistant', content: data.reply || '' });
-        if (data.ask_screenshot && shotEl) shotEl.classList.remove('d-none');
+        if (data.ask_screenshot && shotEl) showShot(data.screenshot_kind || 'before');
         if (data.complete && !data.ask_screenshot) {
           if (!(data.instrument && data.instrument.id) && !val('instrument_id')) {
             speak('I didn’t catch the market — say the ticker once more?', startRec);
@@ -660,6 +817,10 @@
         }
         speak(data.reply, function () {
           if (state === 'review') return;
+          if (data.ask_screenshot) {
+            setState('waiting');
+            return;
+          }
           startRec();
         });
       })
@@ -674,7 +835,7 @@
     stopTTS();
     setState('review');
     setLive('');
-    if (shotEl && hasShot) shotEl.classList.add('d-none');
+    if (shotEl && hasBefore && hasAfter) shotEl.classList.add('d-none');
     if (journalEl) journalEl.classList.remove('d-none');
     setVal('guide_voice_dump', transcriptDump.join('\n'));
     renderJournal(data);
@@ -704,6 +865,7 @@
   if (orbBtn) {
     orbBtn.addEventListener('click', function () {
       if (state === 'idle' || state === 'review') begin();
+      else if (state === 'waiting') startRec();
       else if (state === 'listening') stopRec(false);
       else if (state === 'speaking') {
         stopTTS();
@@ -712,8 +874,12 @@
     });
   }
 
-  document.getElementById('tv-vj-shot-pick') && document.getElementById('tv-vj-shot-pick').addEventListener('click', function () {
+  document.getElementById('tv-vj-shot-before') && document.getElementById('tv-vj-shot-before').addEventListener('click', function () {
     var input = document.getElementById('before_screenshot');
+    if (input) input.click();
+  });
+  document.getElementById('tv-vj-shot-after') && document.getElementById('tv-vj-shot-after').addEventListener('click', function () {
+    var input = document.getElementById('after_screenshot');
     if (input) input.click();
   });
   document.getElementById('tv-vj-shot-skip') && document.getElementById('tv-vj-shot-skip').addEventListener('click', function () {
@@ -725,35 +891,13 @@
   var beforeInput = document.getElementById('before_screenshot');
   if (beforeInput) {
     beforeInput.addEventListener('change', function () {
-      var file = beforeInput.files && beforeInput.files[0];
-      if (!file) return;
-      hasShot = true;
-      var url = URL.createObjectURL(file);
-      var previews = document.getElementById('tv-vj-shot-previews');
-      if (previews) {
-        previews.innerHTML = '<img src="' + url + '" alt="Chart">';
-      }
-      if (boot.extractUrl) {
-        var fd = new FormData();
-        fd.append('image', file, file.name || 'chart.jpg');
-        fetch(boot.extractUrl, {
-          method: 'POST',
-          headers: { 'X-CSRFToken': csrf() },
-          body: fd
-        }).then(function (r) { return r.json(); }).then(function (data) {
-          var fields = (data && data.fields) || {};
-          draft = Object.assign({}, draft, fields);
-          if (data && data.instrument) {
-            draft.instrument_id = data.instrument.id;
-            draft.symbol = data.instrument.symbol;
-          }
-          sendTurn('I uploaded the chart.');
-        }).catch(function () {
-          sendTurn('I uploaded the chart.');
-        });
-      } else {
-        sendTurn('I uploaded the chart.');
-      }
+      handleShotFile('before', beforeInput.files && beforeInput.files[0]);
+    });
+  }
+  var afterInput = document.getElementById('after_screenshot');
+  if (afterInput) {
+    afterInput.addEventListener('change', function () {
+      handleShotFile('after', afterInput.files && afterInput.files[0]);
     });
   }
 

@@ -236,6 +236,7 @@ def test_conversation_skips_fields_already_said():
     assert d["stop_loss"] == 42350
     assert first["complete"] is False
     reply = (first["reply"] or "").lower()
+    assert "got it" in reply
     assert "long" not in reply or "still" in reply or "done" in reply or "target" in reply or "chart" in reply
     assert "what did you trade" not in reply
 
@@ -243,6 +244,14 @@ def test_conversation_skips_fields_already_said():
     assert second["draft"]["status"] == "open"
     assert "Breakout" in (second["draft"].get("setup_tags") or [])
     assert "long or short" not in (second["reply"] or "").lower()
+    assert "session" in (second["reply"] or "").lower()
+
+    third = fallback_turn("London this morning", second["draft"])
+    assert third["draft"]["session_type"]
+    assert third["draft"]["entry_time"]
+    assert "what did you trade" not in (third["reply"] or "").lower()
+    assert third["ask_screenshot"] is True
+    assert third["screenshot_kind"] == "before"
 
 
 def test_voice_turn_api_extracts_and_asks_once(logged_client):
@@ -266,18 +275,32 @@ def test_conversation_completes_after_screenshot_skip():
     from app.services.voice_conversation import fallback_turn, required_ready
 
     d = fallback_turn(
-        "Bought gold at 3650 stop 3640, still in it because it swept the low"
+        "Bought gold at 3650 stop 3640, still in it this morning london because it swept the low"
     )["draft"]
     assert d["symbol"] == "XAUUSD"
+    assert d["session_type"]
+    assert d["entry_time"]
     assert required_ready(d)
     shot = fallback_turn("yeah that's it", d, has_screenshot=False)
-    if shot["ask_screenshot"]:
-        done = fallback_turn("no", shot["draft"], has_screenshot=False, skip_screenshot=True)
-        assert done["complete"] is True
-        assert done["ask_screenshot"] is False
-    else:
-        done = fallback_turn("no screenshot", d, has_screenshot=False, skip_screenshot=True)
-        assert done["complete"] is True
+    assert shot["ask_screenshot"] is True
+    assert shot["screenshot_kind"] == "before"
+    after = fallback_turn("I uploaded the before chart.", shot["draft"], has_before=True)
+    assert after["ask_screenshot"] is True
+    assert after["screenshot_kind"] == "after"
+    done = fallback_turn("no", after["draft"], has_before=True, skip_screenshot=True)
+    assert done["complete"] is True
+    assert done["ask_screenshot"] is False
+
+
+def test_does_not_infer_session_from_clock():
+    from app.services.voice_conversation import fallback_turn
+
+    first = fallback_turn(
+        "I went long on US30 at 42500 stop 42350 still in it",
+        session_hint={"session_type": "New York Session", "chip": "NY"},
+    )
+    assert not first["draft"].get("session_type")
+    assert "session" in (first["reply"] or "").lower()
 
 
 def test_thesis_and_dump_keep_user_words():

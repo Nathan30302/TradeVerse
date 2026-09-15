@@ -3,7 +3,7 @@
 {% block title %}Voice Journal - {{ app_name }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-vj5">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-vj7">
 {% endblock %}
 
 {% block content %}
@@ -11,6 +11,7 @@
 {% set suggested_session = suggested_session|default({}) %}
 {% set voice_mode = voice_mode|default('') %}
 <div class="tv-vj-page">
+    <canvas id="tv-vj-water" class="tv-vj-water" aria-hidden="true"></canvas>
     {% if accountability_required %}
     <div class="alert alert-info d-flex align-items-start justify-content-between gap-3 mb-3">
         <div>
@@ -89,7 +90,11 @@
             <p class="small text-danger d-none mb-0" id="tv-vj-mic-err"></p>
 
             <div class="tv-vj-shot d-none" id="tv-vj-shot">
-                <button type="button" class="tv-vj-shot-btn" id="tv-vj-shot-pick">Add chart</button>
+                <p class="tv-vj-shot-prompt" id="tv-vj-shot-prompt">Got a before-trade screenshot?</p>
+                <div class="tv-vj-shot-row">
+                    <button type="button" class="tv-vj-shot-btn is-active" id="tv-vj-shot-before" data-pick="before">Before</button>
+                    <button type="button" class="tv-vj-shot-btn" id="tv-vj-shot-after" data-pick="after">After</button>
+                </div>
                 <button type="button" class="tv-vj-shot-skip" id="tv-vj-shot-skip">Not this time</button>
                 <div class="tv-vj-shot-previews" id="tv-vj-shot-previews"></div>
             </div>
@@ -119,5 +124,5 @@
     'speakUrl': url_for('api_voice.speak'),
     'userId': current_user.id
 } | tojson }}</script>
-<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj5"></script>
+<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj7"></script>
 {% endblock %}

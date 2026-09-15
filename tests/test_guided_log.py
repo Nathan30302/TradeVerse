@@ -53,6 +53,9 @@ def test_guide_page_loads(logged_client):
     assert "Just talk" in body
     assert "tv-vj-orb" in body
     assert "tv-vj-canvas" in body
+    assert "tv-vj-water" in body
+    assert "tv-vj-shot-before" in body
+    assert "tv-vj-shot-after" in body
 
 
 def test_compose_guided_fields():

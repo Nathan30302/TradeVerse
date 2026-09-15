@@ -836,11 +836,15 @@ def voice_turn():
     tz_name = getattr(current_user, 'timezone', None) or 'UTC'
     session_hint = suggest_session(tz_name=tz_name)
     raw_draft = payload.get('draft')
+    has_before = bool(payload.get('has_before') or payload.get('has_screenshot'))
+    has_after = bool(payload.get('has_after'))
     result = run_turn(
         transcript,
         raw_draft if isinstance(raw_draft, dict) else {},
         history=clean_history,
         has_screenshot=bool(payload.get('has_screenshot')),
+        has_before=has_before,
+        has_after=has_after,
         session_hint=session_hint,
         skip_screenshot=bool(payload.get('skip_screenshot')),
         instruments=active_instrument_symbols(),
@@ -869,6 +873,7 @@ def voice_turn():
         'draft': draft,
         'complete': bool(result.get('complete')),
         'ask_screenshot': bool(result.get('ask_screenshot')),
+        'screenshot_kind': result.get('screenshot_kind') or '',
         'uncertain': result.get('uncertain') or [],
         'instrument': instrument,
         'metrics': metrics,

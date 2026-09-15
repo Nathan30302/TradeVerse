@@ -34,43 +34,45 @@ about the trade the user just took or is planning:
 - Entry price
 - Stop loss
 - Take profit / exit price (if trade is closed)
-- Session (Asian/London/New York) — infer from time if not stated
+- Session (Asian/London/New York) — ask if they have not said it
 - Setup/strategy used (e.g. support/resistance, breakout, order block)
 - Reasoning/thesis for entering (freeform, capture in their words)
 - Outcome (win/loss/breakeven, and P&L if mentioned)
 - Emotional state or trade management notes (if volunteered)
-- Screenshot of chart (prompt for this once, when it fits naturally)
+- Screenshot of the BEFORE chart, then the AFTER chart (prompt when the
+  rest of the trade is in)
 
 RULES FOR CONVERSATION:
 1. Never say things like "field," "enter," "next step," or "form."
-   Speak like a person: "Nice, what was your entry?" not "Please
-   state your entry price."
+   Speak like a person logging with a buddy: "Nice — what was your
+   entry?" not "Please state your entry price."
 2. Ask ONE question at a time. Keep questions short.
-3. If the user volunteers multiple data points in one answer, do NOT
+3. Acknowledge the last answer in a few words, then ask whatever is
+   still missing. Example: they said "long gold 3650" → "Got it — long
+   gold. Where was the stop?"
+4. If the user volunteers multiple data points in one answer, do NOT
    ask about those again. E.g. if they say "I went long on US30 at
    42500," you now have instrument, direction, and entry price —
    move on to whatever's still missing.
-4. thesis_notes MUST be the user's own words from latest_user /
+5. thesis_notes MUST be the user's own words from latest_user /
    recent_turns — verbatim, or only um/uh stripped. Never paraphrase
    into a different sentence, never "improve" their phrasing, never
    substitute jargon they did not say.
-5. Look at already_captured / draft_so_far. NEVER ask about a key
+6. Look at already_captured / draft_so_far. NEVER ask about a key
    that is already filled. Ask exactly one item from still_need.
-   If still_need is empty, wrap up or ask for the chart once.
-6. When you have enough information to consider the entry complete,
-   say so naturally ("Got it, that's everything I need") and prompt
-   once for a chart screenshot if one hasn't been provided.
-7. Keep your own responses SHORT — one sentence, sometimes two.
+7. When the trade details are in, prompt for a BEFORE-trade screenshot,
+   then the AFTER. Skip only if they say they don't have charts.
+8. Keep your own responses SHORT — one sentence, sometimes two.
    You are not narrating what you're doing internally.
-8. Never repeat back a robotic summary mid-conversation. Save the
+9. Never repeat back a robotic summary mid-conversation. Save the
    full structured summary for the very end.
-9. If audio is unclear or a value seems ambiguous (e.g. a number
-   that could be misheard), ask a quick clarifying question rather
-   than guessing and logging wrong data. Trading data must be
-   accurate — a misheard entry price is worse than an extra question.
-10. End with a brief, human confirmation of what was logged, in
+10. If audio is unclear or a value seems ambiguous (e.g. a number
+    that could be misheard), ask a quick clarifying question rather
+    than guessing and logging wrong data. Trading data must be
+    accurate — a misheard entry price is worse than an extra question.
+11. End with a brief, human confirmation of what was logged, in
     plain spoken language, not a bulleted readout.
-11. Ask at most ONE question (one question mark).
+12. Ask at most ONE question (one question mark).
 
 VOCABULARY:
 - Directions: long, buy, went long, short, sell, sold, went short → trade_type BUY or SELL
@@ -105,23 +107,28 @@ OUTPUT: Return JSON only:
   },
   "complete": false,
   "ask_screenshot": false,
+  "screenshot_kind": "" | "before" | "after",
   "uncertain": []
 }
 
 Only set complete=true when symbol, trade_type, and entry_price are present
 and you have either status or a clear sense they are still in the trade.
-Set ask_screenshot=true once, when the entry is otherwise complete and no
-chart has been provided. Do not ask emotions unless they bring it up.
-Do not ask session if you can infer it from the clock hint.
+Set ask_screenshot=true and screenshot_kind="before" then "after" when the
+entry is otherwise complete. Do not ask emotions unless they bring it up.
+Ask session (London / New York / Asia) and roughly what time if they have
+not said it. Clock hint is only a guess — confirm with them, do not
+silently assume.
 """
 
 _QUESTIONS = (
     ("symbol", "What did you trade?"),
-    ("trade_type", "Long or short?"),
+    ("trade_type", "Were you long or short?"),
     ("entry_price", "What was your entry?"),
-    ("stop_loss", "Where did you put the stop?"),
+    ("stop_loss", "Where was the stop?"),
     ("status", "Still in it, or already done?"),
-    ("take_profit", "Any target?"),
+    ("session_type", "Which session — London, New York, or Asia?"),
+    ("entry_time", "About what time did you enter?"),
+    ("take_profit", "Any target on it?"),
     ("exit_price", "Where did you get out?"),
     ("thesis_notes", "What was the idea going in?"),
 )
@@ -143,25 +150,32 @@ _EMPTY = {
     "outcome": None,
     "pnl": None,
     "voice_dump": None,
+    "entry_time": None,
     "screenshot_prompted": False,
+    "screenshot_before": False,
+    "screenshot_after": False,
 }
 
 _SHORT_ANSWER = re.compile(
     r"^(yes|no|yeah|yep|yup|nope|nah|ok|okay|sure|correct|right|"
     r"that's right|thats right|long|short|buy|sell|open|closed|"
     r"still in it|already done|done|london|new york|asia|asian|"
-    r"no screenshot|i uploaded the chart|[\d.,\s]+)$",
+    r"not sure|don't remember|dont remember|no idea|"
+    r"no screenshot|i uploaded the chart|i uploaded the before|"
+    r"i uploaded the after|[\d.,\s]+)$",
     re.I,
 )
 
 _FILLED_ASK = (
     ("symbol", ("what did you trade", "which pair", "what market", "what instrument")),
-    ("trade_type", ("long or short", "buy or sell", "which side")),
+    ("trade_type", ("long or short", "buy or sell", "which side", "were you long")),
     ("entry_price", ("your entry", "entry price", "where did you get in", "what was the entry")),
-    ("stop_loss", ("the stop", "stop loss", "where did you put the stop")),
+    ("stop_loss", ("the stop", "stop loss", "where did you put the stop", "where was the stop")),
+    ("entry_time", ("what time did you enter", "about what time", "what time was it")),
     ("take_profit", ("any target", "take profit", "your target")),
     ("exit_price", ("get out", "where did you close", "exit price")),
     ("status", ("still in it, or already", "already done?", "still in it or")),
+    ("session_type", ("which session", "london, new york", "what session")),
     ("thesis_notes", ("the idea going in", "what was the idea", "why did you enter")),
 )
 
@@ -169,6 +183,23 @@ _REASON_HINTS = (
     "because", "setup", "broke", "liquidity", "retest", "idea", "plan",
     "swept", "bos", "order block", "support", "resistance", "breakout",
 )
+
+_TIME_RE = re.compile(
+    r"\b(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|this morning|this afternoon|"
+    r"this evening|last night|overnight|london open|ny open|"
+    r"new york open|asia open|around \d{1,2})\b",
+    re.I,
+)
+
+
+def _extract_entry_time(text: str) -> Optional[str]:
+    m = _TIME_RE.search(text or "")
+    return m.group(0).strip() if m else None
+
+
+def _skipped_time(text: str) -> bool:
+    t = (text or "").lower()
+    return bool(re.search(r"\b(not sure|don't remember|dont remember|no idea|skip(?:ped)? it)\b", t))
 
 
 def empty_draft() -> Dict[str, Any]:
@@ -303,7 +334,84 @@ def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
     t = (transcript or "").lower()
     if "stop_loss" in hard and re.search(r"\b(no stop|without a stop|flat)\b", t):
         hard = [k for k in hard if k != "stop_loss"]
+    if "entry_time" in hard and _skipped_time(t):
+        hard = [k for k in hard if k != "entry_time"]
     return hard
+
+
+def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
+    """A short spoken nod so the next question feels like a conversation."""
+    parsed = parse_voice_text(text or "")
+    bits: List[str] = []
+    if parsed.get("symbol"):
+        bits.append(str(parsed["symbol"]))
+    if parsed.get("trade_type"):
+        bits.append("long" if parsed["trade_type"] == "BUY" else "short")
+    if parsed.get("entry_price") is not None:
+        bits.append(f"entry {float(parsed['entry_price']):g}")
+    elif parsed.get("stop_loss") is not None:
+        bits.append(f"stop {float(parsed['stop_loss']):g}")
+    if parsed.get("status") == "open":
+        bits.append("still in")
+    elif parsed.get("status") == "closed":
+        bits.append("closed")
+    if parsed.get("session_type"):
+        bits.append(str(parsed["session_type"]).replace(" Session", ""))
+    time_bit = _extract_entry_time(text or "")
+    if time_bit and "entry_time" not in "".join(bits).lower():
+        bits.append(time_bit)
+    if not bits:
+        if _is_short_field_answer(text) and (
+            draft.get("symbol") or draft.get("trade_type") or draft.get("entry_price") is not None
+        ):
+            return "Got it."
+        return ""
+    return "Got it — " + ", ".join(bits[:3]) + "."
+
+
+def _shot_prompt(kind: str) -> str:
+    if kind == "after":
+        return "And the after chart?"
+    return "Got a before-trade screenshot?"
+
+
+def conversational_next(
+    draft: Dict[str, Any],
+    transcript: str,
+    *,
+    has_before: bool = False,
+    has_after: bool = False,
+    skip_screenshot: bool = False,
+) -> Dict[str, Any]:
+    """Next spoken line: acknowledge last answer, then one unfilled question."""
+    hard = _hard_missing(draft, transcript)
+    ack = _ack_from_last(transcript, draft)
+    ask_shot = False
+    shot_kind = ""
+    complete = False
+    if hard:
+        q = dict(_QUESTIONS)[hard[0]]
+        reply = f"{ack} {q}".strip() if ack else q
+    elif not has_before and not skip_screenshot:
+        q = _shot_prompt("before")
+        reply = f"{ack} {q}".strip() if ack else q
+        ask_shot = True
+        shot_kind = "before"
+        draft["screenshot_prompted"] = True
+    elif not has_after and not skip_screenshot:
+        reply = _shot_prompt("after")
+        ask_shot = True
+        shot_kind = "after"
+        draft["screenshot_prompted"] = True
+    else:
+        reply = _spoken_wrap(draft)
+        complete = required_ready(draft)
+    return {
+        "reply": reply,
+        "ask_screenshot": ask_shot,
+        "screenshot_kind": shot_kind,
+        "complete": complete,
+    }
 
 
 def guard_reply(
@@ -311,6 +419,8 @@ def guard_reply(
     draft: Dict[str, Any],
     *,
     has_screenshot: bool = False,
+    has_before: bool = False,
+    has_after: bool = False,
     skip_screenshot: bool = False,
     transcript: str = "",
 ) -> str:
@@ -318,14 +428,21 @@ def guard_reply(
     line = _one_question((reply or "").strip())
     hard = _hard_missing(draft, transcript)
     missing = missing_keys(draft)
+    before = has_before or has_screenshot or bool(draft.get("screenshot_before"))
+    after = has_after or bool(draft.get("screenshot_after"))
     if _asks_about_filled(line, draft) or not line:
-        if hard:
-            return dict(_QUESTIONS)[hard[0]]
-        if missing:
-            return dict(_QUESTIONS)[missing[0]]
-        if not has_screenshot and not skip_screenshot and not draft.get("screenshot_prompted"):
-            return "Got it — got a chart screenshot for this one?"
-        return _spoken_wrap(draft)
+        nxt = conversational_next(
+            draft,
+            transcript,
+            has_before=before,
+            has_after=after,
+            skip_screenshot=skip_screenshot,
+        )
+        return nxt["reply"]
+    if hard and _asks_about_filled(line, draft):
+        return dict(_QUESTIONS)[hard[0]]
+    if not line and missing:
+        return dict(_QUESTIONS)[missing[0]]
     return line
 
 
@@ -400,10 +517,17 @@ def merge_draft(base: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any
                     )
                 else:
                     out[key] = prev_notes
+            elif key in ("screenshot_prompted", "screenshot_before", "screenshot_after"):
+                if val:
+                    out[key] = True
             else:
                 out[key] = val
         if src.get("screenshot_prompted"):
             out["screenshot_prompted"] = True
+        if src.get("screenshot_before"):
+            out["screenshot_before"] = True
+        if src.get("screenshot_after"):
+            out["screenshot_after"] = True
         if src.get("instrument_id"):
             out["instrument_id"] = src["instrument_id"]
     if out.get("setup_tags") and not out.get("strategy"):
@@ -463,6 +587,10 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
         missing.append("exit_price")
     elif status == "open" and draft.get("take_profit") is None:
         missing.append("take_profit")
+    if not draft.get("session_type"):
+        missing.append("session_type")
+    if not (draft.get("entry_time") or "").strip():
+        missing.append("entry_time")
     if not (draft.get("thesis_notes") or "").strip():
         missing.append("thesis_notes")
     return missing
@@ -492,11 +620,48 @@ def _infer_closed_exit(draft: Dict[str, Any], transcript: str) -> Dict[str, Any]
     return draft
 
 
+def _mark_shots(
+    draft: Dict[str, Any],
+    text: str,
+    *,
+    has_before: bool,
+    has_after: bool,
+) -> Dict[str, Any]:
+    t = (text or "").lower()
+    if re.search(r"uploaded the after", t):
+        has_after = True
+    elif re.search(r"uploaded the before", t):
+        has_before = True
+    elif re.search(r"uploaded the chart", t):
+        if draft.get("screenshot_before"):
+            has_after = True
+        else:
+            has_before = True
+    if has_before:
+        draft["screenshot_before"] = True
+        draft["screenshot_prompted"] = True
+    if has_after:
+        draft["screenshot_after"] = True
+        draft["screenshot_prompted"] = True
+    return draft
+
+
+def _apply_spoken_extras(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
+    when = _extract_entry_time(text)
+    if when and not draft.get("entry_time"):
+        draft["entry_time"] = when
+    if _skipped_time(text) and not draft.get("entry_time"):
+        draft["entry_time"] = "unspecified"
+    return draft
+
+
 def fallback_turn(
     transcript: str,
     draft: Optional[Dict[str, Any]] = None,
     *,
     has_screenshot: bool = False,
+    has_before: bool = False,
+    has_after: bool = False,
     session_hint: Optional[Dict[str, Any]] = None,
     skip_screenshot: bool = False,
 ) -> Dict[str, Any]:
@@ -504,44 +669,37 @@ def fallback_turn(
     draft = merge_draft(empty_draft(), draft)
     text = (transcript or "").strip()
     yn = parse_yes_no(text) if text else None
+    has_before = bool(has_before or has_screenshot or draft.get("screenshot_before"))
+    has_after = bool(has_after or draft.get("screenshot_after"))
     if text:
         parsed = parse_voice_text(text)
         draft = apply_parse(draft, parsed)
         if yn == "no" and draft.get("screenshot_prompted"):
             skip_screenshot = True
         draft = _infer_closed_exit(draft, text)
-        if not draft.get("session_type") and session_hint and session_hint.get("session_type"):
-            draft["session_type"] = session_hint["session_type"]
         guessed, _ = normalize_symbol_guess(text)
         if guessed and not draft.get("symbol"):
             draft["symbol"] = guessed
+        draft = _apply_spoken_extras(draft, text)
+        draft = _mark_shots(draft, text, has_before=has_before, has_after=has_after)
         draft = _capture_user_words(draft, text)
 
-    hard = _hard_missing(draft, text)
-
-    ask_shot = False
-    complete = False
-    if hard:
-        reply = dict(_QUESTIONS)[hard[0]]
-    elif not has_screenshot and not skip_screenshot and not draft.get("screenshot_prompted"):
-        reply = "Got it — got a chart screenshot for this one?"
-        ask_shot = True
-        draft["screenshot_prompted"] = True
-    else:
-        reply = _spoken_wrap(draft)
-        complete = required_ready(draft)
-
+    has_before = bool(has_before or draft.get("screenshot_before"))
+    has_after = bool(has_after or draft.get("screenshot_after"))
+    nxt = conversational_next(
+        draft,
+        text,
+        has_before=has_before,
+        has_after=has_after,
+        skip_screenshot=skip_screenshot,
+    )
+    _ = session_hint  # clock is a hint for the LLM only — never silently assumed
     return {
-        "reply": guard_reply(
-            reply,
-            draft,
-            has_screenshot=has_screenshot,
-            skip_screenshot=skip_screenshot,
-            transcript=text,
-        ),
+        "reply": nxt["reply"][:280],
         "draft": draft,
-        "complete": complete,
-        "ask_screenshot": ask_shot,
+        "complete": nxt["complete"],
+        "ask_screenshot": nxt["ask_screenshot"],
+        "screenshot_kind": nxt["screenshot_kind"],
         "uncertain": [],
         "source": "fallback",
     }
@@ -554,6 +712,8 @@ def _spoken_wrap(draft: Dict[str, Any]) -> str:
         bits.append(f"{side} {draft['symbol']}")
     if draft.get("entry_price") is not None:
         bits.append(f"from {draft['entry_price']:g}")
+    if draft.get("session_type"):
+        bits.append(str(draft["session_type"]).replace(" Session", ""))
     state = "still open" if draft.get("status") != "closed" else "closed"
     core = " ".join(bits) if bits else "the trade"
     return f"Got it — {core}, {state}. I’ll put that in your journal."
@@ -636,45 +796,19 @@ def _openai_turn(
         return None
     if not isinstance(data, dict):
         return None
-    reply = str(data.get("reply") or "").strip()
-    if not reply:
-        return None
     llm_draft = data.get("draft") if isinstance(data.get("draft"), dict) else {}
     if isinstance(llm_draft, dict):
         llm_draft = dict(llm_draft)
         llm_draft.pop("voice_dump", None)
+        llm_draft.pop("screenshot_before", None)
+        llm_draft.pop("screenshot_after", None)
+        llm_draft.pop("screenshot_prompted", None)
+        llm_draft.pop("entry_time", None)
     merged = merge_draft(draft, llm_draft)
     merged = _capture_user_words(merged, transcript, history)
     uncertain = data.get("uncertain") if isinstance(data.get("uncertain"), list) else []
-    ask_shot = bool(data.get("ask_screenshot"))
-    complete = bool(data.get("complete")) and required_ready(merged)
-    hard = _hard_missing(merged, transcript)
-    if complete and hard:
-        complete = False
-    if ask_shot:
-        merged["screenshot_prompted"] = True
-    if complete and not has_screenshot and not merged.get("screenshot_prompted"):
-        ask_shot = True
-        complete = False
-        merged["screenshot_prompted"] = True
-        if "screenshot" not in reply.lower() and "chart" not in reply.lower():
-            reply = "Got it — got a chart screenshot for this one?"
-    reply = guard_reply(
-        reply[:280],
-        merged,
-        has_screenshot=has_screenshot,
-        skip_screenshot=False,
-        transcript=transcript,
-    )
-    if hard and _asks_about_filled(reply, merged):
-        reply = dict(_QUESTIONS)[hard[0]]
-        complete = False
-        ask_shot = False
     return {
-        "reply": reply[:280],
         "draft": merged,
-        "complete": complete,
-        "ask_screenshot": ask_shot,
         "uncertain": [str(x) for x in uncertain if x][:8],
         "source": "llm",
     }
@@ -686,6 +820,8 @@ def run_turn(
     *,
     history: Optional[List[Dict[str, str]]] = None,
     has_screenshot: bool = False,
+    has_before: bool = False,
+    has_after: bool = False,
     session_hint: Optional[Dict[str, Any]] = None,
     skip_screenshot: bool = False,
     instruments: Optional[List[str]] = None,
@@ -699,18 +835,23 @@ def run_turn(
             "draft": draft,
             "complete": False,
             "ask_screenshot": False,
+            "screenshot_kind": "",
             "uncertain": [],
             "source": "fallback",
         }
 
+    has_before = bool(has_before or has_screenshot or draft.get("screenshot_before"))
+    has_after = bool(has_after or draft.get("screenshot_after"))
     parsed = parse_voice_text(text)
     seeded = apply_parse(draft, parsed)
     seeded = _infer_closed_exit(seeded, text)
-    if not seeded.get("session_type") and session_hint and session_hint.get("session_type"):
-        seeded["session_type"] = session_hint["session_type"]
     if parse_yes_no(text) == "no" and seeded.get("screenshot_prompted"):
         skip_screenshot = True
+    seeded = _apply_spoken_extras(seeded, text)
+    seeded = _mark_shots(seeded, text, has_before=has_before, has_after=has_after)
     seeded = _capture_user_words(seeded, text, history)
+    has_before = bool(has_before or seeded.get("screenshot_before"))
+    has_after = bool(has_after or seeded.get("screenshot_after"))
 
     llm = _openai_turn(
         text,
@@ -718,31 +859,34 @@ def run_turn(
         history or [],
         instruments or active_instrument_symbols(),
         session_hint,
-        has_screenshot,
+        has_before and has_after,
     )
+    merged = seeded
+    source = "fallback"
+    uncertain: List[Any] = []
     if llm:
-        llm["draft"] = _capture_user_words(llm.get("draft") or seeded, text, history)
-        llm["reply"] = guard_reply(
-            str(llm.get("reply") or ""),
-            llm["draft"],
-            has_screenshot=has_screenshot,
-            skip_screenshot=skip_screenshot,
-            transcript=text,
-        )
-        if skip_screenshot:
-            llm["ask_screenshot"] = False
-            if required_ready(llm["draft"]) and not _hard_missing(llm["draft"], text):
-                llm["complete"] = True
-                llm["reply"] = _spoken_wrap(llm["draft"])
-        return llm
+        merged = _capture_user_words(llm.get("draft") or seeded, text, history)
+        merged = _apply_spoken_extras(merged, text)
+        merged = _mark_shots(merged, text, has_before=has_before, has_after=has_after)
+        source = llm.get("source") or "llm"
+        uncertain = llm.get("uncertain") or []
 
-    return fallback_turn(
+    nxt = conversational_next(
+        merged,
         text,
-        seeded,
-        has_screenshot=has_screenshot,
-        session_hint=session_hint,
+        has_before=bool(has_before or merged.get("screenshot_before")),
+        has_after=bool(has_after or merged.get("screenshot_after")),
         skip_screenshot=skip_screenshot,
     )
+    return {
+        "reply": nxt["reply"][:280],
+        "draft": merged,
+        "complete": nxt["complete"],
+        "ask_screenshot": nxt["ask_screenshot"],
+        "screenshot_kind": nxt["screenshot_kind"],
+        "uncertain": uncertain,
+        "source": source,
+    }
 
 
 def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
@@ -755,6 +899,9 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
         thesis = dump
     status = draft.get("status") or ("closed" if draft.get("exit_price") is not None else "open")
     strategy = draft.get("strategy") or strategy_from_setups(tags)
+    when = (draft.get("entry_time") or "").strip()
+    if when and when != "unspecified" and when.lower() not in thesis.lower():
+        thesis = (thesis + " Entered around " + when + ".").strip() if thesis else ("Entered around " + when + ".")
     return {
         "symbol": draft.get("symbol") or "",
         "instrument_id": draft.get("instrument_id") or "",
