@@ -3,7 +3,7 @@
 {% block title %}Voice Journal - {{ app_name }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-vj5">
 {% endblock %}
 
 {% block content %}
@@ -73,13 +73,19 @@
 
         <div class="tv-vj-stage" data-state="idle" id="tv-vj-stage">
             <p class="tv-vj-kicker">Voice Journal</p>
-            <button type="button" class="tv-vj-orb" id="tv-vj-orb" aria-label="Start conversation">
-                <canvas id="tv-vj-canvas" width="280" height="280" aria-hidden="true"></canvas>
-                <span class="tv-vj-orb-core" aria-hidden="true"></span>
-            </button>
-            <p class="tv-vj-ai" id="tv-vj-ai">Just talk.</p>
-            <p class="tv-vj-live" id="tv-vj-live" aria-live="polite"></p>
+            <div class="tv-vj-orb-wrap">
+                <span class="tv-vj-orb-halo" aria-hidden="true"></span>
+                <button type="button" class="tv-vj-orb" id="tv-vj-orb" aria-label="Start conversation">
+                    <canvas id="tv-vj-canvas" width="280" height="280" aria-hidden="true"></canvas>
+                    <span class="tv-vj-orb-core" aria-hidden="true"></span>
+                </button>
+            </div>
             <p class="tv-vj-status" id="tv-vj-status">Tap when you’re ready</p>
+            <p class="tv-vj-ai" id="tv-vj-ai">Just talk.</p>
+            <div class="tv-vj-live-wrap" id="tv-vj-live-wrap">
+                <span class="tv-vj-live-label">You</span>
+                <p class="tv-vj-live" id="tv-vj-live" aria-live="polite"></p>
+            </div>
             <p class="small text-danger d-none mb-0" id="tv-vj-mic-err"></p>
 
             <div class="tv-vj-shot d-none" id="tv-vj-shot">
@@ -113,5 +119,5 @@
     'speakUrl': url_for('api_voice.speak'),
     'userId': current_user.id
 } | tojson }}</script>
-<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj4"></script>
+<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-vj5"></script>
 {% endblock %}

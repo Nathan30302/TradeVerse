@@ -293,7 +293,7 @@ class ExnessPnLCalculator:
             )
             method = 'stock'
             
-        elif instrument_type == 'commodity' or category in ['Energies', 'Commodity']:
+        elif instrument_type == 'commodity' or category in ['Energies', 'Metals', 'Commodity']:
             pnl, pips = cls._calculate_commodity(
                 price_diff, lot_size, metadata, is_buy
             )

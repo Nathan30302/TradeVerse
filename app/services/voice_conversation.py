@@ -50,23 +50,27 @@ RULES FOR CONVERSATION:
    ask about those again. E.g. if they say "I went long on US30 at
    42500," you now have instrument, direction, and entry price —
    move on to whatever's still missing.
-4. If the user gives reasoning or context ("I entered because price
-   broke the 4H support"), capture that verbatim (or lightly cleaned
-   up) as their trade thesis/notes — do not discard it, and do not
-   force it into a single-word field.
-5. When you have enough information to consider the entry complete,
+4. thesis_notes MUST be the user's own words from latest_user /
+   recent_turns — verbatim, or only um/uh stripped. Never paraphrase
+   into a different sentence, never "improve" their phrasing, never
+   substitute jargon they did not say.
+5. Look at already_captured / draft_so_far. NEVER ask about a key
+   that is already filled. Ask exactly one item from still_need.
+   If still_need is empty, wrap up or ask for the chart once.
+6. When you have enough information to consider the entry complete,
    say so naturally ("Got it, that's everything I need") and prompt
    once for a chart screenshot if one hasn't been provided.
-6. Keep your own responses SHORT — one sentence, sometimes two.
+7. Keep your own responses SHORT — one sentence, sometimes two.
    You are not narrating what you're doing internally.
-7. Never repeat back a robotic summary mid-conversation. Save the
+8. Never repeat back a robotic summary mid-conversation. Save the
    full structured summary for the very end.
-8. If audio is unclear or a value seems ambiguous (e.g. a number
+9. If audio is unclear or a value seems ambiguous (e.g. a number
    that could be misheard), ask a quick clarifying question rather
    than guessing and logging wrong data. Trading data must be
    accurate — a misheard entry price is worse than an extra question.
-9. End with a brief, human confirmation of what was logged, in
-   plain spoken language, not a bulleted readout.
+10. End with a brief, human confirmation of what was logged, in
+    plain spoken language, not a bulleted readout.
+11. Ask at most ONE question (one question mark).
 
 VOCABULARY:
 - Directions: long, buy, went long, short, sell, sold, went short → trade_type BUY or SELL
@@ -138,13 +142,191 @@ _EMPTY = {
     "lot_size": None,
     "outcome": None,
     "pnl": None,
+    "voice_dump": None,
     "screenshot_prompted": False,
 }
+
+_SHORT_ANSWER = re.compile(
+    r"^(yes|no|yeah|yep|yup|nope|nah|ok|okay|sure|correct|right|"
+    r"that's right|thats right|long|short|buy|sell|open|closed|"
+    r"still in it|already done|done|london|new york|asia|asian|"
+    r"no screenshot|i uploaded the chart|[\d.,\s]+)$",
+    re.I,
+)
+
+_FILLED_ASK = (
+    ("symbol", ("what did you trade", "which pair", "what market", "what instrument")),
+    ("trade_type", ("long or short", "buy or sell", "which side")),
+    ("entry_price", ("your entry", "entry price", "where did you get in", "what was the entry")),
+    ("stop_loss", ("the stop", "stop loss", "where did you put the stop")),
+    ("take_profit", ("any target", "take profit", "your target")),
+    ("exit_price", ("get out", "where did you close", "exit price")),
+    ("status", ("still in it, or already", "already done?", "still in it or")),
+    ("thesis_notes", ("the idea going in", "what was the idea", "why did you enter")),
+)
+
+_REASON_HINTS = (
+    "because", "setup", "broke", "liquidity", "retest", "idea", "plan",
+    "swept", "bos", "order block", "support", "resistance", "breakout",
+)
 
 
 def empty_draft() -> Dict[str, Any]:
     """Blank conversational draft matching Trade fields."""
     return dict(_EMPTY, setup_tags=[], emotions=[])
+
+
+def _token_set(text: str) -> set:
+    return set(re.findall(r"[a-z0-9]+", (text or "").lower()))
+
+
+def _token_overlap(a: str, b: str) -> float:
+    sa, sb = _token_set(a), _token_set(b)
+    if not sa or not sb:
+        return 0.0
+    return len(sa & sb) / float(max(1, min(len(sa), len(sb))))
+
+
+def _light_clean(text: str) -> str:
+    t = re.sub(r"\s+", " ", (text or "").strip())
+    t = re.sub(r"\b(u+m+|u+h+|er+|ah+)\b", "", t, flags=re.I)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _is_short_field_answer(text: str) -> bool:
+    t = _light_clean(text)
+    if not t:
+        return True
+    if _SHORT_ANSWER.match(t):
+        return True
+    words = t.split()
+    if len(words) <= 3 and not any(h in t.lower() for h in _REASON_HINTS):
+        return True
+    return False
+
+
+def _user_turns(history: Optional[List[Dict[str, str]]], latest: str) -> List[str]:
+    bits: List[str] = []
+    for row in history or []:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("role") or "") != "user":
+            continue
+        content = _light_clean(str(row.get("content") or ""))
+        if content and (not bits or bits[-1] != content):
+            bits.append(content)
+    last = _light_clean(latest)
+    if last and (not bits or bits[-1] != last):
+        bits.append(last)
+    return bits
+
+
+def _substantial_line(text: str) -> bool:
+    t = _light_clean(text)
+    if not t or _is_short_field_answer(t):
+        return False
+    words = t.split()
+    return len(words) >= 6 or any(h in t.lower() for h in _REASON_HINTS)
+
+
+def _capture_user_words(
+    draft: Dict[str, Any],
+    transcript: str,
+    history: Optional[List[Dict[str, str]]] = None,
+) -> Dict[str, Any]:
+    """Keep thesis / voice_dump as what the user said — never a rewrite."""
+    turns = _user_turns(history, transcript)
+    dump = "\n".join(turns).strip()[:8000]
+    prev_dump = str(draft.get("voice_dump") or "").strip()
+    if dump and prev_dump:
+        if dump in prev_dump:
+            draft["voice_dump"] = prev_dump
+        elif prev_dump in dump:
+            draft["voice_dump"] = dump
+        else:
+            draft["voice_dump"] = (prev_dump + "\n" + dump).strip()[:8000]
+    elif dump:
+        draft["voice_dump"] = dump
+    elif prev_dump:
+        draft["voice_dump"] = prev_dump
+
+    blob = str(draft.get("voice_dump") or dump or "")
+    existing = _light_clean(str(draft.get("thesis_notes") or ""))
+    latest = _light_clean(transcript)
+    if existing and blob and existing.lower() not in blob.lower() and _token_overlap(existing, blob) < 0.5:
+        existing = ""
+
+    if existing:
+        if latest and _substantial_line(latest) and latest.lower() not in existing.lower():
+            draft["thesis_notes"] = (existing + " " + latest).strip()[:2000]
+        else:
+            draft["thesis_notes"] = existing[:2000]
+        return draft
+
+    candidates = list(turns)
+    for line in reversed(blob.split("\n")):
+        line = line.strip()
+        if line and line not in candidates:
+            candidates.append(line)
+    for turn in reversed(candidates):
+        if _substantial_line(turn):
+            draft["thesis_notes"] = turn[:2000]
+            return draft
+    return draft
+
+
+def _asks_about_filled(reply: str, draft: Dict[str, Any]) -> bool:
+    r = (reply or "").lower()
+    if not r:
+        return False
+    for key, hints in _FILLED_ASK:
+        val = draft.get(key)
+        if val in (None, "", []):
+            continue
+        if any(h in r for h in hints):
+            return True
+    return False
+
+
+def _one_question(reply: str) -> str:
+    text = (reply or "").strip()
+    if text.count("?") <= 1:
+        return text
+    first, _rest = text.split("?", 1)
+    return (first.strip() + "?") if first.strip() else text
+
+
+def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
+    missing = missing_keys(draft)
+    soft = {"take_profit", "thesis_notes"}
+    hard = [k for k in missing if k not in soft]
+    t = (transcript or "").lower()
+    if "stop_loss" in hard and re.search(r"\b(no stop|without a stop|flat)\b", t):
+        hard = [k for k in hard if k != "stop_loss"]
+    return hard
+
+
+def guard_reply(
+    reply: str,
+    draft: Dict[str, Any],
+    *,
+    has_screenshot: bool = False,
+    skip_screenshot: bool = False,
+    transcript: str = "",
+) -> str:
+    """Force the next line to follow: one unfilled question, never a re-ask."""
+    line = _one_question((reply or "").strip())
+    hard = _hard_missing(draft, transcript)
+    missing = missing_keys(draft)
+    if _asks_about_filled(line, draft) or not line:
+        if hard:
+            return dict(_QUESTIONS)[hard[0]]
+        if missing:
+            return dict(_QUESTIONS)[missing[0]]
+        if not has_screenshot and not skip_screenshot and not draft.get("screenshot_prompted"):
+            return "Got it — got a chart screenshot for this one?"
+        return _spoken_wrap(draft)
+    return line
 
 
 def active_instrument_symbols(limit: int = 140) -> List[str]:
@@ -195,6 +377,29 @@ def merge_draft(base: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any
                     out[key] = st
             elif key == "symbol":
                 out[key] = str(val).upper().replace("/", "")
+            elif key == "voice_dump":
+                prev = str(out.get("voice_dump") or "").strip()
+                incoming_dump = str(val).strip()
+                if not prev:
+                    out[key] = incoming_dump[:8000]
+                elif incoming_dump and incoming_dump not in prev:
+                    out[key] = (prev + "\n" + incoming_dump).strip()[:8000]
+                else:
+                    out[key] = prev
+            elif key == "thesis_notes":
+                incoming_notes = str(val).strip()
+                prev_notes = str(out.get("thesis_notes") or "").strip()
+                if not prev_notes:
+                    out[key] = incoming_notes[:2000]
+                elif incoming_notes and _token_overlap(incoming_notes, prev_notes) >= 0.4:
+                    # Same idea — keep the version that still looks like the user.
+                    out[key] = (
+                        incoming_notes[:2000]
+                        if len(incoming_notes) >= len(prev_notes) * 0.7
+                        else prev_notes
+                    )
+                else:
+                    out[key] = prev_notes
             else:
                 out[key] = val
         if src.get("screenshot_prompted"):
@@ -302,9 +507,6 @@ def fallback_turn(
     if text:
         parsed = parse_voice_text(text)
         draft = apply_parse(draft, parsed)
-        if len(text) >= 12 and not draft.get("thesis_notes"):
-            if any(w in text.lower() for w in ("because", "setup", "broke", "liquidity", "retest", "idea", "plan")):
-                draft["thesis_notes"] = text[:2000]
         if yn == "no" and draft.get("screenshot_prompted"):
             skip_screenshot = True
         draft = _infer_closed_exit(draft, text)
@@ -313,21 +515,14 @@ def fallback_turn(
         guessed, _ = normalize_symbol_guess(text)
         if guessed and not draft.get("symbol"):
             draft["symbol"] = guessed
+        draft = _capture_user_words(draft, text)
 
-    missing = missing_keys(draft)
-    # Optional color — don't block the save.
-    soft = {"take_profit", "thesis_notes"}
-    hard = [k for k in missing if k not in soft]
-    # Stop is high-value; keep it in hard unless they already skipped via "no stop"
-    if "stop_loss" in missing and re.search(r"\b(no stop|without a stop|flat)\b", text.lower() if text else ""):
-        hard = [k for k in hard if k != "stop_loss"]
-        missing = [k for k in missing if k != "stop_loss"]
+    hard = _hard_missing(draft, text)
 
     ask_shot = False
     complete = False
     if hard:
-        key = hard[0]
-        reply = dict(_QUESTIONS)[key]
+        reply = dict(_QUESTIONS)[hard[0]]
     elif not has_screenshot and not skip_screenshot and not draft.get("screenshot_prompted"):
         reply = "Got it — got a chart screenshot for this one?"
         ask_shot = True
@@ -337,7 +532,13 @@ def fallback_turn(
         complete = required_ready(draft)
 
     return {
-        "reply": reply,
+        "reply": guard_reply(
+            reply,
+            draft,
+            has_screenshot=has_screenshot,
+            skip_screenshot=skip_screenshot,
+            transcript=text,
+        ),
         "draft": draft,
         "complete": complete,
         "ask_screenshot": ask_shot,
@@ -387,7 +588,7 @@ def _openai_turn(
         clock = f"Clock hint: {session_hint.get('chip') or ''} ({session_hint.get('session_type') or ''})."
     payload = {
         "model": os.environ.get("OPENAI_PARSE_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini",
-        "temperature": 0.35,
+        "temperature": 0.2,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -399,6 +600,16 @@ def _openai_turn(
                         "clock": clock,
                         "has_screenshot": has_screenshot,
                         "draft_so_far": draft,
+                        "already_captured": {
+                            k: v
+                            for k, v in (draft or {}).items()
+                            if v not in (None, "", [])
+                        },
+                        "still_need": missing_keys(draft),
+                        "verbatim_rule": (
+                            "thesis_notes must be latest_user / recent user turns, "
+                            "lightly cleaned at most. Never invent a different sentence."
+                        ),
                         "recent_turns": history[-12:],
                         "latest_user": transcript,
                     },
@@ -428,10 +639,18 @@ def _openai_turn(
     reply = str(data.get("reply") or "").strip()
     if not reply:
         return None
-    merged = merge_draft(draft, data.get("draft") if isinstance(data.get("draft"), dict) else {})
+    llm_draft = data.get("draft") if isinstance(data.get("draft"), dict) else {}
+    if isinstance(llm_draft, dict):
+        llm_draft = dict(llm_draft)
+        llm_draft.pop("voice_dump", None)
+    merged = merge_draft(draft, llm_draft)
+    merged = _capture_user_words(merged, transcript, history)
     uncertain = data.get("uncertain") if isinstance(data.get("uncertain"), list) else []
     ask_shot = bool(data.get("ask_screenshot"))
     complete = bool(data.get("complete")) and required_ready(merged)
+    hard = _hard_missing(merged, transcript)
+    if complete and hard:
+        complete = False
     if ask_shot:
         merged["screenshot_prompted"] = True
     if complete and not has_screenshot and not merged.get("screenshot_prompted"):
@@ -440,6 +659,17 @@ def _openai_turn(
         merged["screenshot_prompted"] = True
         if "screenshot" not in reply.lower() and "chart" not in reply.lower():
             reply = "Got it — got a chart screenshot for this one?"
+    reply = guard_reply(
+        reply[:280],
+        merged,
+        has_screenshot=has_screenshot,
+        skip_screenshot=False,
+        transcript=transcript,
+    )
+    if hard and _asks_about_filled(reply, merged):
+        reply = dict(_QUESTIONS)[hard[0]]
+        complete = False
+        ask_shot = False
     return {
         "reply": reply[:280],
         "draft": merged,
@@ -480,6 +710,7 @@ def run_turn(
         seeded["session_type"] = session_hint["session_type"]
     if parse_yes_no(text) == "no" and seeded.get("screenshot_prompted"):
         skip_screenshot = True
+    seeded = _capture_user_words(seeded, text, history)
 
     llm = _openai_turn(
         text,
@@ -490,9 +721,17 @@ def run_turn(
         has_screenshot,
     )
     if llm:
+        llm["draft"] = _capture_user_words(llm.get("draft") or seeded, text, history)
+        llm["reply"] = guard_reply(
+            str(llm.get("reply") or ""),
+            llm["draft"],
+            has_screenshot=has_screenshot,
+            skip_screenshot=skip_screenshot,
+            transcript=text,
+        )
         if skip_screenshot:
             llm["ask_screenshot"] = False
-            if required_ready(llm["draft"]):
+            if required_ready(llm["draft"]) and not _hard_missing(llm["draft"], text):
                 llm["complete"] = True
                 llm["reply"] = _spoken_wrap(llm["draft"])
         return llm
@@ -510,7 +749,10 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
     """Map conversation draft onto the hidden Add Trade / guided fields."""
     tags = draft.get("setup_tags") or []
     emotions = draft.get("emotions") or []
-    thesis = (draft.get("thesis_notes") or "").strip()
+    dump = (draft.get("voice_dump") or "").strip()
+    thesis = (draft.get("thesis_notes") or "").strip() or dump
+    if dump and thesis and _token_overlap(thesis, dump) < 0.4:
+        thesis = dump
     status = draft.get("status") or ("closed" if draft.get("exit_price") is not None else "open")
     strategy = draft.get("strategy") or strategy_from_setups(tags)
     return {
@@ -527,7 +769,7 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
         "strategy": strategy or "",
         "guide_session": draft.get("session_type") or "",
         "guide_why": thesis,
-        "guide_voice_dump": thesis,
+        "guide_voice_dump": dump or thesis,
         "guide_emotions": ", ".join(emotions),
         "guide_feeling_before": emotions[0] if emotions else "",
         "guide_setup_tags": ", ".join(tags),

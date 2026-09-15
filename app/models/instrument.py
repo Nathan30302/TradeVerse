@@ -15,10 +15,11 @@ WHY INSTRUMENTS WERE MISSING:
     so the app works correctly even without the external JSON file.
 
 COUNTS PER CATEGORY (matching Exness MT4/MT5 instruments):
-    Forex          : 107 pairs (majors + minors + exotics, incl. metals as currency pairs)
+    Forex          : currency pairs (majors + minors + exotics)
+    Metals         : gold, silver, platinum, palladium
+    Energies       : UKOIL, USOIL, XNGUSD
     Crypto         : 29  pairs (BTC, ETH, LTC, XRP, and other major crypto vs USD/fiat)
     Crypto Cross   : 6   pairs (BTC cross pairs vs non-USD)
-    Energies       : 3   instruments (UKOIL, USOIL, XNGUSD)
     Indices        : 11  instruments (US30, USTEC, US500, UK100, GER40, FRA40, ESP35,
                                      HK50, JP225, EU50, AUS200)
     IDX-Large      : 3   amplified index contracts (US30_x10, USTEC_x100, US500_x100)
@@ -126,7 +127,7 @@ class InstrumentAlias(db.Model):
 # FULL EXNESS INSTRUMENT CATALOG
 # Sourced from Exness MT4/MT5 symbol groups (exness.com, exnessbank.com)
 # Category values match what the database and UI expect:
-#   'Forex', 'Crypto', 'Crypto Cross', 'Energies',
+#   'Forex', 'Metals', 'Energies', 'Crypto', 'Crypto Cross',
 #   'Indices', 'IDX-Large', 'Stocks', 'Forex Indicator'
 # instrument_type values: 'forex', 'crypto', 'commodity', 'index', 'stock', 'forex_indicator'
 # =============================================================================
@@ -134,9 +135,8 @@ class InstrumentAlias(db.Model):
 DEFAULT_INSTRUMENTS = [
 
     # =========================================================================
-    # FOREX — 107 pairs
-    # Majors (7), Minors/Crosses (30+), Exotics (40+), Metals as currency pairs
-    # pip_size: 0.0001 for most; 0.01 for JPY pairs; 0.01 for XAU/XAG
+    # FOREX — majors, minors, exotics (metals live in the Metals group below)
+    # pip_size: 0.0001 for most; 0.01 for JPY pairs
     # =========================================================================
 
     # --- Majors ---
@@ -242,17 +242,17 @@ DEFAULT_INSTRUMENTS = [
     {'symbol': 'USDAED', 'name': 'US Dollar / UAE Dirham',              'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.0001, 'price_decimals': 5, 'contract_size': 100000, 'margin_rate': 0.02},
     {'symbol': 'USDSAR', 'name': 'US Dollar / Saudi Riyal',             'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.0001, 'price_decimals': 5, 'contract_size': 100000, 'margin_rate': 0.02},
 
-    # --- Metals as Forex (in Forex symbol group on Exness) ---
-    {'symbol': 'XAUUSD', 'name': 'Gold / US Dollar',                    'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
-    {'symbol': 'XAGUSD', 'name': 'Silver / US Dollar',                  'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.001,  'price_decimals': 3, 'contract_size': 5000,   'tick_value': 1.0},
-    {'symbol': 'XAUEUR', 'name': 'Gold / Euro',                         'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
-    {'symbol': 'XAUGBP', 'name': 'Gold / British Pound',                'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
-    {'symbol': 'XAUAUD', 'name': 'Gold / Australian Dollar',            'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
-    {'symbol': 'XAGEUR', 'name': 'Silver / Euro',                       'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.001,  'price_decimals': 3, 'contract_size': 5000,   'tick_value': 1.0},
-    {'symbol': 'XAGGBP', 'name': 'Silver / British Pound',              'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.001,  'price_decimals': 3, 'contract_size': 5000,   'tick_value': 1.0},
-    {'symbol': 'XAGAUD', 'name': 'Silver / Australian Dollar',          'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.001,  'price_decimals': 3, 'contract_size': 5000,   'tick_value': 1.0},
-    {'symbol': 'XPTUSD', 'name': 'Platinum / US Dollar',                'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
-    {'symbol': 'XPDUSD', 'name': 'Palladium / US Dollar',               'instrument_type': 'forex', 'category': 'Forex', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
+    # --- Metals (gold, silver, platinum, palladium) ---
+    {'symbol': 'XAUUSD', 'name': 'Gold / US Dollar',                    'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
+    {'symbol': 'XAGUSD', 'name': 'Silver / US Dollar',                  'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.001,  'price_decimals': 3, 'contract_size': 5000,   'tick_value': 1.0},
+    {'symbol': 'XAUEUR', 'name': 'Gold / Euro',                         'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
+    {'symbol': 'XAUGBP', 'name': 'Gold / British Pound',                'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
+    {'symbol': 'XAUAUD', 'name': 'Gold / Australian Dollar',            'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
+    {'symbol': 'XAGEUR', 'name': 'Silver / Euro',                       'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.001,  'price_decimals': 3, 'contract_size': 5000,   'tick_value': 1.0},
+    {'symbol': 'XAGGBP', 'name': 'Silver / British Pound',              'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.001,  'price_decimals': 3, 'contract_size': 5000,   'tick_value': 1.0},
+    {'symbol': 'XAGAUD', 'name': 'Silver / Australian Dollar',          'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.001,  'price_decimals': 3, 'contract_size': 5000,   'tick_value': 1.0},
+    {'symbol': 'XPTUSD', 'name': 'Platinum / US Dollar',                'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
+    {'symbol': 'XPDUSD', 'name': 'Palladium / US Dollar',               'instrument_type': 'forex', 'category': 'Metals', 'pip_size': 0.01,   'price_decimals': 2, 'contract_size': 100,    'tick_value': 1.0},
 
     # =========================================================================
     # CRYPTO — 29 pairs (USD-based crypto CFDs)
@@ -475,3 +475,43 @@ DEFAULT_INSTRUMENTS = [
     {'symbol': 'CHFX',  'name': 'Swiss Franc Currency Index',        'instrument_type': 'forex_indicator', 'category': 'Forex Indicator', 'pip_size': 0.001, 'price_decimals': 3, 'contract_size': 1000, 'tick_value': 1.0, 'lot_min': 0.1, 'lot_max': 100.0},
     {'symbol': 'NZDX',  'name': 'New Zealand Dollar Currency Index', 'instrument_type': 'forex_indicator', 'category': 'Forex Indicator', 'pip_size': 0.001, 'price_decimals': 3, 'contract_size': 1000, 'tick_value': 1.0, 'lot_min': 0.1, 'lot_max': 100.0},
 ]
+
+
+def catalog_by_symbol():
+    """Map catalog symbols to their canonical category / type."""
+    out = {}
+    for rec in DEFAULT_INSTRUMENTS:
+        sym = str(rec.get("symbol") or "").upper()
+        if sym:
+            out[sym] = rec
+    return out
+
+
+def sync_instrument_taxonomy():
+    """Align existing Instrument rows with the catalog (e.g. metals out of Forex)."""
+    from app import db
+
+    catalog = catalog_by_symbol()
+    if not catalog:
+        return 0
+    rows = Instrument.query.filter(Instrument.symbol.in_(list(catalog.keys()))).all()
+    changed = 0
+    for row in rows:
+        src = catalog.get((row.symbol or "").upper())
+        if not src:
+            continue
+        cat = src.get("category")
+        typ = src.get("instrument_type")
+        dirty = False
+        if cat and row.category != cat:
+            row.category = cat
+            dirty = True
+        if typ and row.instrument_type != typ:
+            row.instrument_type = typ
+            dirty = True
+        if dirty:
+            changed += 1
+    if changed:
+        db.session.commit()
+    return changed
+

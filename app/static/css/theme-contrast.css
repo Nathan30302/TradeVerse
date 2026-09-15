@@ -1,0 +1,158 @@
+/**
+ * Theme contrast — bind Bootstrap/utility colors to the active theme tokens
+ * so labels, forms, and cards stay readable on every theme.
+ */
+
+body {
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+
+.text-muted,
+.form-text,
+.text-secondary,
+.text-body-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.main-content .text-dark,
+.main-content .text-body,
+.main-content .text-black,
+.main-content .text-black-50 {
+  color: var(--text-primary) !important;
+}
+
+.form-label {
+  color: var(--form-label, var(--text-secondary));
+}
+
+.form-control,
+.form-select,
+.form-control:focus,
+.form-select:focus,
+.input-group-text {
+  background-color: var(--form-bg);
+  color: var(--form-text);
+  border-color: var(--form-border);
+}
+
+.form-control::placeholder,
+.form-select::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.card:not([class*="bg-primary"]):not([class*="bg-success"]):not([class*="bg-danger"]):not([class*="bg-info"]):not([class*="bg-warning"]):not([class*="bg-dark"]) {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  border-color: var(--card-border);
+}
+
+.card-header:not([class*="bg-"]):not(.text-white),
+.card-footer:not([class*="bg-"]):not(.text-white) {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--card-border);
+}
+
+.modal-content {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  border-color: var(--card-border);
+}
+
+.modal-header,
+.modal-footer {
+  border-color: var(--card-border);
+}
+
+.dropdown-menu {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  border-color: var(--card-border);
+}
+
+.dropdown-item {
+  color: var(--text-primary);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.list-group-item {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  border-color: var(--card-border);
+}
+
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-primary);
+  --bs-table-border-color: var(--card-border);
+  --bs-table-hover-bg: var(--table-hover);
+  --bs-table-striped-bg: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.nav-tabs .nav-link,
+.nav-pills .nav-link {
+  color: var(--tab-text, var(--text-secondary));
+}
+
+.nav-tabs .nav-link.active,
+.nav-pills .nav-link.active {
+  color: var(--tab-active, var(--primary));
+  background-color: var(--card-bg);
+  border-color: var(--tab-border, var(--card-border));
+}
+
+.btn-outline-dark,
+.btn-outline-secondary {
+  color: var(--text-primary);
+  border-color: var(--card-border);
+}
+
+.btn-outline-dark:hover,
+.btn-outline-secondary:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border-color: var(--primary);
+}
+
+.btn-close {
+  filter: none;
+  opacity: 0.7;
+}
+
+.pagination .page-link {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  border-color: var(--card-border);
+}
+
+.accordion-item,
+.accordion-button {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.alert-info,
+.alert-success,
+.alert-warning,
+.alert-danger {
+  color: inherit;
+}

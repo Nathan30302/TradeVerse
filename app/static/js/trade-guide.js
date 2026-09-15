@@ -77,10 +77,10 @@
     if (stage) stage.setAttribute('data-state', next);
     if (statusEl) {
       statusEl.textContent =
-        next === 'listening' ? '' :
-        next === 'thinking' ? '' :
-        next === 'speaking' ? '' :
-        next === 'review' ? '' :
+        next === 'listening' ? 'Listening' :
+        next === 'thinking' ? 'Thinking' :
+        next === 'speaking' ? 'Speaking' :
+        next === 'review' ? 'Ready to save' :
         'Tap when you’re ready';
     }
   }
@@ -106,8 +106,11 @@
 
   function setLive(text) {
     if (!liveEl) return;
-    liveEl.textContent = text || '';
-    liveEl.classList.toggle('is-on', !!text);
+    var shown = String(text || '').trim();
+    liveEl.textContent = shown;
+    liveEl.classList.toggle('is-on', !!shown);
+    var wrap = document.getElementById('tv-vj-live-wrap');
+    if (wrap) wrap.classList.toggle('is-on', state === 'listening' || !!shown);
   }
 
   function pickMime() {
@@ -130,7 +133,14 @@
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       return Promise.reject(new Error('no-mic'));
     }
-    return navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) {
+    return navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: { ideal: true },
+        noiseSuppression: { ideal: true },
+        autoGainControl: { ideal: true }
+      },
+      video: false
+    }).then(function (stream) {
       rec.stream = stream;
       return stream;
     });
@@ -173,7 +183,7 @@
     setAi(line);
     stopTTS();
     var wrapped = function () {
-      setTimeout(function () { if (typeof then === 'function') then(); }, 280);
+      setTimeout(function () { if (typeof then === 'function') then(); }, 520);
     };
     var done = wrapped;
 
@@ -234,12 +244,31 @@
     } catch (e) { /* ignore */ }
   }
 
+  function rgbOf(color, a) {
+    var c = String(color || '').trim();
+    var hex = c.match(/^#([0-9a-f]{6})$/i);
+    if (hex) {
+      var n = parseInt(hex[1], 16);
+      return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    }
+    var rgb = c.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (rgb) return 'rgba(' + rgb[1] + ',' + rgb[2] + ',' + rgb[3] + ',' + a + ')';
+    return 'rgba(20,184,166,' + a + ')';
+  }
+
   function drawOrb() {
     rec.raf = requestAnimationFrame(drawOrb);
     if (!canvas || !canvas.getContext) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var css = 280;
+    if (canvas.width !== css * dpr || canvas.height !== css * dpr) {
+      canvas.width = css * dpr;
+      canvas.height = css * dpr;
+    }
     var ctx = canvas.getContext('2d');
-    var w = canvas.width;
-    var h = canvas.height;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var w = css;
+    var h = css;
     var cx = w / 2;
     var cy = h / 2;
     ctx.clearRect(0, 0, w, h);
@@ -251,9 +280,9 @@
       for (var i = 0; i < rec.freq.length; i++) sum += rec.freq[i];
       amp = Math.min(1, (sum / rec.freq.length) / 90);
     } else if (state === 'speaking') {
-      amp = 0.28 + Math.sin(Date.now() / 180) * 0.12;
+      amp = 0.34 + Math.sin(Date.now() / 160) * 0.14;
     } else if (state === 'thinking') {
-      amp = 0.16 + Math.sin(Date.now() / 420) * 0.06;
+      amp = 0.18 + Math.sin(Date.now() / 380) * 0.08;
     } else {
       amp = 0.12 + Math.sin(Date.now() / 900) * 0.04;
     }
@@ -262,24 +291,25 @@
     var accent = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent-bright').trim() || '#14b8a6';
     var deep = getComputedStyle(document.documentElement).getPropertyValue('--tv-accent').trim() || '#0f766e';
 
-    var glow = ctx.createRadialGradient(cx, cy, 10, cx, cy, 120 + rec.amp * 40);
-    glow.addColorStop(0, 'rgba(20, 184, 166, ' + (0.22 + rec.amp * 0.35) + ')');
-    glow.addColorStop(1, 'rgba(20, 184, 166, 0)');
+    var glow = ctx.createRadialGradient(cx, cy, 8, cx, cy, 128 + rec.amp * 46);
+    glow.addColorStop(0, rgbOf(accent, 0.28 + rec.amp * 0.38));
+    glow.addColorStop(0.55, rgbOf(deep, 0.12 + rec.amp * 0.12));
+    glow.addColorStop(1, rgbOf(accent, 0));
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
 
-    var bars = rec.freq && state === 'listening' ? 36 : 24;
-    var radius = 62 + rec.amp * 18;
+    var bars = rec.freq && state === 'listening' ? 40 : 28;
+    var radius = 64 + rec.amp * 16;
     for (var b = 0; b < bars; b++) {
       var mag = rec.freq && state === 'listening'
         ? rec.freq[Math.floor(b * (rec.freq.length / bars))] / 255
-        : 0.22 + Math.sin(Date.now() / 280 + b) * 0.08;
-      var len = 8 + mag * (36 + rec.amp * 28);
+        : 0.22 + Math.sin(Date.now() / 260 + b) * 0.1;
+      var len = 10 + mag * (38 + rec.amp * 30);
       var ang = (b / bars) * Math.PI * 2 - Math.PI / 2;
       ctx.beginPath();
       ctx.strokeStyle = b % 2 ? accent : deep;
-      ctx.globalAlpha = 0.35 + mag * 0.55;
-      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.38 + mag * 0.55;
+      ctx.lineWidth = 3.2;
       ctx.lineCap = 'round';
       ctx.moveTo(cx + Math.cos(ang) * radius, cy + Math.sin(ang) * radius);
       ctx.lineTo(cx + Math.cos(ang) * (radius + len), cy + Math.sin(ang) * (radius + len));
@@ -288,11 +318,15 @@
     ctx.globalAlpha = 1;
     ctx.beginPath();
     ctx.fillStyle = deep;
-    ctx.arc(cx, cy, 38 + rec.amp * 10, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 40 + rec.amp * 10, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
     ctx.fillStyle = accent;
-    ctx.arc(cx, cy, 22 + rec.amp * 8, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 23 + rec.amp * 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.arc(cx - 8, cy - 10, 8 + rec.amp * 2, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -314,14 +348,14 @@
         sum += v * v;
       }
       var rms = Math.sqrt(sum / data.length);
-      if (rms > 0.055) {
+      if (rms > 0.042) {
         heard = true;
         quiet = 0;
       } else {
         quiet += 100;
       }
-      if (heard && quiet >= 1800) stopRec(false);
-      else if (!heard && quiet >= 8000) stopRec(false);
+      if (heard && quiet >= 2400) stopRec(false);
+      else if (!heard && quiet >= 10000) stopRec(false);
     }, 100);
   }
 
@@ -347,7 +381,7 @@
           clearTimeout(rec.silence);
           rec.silence = setTimeout(function () {
             if (rec.recording) stopRec(false);
-          }, 1400);
+          }, 2500);
         }
       };
       rec.sr.onerror = function () {};
@@ -378,7 +412,7 @@
       rec.mr.ondataavailable = function (e) {
         if (e.data && e.data.size) rec.chunks.push(e.data);
       };
-      try { rec.mr.start(250); } catch (e) { rec.mr.start(); }
+      try { rec.mr.start(); } catch (e) { rec.mr.start(); }
       startSpeech();
       rec.recording = true;
       setState('listening');
@@ -404,42 +438,111 @@
       return;
     }
     rec.recording = false;
-    try { if (rec.sr) rec.sr.stop(); } catch (e) {}
+    var gen = rec.gen;
+    var box = { blob: null, recDone: false, srDone: false, silent: !!silent };
+
+    function go() {
+      if (gen !== rec.gen) return;
+      if (!box.recDone || !box.srDone) return;
+      if (box.silent) return;
+      finishUtterance(rec.text, box.blob);
+    }
+
+    var sr = rec.sr;
     rec.sr = null;
+    if (sr) {
+      try { sr.stop(); } catch (e) {}
+    }
+    setTimeout(function () {
+      box.srDone = true;
+      go();
+    }, silent ? 0 : 300);
+
     var mr = rec.mr;
     rec.mr = null;
-    var gen = rec.gen;
     if (!mr) {
-      if (!silent) finishUtterance(rec.text, null);
+      box.recDone = true;
+      go();
       return;
     }
     mr.onstop = function () {
       if (gen !== rec.gen) return;
-      var blob = rec.chunks.length ? new Blob(rec.chunks, { type: rec.mime || mr.mimeType || 'audio/webm' }) : null;
+      box.blob = rec.chunks.length ? new Blob(rec.chunks, { type: rec.mime || mr.mimeType || 'audio/webm' }) : null;
       rec.chunks = [];
-      if (silent) return;
-      finishUtterance(rec.text, blob);
+      box.recDone = true;
+      go();
     };
     try {
+      if (typeof mr.requestData === 'function' && mr.state === 'recording') mr.requestData();
+    } catch (e) {}
+    try {
       if (mr.state !== 'inactive') mr.stop();
-      else if (!silent) finishUtterance(rec.text, null);
+      else {
+        box.recDone = true;
+        go();
+      }
     } catch (e) {
-      if (!silent) finishUtterance(rec.text, null);
+      box.recDone = true;
+      go();
     }
   }
 
+  function tokensOf(text) {
+    return String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+  }
+
+  function tokenOverlap(a, b) {
+    var at = tokensOf(a);
+    var bt = tokensOf(b);
+    if (!at.length || !bt.length) return 0;
+    var set = {};
+    bt.forEach(function (w) { set[w] = true; });
+    var hit = 0;
+    at.forEach(function (w) { if (set[w]) hit += 1; });
+    return hit / Math.min(at.length, bt.length);
+  }
+
   function looksLikeEcho(text) {
-    var q = lastReply.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    var a = String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    var q = tokensOf(lastReply).join(' ');
+    var a = tokensOf(text).join(' ');
     if (!a || !q || a.length < 8) return false;
-    return a === q || a.indexOf(q) !== -1;
+    if (a === q || a.indexOf(q) !== -1) return true;
+    if (q.indexOf(a) !== -1 && a.length >= 12) return true;
+    var at = tokensOf(text);
+    var qt = tokensOf(lastReply);
+    if (at.length < 3) return false;
+    var hit = 0;
+    var qset = {};
+    qt.forEach(function (w) { qset[w] = true; });
+    at.forEach(function (w) { if (qset[w]) hit += 1; });
+    return (hit / at.length) >= 0.78 && at.length <= qt.length + 4;
+  }
+
+  function isPromptLeak(text) {
+    var t = String(text || '').toLowerCase();
+    return t.indexOf('trading journal') !== -1 || t.indexOf('symbols: eurusd') !== -1;
+  }
+
+  function pickTranscript(whisper, local) {
+    whisper = String(whisper || '').trim();
+    local = String(local || '').trim();
+    if (isPromptLeak(whisper)) whisper = '';
+    if (looksLikeEcho(whisper)) whisper = '';
+    if (looksLikeEcho(local)) local = '';
+    if (whisper && !local) return whisper;
+    if (local && !whisper) return local;
+    if (!whisper && !local) return '';
+    var ov = tokenOverlap(whisper, local);
+    if (ov >= 0.4) return whisper;
+    if (ov < 0.28) return local;
+    return whisper;
   }
 
   function finishUtterance(srText, blob) {
     var local = String(srText || '').trim();
     if (looksLikeEcho(local)) local = '';
-    var useWhisper = !!(blob && blob.size > 400 && boot.transcribeEnabled);
-    if (!useWhisper) {
+    var blobOk = !!(blob && blob.size > 1200 && boot.transcribeEnabled);
+    if (!blobOk) {
       if (local) sendTurn(local);
       else {
         setLive('');
@@ -459,9 +562,8 @@
     }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
       .then(function (res) {
         committing = false;
-        var whispered = res && res.d && res.d.text ? String(res.d.text).trim() : '';
-        if (looksLikeEcho(whispered)) whispered = '';
-        var text = whispered || local;
+        var whispered = res && res.ok && res.d && res.d.text ? String(res.d.text).trim() : '';
+        var text = pickTranscript(whispered, local);
         if (text) sendTurn(text);
         else startRec();
       })
@@ -475,7 +577,7 @@
   function applyForm(fields, instrument) {
     if (!fields) return;
     Object.keys(fields).forEach(function (k) {
-      if (k === 'from_guide' || k === 'from_voice') return;
+      if (k === 'from_guide' || k === 'from_voice' || k === 'guide_voice_dump') return;
       if (document.getElementById(k)) setVal(k, fields[k]);
     });
     if (instrument && instrument.id) {
@@ -545,6 +647,7 @@
         }
         draft = data.draft || draft;
         applyForm(data.form, data.instrument);
+        setVal('guide_voice_dump', transcriptDump.join('\n'));
         history.push({ role: 'assistant', content: data.reply || '' });
         if (data.ask_screenshot && shotEl) shotEl.classList.remove('d-none');
         if (data.complete && !data.ask_screenshot) {
@@ -573,6 +676,7 @@
     setLive('');
     if (shotEl && hasShot) shotEl.classList.add('d-none');
     if (journalEl) journalEl.classList.remove('d-none');
+    setVal('guide_voice_dump', transcriptDump.join('\n'));
     renderJournal(data);
     speak(data && data.reply ? data.reply : 'Got it — that’s everything I need.');
   }
@@ -603,7 +707,7 @@
       else if (state === 'listening') stopRec(false);
       else if (state === 'speaking') {
         stopTTS();
-        startRec();
+        setTimeout(startRec, 220);
       }
     });
   }

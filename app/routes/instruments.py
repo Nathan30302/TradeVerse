@@ -31,13 +31,14 @@ CATEGORY_MAP = {
     'forex': ['Forex', 'forex', 'FOREX'],
     'crypto': ['Crypto', 'crypto', 'CRYPT'],
     'crypto_cross': ['Crypto Cross', 'crypto cross', 'CRYPTO_CROSS'],
-    'index': ['Indices', 'indices', 'INDEX', 'IDX-Large', 'idx-large'],
-    'indices': ['Indices', 'indices', 'INDEX', 'IDX-Large', 'idx-large'],
-    'idx_large': ['IDX-Large', 'idx-large', 'Indices', 'indices', 'INDEX'],
+    'index': ['Indices', 'indices', 'INDEX'],
+    'indices': ['Indices', 'indices', 'INDEX'],
+    'idx_large': ['IDX-Large', 'idx-large'],
     'stock': ['Stocks', 'stocks', 'STOCK'],
     'stocks': ['Stocks', 'stocks', 'STOCK'],
-    'commodity': ['Energies', 'energies', 'COMMODITY'],
-    'energies': ['Energies', 'energies', 'COMMODITY'],
+    'commodity': ['Energies', 'Metals', 'energies', 'COMMODITY'],
+    'energies': ['Energies', 'energies'],
+    'metals': ['Metals', 'metals'],
     'forex_indicator': ['Forex Indicator', 'forex indicator', 'FOREX_INDICATOR'],
     'forexindicator': ['Forex Indicator', 'forex indicator', 'FOREX_INDICATOR'],
 }
@@ -47,7 +48,8 @@ DB_TO_FRONTEND = {
     'Forex': 'forex',
     'Crypto Cross': 'crypto_cross',
     'Crypto': 'crypto',
-    'Energies': 'commodity',
+    'Energies': 'energies',
+    'Metals': 'metals',
     'Indices': 'indices',
     'Stocks': 'stocks',
     'IDX-Large': 'idx_large',
@@ -253,12 +255,15 @@ def get_frontend_categories():
     # Build frontend-friendly category list with icons and labels
     category_info = {
         'forex': {'label': 'Forex', 'icon': 'fas fa-exchange-alt', 'count': 0},
+        'metals': {'label': 'Metals', 'icon': 'fas fa-gem', 'count': 0},
+        'energies': {'label': 'Energies', 'icon': 'fas fa-oil-can', 'count': 0},
         'crypto_cross': {'label': 'Crypto Cross', 'icon': 'fab fa-bitcoin', 'count': 0},
         'crypto': {'label': 'Crypto', 'icon': 'fab fa-bitcoin', 'count': 0},
         'indices': {'label': 'Indices', 'icon': 'fas fa-chart-line', 'count': 0},
+        'idx_large': {'label': 'IDX Large', 'icon': 'fas fa-building-columns', 'count': 0},
         'stocks': {'label': 'Stocks', 'icon': 'fas fa-building', 'count': 0},
         'commodity': {'label': 'Energies', 'icon': 'fas fa-oil-can', 'count': 0},
-        'forexindicator': {'label': 'Forex Indicator', 'icon': 'fas fa-chart-line', 'count': 0},
+        'forexindicator': {'label': 'Forex Indicator', 'icon': 'fas fa-wave-square', 'count': 0},
     }
     
     for db_cat, count in raw_categories:

@@ -2551,6 +2551,7 @@
         {% set theme_name = 'light' %}
     {% endif %}
     <link id="theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme_name + '.css') }}?v={{ app_version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-contrast.css') }}?v={{ app_version }}">
     <!-- Mobile Navigation CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-nav.css') }}">
 

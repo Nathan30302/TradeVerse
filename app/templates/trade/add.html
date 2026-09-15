@@ -143,8 +143,11 @@
                                 <button type="button" class="category-tab active" data-category="forex">
                                     <i class="fas fa-exchange-alt"></i> Forex
                                 </button>
+                                <button type="button" class="category-tab" data-category="metals">
+                                    <i class="fas fa-gem"></i> Metals
+                                </button>
                                 <button type="button" class="category-tab" data-category="energies">
-                                    <i class="fas fa-gem"></i> Metals &amp; oil
+                                    <i class="fas fa-oil-can"></i> Energies
                                 </button>
                                 <button type="button" class="category-tab" data-category="index">
                                     <i class="fas fa-chart-bar"></i> Indices
@@ -200,19 +203,19 @@
 
                     <div class="row g-2 g-md-3 tv-price-grid mb-2">
                         <div class="col-6 col-md-3">
-                            <label for="entry_price" class="form-label small fw-semibold">Entry <span class="text-danger">*</span></label>
+                            <label for="entry_price" class="form-label fw-semibold text-uppercase small text-muted">Entry <span class="text-danger">*</span></label>
                             <input type="number" step="0.00001" class="form-control" id="entry_price" name="entry_price" required placeholder="—">
                         </div>
                         <div class="col-6 col-md-3">
-                            <label for="stop_loss" class="form-label small fw-semibold">Stop loss</label>
+                            <label for="stop_loss" class="form-label fw-semibold text-uppercase small text-muted">Stop loss</label>
                             <input type="number" step="0.00001" class="form-control" id="stop_loss" name="stop_loss" placeholder="—">
                         </div>
                         <div class="col-6 col-md-3">
-                            <label for="take_profit" class="form-label small fw-semibold">Take profit</label>
+                            <label for="take_profit" class="form-label fw-semibold text-uppercase small text-muted">Take profit</label>
                             <input type="number" step="0.00001" class="form-control" id="take_profit" name="take_profit" placeholder="—">
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label small fw-semibold d-block mb-1">Position</label>
+                            <label class="form-label fw-semibold text-uppercase small text-muted d-block mb-1">Position</label>
                             <div class="btn-group w-100 tv-status-seg" role="group" aria-label="Open or closed">
                                 <input type="radio" class="btn-check" name="tv_status_ui" id="tv_status_open" value="open" checked autocomplete="off">
                                 <label class="btn btn-outline-secondary btn-sm" for="tv_status_open">Open</label>

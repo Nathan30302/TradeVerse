@@ -213,14 +213,15 @@ def get_instrument_stats():
 
 # =============================================================================
 # STANDARDIZED CATEGORY MAPPING - EXACTLY 8 CATEGORIES (NO DUPLICATES)
-# Template has: crypto, crypto_cross, energies, forex, forex_indicator, idx_large, index, stocks
+# Template has: forex, metals, energies, index, idx_large, crypto, crypto_cross, stocks, forex_indicator
 # =============================================================================
 
-# Map DB category names to EXACTLY 8 template category keys
+# Map DB category names to template category keys
 DB_TO_FRONTEND_CATEGORY = {
     'Crypto': 'crypto',
     'Crypto Cross': 'crypto_cross',
     'Energies': 'energies',
+    'Metals': 'metals',
     'Forex': 'forex',
     'Forex Indicator': 'forex_indicator',
     'IDX-Large': 'idx_large',
@@ -233,6 +234,7 @@ FRONTEND_TO_DB_CATEGORY = {
     'crypto': ['Crypto'],
     'crypto_cross': ['Crypto Cross'],
     'energies': ['Energies'],
+    'metals': ['Metals'],
     'forex': ['Forex'],
     'forex_indicator': ['Forex Indicator'],
     'idx_large': ['IDX-Large'],
@@ -244,46 +246,40 @@ FRONTEND_TO_DB_CATEGORY = {
 @bp.route('/db/instruments/categories', methods=['GET'])
 @login_required
 def db_instrument_categories():
-    """Return EXACTLY 8 unique categories matching the template - NO duplicates."""
+    """Return categories in Log Trade tab order."""
     from app.models.instrument import Instrument
-    
-    # The EXACT 8 categories from the template (ORDER MATTERS)
+
     template_categories = [
+        {'key': 'forex', 'name': 'Forex'},
+        {'key': 'metals', 'name': 'Metals'},
+        {'key': 'energies', 'name': 'Energies'},
+        {'key': 'index', 'name': 'Indices'},
+        {'key': 'idx_large', 'name': 'IDX Large'},
         {'key': 'crypto', 'name': 'Crypto'},
         {'key': 'crypto_cross', 'name': 'Crypto Cross'},
-        {'key': 'energies', 'name': 'Energies'},
-        {'key': 'forex', 'name': 'Forex'},
-        {'key': 'forex_indicator', 'name': 'Forex Indicator'},
-        {'key': 'idx_large', 'name': 'IDX Large'},
-        {'key': 'index', 'name': 'Indices'},
         {'key': 'stocks', 'name': 'Stocks'},
+        {'key': 'forex_indicator', 'name': 'Forex Indicator'},
     ]
-    
-    # Check which categories have instruments in DB
+
     q = Instrument.query.with_entities(Instrument.category).distinct().all()
     db_categories = set(c[0] for c in q if c[0])
-    
-    # Build result with only unique keys - no duplicates
+
     result = {}
     for cat in template_categories:
-        # Find matching DB category
         matching_db = None
         for db_cat, frontend_key in DB_TO_FRONTEND_CATEGORY.items():
             if frontend_key == cat['key'] and db_cat in db_categories:
                 matching_db = db_cat
                 break
-        
-        # Only add category if instruments exist in DB
         if matching_db:
             result[cat['key']] = {'name': cat['name']}
-    
-    # Always include main categories even if empty (for demo purposes)
-    # This ensures we have 8 categories visible
+
     for cat in template_categories:
         if cat['key'] not in result:
             result[cat['key']] = {'name': cat['name']}
-    
-    return jsonify({'success': True, 'categories': result})
+
+    order = [c['key'] for c in template_categories]
+    return jsonify({'success': True, 'categories': result, 'order': order})
 
 
 @bp.route('/db/instruments/search', methods=['GET'])

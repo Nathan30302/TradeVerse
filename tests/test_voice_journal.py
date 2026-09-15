@@ -279,3 +279,48 @@ def test_conversation_completes_after_screenshot_skip():
         done = fallback_turn("no screenshot", d, has_screenshot=False, skip_screenshot=True)
         assert done["complete"] is True
 
+
+def test_thesis_and_dump_keep_user_words():
+    from app.services.voice_conversation import draft_to_form_fields, fallback_turn, guard_reply
+
+    text = "I went long on US30 at 42500 stop 42350 because it swept the London open"
+    first = fallback_turn(text)
+    notes = first["draft"].get("thesis_notes") or ""
+    dump = first["draft"].get("voice_dump") or ""
+    assert "swept the London open" in notes
+    assert "swept the London open" in dump
+    assert "what did you trade" not in (first["reply"] or "").lower()
+    assert "long or short" not in (first["reply"] or "").lower()
+
+    fields = draft_to_form_fields(first["draft"])
+    assert "swept the London open" in fields["guide_voice_dump"]
+    assert "swept the London open" in fields["guide_why"]
+
+    rewritten = dict(first["draft"])
+    rewritten["thesis_notes"] = "Entered a Dow long after a liquidity raid on the cash open."
+    guarded = fallback_turn("still in it", rewritten)
+    kept = (guarded["draft"].get("thesis_notes") or "") + " " + (guarded["draft"].get("voice_dump") or "")
+    assert "swept the London open" in kept
+    assert "liquidity raid on the cash open" not in (guarded["draft"].get("thesis_notes") or "")
+    assert "long or short" not in (guarded["reply"] or "").lower()
+    assert "what did you trade" not in (guarded["reply"] or "").lower()
+
+    filled = first["draft"]
+    assert "entry" not in guard_reply("What was your entry?", filled).lower() or filled.get("entry_price") is None
+
+
+def test_voice_turn_keeps_verbatim_dump(logged_client):
+    r = logged_client.post(
+        "/trade/api/voice-turn",
+        json={
+            "transcript": "I went long on US30 at 42500 stop 42350 because it swept the London open",
+        },
+    )
+    assert r.status_code == 200
+    data = r.get_json()
+    dump = (data.get("form") or {}).get("guide_voice_dump") or ""
+    why = (data.get("form") or {}).get("guide_why") or ""
+    assert "swept the London open" in dump
+    assert "swept the London open" in why
+    assert "what did you trade" not in (data.get("reply") or "").lower()
+

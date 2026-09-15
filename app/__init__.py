@@ -364,9 +364,18 @@ def _seed_instruments(app):
 
     current_count = Instrument.query.count()
 
-    # If we already have a full catalog, skip seeding
+    # If we already have a full catalog, still realign groups (metals vs forex, etc.).
     if current_count >= 200:
         app.logger.info(f"Instruments already seeded: {current_count} instruments found.")
+        try:
+            from app.models.instrument import sync_instrument_taxonomy
+
+            n = sync_instrument_taxonomy()
+            if n:
+                app.logger.info("Updated category/type for %s instruments.", n)
+        except Exception as e:
+            db.session.rollback()
+            app.logger.debug("Instrument taxonomy sync skipped: %s", e)
         return
 
     # If partial/stub data exists, clear it first
@@ -435,6 +444,11 @@ def _seed_instruments(app):
         db.session.commit()
         final_count = Instrument.query.count()
         app.logger.info(f"Successfully seeded {final_count} instruments.")
+        from app.models.instrument import sync_instrument_taxonomy
+
+        n = sync_instrument_taxonomy()
+        if n:
+            app.logger.info("Updated category/type for %s instruments.", n)
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Failed to seed instruments: {e}")

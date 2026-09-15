@@ -32,12 +32,6 @@ _ALLOWED_TYPES = frozenset({
     'application/octet-stream',
 })
 
-_WHISPER_PROMPT = (
-    "Trading journal. Symbols: EURUSD, XAUUSD, GBPUSD, USDJPY, US30, NAS100, BTCUSD. "
-    "Words: buy, sell, long, short, entry, stop loss, take profit, lot size, pips, "
-    "London, New York, Asia, liquidity, breakout."
-)
-
 _EXT_FOR_TYPE = {
     'audio/mp4': 'm4a',
     'audio/m4a': 'm4a',
@@ -96,33 +90,59 @@ def transcribe():
         ext = _EXT_FOR_TYPE.get(content_type, 'webm')
     filename = f'recording.{ext}'
 
-    try:
-        resp = requests.post(
-            'https://api.openai.com/v1/audio/transcriptions',
-            headers={'Authorization': f'Bearer {api_key}'},
-            files={'file': (filename, raw, content_type)},
-            data={
-                'model': 'whisper-1',
-                'language': 'en',
-                'prompt': _WHISPER_PROMPT,
-            },
-            timeout=90,
-        )
-    except requests.RequestException as exc:
-        current_app.logger.warning('Whisper request failed: %s', exc)
-        return jsonify({'error': 'Could not reach transcription service. Try again.'}), 502
+    models = [
+        os.environ.get('OPENAI_TRANSCRIBE_MODEL', '').strip(),
+        'gpt-4o-mini-transcribe',
+        'whisper-1',
+    ]
+    seen = set()
+    models = [m for m in models if m and not (m in seen or seen.add(m))]
 
-    if resp.status_code != 200:
-        current_app.logger.warning('Whisper HTTP %s: %s', resp.status_code, resp.text[:300])
+    last_err = ''
+    data = None
+    for model in models:
+        form = {
+            'model': model,
+            'language': 'en',
+        }
+        if model == 'whisper-1':
+            form['temperature'] = '0'
+        # No glossary prompt — it made Whisper substitute different trading words.
+        try:
+            resp = requests.post(
+                'https://api.openai.com/v1/audio/transcriptions',
+                headers={'Authorization': f'Bearer {api_key}'},
+                files={'file': (filename, raw, content_type)},
+                data=form,
+                timeout=25,
+            )
+        except requests.RequestException as exc:
+            current_app.logger.warning('Whisper request failed (%s): %s', model, exc)
+            last_err = str(exc)
+            continue
+        if resp.status_code == 200:
+            try:
+                data = resp.json()
+            except ValueError:
+                last_err = 'invalid json'
+                continue
+            break
+        last_err = resp.text[:300]
+        current_app.logger.info('Transcribe model %s HTTP %s — trying next', model, resp.status_code)
+
+    if data is None:
+        current_app.logger.warning('Transcription failed: %s', last_err)
         return jsonify({'error': 'Transcription failed. Try again or type your note.'}), 502
 
     try:
-        data = resp.json()
-    except ValueError:
-        return jsonify({'error': 'Invalid transcription response.'}), 502
-
-    text = (data.get('text') if isinstance(data, dict) else '') or ''
+        text = (data.get('text') if isinstance(data, dict) else '') or ''
+    except Exception:
+        text = ''
     text = str(text).strip()
+    # Drop leaked glossary / instruction lines if a model still prepends them.
+    low = text.lower()
+    if low.startswith('trading journal') or 'symbols: eurusd' in low:
+        text = ''
     if not text:
         return jsonify({'error': 'No speech detected in recording.'}), 422
 

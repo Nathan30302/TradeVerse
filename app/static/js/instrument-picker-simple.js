@@ -190,29 +190,33 @@ class SimpleInstrumentPicker {
             const data = await resp.json();
             const categories = data && data.categories ? data.categories : null;
             if (!categories) return;
-            const categoryKeys = Object.keys(categories);
-            const templateTabs = document.querySelectorAll('.category-tab');
-            const templateCount = templateTabs.length;
-            if (categoryKeys.length >= templateCount) {
-                this.renderCategoryTabs(categories);
-            } else {
-                const currentTabExists = categoryKeys.includes(this.currentCategory);
+            const categoryKeys = (data.order && data.order.length) ? data.order : Object.keys(categories);
+            const templateTabs = document.querySelectorAll('.instrument-categories .category-tab');
+            // Keep the HTML tab order (Forex → Metals → Energies → …).
+            if (templateTabs.length) {
+                const currentTabExists = Array.from(templateTabs).some(
+                    (tab) => tab.dataset.category === this.currentCategory
+                );
                 if (!currentTabExists && categoryKeys.length > 0) {
                     this.currentCategory = categoryKeys[0];
                     await this.loadInstrumentsForCategory(this.currentCategory);
                 }
+                return;
             }
+            this.renderCategoryTabs(categories, categoryKeys);
         } catch (error) {
             console.error('[InstrumentPicker] Failed to load categories:', error);
         }
     }
 
-    renderCategoryTabs(categories) {
+    renderCategoryTabs(categories, order) {
         const container = document.querySelector('.instrument-categories');
         if (!container) return;
-        const entries = Object.entries(categories);
+        const keys = (order && order.length) ? order : Object.keys(categories);
+        const entries = keys.map(function (key) {
+            return [key, categories[key] || { name: key }];
+        });
         if (entries.length === 0) return;
-        const keys = entries.map((e) => e[0]);
         if (!keys.includes(this.currentCategory)) {
             this.currentCategory = keys[0];
         }
@@ -224,7 +228,7 @@ class SimpleInstrumentPicker {
             if (n.includes('forex') && !n.includes('indicator')) icon = 'fas fa-exchange-alt';
             else if (n.includes('crypto') && n.includes('cross')) icon = 'fas fa-share-alt';
             else if (n.includes('crypto')) icon = 'fab fa-bitcoin';
-            else if (n.includes('energy') || n.includes('ener')) icon = 'fas fa-bolt';
+            else if (n.includes('energy') || n.includes('oil')) icon = 'fas fa-oil-can';
             else if (n.includes('index') || n.includes('indices') || n.includes('idx')) icon = 'fas fa-chart-line';
             else if (n.includes('stock') || n.includes('stocks')) icon = 'fas fa-building';
             else if (n.includes('metal') || n.includes('commodity')) icon = 'fas fa-gem';
