@@ -496,6 +496,35 @@ def test_is_save_confirm():
     assert not is_save_confirm("change the stop")
 
 
+def test_spoken_instruments_and_end_phrases():
+    from app.services.voice_conversation import conversation_intent, fallback_turn
+    from app.services.voice_journal import normalize_symbol_guess, refresh_symbol_alias_cache
+
+    refresh_symbol_alias_cache()
+    assert normalize_symbol_guess("us thirty")[0] == "US30"
+    assert normalize_symbol_guess("I went long on us thirty at 42500")[0] == "US30"
+    assert normalize_symbol_guess("dax")[0] == "GER40"
+    assert normalize_symbol_guess("ftse")[0] == "UK100"
+    assert conversation_intent("edit later") == "pause"
+    assert conversation_intent("let's end now") == "pause"
+    assert conversation_intent("that's all") == "finish"
+    assert conversation_intent("done") == "finish"
+
+    d = fallback_turn("I went long on us thirty at 42500 stop 42350")["draft"]
+    assert d["symbol"] == "US30"
+    assert d["trade_type"] == "BUY"
+    paused = fallback_turn("edit later", d)
+    assert paused["action"] == "pause"
+    assert paused["complete"] is False
+    assert "hold" in (paused["reply"] or "").lower() or "come back" in (paused["reply"] or "").lower()
+
+    ready = fallback_turn("Long EURUSD at 1.1724 stop 1.1714 still open London")["draft"]
+    done = fallback_turn("that's all", ready)
+    assert done["action"] == "finish"
+    assert done["complete"] is True
+    assert done["ask_screenshot"] is False
+
+
 def test_guide_page_has_composer_and_pending_hooks(logged_client, app):
     with app.app_context():
         u = User.query.filter_by(username="vjuser").first()

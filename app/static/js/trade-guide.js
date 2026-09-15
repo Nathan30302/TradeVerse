@@ -460,43 +460,46 @@
     ];
     // Soft corner wells always present; bloom brighter while speaking.
     corners.forEach(function (c, idx) {
-      var pulse = speaking ? (0.1 + rec.voiceRms * 0.55 + Math.sin(Date.now() / 420 + idx) * 0.04) : 0.045;
-      var rad = speaking ? (140 + rec.voiceRms * 220) : 110;
+      var pulse = speaking ? (0.14 + rec.voiceRms * 0.7 + Math.sin(Date.now() / 380 + idx) * 0.05) : 0.05;
+      var rad = speaking ? (160 + rec.voiceRms * 280) : 120;
       var g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, rad);
       g.addColorStop(0, rgbOf(gold, pulse));
-      g.addColorStop(0.45, rgbOf(gold, pulse * 0.35));
+      g.addColorStop(0.45, rgbOf(gold, pulse * 0.38));
       g.addColorStop(1, rgbOf(gold, 0));
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
       ctx.fill();
     });
-    if (speaking && Date.now() - rec.rippleAt > 90) {
+    if (speaking && Date.now() - rec.rippleAt > 70) {
       rec.rippleAt = Date.now();
       var cx = w / 2;
       var cy = Math.min(h * 0.28, 190);
-      // Center motes
-      rec.waterRipples.push({
-        x: cx + (Math.random() - 0.5) * 40,
-        y: cy + (Math.random() - 0.5) * 28,
-        r: 4 + Math.random() * 8,
-        a: 0.2 + rec.voiceRms * 0.55,
-        grow: 0.7 + rec.voiceRms * 2.2,
-        kind: 'mote'
-      });
+      // Center motes — denser while voice is loud
+      var bursts = 1 + Math.floor(rec.voiceRms * 3);
+      for (var b = 0; b < bursts; b++) {
+        rec.waterRipples.push({
+          x: cx + (Math.random() - 0.5) * (50 + rec.voiceRms * 80),
+          y: cy + (Math.random() - 0.5) * (36 + rec.voiceRms * 40),
+          r: 4 + Math.random() * 10,
+          a: 0.22 + rec.voiceRms * 0.6,
+          grow: 0.85 + rec.voiceRms * 2.6,
+          kind: 'mote'
+        });
+      }
       // Corner ink blooms
       corners.forEach(function (c) {
-        if (Math.random() > 0.55) return;
+        if (Math.random() > 0.4 - rec.voiceRms * 0.25) return;
         rec.waterRipples.push({
-          x: c.x + (c.x === 0 ? 28 : -28) + (Math.random() - 0.5) * 18,
-          y: c.y + (c.y === 0 ? 28 : -28) + (Math.random() - 0.5) * 18,
-          r: 10 + Math.random() * 16,
-          a: 0.22 + rec.voiceRms * 0.5,
-          grow: 1.1 + rec.voiceRms * 3.4,
+          x: c.x + (c.x === 0 ? 28 : -28) + (Math.random() - 0.5) * 22,
+          y: c.y + (c.y === 0 ? 28 : -28) + (Math.random() - 0.5) * 22,
+          r: 12 + Math.random() * 20 + rec.voiceRms * 18,
+          a: 0.26 + rec.voiceRms * 0.55,
+          grow: 1.3 + rec.voiceRms * 3.8,
           kind: 'corner'
         });
       });
-      if (rec.waterRipples.length > 36) rec.waterRipples.splice(0, rec.waterRipples.length - 36);
+      if (rec.waterRipples.length > 48) rec.waterRipples.splice(0, rec.waterRipples.length - 48);
     }
     for (var i = rec.waterRipples.length - 1; i >= 0; i--) {
       var p = rec.waterRipples[i];
@@ -1220,8 +1223,14 @@
         history.push({ role: 'assistant', content: data.reply || '' });
         persistDraft();
         if (pendingEl && (draft.symbol || draft.entry_price != null)) pendingEl.classList.add('d-none');
+        if (data.action === 'pause') {
+          speak(data.reply || 'I’ll hold this page.', function () {
+            window.location.href = boot.listUrl || '/trade/';
+          });
+          return;
+        }
         if (data.ask_screenshot && shotEl) showShot(data.screenshot_kind || 'before');
-        if (data.complete && !data.ask_screenshot) {
+        if ((data.complete && !data.ask_screenshot) || data.action === 'finish') {
           if (!(data.instrument && data.instrument.id) && !val('instrument_id')) {
             speak('I didn’t catch the market — say the ticker once more?', startRec);
             return;

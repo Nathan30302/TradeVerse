@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-ink4">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-ink5">
 {% endblock %}
 
 {% block content %}
@@ -154,8 +154,9 @@
     'transcribeUrl': url_for('api_voice.transcribe'),
     'transcribeEnabled': voice_transcribe_enabled,
     'speakUrl': url_for('api_voice.speak'),
+    'listUrl': url_for('trade.list'),
     'userId': current_user.id,
     'storageKey': 'tv-vj-draft-' ~ current_user.id
 } | tojson }}</script>
-<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-ink4"></script>
+<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-ink5"></script>
 {% endblock %}

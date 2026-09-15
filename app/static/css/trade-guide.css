@@ -36,12 +36,26 @@ body:has(.tv-vj-ink) footer a {
   --vj-bright: var(--vj-gold);
   position: relative;
   isolation: isolate;
-  max-width: 520px;
+  width: min(100%, 560px);
+  max-width: 560px;
   margin: 0 auto;
   min-height: calc(100vh - 7rem);
   padding: 1rem 1.15rem calc(2rem + env(safe-area-inset-bottom, 0px));
   color: var(--vj-paper);
   font-family: "Syne", system-ui, sans-serif;
+}
+
+/* Center the journal column in the main content (desktop + phone). */
+body:has(.tv-vj-ink) .main-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+body:has(.tv-vj-ink) .main-content > .tv-vj-page,
+body:has(.tv-vj-ink) .main-content > .flash,
+body:has(.tv-vj-ink) .main-content > .alert {
+  width: min(100%, 560px);
 }
 
 .tv-vj-atmosphere {
@@ -50,18 +64,24 @@ body:has(.tv-vj-ink) footer a {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 48% 42% at 0% 0%, rgba(230, 196, 90, 0.16), transparent 68%),
-    radial-gradient(ellipse 48% 42% at 100% 0%, rgba(230, 196, 90, 0.14), transparent 68%),
-    radial-gradient(ellipse 52% 46% at 0% 100%, rgba(230, 196, 90, 0.13), transparent 70%),
-    radial-gradient(ellipse 52% 46% at 100% 100%, rgba(230, 196, 90, 0.13), transparent 70%),
-    radial-gradient(ellipse 70% 45% at 50% 22%, rgba(230, 196, 90, 0.11), transparent 62%),
+    radial-gradient(ellipse 52% 46% at 0% 0%, rgba(230, 196, 90, 0.2), transparent 66%),
+    radial-gradient(ellipse 52% 46% at 100% 0%, rgba(230, 196, 90, 0.18), transparent 66%),
+    radial-gradient(ellipse 56% 50% at 0% 100%, rgba(230, 196, 90, 0.16), transparent 68%),
+    radial-gradient(ellipse 56% 50% at 100% 100%, rgba(230, 196, 90, 0.16), transparent 68%),
+    radial-gradient(ellipse 70% 45% at 50% 22%, rgba(230, 196, 90, 0.14), transparent 62%),
     radial-gradient(ellipse 90% 70% at 50% 100%, rgba(20, 40, 32, 0.9), transparent 55%),
     linear-gradient(180deg, #0b1210 0%, #070c0a 48%, #050807 100%);
   transition: filter 420ms ease, opacity 420ms ease;
 }
 
 .tv-vj-page.is-voice .tv-vj-atmosphere {
-  filter: saturate(1.22) brightness(1.08);
+  filter: saturate(1.35) brightness(1.12);
+  animation: tv-vj-atmosphere-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes tv-vj-atmosphere-pulse {
+  0%, 100% { opacity: 1; filter: saturate(1.28) brightness(1.08); }
+  50% { opacity: 0.92; filter: saturate(1.45) brightness(1.16); }
 }
 
 .tv-vj-water {
@@ -71,7 +91,7 @@ body:has(.tv-vj-ink) footer a {
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.5;
+  opacity: 0.55;
   transition: opacity 420ms ease;
 }
 

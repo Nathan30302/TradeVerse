@@ -17,41 +17,269 @@ from app.models.trade import Trade
 from app.utils.timeutil import resolve_zoneinfo, utc_now
 
 
-# Spoken / informal names → canonical symbols (always confirm in the UI).
+# Spoken / informal names → canonical symbols (always confirm aliases in the UI).
 SYMBOL_ALIASES: Dict[str, str] = {
+    # Metals
     "gold": "XAUUSD",
     "xau": "XAUUSD",
     "xauusd": "XAUUSD",
     "silver": "XAGUSD",
     "xag": "XAGUSD",
     "xagusd": "XAGUSD",
+    # FX majors / nicknames
     "euro": "EURUSD",
     "euro dollar": "EURUSD",
     "eur usd": "EURUSD",
     "eurusd": "EURUSD",
     "cable": "GBPUSD",
     "pound": "GBPUSD",
+    "sterling": "GBPUSD",
     "gbp": "GBPUSD",
+    "gbp usd": "GBPUSD",
     "gbpusd": "GBPUSD",
     "yen": "USDJPY",
     "dollar yen": "USDJPY",
+    "usd jpy": "USDJPY",
     "usdjpy": "USDJPY",
+    "aussie": "AUDUSD",
+    "aud usd": "AUDUSD",
+    "audusd": "AUDUSD",
+    "loonie": "USDCAD",
+    "usd cad": "USDCAD",
+    "usdcad": "USDCAD",
+    "kiwi": "NZDUSD",
+    "nzd usd": "NZDUSD",
+    "nzdusd": "NZDUSD",
+    "swissy": "USDCHF",
+    "usd chf": "USDCHF",
+    "usdchf": "USDCHF",
+    # US indices
     "us30": "US30",
+    "us 30": "US30",
+    "us thirty": "US30",
+    "wall street": "US30",
+    "wallstreet": "US30",
     "dow": "US30",
     "dow jones": "US30",
+    "the dow": "US30",
     "nas": "NAS100",
     "nasdaq": "NAS100",
+    "nas 100": "NAS100",
     "nas100": "NAS100",
+    "nasdaq 100": "NAS100",
     "ustec": "NAS100",
+    "us 100": "NAS100",
+    "us100": "NAS100",
     "spx": "SPX500",
     "spy": "SPX500",
     "sp500": "SPX500",
+    "s and p": "SPX500",
+    "s&p": "SPX500",
+    "s and p 500": "SPX500",
+    "us 500": "SPX500",
+    "us500": "SPX500",
+    # Europe indices
+    "dax": "GER40",
+    "ger40": "GER40",
+    "ger 40": "GER40",
+    "germany 40": "GER40",
+    "ftse": "UK100",
+    "uk100": "UK100",
+    "uk 100": "UK100",
+    "ftse 100": "UK100",
+    # Crypto
     "btc": "BTCUSD",
     "bitcoin": "BTCUSD",
     "btcusd": "BTCUSD",
+    "btc usd": "BTCUSD",
     "eth": "ETHUSD",
     "ethereum": "ETHUSD",
+    "ethusd": "ETHUSD",
+    "eth usd": "ETHUSD",
 }
+
+# Spoken number words → digits (for “us thirty”, “nas one hundred”).
+_SPOKEN_NUMBERS: Dict[str, str] = {
+    "zero": "0",
+    "oh": "0",
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "four": "4",
+    "five": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+    "ten": "10",
+    "eleven": "11",
+    "twelve": "12",
+    "thirteen": "13",
+    "fourteen": "14",
+    "fifteen": "15",
+    "sixteen": "16",
+    "seventeen": "17",
+    "eighteen": "18",
+    "nineteen": "19",
+    "twenty": "20",
+    "thirty": "30",
+    "forty": "40",
+    "fifty": "50",
+    "sixty": "60",
+    "seventy": "70",
+    "eighty": "80",
+    "ninety": "90",
+    "hundred": "100",
+    "thousand": "1000",
+}
+
+_ALIAS_CACHE: Optional[Dict[str, str]] = None
+
+
+def _expand_spoken_digits(text: str) -> str:
+    """Turn 'us thirty' / 'nas one hundred' into digit forms for matching."""
+    t = re.sub(r"[^a-z0-9\s/&]", " ", (text or "").lower())
+    t = re.sub(r"\s+", " ", t).strip()
+    if not t:
+        return t
+    # Compound: "one hundred" → 100 before single replacements.
+    t = re.sub(r"\b(one|a)\s+hundred\b", "100", t)
+    t = re.sub(r"\b(\w+)\s+hundred\b", lambda m: str(int(_SPOKEN_NUMBERS.get(m.group(1), "0") or 0) * 100), t)
+    parts = []
+    for word in t.split():
+        parts.append(_SPOKEN_NUMBERS.get(word, word))
+    return " ".join(parts)
+
+
+def _seed_catalog_aliases() -> Dict[str, str]:
+    """Merge static nicknames with every active instrument symbol from the DB."""
+    global _ALIAS_CACHE
+    if _ALIAS_CACHE is not None:
+        return _ALIAS_CACHE
+    out = {k.lower(): v.upper() for k, v in SYMBOL_ALIASES.items()}
+    try:
+        from app.models.instrument import Instrument
+
+        rows = Instrument.query.filter_by(is_active=True).all()
+    except Exception:
+        rows = []
+    for row in rows:
+        sym = str(getattr(row, "symbol", "") or "").upper().strip()
+        if not sym:
+            continue
+        out[sym.lower()] = sym
+        out[sym.lower().replace("_", "")] = sym
+        out[sym.lower().replace("_", " ")] = sym
+        # EURUSD → eur usd / eur/usd
+        if len(sym) == 6 and sym.isalpha():
+            out[f"{sym[:3].lower()} {sym[3:].lower()}"] = sym
+            out[f"{sym[:3].lower()}/{sym[3:].lower()}"] = sym
+        # US30 → us 30 ; NAS100 → nas 100
+        m = re.match(r"^([A-Z]+)(\d+)$", sym)
+        if m:
+            letters, digits = m.group(1).lower(), m.group(2)
+            out[f"{letters} {digits}"] = sym
+            out[f"{letters}{digits}"] = sym
+        name = re.sub(r"[^a-z0-9\s]", " ", str(getattr(row, "name", "") or "").lower())
+        name = re.sub(r"\s+", " ", name).strip()
+        if name and len(name) >= 3 and name not in out:
+            # Only keep distinctive short names (e.g. "bitcoin", not "eur / usd").
+            if "/" not in (getattr(row, "name", "") or "") and len(name.split()) <= 3:
+                out[name] = sym
+    _ALIAS_CACHE = out
+    return out
+
+
+def refresh_symbol_alias_cache() -> None:
+    """Clear cached aliases (tests / after instrument seed)."""
+    global _ALIAS_CACHE
+    _ALIAS_CACHE = None
+
+
+_SYMBOL_TOKEN_RE = re.compile(
+    r"\b(XAUUSD|XAGUSD|EURUSD|GBPUSD|USDJPY|AUDUSD|USDCAD|NZDUSD|USDCHF|"
+    r"BTCUSD|ETHUSD|US30|NAS100|SPX500|US500|US100|GER40|UK100|"
+    r"[A-Z]{2,6}\d{0,4}|[A-Z]{3}USD|[A-Z]{3}JPY|[A-Z]{6})\b"
+)
+
+
+def normalize_symbol_guess(text: str) -> Tuple[Optional[str], bool]:
+    """
+    Return (symbol, needs_confirm).
+
+    needs_confirm is True when the match is an alias or a fuzzy spoken name.
+    Knows nicknames (dow, gold, dax) and active catalog symbols (US 30, us thirty).
+    """
+    raw = text or ""
+    lower = re.sub(r"[^a-z0-9\s/&]", " ", raw.lower())
+    lower = re.sub(r"\s+", " ", lower).strip()
+    if not lower:
+        return None, False
+    expanded = _expand_spoken_digits(lower)
+    aliases = _seed_catalog_aliases()
+    # Longest alias first so "dow jones" wins over "dow".
+    for alias in sorted(aliases.keys(), key=len, reverse=True):
+        if len(alias) < 2:
+            continue
+        if re.search(r"\b" + re.escape(alias) + r"\b", expanded) or re.search(
+            r"\b" + re.escape(alias) + r"\b", lower
+        ):
+            sym = aliases[alias]
+            compact = alias.replace(" ", "").replace("/", "")
+            needs = compact not in (
+                "eurusd", "gbpusd", "usdjpy", "audusd", "usdcad", "nzdusd", "usdchf",
+                "xauusd", "xagusd", "btcusd", "ethusd", "us30", "nas100", "spx500",
+                "us500", "us100", "ger40", "uk100",
+            ) and compact != sym.lower()
+            return sym, needs
+    # Raw ticker tokens (US30, EURUSD, …) including catalog symbols.
+    blob = raw.upper().replace("/", "").replace("_", "")
+    m = _SYMBOL_TOKEN_RE.search(blob)
+    if m:
+        token = m.group(1)
+        if token.lower() in aliases:
+            return aliases[token.lower()], False
+        if token in {v for v in aliases.values()}:
+            return token, False
+        # Accept any active catalog symbol even if not in regex-friendly form.
+        if token.lower() in aliases:
+            return aliases[token.lower()], False
+    return None, False
+
+
+def parse_side(text: str) -> Optional[str]:
+    t = (text or "").lower()
+    if re.search(r"\b(sell|sold|short|bearish)\b", t):
+        return "SELL"
+    if re.search(r"\b(buy|bought|long|bullish)\b", t):
+        return "BUY"
+    return None
+
+
+def parse_yes_no(text: str) -> Optional[str]:
+    t = (text or "").lower()
+    if re.search(r"\b(yes|yeah|yep|yup|correct|right|confirm|okay|ok|sure)\b", t):
+        if re.search(r"\b(nope|wrong|not correct)\b", t):
+            return "no"
+        return "yes"
+    if re.search(r"\b(no|nope|nah|wrong|incorrect|change)\b", t):
+        return "no"
+    return None
+
+
+def parse_status(text: str) -> Optional[str]:
+    """Open vs closed — not journal end-phrases like bare 'done' / 'finished'."""
+    t = (text or "").lower()
+    if re.search(
+        r"\b(closed|already (?:out|done|closed)|stopped out|hit (?:tp|sl)|"
+        r"took profit|got stopped|flat now)\b",
+        t,
+    ):
+        return "closed"
+    if re.search(r"\b(open|still in|running|holding|not closed)\b", t):
+        return "open"
+    return None
+
 
 EMOTION_CHIPS: Tuple[str, ...] = (
     "Confident",
@@ -170,69 +398,6 @@ def _to_float(raw: str) -> Optional[float]:
         return float(s)
     except ValueError:
         return None
-
-
-_SYMBOL_TOKEN_RE = re.compile(
-    r"\b(XAUUSD|XAGUSD|EURUSD|GBPUSD|USDJPY|AUDUSD|USDCAD|NZDUSD|USDCHF|"
-    r"BTCUSD|ETHUSD|US30|NAS100|SPX500|GER40|UK100|[A-Z]{3}USD|[A-Z]{3}JPY)\b"
-)
-
-
-def normalize_symbol_guess(text: str) -> Tuple[Optional[str], bool]:
-    """
-    Return (symbol, needs_confirm).
-
-    needs_confirm is True when the match is an alias or a fuzzy spoken name.
-    """
-    raw = text or ""
-    lower = re.sub(r"[^a-z0-9\s/]", " ", raw.lower())
-    lower = re.sub(r"\s+", " ", lower).strip()
-    if not lower:
-        return None, False
-    for alias in sorted(SYMBOL_ALIASES.keys(), key=len, reverse=True):
-        if re.search(r"\b" + re.escape(alias) + r"\b", lower):
-            sym = SYMBOL_ALIASES[alias]
-            compact = alias.replace(" ", "")
-            needs = compact not in (
-                "eurusd", "gbpusd", "usdjpy", "xauusd", "xagusd", "btcusd", "ethusd", "us30", "nas100"
-            )
-            return sym, needs
-    m = _SYMBOL_TOKEN_RE.search(raw.upper().replace("/", ""))
-    if m:
-        token = m.group(1)
-        if token.lower() in SYMBOL_ALIASES:
-            return SYMBOL_ALIASES[token.lower()], False
-        return token, False
-    return None, False
-
-
-def parse_side(text: str) -> Optional[str]:
-    t = (text or "").lower()
-    if re.search(r"\b(sell|sold|short|bearish)\b", t):
-        return "SELL"
-    if re.search(r"\b(buy|bought|long|bullish)\b", t):
-        return "BUY"
-    return None
-
-
-def parse_yes_no(text: str) -> Optional[str]:
-    t = (text or "").lower()
-    if re.search(r"\b(yes|yeah|yep|yup|correct|right|confirm|okay|ok|sure)\b", t):
-        if re.search(r"\b(nope|wrong|not correct)\b", t):
-            return "no"
-        return "yes"
-    if re.search(r"\b(no|nope|nah|wrong|incorrect|change)\b", t):
-        return "no"
-    return None
-
-
-def parse_status(text: str) -> Optional[str]:
-    t = (text or "").lower()
-    if re.search(r"\b(closed|done|finished|already (?:out|done|closed)|stopped out|hit (?:tp|sl))\b", t):
-        return "closed"
-    if re.search(r"\b(open|still in|running|holding|not closed)\b", t):
-        return "open"
-    return None
 
 
 def parse_session(text: str) -> Optional[str]:

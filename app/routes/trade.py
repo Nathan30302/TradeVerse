@@ -876,6 +876,7 @@ def voice_turn():
         'screenshot_kind': result.get('screenshot_kind') or '',
         'uncertain': result.get('uncertain') or [],
         'phase': result.get('phase') or '',
+        'action': result.get('action') or '',
         'instrument': instrument,
         'metrics': metrics,
         'form': draft_to_form_fields(draft),

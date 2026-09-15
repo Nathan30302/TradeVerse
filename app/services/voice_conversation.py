@@ -287,6 +287,23 @@ _SAVE_CONFIRM_RE = re.compile(
     re.I,
 )
 
+_PAUSE_RE = re.compile(
+    r"\b((?:let'?s\s+)?edit later|(?:i'?ll\s+)?(?:finish|edit|continue|do)\s+later|"
+    r"pause(?:\s+(?:this|for now))?|save for later|come back later|"
+    r"(?:let'?s\s+)?end(?:\s+it|\s+this|\s+now)?(?:\s+for now)?|"
+    r"stop for now|leave it here|pick(?:\s+this)?\s+up later|"
+    r"i'?ll come back)\b",
+    re.I,
+)
+
+_FINISH_RE = re.compile(
+    r"\b(that'?s (?:all|enough)|(?:i'?m\s+)?done(?:\s+(?:journaling|logging|here))?|"
+    r"finished(?:\s+(?:logging|journaling))?|wrap(?:\s+it)?\s+up|"
+    r"close(?:\s+the)?\s+(?:journal|session)|end (?:the )?(?:trade )?(?:log|journal)|"
+    r"log it(?: now)?)\b",
+    re.I,
+)
+
 
 def is_save_confirm(text: str) -> bool:
     """True when the trader is confirming the review card should be saved."""
@@ -298,6 +315,43 @@ def is_save_confirm(text: str) -> bool:
     if re.search(r"\b(change|fix|wrong|edit|update|wait)\b", t, re.I):
         return False
     return bool(_SAVE_CONFIRM_RE.search(t))
+
+
+def conversation_intent(text: str) -> Optional[str]:
+    """
+    Mid-journal control phrases.
+
+    pause  — keep the draft, leave now, continue later
+    finish — wrap the page (skip leftovers) and move to save / journal
+    """
+    t = _light_clean(text or "")
+    if not t:
+        return None
+    if _PAUSE_RE.search(t):
+        return "pause"
+    if _FINISH_RE.search(t):
+        return "finish"
+    return None
+
+
+def _soft_close_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill remaining soft/reflection gaps so a finish phrase can wrap."""
+    if draft.get("lot_size") is None:
+        draft["lot_skipped"] = True
+    if not (draft.get("timeframe") or "").strip():
+        draft["timeframe"] = "unspecified"
+    if not (draft.get("entry_time") or "").strip():
+        draft["entry_time"] = "unspecified"
+    if draft.get("take_profit") is None:
+        draft["tp_skipped"] = True
+    for key in _REFLECT_KEYS:
+        if key == "followed_plan":
+            if not draft.get("followed_plan"):
+                draft["followed_plan"] = "mostly"
+        elif not (draft.get(key) or "").strip():
+            draft[key] = "skipped"
+    draft["reflection_skipped"] = True
+    return draft
 
 
 def _token_set(text: str) -> set:
@@ -638,7 +692,11 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
                 bit = bit[:40].rstrip() + "…"
             return f"Got it — {bit}."
         if reflected in ("lessons", "improve_next", "thesis_notes") and snippet:
-            return "Got it."
+            if reflected == "thesis_notes":
+                return "Clear — that’s the idea."
+            if reflected == "lessons":
+                return "Solid takeaway."
+            return "Noted for next time."
         return "Got it."
     corr = draft.get("_just_corrected") or []
     if corr:
@@ -667,8 +725,8 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
         return "Updated."
     parsed = parse_voice_text(text or "")
     bits: List[str] = []
-    if parsed.get("symbol"):
-        bits.append(str(parsed["symbol"]))
+    if parsed.get("symbol") or draft.get("symbol"):
+        bits.append(str(parsed.get("symbol") or draft.get("symbol")))
     if parsed.get("trade_type"):
         bits.append("long" if parsed["trade_type"] == "BUY" else "short")
     if parsed.get("entry_price") is not None:
@@ -676,7 +734,7 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
     elif parsed.get("stop_loss") is not None:
         bits.append(f"stop {float(parsed['stop_loss']):g}")
     if parsed.get("status") == "open":
-        bits.append("still in")
+        bits.append("still open")
     elif parsed.get("status") == "closed":
         bits.append("closed")
     if parsed.get("session_type"):
@@ -688,6 +746,8 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
         bits.append(f"target {float(parsed['take_profit']):g}")
     if parsed.get("lot_size") is not None and len(bits) < 3:
         bits.append(f"{float(parsed['lot_size']):g} lot")
+    if draft.get("timeframe") and len(bits) < 3:
+        bits.append(str(draft["timeframe"]))
     if not bits:
         if _is_short_field_answer(text) and (
             draft.get("symbol") or draft.get("trade_type") or draft.get("entry_price") is not None
@@ -775,13 +835,13 @@ def guard_reply(
     return line
 
 
-def active_instrument_symbols(limit: int = 140) -> List[str]:
+def active_instrument_symbols(limit: int = 320) -> List[str]:
     """Symbols the model may mention — live from the catalog, not a hardcoded list."""
     try:
         rows = (
             Instrument.query.filter_by(is_active=True)
             .order_by(Instrument.symbol)
-            .limit(max(20, min(int(limit), 200)))
+            .limit(max(20, min(int(limit), 400)))
             .all()
         )
     except Exception:
@@ -1216,8 +1276,15 @@ def fallback_turn(
     text = (transcript or "").strip()
     has_before = bool(has_before or has_screenshot or draft.get("screenshot_before"))
     has_after = bool(has_after or draft.get("screenshot_after"))
+    intent = conversation_intent(text) if text else None
     if text:
         parsed = parse_voice_text(text)
+        # End phrases must not flip status via bare "done"/"finished".
+        if intent in ("pause", "finish") and parsed.get("status") and not re.search(
+            r"\b(closed|still in|open|hit (?:tp|sl)|stopped out)\b", text.lower()
+        ):
+            parsed = dict(parsed)
+            parsed.pop("status", None)
         draft = apply_parse(draft, parsed)
         draft = _apply_corrections(draft, text)
         if _declines_shot(text, bool(draft.get("screenshot_prompted"))):
@@ -1228,8 +1295,56 @@ def fallback_turn(
             draft["symbol"] = guessed
         draft = _apply_spoken_extras(draft, text)
         draft = _mark_shots(draft, text, has_before=has_before, has_after=has_after)
-        draft = _capture_user_words(draft, text)
-        draft = _apply_reflection_answer(draft, text)
+        if intent not in ("pause", "finish"):
+            draft = _capture_user_words(draft, text)
+            draft = _apply_reflection_answer(draft, text)
+
+    if intent == "pause":
+        return {
+            "reply": "Alright — I’ll hold this page. Come back whenever you’re ready to finish it.",
+            "draft": draft,
+            "complete": False,
+            "ask_screenshot": False,
+            "screenshot_kind": "",
+            "uncertain": [],
+            "phase": journal_phase(draft),
+            "action": "pause",
+            "source": "fallback",
+        }
+
+    if intent == "finish":
+        if not required_ready(draft):
+            return {
+                "reply": "I still need the market, side, and entry — say those, or say edit later to pause.",
+                "draft": draft,
+                "complete": False,
+                "ask_screenshot": False,
+                "screenshot_kind": "",
+                "uncertain": [],
+                "phase": journal_phase(draft),
+                "action": "",
+                "source": "fallback",
+            }
+        draft = _soft_close_draft(draft)
+        skip_screenshot = True
+        nxt = conversational_next(
+            draft,
+            text,
+            has_before=True,
+            has_after=True,
+            skip_screenshot=True,
+        )
+        return {
+            "reply": (nxt["reply"] or _spoken_wrap(draft))[:280],
+            "draft": draft,
+            "complete": True,
+            "ask_screenshot": False,
+            "screenshot_kind": "",
+            "uncertain": [],
+            "phase": "review",
+            "action": "finish",
+            "source": "fallback",
+        }
 
     has_before = bool(has_before or draft.get("screenshot_before"))
     has_after = bool(has_after or draft.get("screenshot_after"))
@@ -1249,6 +1364,7 @@ def fallback_turn(
         "screenshot_kind": nxt["screenshot_kind"],
         "uncertain": [],
         "phase": journal_phase(draft),
+        "action": "",
         "source": "fallback",
     }
 
@@ -1402,7 +1518,13 @@ def run_turn(
 
     has_before = bool(has_before or has_screenshot or draft.get("screenshot_before"))
     has_after = bool(has_after or draft.get("screenshot_after"))
+    intent = conversation_intent(text)
     parsed = parse_voice_text(text)
+    if intent in ("pause", "finish") and parsed.get("status") and not re.search(
+        r"\b(closed|still in|open|hit (?:tp|sl)|stopped out)\b", text.lower()
+    ):
+        parsed = dict(parsed)
+        parsed.pop("status", None)
     seeded = apply_parse(draft, parsed)
     seeded = _apply_corrections(seeded, text)
     seeded = _infer_closed_exit(seeded, text)
@@ -1410,16 +1532,58 @@ def run_turn(
         skip_screenshot = True
     seeded = _apply_spoken_extras(seeded, text)
     seeded = _mark_shots(seeded, text, has_before=has_before, has_after=has_after)
-    seeded = _capture_user_words(seeded, text, history)
-    seeded = _apply_reflection_answer(seeded, text)
+    if intent not in ("pause", "finish"):
+        seeded = _capture_user_words(seeded, text, history)
+        seeded = _apply_reflection_answer(seeded, text)
     has_before = bool(has_before or seeded.get("screenshot_before"))
     has_after = bool(has_after or seeded.get("screenshot_after"))
+
+    if intent == "pause":
+        return {
+            "reply": "Alright — I’ll hold this page. Come back whenever you’re ready to finish it.",
+            "draft": seeded,
+            "complete": False,
+            "ask_screenshot": False,
+            "screenshot_kind": "",
+            "uncertain": [],
+            "phase": journal_phase(seeded),
+            "action": "pause",
+            "source": "fallback",
+        }
+    if intent == "finish":
+        if not required_ready(seeded):
+            return {
+                "reply": "I still need the market, side, and entry — say those, or say edit later to pause.",
+                "draft": seeded,
+                "complete": False,
+                "ask_screenshot": False,
+                "screenshot_kind": "",
+                "uncertain": [],
+                "phase": journal_phase(seeded),
+                "action": "",
+                "source": "fallback",
+            }
+        seeded = _soft_close_draft(seeded)
+        nxt = conversational_next(
+            seeded, text, has_before=True, has_after=True, skip_screenshot=True
+        )
+        return {
+            "reply": (nxt["reply"] or _spoken_wrap(seeded))[:280],
+            "draft": seeded,
+            "complete": True,
+            "ask_screenshot": False,
+            "screenshot_kind": "",
+            "uncertain": [],
+            "phase": "review",
+            "action": "finish",
+            "source": "fallback",
+        }
 
     llm = _openai_turn(
         text,
         seeded,
         history or [],
-        instruments or active_instrument_symbols(),
+        instruments or active_instrument_symbols(320),
         session_hint,
         has_before and has_after,
     )
@@ -1452,6 +1616,7 @@ def run_turn(
         "screenshot_kind": nxt["screenshot_kind"],
         "uncertain": uncertain,
         "phase": journal_phase(merged),
+        "action": "",
         "source": source,
     }
 
