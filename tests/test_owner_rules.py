@@ -14,7 +14,7 @@ from app.services.owner_discipline import (
     advise_before_trade,
     build_multi_tf_brief,
     calc_lot_size,
-    daily_trade_status,
+    calc_ten_two_two,
     drawdown_fraction,
     get_or_create_rulebook,
     is_owner_discipline_user,
@@ -24,7 +24,7 @@ from app.services.owner_discipline import (
     suggested_risk,
     windows_from_form,
 )
-from app.services.owner_strategy_seeds import FX_ALEXG_SLUG
+from app.services.owner_strategy_seeds import FX_ALEXG_SLUG, VINCENT_BR_SLUG
 
 
 @pytest.fixture
@@ -81,14 +81,18 @@ def test_fx_alexg_seeded_on_desk_open(app):
         owner = User.query.filter_by(username="nathan").first()
         book = get_or_create_rulebook(owner)
         strategies = list_strategies(owner)
-        assert len(strategies) >= 1
+        assert len(strategies) >= 2
         assert strategies[0].slug == FX_ALEXG_SLUG
+        assert strategies[1].slug == VINCENT_BR_SLUG
         assert book.active_strategy_id == strategies[0].id
         assert strategies[0].max_trades_per_day == 2
         assert strategies[0].stop_after_first_win is True
         checklist = json.loads(strategies[0].checklist_json or "{}")
         assert len(checklist.get("pre_trade") or []) >= 8
         assert len(checklist.get("states") or []) == 6
+        v_check = json.loads(strategies[1].checklist_json or "{}")
+        assert len(v_check.get("hurdles") or []) == 5
+        assert strategies[1].max_trades_per_day == 3
 
 
 def test_risk_scales_down_in_drawdown():
@@ -111,6 +115,39 @@ def test_lot_size_formula():
     assert result["error"] is None
     assert result["lots"] == 0.5
     assert result["risk_cash"] == 100.0
+
+
+def test_ten_two_two_formula():
+    result = calc_ten_two_two(balance=10000, allocation_pct=10, option_loss_pct=20)
+    assert result["ok"] is True
+    assert result["account_risk_pct"] == 2.0
+    assert result["position_dollars"] == 1000.0
+    over = calc_ten_two_two(balance=10000, allocation_pct=15, option_loss_pct=20)
+    assert over["ok"] is False
+
+
+def test_activate_vincent_strategy(app, owner_client):
+    with app.app_context():
+        owner = User.query.filter_by(username="nathan").first()
+        get_or_create_rulebook(owner)
+        vincent = OwnerStrategy.query.filter_by(user_id=owner.id, slug=VINCENT_BR_SLUG).first()
+        assert vincent is not None
+        sid = vincent.id
+    r = owner_client.post(
+        "/owner/rules/activate",
+        data={"strategy_id": str(sid)},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    assert b"Vincent Desiano" in r.data
+    assert b"10-2-2" in r.data
+    r2 = owner_client.post(
+        "/owner/rules/ten-two-two",
+        data={"balance": "10000", "allocation_pct": "10", "option_loss_pct": "20"},
+        follow_redirects=True,
+    )
+    assert r2.status_code == 200
+    assert b"2.00% account" in r2.data or b"2% account" in r2.data
 
 
 def test_session_windows_parse_and_gate():

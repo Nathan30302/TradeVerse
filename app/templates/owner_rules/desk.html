@@ -47,14 +47,6 @@
     {% else %}
     <div class="ord-empty">No strategies seeded yet.</div>
     {% endfor %}
-    <div class="ord-strategy-card ord-strategy-soon">
-      <div class="ord-strategy-btn" aria-disabled="true">
-        <span class="ord-strategy-index">0{{ (strategies|length) + 1 }}</span>
-        <span class="ord-strategy-name">Strategy 2</span>
-        <span class="ord-strategy-style">Coming next — paste your second system anytime</span>
-        <span class="ord-badge muted">Soon</span>
-      </div>
-    </div>
   </section>
 
   {# —— Status strip —— #}
@@ -158,11 +150,62 @@
           {% endfor %}
         </ul>
       </div>
+      {% if checklist.hurdles %}
+      <div class="ord-checklist-block">
+        <h3>5 Key Hurdles — audit every trade</h3>
+        <ul class="ord-check-list">
+          {% for item in checklist.hurdles %}
+          <li>
+            <label>
+              <input type="checkbox" data-hurdle-id="{{ item.id }}">
+              <span>Did I avoid: {{ item.label }}?</span>
+            </label>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
     </section>
 
     <aside class="ord-side">
-      {# Lot calculator #}
+      {# Risk calculator — FX lot OR Vincent 10-2-2 #}
       <section class="ord-panel">
+        {% if is_vincent %}
+        <div class="ord-section-head">
+          <h2>10-2-2 risk model</h2>
+          <p>10% allocation × 20% option loss = 2% account risk</p>
+        </div>
+        <form method="POST" action="{{ url_for('owner_rules.ten_two_two') }}" class="ord-lot-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label>Account balance
+            <input class="ord-input" name="balance" type="number" step="any"
+                   value="{{ risk_model_form.balance or book.account_current_balance or book.account_starting_balance or '' }}">
+          </label>
+          <label>Capital allocation % (max 10)
+            <input class="ord-input" name="allocation_pct" type="number" step="any"
+                   value="{{ risk_model_form.allocation_pct or '10' }}">
+          </label>
+          <label>Expected option loss % (max 20)
+            <input class="ord-input" name="option_loss_pct" type="number" step="any"
+                   value="{{ risk_model_form.option_loss_pct or '20' }}">
+          </label>
+          <button class="ord-btn wide" type="submit">Check 10-2-2</button>
+        </form>
+        {% if risk_model_result %}
+          {% if risk_model_result.error %}
+          <p class="ord-alert">{{ risk_model_result.error }}</p>
+          {% else %}
+          <div class="ord-lot-result">
+            <div class="ord-lot-big">{{ '%.2f'|format(risk_model_result.account_risk_pct) }}% account</div>
+            <div class="ord-muted">
+              Position ≈ {{ risk_model_result.position_dollars }} ·
+              Risk cash ≈ {{ risk_model_result.account_risk_cash }} ·
+              {% if risk_model_result.ok %}Within limits{% else %}Over limits{% endif %}
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+        {% else %}
         <div class="ord-section-head">
           <h2>Lot size calculator</h2>
           <p>Balance × Risk% ÷ (SL pips × pip value)</p>
@@ -196,6 +239,7 @@
             <div class="ord-muted">Risk cash ≈ {{ lot_result.risk_cash }} · Min R:R {{ brief.min_rr|default(2) }}:1 (target {{ brief.target_rr|default(4) }}:1)</div>
           </div>
           {% endif %}
+        {% endif %}
         {% endif %}
       </section>
 

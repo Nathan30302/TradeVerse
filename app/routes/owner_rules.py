@@ -12,6 +12,7 @@ from app.services.owner_discipline import (
     advise_before_trade,
     build_desk_brief,
     calc_lot_size,
+    calc_ten_two_two,
     get_active_strategy,
     get_or_create_rulebook,
     is_owner_discipline_user,
@@ -34,7 +35,20 @@ def _require_owner():
         abort(404)  # hide existence from non-owners
 
 
-def _desk_context(*, advice=None, advise_symbol="", advise_thesis="", lot_result=None, lot_form=None):
+def _is_vincent(strategy) -> bool:
+    return bool(strategy and (strategy.slug or "").startswith("vincent-desiano"))
+
+
+def _desk_context(
+    *,
+    advice=None,
+    advise_symbol="",
+    advise_thesis="",
+    lot_result=None,
+    lot_form=None,
+    risk_model_result=None,
+    risk_model_form=None,
+):
     book = get_or_create_rulebook(current_user)
     strategies = list_strategies(current_user)
     strategy = get_active_strategy(current_user, book)
@@ -54,6 +68,9 @@ def _desk_context(*, advice=None, advise_symbol="", advise_thesis="", lot_result
         "advise_thesis": advise_thesis,
         "lot_result": lot_result,
         "lot_form": lot_form or {},
+        "risk_model_result": risk_model_result,
+        "risk_model_form": risk_model_form or {},
+        "is_vincent": _is_vincent(strategy),
     }
 
 
@@ -126,6 +143,37 @@ def lot_size():
     return render_template(
         "owner_rules/desk.html",
         **_desk_context(lot_result=result, lot_form=form),
+    )
+
+
+@bp.route("/ten-two-two", methods=["POST"])
+@login_required
+def ten_two_two():
+    """Vincent Desiano 10-2-2 position sizing calculator."""
+    _require_owner()
+    book = get_or_create_rulebook(current_user)
+    strategy = get_active_strategy(current_user, book)
+    risk = suggested_risk(book, strategy)
+    form = {
+        "balance": request.form.get("balance") or "",
+        "allocation_pct": request.form.get("allocation_pct") or "10",
+        "option_loss_pct": request.form.get("option_loss_pct") or "20",
+    }
+    try:
+        balance = float(form["balance"] or risk.get("balance") or 0)
+        allocation_pct = float(form["allocation_pct"] or 10)
+        option_loss_pct = float(form["option_loss_pct"] or 20)
+    except ValueError:
+        flash("Check 10-2-2 calculator numbers.", "danger")
+        return redirect(url_for("owner_rules.desk"))
+    result = calc_ten_two_two(
+        balance=balance,
+        allocation_pct=allocation_pct,
+        option_loss_pct=option_loss_pct,
+    )
+    return render_template(
+        "owner_rules/desk.html",
+        **_desk_context(risk_model_result=result, risk_model_form=form),
     )
 
 

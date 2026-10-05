@@ -10,7 +10,7 @@ from datetime import datetime, time, timedelta
 from typing import Any, Dict, List, Optional
 
 from app.services.entitlements import _safe_getattr, is_owner_user
-from app.services.owner_strategy_seeds import FX_ALEXG_SLUG, fx_alexg_strategy_payload
+from app.services.owner_strategy_seeds import all_strategy_payloads
 from app.utils.timeutil import resolve_zoneinfo
 
 
@@ -52,30 +52,33 @@ def get_or_create_rulebook(user):
 
 
 def ensure_seeded_strategies(user, book=None):
-    """Ensure Strategy 1 (FX AlexG) exists. Does not overwrite personal edits."""
+    """Ensure Strategies 1+2 exist. Does not overwrite personal edits."""
     from app import db
     from app.models.owner_rules import OwnerStrategy
 
-    payload = fx_alexg_strategy_payload()
-    existing = OwnerStrategy.query.filter_by(user_id=user.id, slug=payload["slug"]).first()
-    if not existing:
-        existing = OwnerStrategy(user_id=user.id, slug=payload["slug"])
-        _apply_payload(existing, payload)
-        existing.sort_order = 1
-        db.session.add(existing)
-        db.session.flush()
+    first = None
+    for order, payload in enumerate(all_strategy_payloads(), start=1):
+        existing = OwnerStrategy.query.filter_by(user_id=user.id, slug=payload["slug"]).first()
+        if not existing:
+            existing = OwnerStrategy(user_id=user.id, slug=payload["slug"])
+            _apply_payload(existing, payload)
+            existing.sort_order = order
+            db.session.add(existing)
+            db.session.flush()
+        if first is None:
+            first = existing
     if book is None:
         book = OwnerRulebook_for(user)
-    if book and not book.active_strategy_id:
-        book.active_strategy_id = existing.id
-        book.session_windows_json = existing.session_windows_json
-        book.gate_strict = bool(existing.gate_strict)
-        book.max_trades_per_day = existing.max_trades_per_day
-        book.risk_base_pct = existing.risk_base_pct
-        book.risk_min_pct = existing.risk_min_pct
-        book.strategy_name = existing.name
+    if book and not book.active_strategy_id and first:
+        book.active_strategy_id = first.id
+        book.session_windows_json = first.session_windows_json
+        book.gate_strict = bool(first.gate_strict)
+        book.max_trades_per_day = first.max_trades_per_day
+        book.risk_base_pct = first.risk_base_pct
+        book.risk_min_pct = first.risk_min_pct
+        book.strategy_name = first.name
     db.session.commit()
-    return existing
+    return first
 
 
 def OwnerRulebook_for(user):
@@ -465,6 +468,37 @@ def calc_lot_size(
         "risk_cash": round(risk_cash, 2),
         "error": None,
         "formula": "Balance × Risk% / (SL pips × pip value)",
+    }
+
+
+def calc_ten_two_two(
+    *,
+    balance: float,
+    allocation_pct: float = 10.0,
+    option_loss_pct: float = 20.0,
+) -> Dict[str, Any]:
+    """Vincent 10-2-2 model: allocation × option-loss ≤ 2% account risk."""
+    if balance <= 0 or allocation_pct <= 0 or option_loss_pct <= 0:
+        return {
+            "ok": False,
+            "error": "Need balance, allocation %, and option-loss % > 0.",
+            "position_dollars": None,
+            "account_risk_pct": None,
+            "account_risk_cash": None,
+        }
+    position_dollars = balance * (allocation_pct / 100.0)
+    account_risk_pct = allocation_pct * (option_loss_pct / 100.0)
+    account_risk_cash = balance * (account_risk_pct / 100.0)
+    ok = allocation_pct <= 10.0 + 1e-9 and option_loss_pct <= 20.0 + 1e-9 and account_risk_pct <= 2.0 + 1e-9
+    return {
+        "ok": ok,
+        "error": None if ok else "Exceeds 10-2-2 limits (max 10% allocation × 20% option loss = 2% account).",
+        "position_dollars": round(position_dollars, 2),
+        "account_risk_pct": round(account_risk_pct, 3),
+        "account_risk_cash": round(account_risk_cash, 2),
+        "allocation_pct": allocation_pct,
+        "option_loss_pct": option_loss_pct,
+        "formula": "10% allocation × 20% option loss = 2% account risk",
     }
 
 
