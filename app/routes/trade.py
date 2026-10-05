@@ -29,6 +29,30 @@ import os
 from math import ceil
 import builtins
 
+
+def _owner_rules_trade_block():
+    """
+    Owner-only session gate: Nathan cannot start a new log outside his windows
+    unless the Rules Desk unlocked today.
+    """
+    try:
+        from app.services.owner_discipline import (
+            get_or_create_rulebook,
+            is_owner_discipline_user,
+            log_blocked_trade,
+            session_gate,
+        )
+    except Exception:
+        return None
+    if not is_owner_discipline_user(current_user):
+        return None
+    book = get_or_create_rulebook(current_user)
+    gate = session_gate(current_user, book)
+    if gate.get("allowed"):
+        return None
+    log_blocked_trade(current_user, gate.get("reason") or "outside window")
+    return gate
+
 # Create Blueprint
 bp = Blueprint('trade', __name__, url_prefix='/trade')
 
@@ -326,6 +350,16 @@ def add():
     accountability_required = bool(session.get("tv_accountability_required"))
     playbook_setups = _playbook_setups_for_trade_form()
     tpl = 'trade/guide.html' if request.form.get('from_guide') == '1' else 'trade/add.html'
+
+    owner_block = _owner_rules_trade_block()
+    if owner_block:
+        flash(
+            f"Rules Desk locked trading: {owner_block.get('reason')}. "
+            "Open your Rules Desk to unlock today’s session if you truly need an exception.",
+            "warning",
+        )
+        return redirect(url_for("owner_rules.desk"))
+
     if request.method == 'GET':
         clear_add_trade_draft = bool(session.pop('tv_clear_add_trade_draft', None))
         return render_template(
@@ -739,6 +773,14 @@ def add():
 @login_required
 def guide():
     """Voice Journal — speak a trade, confirm, save through the same Add Trade path."""
+    owner_block = _owner_rules_trade_block()
+    if owner_block:
+        flash(
+            f"Rules Desk locked Voice Journal: {owner_block.get('reason')}.",
+            "warning",
+        )
+        return redirect(url_for("owner_rules.desk"))
+
     from app.services.voice_journal import (
         EMOTION_CHIPS,
         SESSION_CHIPS,

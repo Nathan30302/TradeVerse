@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Strategy Bible - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1 class="page-title">Strategy bible</h1>
+    <p class="page-subtitle mb-0">
+        Write how <em>your</em> system works in detail. The Rules Desk will hold you to this —
+        sessions, risk, and multi-timeframe filters.
+    </p>
+</div>
+
+<form method="POST" class="row g-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="col-lg-8">
+        <div class="card tv-surface mb-4">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="strategy_name">System name</label>
+                    <input class="form-control" id="strategy_name" name="strategy_name"
+                           value="{{ book.strategy_name }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="overview">Overview — how the edge works</label>
+                    <textarea class="form-control" id="overview" name="overview" rows="4"
+                              placeholder="Explain the idea like you would to a junior trader who must follow it exactly.">{{ book.overview or '' }}</textarea>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="markets">Markets (comma list)</label>
+                        <input class="form-control" id="markets" name="markets"
+                               value="{{ book.markets or '' }}" placeholder="US30, NAS100, XAUUSD">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="timeframes">Timeframes</label>
+                        <input class="form-control" id="timeframes" name="timeframes"
+                               value="{{ book.timeframes or '' }}" placeholder="W, D, H4, M15">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card tv-surface mb-4">
+            <div class="card-header"><h5 class="mb-0">Multi-timeframe rules</h5></div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="weekly_bias_rules">Weekly</label>
+                    <textarea class="form-control" id="weekly_bias_rules" name="weekly_bias_rules" rows="3"
+                              placeholder="How you decide weekly bias…">{{ book.weekly_bias_rules or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="daily_bias_rules">Daily</label>
+                    <textarea class="form-control" id="daily_bias_rules" name="daily_bias_rules" rows="3">{{ book.daily_bias_rules or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="h4_rules">4 Hour</label>
+                    <textarea class="form-control" id="h4_rules" name="h4_rules" rows="3">{{ book.h4_rules or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="m15_rules">15 Minute / execution</label>
+                    <textarea class="form-control" id="m15_rules" name="m15_rules" rows="3">{{ book.m15_rules or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="card tv-surface mb-4">
+            <div class="card-header"><h5 class="mb-0">Trade mechanics</h5></div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="entry_rules">Entry rules</label>
+                    <textarea class="form-control" id="entry_rules" name="entry_rules" rows="4">{{ book.entry_rules or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="exit_rules">Exit / management rules</label>
+                    <textarea class="form-control" id="exit_rules" name="exit_rules" rows="3">{{ book.exit_rules or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="invalidation_rules">Invalidation</label>
+                    <textarea class="form-control" id="invalidation_rules" name="invalidation_rules" rows="3">{{ book.invalidation_rules or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-danger" for="do_not_trade_rules">Do not trade when…</label>
+                    <textarea class="form-control" id="do_not_trade_rules" name="do_not_trade_rules" rows="4"
+                              placeholder="News, mid-range chop, after 2 losses, revenge, etc.">{{ book.do_not_trade_rules or '' }}</textarea>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label fw-semibold" for="psychology_rules">Psychology / process rules</label>
+                    <textarea class="form-control" id="psychology_rules" name="psychology_rules" rows="3">{{ book.psychology_rules or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card tv-surface mb-4">
+            <div class="card-header"><h5 class="mb-0">Session windows</h5></div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    One per line: <code>Label|days|start|end</code><br>
+                    Days: Mon=0 … Sun=6. Example:<br>
+                    <code>London|0,1,2,3,4|07:00|11:30</code>
+                </p>
+                <textarea class="form-control font-monospace small" name="session_windows" rows="6">{{ windows_text }}</textarea>
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" name="gate_strict" id="gate_strict"
+                           {% if book.gate_strict %}checked{% endif %}>
+                    <label class="form-check-label" for="gate_strict">
+                        Strict gate — cannot log trades outside windows unless unlocked
+                    </label>
+                </div>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="enabled" id="enabled"
+                           {% if book.enabled %}checked{% endif %}>
+                    <label class="form-check-label" for="enabled">System enabled</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card tv-surface mb-4">
+            <div class="card-header"><h5 class="mb-0">Risk &amp; equity</h5></div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label" for="risk_base_pct">Base risk %</label>
+                    <input class="form-control" type="number" step="any" name="risk_base_pct" id="risk_base_pct"
+                           value="{{ book.risk_base_pct }}">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" for="risk_min_pct">Floor risk % (in drawdown)</label>
+                    <input class="form-control" type="number" step="any" name="risk_min_pct" id="risk_min_pct"
+                           value="{{ book.risk_min_pct }}">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" for="account_starting_balance">Starting balance</label>
+                    <input class="form-control" type="number" step="any" name="account_starting_balance"
+                           id="account_starting_balance" value="{{ book.account_starting_balance or '' }}">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" for="account_high_water">High-water mark</label>
+                    <input class="form-control" type="number" step="any" name="account_high_water"
+                           id="account_high_water" value="{{ book.account_high_water or '' }}">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" for="account_current_balance">Current balance</label>
+                    <input class="form-control" type="number" step="any" name="account_current_balance"
+                           id="account_current_balance" value="{{ book.account_current_balance or '' }}">
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label" for="max_trades_per_day">Max trades/day</label>
+                        <input class="form-control" type="number" name="max_trades_per_day"
+                               id="max_trades_per_day" value="{{ book.max_trades_per_day or '' }}">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" for="max_losses_in_row">Max losses in a row</label>
+                        <input class="form-control" type="number" name="max_losses_in_row"
+                               id="max_losses_in_row" value="{{ book.max_losses_in_row or '' }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary w-100 mb-2" type="submit">Save bible</button>
+        <a class="btn btn-outline-secondary w-100" href="{{ url_for('owner_rules.desk') }}">Back to desk</a>
+    </div>
+</form>
+{% endblock %}

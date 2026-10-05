@@ -99,6 +99,7 @@ def create_app(config_name='default'):
 
         from app.models import user, trade
         from app.models.user_login_event import UserLoginEvent  # noqa: F401 — register table
+        from app.models.owner_rules import OwnerRulebook, OwnerRuleCheckLog  # noqa: F401
         from app.models.trade_plan import TradePlan
         from app.models.performance_score import PerformanceScore
         from app.models.trade_feedback import TradeFeedback
@@ -228,6 +229,9 @@ def create_app(config_name='default'):
     # Owner admin dashboard (RBAC)
     from app.routes import owner_admin
     app.register_blueprint(owner_admin.bp)
+
+    from app.routes import owner_rules
+    app.register_blueprint(owner_rules.bp)
     
     # Register error handlers
     register_error_handlers(app)
@@ -802,6 +806,7 @@ def register_context_processors(app):
             return {
                 'owner_platform_access': False,
                 'owner_platform_session_only': False,
+                'owner_rules_access': False,
             }
 
         role = (_safe_getattr(current_user, 'role', None) or 'user').strip().lower()
@@ -811,4 +816,5 @@ def register_context_processors(app):
         return {
             'owner_platform_access': rbac or sess,
             'owner_platform_session_only': sess and not rbac,
+            'owner_rules_access': rbac,
         }
