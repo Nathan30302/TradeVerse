@@ -498,12 +498,59 @@ def repair_alembic_version(app: Any) -> None:
             pass
 
 
+def ensure_owner_rules_schema(app: Any) -> bool:
+    """Create owner Rules Desk tables if Alembic has not run yet."""
+    from app import db
+    from app.models.owner_rules import OwnerRuleCheckLog, OwnerRulebook, OwnerStrategy
+
+    try:
+        insp = sa.inspect(db.engine)
+        created = False
+        for model in (OwnerRulebook, OwnerStrategy, OwnerRuleCheckLog):
+            name = model.__tablename__
+            if not insp.has_table(name):
+                model.__table__.create(db.engine, checkfirst=True)
+                app.logger.warning("schema_compat: created %s table", name)
+                created = True
+                _clear_insp(insp)
+                insp = sa.inspect(db.engine)
+        if insp.has_table("owner_rulebooks"):
+            cols = {c.get("name") for c in insp.get_columns("owner_rulebooks")}
+            dialect = _dialect_name(db.engine)
+            additions = [
+                ("active_strategy_id", "INTEGER", None),
+                ("day_key", "VARCHAR(10)", None),
+                ("trades_today", "INTEGER", "0"),
+                ("wins_today", "INTEGER", "0"),
+                ("losses_today", "INTEGER", "0"),
+                ("day_locked", "BOOLEAN", "0" if dialect != "postgresql" else "FALSE"),
+                ("day_lock_reason", "VARCHAR(255)", None),
+            ]
+            for col_name, col_type, default in additions:
+                if col_name not in cols:
+                    with db.engine.begin() as conn:
+                        conn.execute(
+                            sa.text(_add_column_sql(dialect, "owner_rulebooks", col_name, col_type, default))
+                        )
+                    app.logger.warning("schema_compat: added owner_rulebooks.%s", col_name)
+                    created = True
+        return True
+    except Exception as exc:
+        app.logger.warning("schema_compat: ensure_owner_rules_schema failed: %s", exc)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return False
+
+
 def ensure_lagging_schema(app: Any) -> None:
     """Best-effort create of columns/tables Alembic may not have applied yet."""
     ensure_user_optional_columns(app)
     ensure_ai_coaching_notes(app)
     ensure_playbook_schema(app)
     ensure_trade_optional_columns(app)
+    ensure_owner_rules_schema(app)
     refresh(app)
 
 

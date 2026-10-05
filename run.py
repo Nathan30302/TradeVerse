@@ -8,6 +8,8 @@ Run this file to start the application:
 """
 
 import os
+
+import click
 from app import create_app, db
 from app.models.user import User
 from app.models.trade import Trade
@@ -32,6 +34,23 @@ def init_db():
     """Initialize the database"""
     upgrade()
     print('Database upgraded successfully (Alembic).')
+
+@app.cli.command("grant-owner")
+@click.argument("username")
+def grant_owner(username):
+    """Grant Rules Desk access: set user.role=owner (username or email)."""
+    from app.models.user import User
+
+    key = (username or "").strip()
+    with app.app_context():
+        user = User.query.filter((User.username == key) | (User.email == key)).first()
+        if not user:
+            click.echo(f"No user found for {key!r}.")
+            raise SystemExit(1)
+        user.role = "owner"
+        db.session.commit()
+        click.echo(f"Granted owner role to {user.username} ({user.email}). Rules Desk enabled.")
+
 
 @app.cli.command()
 def reset_db():
