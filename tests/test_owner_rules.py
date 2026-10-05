@@ -281,3 +281,44 @@ def test_advise_rejects_off_watchlist(app):
             strategy=strategy,
         )
         assert any("approved" in w.lower() or "instrument" in w.lower() for w in advice["warnings"])
+
+
+def test_practice_and_ritual_seeded(app):
+    with app.app_context():
+        owner = User.query.filter_by(username="nathan").first()
+        book = get_or_create_rulebook(owner)
+        from app.services.owner_discipline import get_active_strategy, build_desk_brief
+        from app.services.owner_setup_coach import practice_plan_for, ritual_for
+
+        strategy = get_active_strategy(owner, book)
+        practice = practice_plan_for(strategy)
+        ritual = ritual_for(strategy)
+        assert practice.get("duration_minutes") == 120
+        assert len(practice.get("blocks") or []) >= 4
+        assert len(ritual) >= 5
+        brief = build_desk_brief(owner)
+        assert brief["practice"]["title"]
+        assert len(brief["ritual"]) >= 5
+
+
+def test_setup_coach_without_key_is_graceful(app, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with app.app_context():
+        owner = User.query.filter_by(username="nathan").first()
+        book = get_or_create_rulebook(owner)
+        from app.services.owner_discipline import get_active_strategy
+        from app.services.owner_setup_coach import analyze_setup_screenshots
+
+        strategy = get_active_strategy(owner, book)
+        result = analyze_setup_screenshots(strategy=strategy, images=[], notes="test")
+        assert result["ok"] is False
+        assert result["verdict"] in ("wait", "no_trade")
+
+
+def test_desk_shows_practice_tab(owner_client):
+    r = owner_client.get("/owner/rules/")
+    assert r.status_code == 200
+    assert b"Practice today" in r.data
+    assert b"Screenshot coach" in r.data
+    assert b"Before I enter" in r.data
+    assert b"Daily 2-hour" in r.data

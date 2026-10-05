@@ -10,13 +10,13 @@
 <div class="ord-shell">
   <header class="ord-hero">
     <div class="ord-hero-copy">
-      <p class="ord-kicker">Owner · discipline · multi-strategy</p>
+      <p class="ord-kicker">Owner desk · practice · ritual · coach</p>
       <h1 class="ord-title">Rules Desk</h1>
       <p class="ord-lede">
         {% if strategy %}
-          {{ strategy.tagline or strategy.name }}
+          {{ strategy.name }} — train the system every day, then only enter when the ritual is green.
         {% else %}
-          Load a system, clear the checklist, size the risk — then trade.
+          Pick a system. Practice it. Screenshot-check it. Then trade it.
         {% endif %}
       </p>
     </div>
@@ -27,7 +27,6 @@
     </div>
   </header>
 
-  {# —— Strategy switcher —— #}
   <section class="ord-strategies" aria-label="Strategies">
     {% for s in strategies %}
     <form method="POST" action="{{ url_for('owner_rules.activate_strategy') }}" class="ord-strategy-card {% if strategy and s.id == strategy.id %}is-active{% endif %}">
@@ -36,7 +35,7 @@
       <button type="submit" class="ord-strategy-btn">
         <span class="ord-strategy-index">0{{ loop.index }}</span>
         <span class="ord-strategy-name">{{ s.name }}</span>
-        <span class="ord-strategy-style">{{ s.style or 'System' }}</span>
+        <span class="ord-strategy-style">{{ s.tagline or s.style or 'System' }}</span>
         {% if strategy and s.id == strategy.id %}
         <span class="ord-badge">Active</span>
         {% else %}
@@ -49,7 +48,6 @@
     {% endfor %}
   </section>
 
-  {# —— Status strip —— #}
   <section class="ord-status-grid">
     <article class="ord-panel {% if gate.allowed %}is-open{% else %}is-locked{% endif %}">
       <div class="ord-panel-label">Session gate</div>
@@ -106,238 +104,306 @@
     </article>
   </section>
 
-  <div class="ord-main-grid">
-    {# —— Checklist state machine —— #}
-    <section class="ord-panel ord-wizard">
+  {# —— Workspace tabs —— #}
+  <nav class="ord-tabs" role="tablist" aria-label="Desk workspace">
+    <button type="button" class="ord-tab {% if active_tab == 'practice' %}is-active{% endif %}" data-tab="practice">Practice today</button>
+    <button type="button" class="ord-tab {% if active_tab == 'ritual' %}is-active{% endif %}" data-tab="ritual">Before I enter</button>
+    <button type="button" class="ord-tab {% if active_tab == 'coach' %}is-active{% endif %}" data-tab="coach">Screenshot coach</button>
+    <button type="button" class="ord-tab {% if active_tab == 'size' %}is-active{% endif %}" data-tab="size">Size &amp; risk</button>
+    <button type="button" class="ord-tab {% if active_tab == 'rules' %}is-active{% endif %}" data-tab="rules">Rules brief</button>
+  </nav>
+
+  {# PRACTICE #}
+  <section class="ord-tab-panel {% if active_tab == 'practice' %}is-active{% endif %}" data-panel="practice">
+    <div class="ord-panel ord-practice">
       <div class="ord-section-head">
-        <h2>Pre-trade state machine</h2>
-        <p>Clear every stage before market execution. No skipping.</p>
+        <h2>{{ practice.title or 'Daily practice' }}</h2>
+        <p>{{ practice.focus or 'Two focused hours beat random chart staring.' }}
+          · <strong>{{ practice.duration_minutes or 120 }} minutes</strong></p>
       </div>
-      {% set states = checklist.states or [] %}
-      <div class="ord-steps" id="ord-steps" data-step-count="{{ states|length }}">
-        {% for st in states %}
-        <button type="button" class="ord-step {% if loop.first %}is-current{% endif %}" data-step="{{ loop.index0 }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">
-          <span class="ord-step-num">{{ loop.index }}</span>
-          <span class="ord-step-title">{{ st.title }}</span>
-          <span class="ord-step-prompt">{{ st.prompt }}</span>
-        </button>
+      <div class="ord-practice-track" aria-hidden="true">
+        <span>0</span><span>2 hours</span>
+      </div>
+      <ol class="ord-practice-blocks">
+        {% for block in practice.blocks or [] %}
+        {% set bidx = loop.index0 %}
+        <li class="ord-practice-block" data-practice-block="{{ bidx }}">
+          <div class="ord-practice-meta">
+            <span class="ord-practice-mins">{{ block.minutes }} min</span>
+            <h3>{{ block.title }}</h3>
+          </div>
+          <ul class="ord-check-list">
+            {% for task in block.tasks or [] %}
+            <li>
+              <label>
+                <input type="checkbox" data-practice-id="p{{ bidx }}-{{ loop.index0 }}">
+                <span>{{ task }}</span>
+              </label>
+            </li>
+            {% endfor %}
+          </ul>
+        </li>
         {% else %}
-        <p class="ord-muted">Checklist will appear once Strategy 1 is seeded.</p>
+        <li class="ord-muted">Practice plan will appear when a strategy is active.</li>
         {% endfor %}
+      </ol>
+      <div class="ord-check-progress">
+        <div class="ord-check-bar" id="ord-practice-bar"></div>
+        <span id="ord-practice-label">0 drills cleared</span>
       </div>
-      <div class="ord-checklist-block">
-        <h3>Mandatory pre-trade</h3>
-        <ul class="ord-check-list" id="ord-pretrade">
-          {% for item in checklist.pre_trade or [] %}
-          <li>
-            <label>
-              <input type="checkbox" data-check-id="{{ item.id }}">
-              <span>{{ item.label }}</span>
+    </div>
+  </section>
+
+  {# RITUAL #}
+  <section class="ord-tab-panel {% if active_tab == 'ritual' %}is-active{% endif %}" data-panel="ritual">
+    <div class="ord-main-grid">
+      <div class="ord-panel">
+        <div class="ord-section-head">
+          <h2>Before I enter — do this in order</h2>
+          <p>One step at a time. If a step fails, you do not enter. You wait or you pass.</p>
+        </div>
+        <div class="ord-ritual" id="ord-ritual">
+          {% for step in ritual %}
+          <article class="ord-ritual-step {% if loop.first %}is-current{% endif %}" data-ritual="{{ loop.index0 }}">
+            <div class="ord-ritual-num">Step {{ loop.index }}</div>
+            <h3>{{ step.title }}</h3>
+            <p class="ord-ritual-do"><strong>Do:</strong> {{ step.do }}</p>
+            <p class="ord-ritual-pass"><strong>Pass when:</strong> {{ step.pass }}</p>
+            <label class="ord-ritual-check">
+              <input type="checkbox" data-ritual-id="{{ step.id or loop.index0 }}">
+              <span>I completed this — continue</span>
             </label>
-          </li>
+          </article>
+          {% else %}
+          <p class="ord-muted">Ritual loads with the active strategy.</p>
           {% endfor %}
-        </ul>
+        </div>
         <div class="ord-check-progress">
-          <div class="ord-check-bar" id="ord-check-bar"></div>
-          <span id="ord-check-label">0 / {{ (checklist.pre_trade or [])|length }} cleared</span>
+          <div class="ord-check-bar" id="ord-ritual-bar"></div>
+          <span id="ord-ritual-label">0 / {{ ritual|length }} steps</span>
         </div>
       </div>
-      <div class="ord-checklist-block danger">
-        <h3>Hard no-trade conditions</h3>
-        <ul class="ord-no-list">
-          {% for item in checklist.no_trade or [] %}
-          <li>{{ item.label }}</li>
-          {% endfor %}
-        </ul>
+      <aside class="ord-side">
+        <section class="ord-panel">
+          <div class="ord-section-head">
+            <h2>Quick rule check</h2>
+            <p>Type the thesis. Desk checks Do-Not-Trade + instruments.</p>
+          </div>
+          <form method="POST" action="{{ url_for('owner_rules.advise') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input class="ord-input mb-2" name="symbol" placeholder="Symbol"
+                   value="{{ advise_symbol|default('') }}">
+            <textarea class="ord-input" name="thesis" rows="4"
+                      placeholder="HTF sync · level · retest · candle…">{{ advise_thesis|default('') }}</textarea>
+            <button class="ord-btn wide mt-2" type="submit">Check thesis</button>
+          </form>
+          {% if advice %}
+          <div class="ord-verdict ord-verdict-{{ advice.verdict }}">
+            <strong>{{ advice.verdict|replace('_', ' ')|upper }}</strong>
+            <p>{{ advice.message }}</p>
+            {% if advice.warnings %}
+            <ul>{% for w in advice.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+          {% endif %}
+        </section>
+        {% if gate.allowed %}
+        <div class="ord-cta-row">
+          <a class="ord-btn" href="{{ url_for('trade.add') }}">Log trade</a>
+          <a class="ord-btn ghost" href="{{ url_for('trade.guide') }}">Voice Journal</a>
+        </div>
+        {% endif %}
+      </aside>
+    </div>
+  </section>
+
+  {# SCREENSHOT COACH #}
+  <section class="ord-tab-panel {% if active_tab == 'coach' %}is-active{% endif %}" data-panel="coach">
+    <div class="ord-panel ord-coach">
+      <div class="ord-section-head">
+        <h2>Screenshot coach</h2>
+        <p>
+          Drop 1–3 charts from the <strong>same setup</strong> (Daily / 4H / entry).
+          Coach judges against <em>{{ strategy.name if strategy else 'active system' }}</em> —
+          go, wait, or no trade — and tells you what to wait for.
+        </p>
+      </div>
+      <form method="POST" action="{{ url_for('owner_rules.setup_check') }}" enctype="multipart/form-data" class="ord-coach-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="ord-coach-grid">
+          <label class="ord-drop">
+            <span class="ord-drop-label">Daily / Weekly</span>
+            <input type="file" name="chart_daily" accept="image/*">
+          </label>
+          <label class="ord-drop">
+            <span class="ord-drop-label">4H / structure</span>
+            <input type="file" name="chart_h4" accept="image/*">
+          </label>
+          <label class="ord-drop">
+            <span class="ord-drop-label">Entry TF</span>
+            <input type="file" name="chart_entry" accept="image/*">
+          </label>
+        </div>
+        <div class="ord-coach-fields">
+          <input class="ord-input" name="symbol" placeholder="Symbol e.g. EURUSD or NQ"
+                 value="{{ setup_form.symbol|default('') }}">
+          <textarea class="ord-input" name="notes" rows="2"
+                    placeholder="What you think you see (optional)">{{ setup_form.notes|default('') }}</textarea>
+        </div>
+        <button class="ord-btn wide" type="submit">Judge this setup</button>
+      </form>
+
+      {% if setup_result %}
+      <div class="ord-setup-result ord-verdict-{{ setup_result.verdict }}">
+        <div class="ord-setup-verdict">{{ setup_result.verdict|replace('_', ' ')|upper }}</div>
+        <p class="ord-setup-headline">{{ setup_result.headline }}</p>
+        {% if setup_result.reasons %}
+        <div class="ord-setup-col">
+          <h4>Why</h4>
+          <ul>{% for r in setup_result.reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+        {% if setup_result.wait_for %}
+        <div class="ord-setup-col">
+          <h4>Wait for</h4>
+          <ul>{% for w in setup_result.wait_for %}<li>{{ w }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+        <div class="ord-setup-cols">
+          {% if setup_result.checklist_hits %}
+          <div>
+            <h4 class="text-success">Looks satisfied</h4>
+            <ul>{% for h in setup_result.checklist_hits %}<li>{{ h }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if setup_result.checklist_misses %}
+          <div>
+            <h4 class="text-danger">Missing / violated</h4>
+            <ul>{% for m in setup_result.checklist_misses %}<li>{{ m }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+        </div>
+        {% if setup_result.error and not setup_result.ok %}
+        <p class="ord-alert">{{ setup_result.error if setup_result.error != 'request_failed' else setup_result.headline }}</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  {# SIZE #}
+  <section class="ord-tab-panel {% if active_tab == 'size' %}is-active{% endif %}" data-panel="size">
+    <div class="ord-panel" style="max-width:420px">
+      {% if is_vincent %}
+      <div class="ord-section-head">
+        <h2>10-2-2 risk model</h2>
+        <p>10% allocation × 20% option loss = 2% account risk</p>
+      </div>
+      <form method="POST" action="{{ url_for('owner_rules.ten_two_two') }}" class="ord-lot-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Account balance
+          <input class="ord-input" name="balance" type="number" step="any"
+                 value="{{ risk_model_form.balance or book.account_current_balance or book.account_starting_balance or '' }}">
+        </label>
+        <label>Capital allocation % (max 10)
+          <input class="ord-input" name="allocation_pct" type="number" step="any"
+                 value="{{ risk_model_form.allocation_pct or '10' }}">
+        </label>
+        <label>Expected option loss % (max 20)
+          <input class="ord-input" name="option_loss_pct" type="number" step="any"
+                 value="{{ risk_model_form.option_loss_pct or '20' }}">
+        </label>
+        <button class="ord-btn wide" type="submit">Check 10-2-2</button>
+      </form>
+      {% if risk_model_result %}
+        {% if risk_model_result.error %}
+        <p class="ord-alert">{{ risk_model_result.error }}</p>
+        {% else %}
+        <div class="ord-lot-result">
+          <div class="ord-lot-big">{{ '%.2f'|format(risk_model_result.account_risk_pct) }}% account</div>
+          <div class="ord-muted">
+            Position ≈ {{ risk_model_result.position_dollars }} ·
+            Risk cash ≈ {{ risk_model_result.account_risk_cash }}
+          </div>
+        </div>
+        {% endif %}
+      {% endif %}
+      {% else %}
+      <div class="ord-section-head">
+        <h2>Lot size calculator</h2>
+        <p>Balance × Risk% ÷ (SL pips × pip value)</p>
+      </div>
+      <form method="POST" action="{{ url_for('owner_rules.lot_size') }}" class="ord-lot-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Account balance
+          <input class="ord-input" name="balance" type="number" step="any"
+                 value="{{ lot_form.balance or book.account_current_balance or book.account_starting_balance or '' }}">
+        </label>
+        <label>Risk %
+          <input class="ord-input" name="risk_pct" type="number" step="any"
+                 value="{{ lot_form.risk_pct or risk.risk_pct }}">
+        </label>
+        <label>Stop loss (pips)
+          <input class="ord-input" name="sl_pips" type="number" step="any"
+                 value="{{ lot_form.sl_pips or '' }}" required>
+        </label>
+        <label>Pip value ($ / pip on 1.0 lot)
+          <input class="ord-input" name="pip_value" type="number" step="any"
+                 value="{{ lot_form.pip_value or '10' }}">
+        </label>
+        <button class="ord-btn wide" type="submit">Calculate lots</button>
+      </form>
+      {% if lot_result %}
+        {% if lot_result.error %}
+        <p class="ord-alert">{{ lot_result.error }}</p>
+        {% else %}
+        <div class="ord-lot-result">
+          <div class="ord-lot-big">{{ lot_result.lots }} lots</div>
+          <div class="ord-muted">Risk cash ≈ {{ lot_result.risk_cash }} · Min R:R {{ brief.min_rr|default(2) }}:1</div>
+        </div>
+        {% endif %}
+      {% endif %}
+      {% endif %}
+    </div>
+  </section>
+
+  {# RULES BRIEF #}
+  <section class="ord-tab-panel {% if active_tab == 'rules' %}is-active{% endif %}" data-panel="rules">
+    <div class="ord-panel ord-brief">
+      <div class="ord-section-head">
+        <h2>{{ brief.strategy_name or 'Active system' }}</h2>
+        <p>{% if brief.style %}{{ brief.style }} · {% endif %}Bodies / levels / patience</p>
+      </div>
+      {% if brief.overview %}<p class="ord-overview">{{ brief.overview }}</p>{% endif %}
+      {% if brief.instruments %}
+      <div class="ord-instruments">
+        {% for sym in brief.instruments %}<span>{{ sym }}</span>{% endfor %}
+      </div>
+      {% endif %}
+      <div class="ord-frames">
+        {% for f in brief.frames %}
+        <article class="ord-frame">
+          <h3>{{ f.label }}</h3>
+          <p class="ord-muted">{{ f.prompt }}</p>
+          {% if f.rules %}<pre class="ord-rules">{{ f.rules }}</pre>{% endif %}
+        </article>
+        {% endfor %}
+      </div>
+      <div class="ord-rules-grid">
+        {% if brief.entry_rules %}<div><h3>Entry</h3><pre class="ord-rules">{{ brief.entry_rules }}</pre></div>{% endif %}
+        {% if brief.exit_rules %}<div><h3>Exit</h3><pre class="ord-rules">{{ brief.exit_rules }}</pre></div>{% endif %}
+        {% if brief.do_not_trade %}<div><h3 class="text-danger">Do not trade</h3><pre class="ord-rules">{{ brief.do_not_trade }}</pre></div>{% endif %}
+        {% if brief.psychology %}<div><h3>Psychology</h3><pre class="ord-rules">{{ brief.psychology }}</pre></div>{% endif %}
       </div>
       {% if checklist.hurdles %}
       <div class="ord-checklist-block">
-        <h3>5 Key Hurdles — audit every trade</h3>
-        <ul class="ord-check-list">
-          {% for item in checklist.hurdles %}
-          <li>
-            <label>
-              <input type="checkbox" data-hurdle-id="{{ item.id }}">
-              <span>Did I avoid: {{ item.label }}?</span>
-            </label>
-          </li>
-          {% endfor %}
+        <h3>5 Key Hurdles</h3>
+        <ul class="ord-no-list">
+          {% for item in checklist.hurdles %}<li>{{ item.label }}</li>{% endfor %}
         </ul>
       </div>
       {% endif %}
-    </section>
-
-    <aside class="ord-side">
-      {# Risk calculator — FX lot OR Vincent 10-2-2 #}
-      <section class="ord-panel">
-        {% if is_vincent %}
-        <div class="ord-section-head">
-          <h2>10-2-2 risk model</h2>
-          <p>10% allocation × 20% option loss = 2% account risk</p>
-        </div>
-        <form method="POST" action="{{ url_for('owner_rules.ten_two_two') }}" class="ord-lot-form">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <label>Account balance
-            <input class="ord-input" name="balance" type="number" step="any"
-                   value="{{ risk_model_form.balance or book.account_current_balance or book.account_starting_balance or '' }}">
-          </label>
-          <label>Capital allocation % (max 10)
-            <input class="ord-input" name="allocation_pct" type="number" step="any"
-                   value="{{ risk_model_form.allocation_pct or '10' }}">
-          </label>
-          <label>Expected option loss % (max 20)
-            <input class="ord-input" name="option_loss_pct" type="number" step="any"
-                   value="{{ risk_model_form.option_loss_pct or '20' }}">
-          </label>
-          <button class="ord-btn wide" type="submit">Check 10-2-2</button>
-        </form>
-        {% if risk_model_result %}
-          {% if risk_model_result.error %}
-          <p class="ord-alert">{{ risk_model_result.error }}</p>
-          {% else %}
-          <div class="ord-lot-result">
-            <div class="ord-lot-big">{{ '%.2f'|format(risk_model_result.account_risk_pct) }}% account</div>
-            <div class="ord-muted">
-              Position ≈ {{ risk_model_result.position_dollars }} ·
-              Risk cash ≈ {{ risk_model_result.account_risk_cash }} ·
-              {% if risk_model_result.ok %}Within limits{% else %}Over limits{% endif %}
-            </div>
-          </div>
-          {% endif %}
-        {% endif %}
-        {% else %}
-        <div class="ord-section-head">
-          <h2>Lot size calculator</h2>
-          <p>Balance × Risk% ÷ (SL pips × pip value)</p>
-        </div>
-        <form method="POST" action="{{ url_for('owner_rules.lot_size') }}" class="ord-lot-form">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <label>Account balance
-            <input class="ord-input" name="balance" type="number" step="any"
-                   value="{{ lot_form.balance or book.account_current_balance or book.account_starting_balance or '' }}">
-          </label>
-          <label>Risk %
-            <input class="ord-input" name="risk_pct" type="number" step="any"
-                   value="{{ lot_form.risk_pct or risk.risk_pct }}">
-          </label>
-          <label>Stop loss (pips)
-            <input class="ord-input" name="sl_pips" type="number" step="any"
-                   value="{{ lot_form.sl_pips or '' }}" required>
-          </label>
-          <label>Pip value ($ / pip on 1.0 lot)
-            <input class="ord-input" name="pip_value" type="number" step="any"
-                   value="{{ lot_form.pip_value or '10' }}">
-          </label>
-          <button class="ord-btn wide" type="submit">Calculate lots</button>
-        </form>
-        {% if lot_result %}
-          {% if lot_result.error %}
-          <p class="ord-alert">{{ lot_result.error }}</p>
-          {% else %}
-          <div class="ord-lot-result">
-            <div class="ord-lot-big">{{ lot_result.lots }} lots</div>
-            <div class="ord-muted">Risk cash ≈ {{ lot_result.risk_cash }} · Min R:R {{ brief.min_rr|default(2) }}:1 (target {{ brief.target_rr|default(4) }}:1)</div>
-          </div>
-          {% endif %}
-        {% endif %}
-        {% endif %}
-      </section>
-
-      {# Pre-trade advice #}
-      <section class="ord-panel">
-        <div class="ord-section-head">
-          <h2>Rule check</h2>
-          <p>Thesis vs active system — before the click.</p>
-        </div>
-        <form method="POST" action="{{ url_for('owner_rules.advise') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input class="ord-input mb-2" name="symbol" placeholder="Symbol e.g. EURUSD"
-                 value="{{ advise_symbol|default('') }}">
-          <textarea class="ord-input" name="thesis" rows="4"
-                    placeholder="HTF sync · AOI · pattern · candle signal">{{ advise_thesis|default('') }}</textarea>
-          <button class="ord-btn wide mt-2" type="submit">Check against rules</button>
-        </form>
-        {% if advice %}
-        <div class="ord-verdict ord-verdict-{{ advice.verdict }}">
-          <strong>{{ advice.verdict|replace('_', ' ')|upper }}</strong>
-          <p>{{ advice.message }}</p>
-          <p class="ord-muted">Suggested risk: {{ advice.suggested_risk_pct }}%</p>
-          {% if advice.warnings %}
-          <ul>{% for w in advice.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
-          {% endif %}
-        </div>
-        {% endif %}
-      </section>
-
-      {% if gate.allowed %}
-      <div class="ord-cta-row">
-        <a class="ord-btn" href="{{ url_for('trade.add') }}">Log trade</a>
-        <a class="ord-btn ghost" href="{{ url_for('trade.guide') }}">Voice Journal</a>
-      </div>
-      {% endif %}
-    </aside>
-  </div>
-
-  {# —— Multi-TF brief —— #}
-  <section class="ord-panel ord-brief">
-    <div class="ord-section-head">
-      <h2>{{ brief.strategy_name or 'Active system' }} — top-down brief</h2>
-      <p>{% if brief.style %}{{ brief.style }} · {% endif %}Bodies only · consecutive HTF sync required</p>
     </div>
-    {% if brief.overview %}
-    <p class="ord-overview">{{ brief.overview }}</p>
-    {% endif %}
-    {% if brief.instruments %}
-    <div class="ord-instruments">
-      {% for sym in brief.instruments %}
-      <span>{{ sym }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
-    <div class="ord-frames">
-      {% for f in brief.frames %}
-      <article class="ord-frame">
-        <h3>{{ f.label }}</h3>
-        <p class="ord-muted">{{ f.prompt }}</p>
-        {% if f.rules %}
-        <pre class="ord-rules">{{ f.rules }}</pre>
-        {% else %}
-        <p class="ord-alert">Not written yet.</p>
-        {% endif %}
-      </article>
-      {% endfor %}
-    </div>
-    <div class="ord-rules-grid">
-      {% if brief.entry_rules %}
-      <div>
-        <h3>Entry</h3>
-        <pre class="ord-rules">{{ brief.entry_rules }}</pre>
-      </div>
-      {% endif %}
-      {% if brief.exit_rules %}
-      <div>
-        <h3>Exit / management</h3>
-        <pre class="ord-rules">{{ brief.exit_rules }}</pre>
-      </div>
-      {% endif %}
-      {% if brief.do_not_trade %}
-      <div>
-        <h3 class="text-danger">Do not trade</h3>
-        <pre class="ord-rules">{{ brief.do_not_trade }}</pre>
-      </div>
-      {% endif %}
-      {% if brief.psychology %}
-      <div>
-        <h3>Psychology / daily limits</h3>
-        <pre class="ord-rules">{{ brief.psychology }}</pre>
-      </div>
-      {% endif %}
-    </div>
-    {% if brief.tips %}
-    <ul class="ord-tips">
-      {% for tip in brief.tips %}<li>{{ tip }}</li>{% endfor %}
-    </ul>
-    {% endif %}
   </section>
 </div>
 {% endblock %}
@@ -345,45 +411,95 @@
 {% block extra_js %}
 <script>
 (function () {
-  var checks = document.querySelectorAll('#ord-pretrade input[type=checkbox]');
-  var bar = document.getElementById('ord-check-bar');
-  var label = document.getElementById('ord-check-label');
-  var key = 'ord-check-' + ({{ strategy.id if strategy else 0 }});
-
-  function sync() {
-    var total = checks.length || 1;
-    var done = 0;
-    var state = {};
-    checks.forEach(function (c) {
-      if (c.checked) done += 1;
-      state[c.getAttribute('data-check-id')] = c.checked;
-    });
-    if (bar) bar.style.width = Math.round((done / total) * 100) + '%';
-    if (label) label.textContent = done + ' / ' + checks.length + ' cleared';
-    try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}
-  }
-
-  try {
-    var saved = JSON.parse(localStorage.getItem(key) || '{}');
-    checks.forEach(function (c) {
-      var id = c.getAttribute('data-check-id');
-      if (saved[id]) c.checked = true;
-      c.addEventListener('change', sync);
-    });
-  } catch (e) {
-    checks.forEach(function (c) { c.addEventListener('change', sync); });
-  }
-  sync();
-
-  var steps = document.querySelectorAll('#ord-steps .ord-step');
-  steps.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      steps.forEach(function (s) {
-        s.classList.remove('is-current');
-        s.setAttribute('aria-pressed', 'false');
+  var tabs = document.querySelectorAll('.ord-tab');
+  var panels = document.querySelectorAll('.ord-tab-panel');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var id = tab.getAttribute('data-tab');
+      tabs.forEach(function (t) { t.classList.toggle('is-active', t === tab); });
+      panels.forEach(function (p) {
+        p.classList.toggle('is-active', p.getAttribute('data-panel') === id);
       });
-      btn.classList.add('is-current');
-      btn.setAttribute('aria-pressed', 'true');
+      try { localStorage.setItem('ord-tab', id); } catch (e) {}
+    });
+  });
+
+  var sid = {{ strategy.id if strategy else 0 }};
+
+  function wireChecks(selector, barId, labelId, storageKey, labelFn) {
+    var checks = document.querySelectorAll(selector);
+    var bar = document.getElementById(barId);
+    var label = document.getElementById(labelId);
+    function sync() {
+      var total = checks.length || 1;
+      var done = 0;
+      var state = {};
+      checks.forEach(function (c) {
+        if (c.checked) done += 1;
+        state[c.getAttribute('data-practice-id') || c.getAttribute('data-ritual-id')] = c.checked;
+      });
+      if (bar) bar.style.width = Math.round((done / total) * 100) + '%';
+      if (label) label.textContent = labelFn(done, checks.length);
+      try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch (e) {}
+      return done;
+    }
+    try {
+      var saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+      checks.forEach(function (c) {
+        var id = c.getAttribute('data-practice-id') || c.getAttribute('data-ritual-id');
+        if (saved[id]) c.checked = true;
+        c.addEventListener('change', function () {
+          sync();
+          // advance ritual highlight
+          if (c.getAttribute('data-ritual-id') != null) {
+            var steps = document.querySelectorAll('.ord-ritual-step');
+            var idx = 0;
+            steps.forEach(function (s, i) {
+              var inp = s.querySelector('input[type=checkbox]');
+              if (inp && inp.checked) idx = i + 1;
+            });
+            steps.forEach(function (s, i) {
+              s.classList.toggle('is-current', i === Math.min(idx, steps.length - 1));
+              s.classList.toggle('is-done', i < idx);
+            });
+          }
+        });
+      });
+    } catch (e) {
+      checks.forEach(function (c) { c.addEventListener('change', sync); });
+    }
+    sync();
+  }
+
+  wireChecks(
+    '[data-practice-id]',
+    'ord-practice-bar',
+    'ord-practice-label',
+    'ord-practice-' + sid,
+    function (done, total) { return done + ' / ' + total + ' drills cleared'; }
+  );
+  wireChecks(
+    '[data-ritual-id]',
+    'ord-ritual-bar',
+    'ord-ritual-label',
+    'ord-ritual-' + sid,
+    function (done, total) { return done + ' / ' + total + ' steps'; }
+  );
+
+  // Preview filenames on drops
+  document.querySelectorAll('.ord-drop input[type=file]').forEach(function (inp) {
+    inp.addEventListener('change', function () {
+      var label = inp.closest('.ord-drop');
+      if (!label) return;
+      var name = (inp.files && inp.files[0] && inp.files[0].name) || '';
+      var span = label.querySelector('.ord-drop-file');
+      if (!span) {
+        span = document.createElement('span');
+        span.className = 'ord-drop-file';
+        label.appendChild(span);
+      }
+      span.textContent = name || '';
+      label.classList.toggle('has-file', !!name);
     });
   });
 })();

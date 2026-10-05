@@ -52,7 +52,7 @@ def get_or_create_rulebook(user):
 
 
 def ensure_seeded_strategies(user, book=None):
-    """Ensure Strategies 1+2 exist. Does not overwrite personal edits."""
+    """Ensure Strategies 1+2 exist. Refreshes system checklist/practice from seeds."""
     from app import db
     from app.models.owner_rules import OwnerStrategy
 
@@ -65,6 +65,8 @@ def ensure_seeded_strategies(user, book=None):
             existing.sort_order = order
             db.session.add(existing)
             db.session.flush()
+        else:
+            _refresh_system_fields(existing, payload)
         if first is None:
             first = existing
     if book is None:
@@ -79,6 +81,43 @@ def ensure_seeded_strategies(user, book=None):
         book.strategy_name = first.name
     db.session.commit()
     return first
+
+
+def _refresh_system_fields(row, payload: Dict[str, Any]) -> None:
+    """Keep seeded coaching blocks fresh without wiping personal psychology notes."""
+    row.name = payload["name"]
+    row.tagline = payload.get("tagline")
+    row.style = payload.get("style")
+    row.overview = payload.get("overview")
+    row.markets = payload.get("markets")
+    row.instruments_json = json.dumps(payload.get("instruments") or [])
+    row.timeframes = payload.get("timeframes")
+    row.timezone_name = payload.get("timezone_name") or row.timezone_name or "America/New_York"
+    row.weekly_bias_rules = payload.get("weekly_bias_rules")
+    row.daily_bias_rules = payload.get("daily_bias_rules")
+    row.h4_rules = payload.get("h4_rules")
+    row.m15_rules = payload.get("m15_rules")
+    row.entry_rules = payload.get("entry_rules")
+    row.exit_rules = payload.get("exit_rules")
+    row.invalidation_rules = payload.get("invalidation_rules")
+    # Preserve personal do-not-trade / psychology appends if already customized longer than seed
+    seed_dnt = (payload.get("do_not_trade_rules") or "").strip()
+    seed_psy = (payload.get("psychology_rules") or "").strip()
+    if not (row.do_not_trade_rules or "").strip() or len((row.do_not_trade_rules or "")) <= len(seed_dnt) + 20:
+        row.do_not_trade_rules = seed_dnt or row.do_not_trade_rules
+    if not (row.psychology_rules or "").strip() or len((row.psychology_rules or "")) <= len(seed_psy) + 20:
+        row.psychology_rules = seed_psy or row.psychology_rules
+    row.session_windows_json = json.dumps(payload.get("session_windows") or [])
+    row.checklist_json = json.dumps(payload.get("checklist") or {})
+    row.spec_json = json.dumps(payload.get("spec") or {})
+    row.gate_strict = bool(payload.get("gate_strict", True))
+    row.stop_after_first_win = bool(payload.get("stop_after_first_win", True))
+    row.max_trades_per_day = int(payload.get("max_trades_per_day") or 2)
+    row.max_losses_in_row = payload.get("max_losses_in_row")
+    row.risk_base_pct = float(payload.get("risk_base_pct") or 1.0)
+    row.risk_min_pct = float(payload.get("risk_min_pct") or 0.25)
+    row.min_rr = float(payload.get("min_rr") or 2.0)
+    row.target_rr = float(payload.get("target_rr") or 4.0)
 
 
 def OwnerRulebook_for(user):
@@ -556,7 +595,21 @@ def _brief(book, gate, strategy) -> Dict[str, Any]:
         "instruments": json.loads(getattr(src, "instruments_json", None) or "[]") if strategy else [],
         "min_rr": float(getattr(src, "min_rr", 2) or 2),
         "target_rr": float(getattr(src, "target_rr", 4) or 4),
+        "practice": _practice_from(src) if strategy else {},
+        "ritual": _ritual_from(src) if strategy else [],
     }
+
+
+def _practice_from(strategy) -> Dict[str, Any]:
+    from app.services.owner_setup_coach import practice_plan_for
+
+    return practice_plan_for(strategy)
+
+
+def _ritual_from(strategy) -> List[Dict[str, Any]]:
+    from app.services.owner_setup_coach import ritual_for
+
+    return ritual_for(strategy)
 
 
 def build_desk_brief(user) -> Dict[str, Any]:

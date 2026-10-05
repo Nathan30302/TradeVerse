@@ -26,6 +26,7 @@ from app.services.owner_discipline import (
     windows_as_text,
     windows_from_form,
 )
+from app.services.owner_setup_coach import analyze_setup_screenshots
 
 bp = Blueprint("owner_rules", __name__, url_prefix="/owner/rules")
 
@@ -48,6 +49,9 @@ def _desk_context(
     lot_form=None,
     risk_model_result=None,
     risk_model_form=None,
+    setup_result=None,
+    setup_form=None,
+    active_tab="practice",
 ):
     book = get_or_create_rulebook(current_user)
     strategies = list_strategies(current_user)
@@ -63,6 +67,8 @@ def _desk_context(
         "risk": brief["risk"],
         "day": gate.get("day") or {},
         "checklist": brief.get("checklist") or {},
+        "practice": brief.get("practice") or {},
+        "ritual": brief.get("ritual") or [],
         "advice": advice,
         "advise_symbol": advise_symbol,
         "advise_thesis": advise_thesis,
@@ -70,7 +76,10 @@ def _desk_context(
         "lot_form": lot_form or {},
         "risk_model_result": risk_model_result,
         "risk_model_form": risk_model_form or {},
+        "setup_result": setup_result,
+        "setup_form": setup_form or {},
         "is_vincent": _is_vincent(strategy),
+        "active_tab": active_tab or "practice",
     }
 
 
@@ -142,7 +151,7 @@ def lot_size():
     result = calc_lot_size(balance=balance, risk_pct=risk_pct, sl_pips=sl_pips, pip_value=pip_value)
     return render_template(
         "owner_rules/desk.html",
-        **_desk_context(lot_result=result, lot_form=form),
+        **_desk_context(lot_result=result, lot_form=form, active_tab="size"),
     )
 
 
@@ -173,7 +182,65 @@ def ten_two_two():
     )
     return render_template(
         "owner_rules/desk.html",
-        **_desk_context(risk_model_result=result, risk_model_form=form),
+        **_desk_context(risk_model_result=result, risk_model_form=form, active_tab="size"),
+    )
+
+
+@bp.route("/setup-check", methods=["POST"])
+@login_required
+def setup_check():
+    """Upload 1–3 chart screenshots → go / wait / no_trade vs active strategy."""
+    _require_owner()
+    book = get_or_create_rulebook(current_user)
+    strategy = get_active_strategy(current_user, book)
+    files = []
+    for key in ("chart_daily", "chart_h4", "chart_entry", "charts"):
+        if key == "charts":
+            files.extend([f for f in request.files.getlist("charts") if f and f.filename])
+        else:
+            f = request.files.get(key)
+            if f and f.filename:
+                files.append(f)
+    # de-dupe by filename+size-ish
+    seen = set()
+    unique = []
+    for f in files:
+        mark = (f.filename, getattr(f, "content_length", None))
+        if mark in seen:
+            continue
+        seen.add(mark)
+        unique.append(f)
+    form = {
+        "symbol": (request.form.get("symbol") or "").strip(),
+        "notes": (request.form.get("notes") or "").strip(),
+    }
+    result = analyze_setup_screenshots(
+        strategy=strategy,
+        images=unique[:3],
+        notes=form["notes"],
+        symbol=form["symbol"],
+    )
+    try:
+        from app.models.owner_rules import OwnerRuleCheckLog
+
+        db.session.add(
+            OwnerRuleCheckLog(
+                user_id=current_user.id,
+                event_type="setup_coach",
+                detail=(
+                    f"verdict={result.get('verdict')}; "
+                    f"symbol={form['symbol']}; "
+                    f"imgs={len(unique[:3])}; "
+                    f"{(result.get('headline') or '')[:180]}"
+                ),
+            )
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return render_template(
+        "owner_rules/desk.html",
+        **_desk_context(setup_result=result, setup_form=form, active_tab="coach"),
     )
 
 
@@ -288,5 +355,6 @@ def advise():
             advice=advice,
             advise_symbol=request.form.get("symbol") or "",
             advise_thesis=request.form.get("thesis") or "",
+            active_tab="ritual",
         ),
     )

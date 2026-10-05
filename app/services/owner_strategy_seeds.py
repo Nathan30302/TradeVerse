@@ -157,6 +157,87 @@ def fx_alexg_strategy_payload() -> Dict[str, Any]:
                 {"id": "signal", "title": "Entry signal", "prompt": "15M–2H candle confirmation + R:R ≥ 1:2?"},
                 {"id": "execute", "title": "Execute", "prompt": "Market order sized, SL/TP set, then set-and-forget."},
             ],
+            "ritual": [
+                {
+                    "id": "r1",
+                    "title": "Open the window",
+                    "do": "Confirm clock is 01:00–10:30 EST. If not — stop. No charts-as-entertainment.",
+                    "pass": "Inside the window (or honest unlock).",
+                },
+                {
+                    "id": "r2",
+                    "title": "Pick the pair",
+                    "do": "Only approved majors / SPX500. Write the symbol.",
+                    "pass": "Symbol is on the watchlist.",
+                },
+                {
+                    "id": "r3",
+                    "title": "HTF sync",
+                    "do": "Weekly + Daily same bias, OR Daily + 4H same bias. Bodies only. If conflict — discard.",
+                    "pass": "Two consecutive TFs agree. Write BULLISH or BEARISH.",
+                },
+                {
+                    "id": "r4",
+                    "title": "AOI location",
+                    "do": "Price must be retesting a Weekly/Daily AOI (≥3 body touches, 5–60 pips). No mid-air.",
+                    "pass": "You can point to the AOI box on the chart.",
+                },
+                {
+                    "id": "r5",
+                    "title": "Pattern + candle",
+                    "do": "Break & Retest or H&S neckline B&R, then engulfing / star / rejection on 15M–2H.",
+                    "pass": "Pattern + candle both present in regime direction.",
+                },
+                {
+                    "id": "r6",
+                    "title": "Size & fire",
+                    "do": "R:R ≥ 1:2. Lot from calculator. Market order with SL/TP. Then set-and-forget.",
+                    "pass": "Order live with SL/TP — hands off.",
+                },
+            ],
+            "practice": {
+                "duration_minutes": 120,
+                "title": "Daily 2-hour FX AlexG practice",
+                "focus": "Train HTF sync + AOI patience. Become boring and profitable.",
+                "blocks": [
+                    {
+                        "minutes": 25,
+                        "title": "Top-down map (replay or live)",
+                        "tasks": [
+                            "On 3 pairs: mark Weekly HH/HL or LL/LH with bodies + Snake Trick.",
+                            "Mark Daily the same way. Circle only pairs with W+D or D+4H sync.",
+                            "Write one line bias per pair. Discard conflicts.",
+                        ],
+                    },
+                    {
+                        "minutes": 35,
+                        "title": "AOI drills",
+                        "tasks": [
+                            "On synced pairs, draw Weekly/Daily AOIs inside active structure only.",
+                            "Reject any zone <5 or >60 pips or with fewer than 3 body touches.",
+                            "Screenshot 2 valid AOIs and 1 invalid — explain why.",
+                        ],
+                    },
+                    {
+                        "minutes": 40,
+                        "title": "Entry trigger reps",
+                        "tasks": [
+                            "Replay or watch for Break & Retest into AOI — do NOT chase the break.",
+                            "Mark 5 historical B&R candles (engulfing / morning-evening star).",
+                            "Run 1–3 screenshots through Setup Coach before any sim entry.",
+                        ],
+                    },
+                    {
+                        "minutes": 20,
+                        "title": "Risk & review",
+                        "tasks": [
+                            "Practice lot calc on 3 fake SL distances.",
+                            "Journal: one rule you almost broke; one clean no-trade you took.",
+                            "If you already have a win today — stop. Protect the edge.",
+                        ],
+                    },
+                ],
+            },
         },
         "spec": {
             "system_name": "FX_ALEXG_CORE_TRADING_SYSTEM",
@@ -330,6 +411,80 @@ def vincent_desiano_strategy_payload() -> Dict[str, Any]:
                 {"id": "widen_sl", "label": "Stop-loss modifications"},
                 {"id": "early_exit", "label": "Early exit before 2R"},
             ],
+            "ritual": [
+                {
+                    "id": "v1",
+                    "title": "Pre-market map",
+                    "do": "Plot PDH, PDL, Pre-Market High/Low, 20/50/100/200 DMA. Shade No-Trade Zones. Zero discretion.",
+                    "pass": "All key levels are on the chart before RTH.",
+                },
+                {
+                    "id": "v2",
+                    "title": "Wait for the break",
+                    "do": "Watch a mapped level break cleanly. Do not enter on the break.",
+                    "pass": "Break happened on a mapped level — you are still flat.",
+                },
+                {
+                    "id": "v3",
+                    "title": "Wait for the retest",
+                    "do": "Price returns to retest broken level as support (long) or resistance (short).",
+                    "pass": "Retest is in progress at the level — not mid-air.",
+                },
+                {
+                    "id": "v4",
+                    "title": "Confirm PA + correlation",
+                    "do": "Price action holds/rejects. Check NQ↔ES or QQQ↔SPY — abort traps.",
+                    "pass": "Hold confirmed and markets aligned (or valid divergence short).",
+                },
+                {
+                    "id": "v5",
+                    "title": "10-2-2 then execute",
+                    "do": "Size ≤10% allocation / ≤20% option loss / ≤2% account. SL beyond level — never widen. Min 2R.",
+                    "pass": "Sized correctly, SL locked, path to 2R exists.",
+                },
+            ],
+            "practice": {
+                "duration_minutes": 120,
+                "title": "Daily 2-hour Vincent B&R practice",
+                "focus": "Levels first. Never chase. Correlation is a filter, not optional.",
+                "blocks": [
+                    {
+                        "minutes": 25,
+                        "title": "Pre-market mapping drill",
+                        "tasks": [
+                            "On NQ and ES (or QQQ/SPY): plot PDH/PDL, PMH/PML, DMAs before the open.",
+                            "Shade at least one No-Trade Zone from tight pivots.",
+                            "Screenshot your level map — compare to yesterday’s respect/fail.",
+                        ],
+                    },
+                    {
+                        "minutes": 40,
+                        "title": "Break & retest replay",
+                        "tasks": [
+                            "Replay 8 historical sessions. Pause before the retest — call long, short, or pass.",
+                            "Mark every chase you would have taken emotionally — then cross it out.",
+                            "Track: would correlation have saved or aborted you?",
+                        ],
+                    },
+                    {
+                        "minutes": 35,
+                        "title": "Live / sim RTH watch",
+                        "tasks": [
+                            "One A+ B&R only. Upload Daily + intraday screenshots to Setup Coach before entry.",
+                            "If coach says wait — write the exact wait condition and sit on hands.",
+                            "Practice 10-2-2 sizing on paper for any candidate.",
+                        ],
+                    },
+                    {
+                        "minutes": 20,
+                        "title": "5 Hurdles review",
+                        "tasks": [
+                            "Score yourself on chasing, FOMO, bad levels, widened stops, early exits.",
+                            "One paragraph: what made today a good no-trade (or a valid 2R path).",
+                        ],
+                    },
+                ],
+            },
         },
         "spec": {
             "system_name": "VINCENT_DESIANO_BREAK_RETEST",
