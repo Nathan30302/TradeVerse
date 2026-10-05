@@ -1,4 +1,4 @@
-"""Owner Rules Desk — personal discipline coach (owner-only)."""
+"""Owner Rules Desk — multi-strategy discipline coach (owner-only)."""
 
 from __future__ import annotations
 
@@ -8,17 +8,23 @@ from types import SimpleNamespace
 import pytest
 
 from app import create_app, db, schema_compat
-from app.models.owner_rules import OwnerRulebook
+from app.models.owner_rules import OwnerRulebook, OwnerStrategy
 from app.models.user import User
 from app.services.owner_discipline import (
     advise_before_trade,
     build_multi_tf_brief,
+    calc_lot_size,
+    daily_trade_status,
     drawdown_fraction,
+    get_or_create_rulebook,
     is_owner_discipline_user,
+    list_strategies,
+    record_day_trade_result,
     session_gate,
     suggested_risk,
     windows_from_form,
 )
+from app.services.owner_strategy_seeds import FX_ALEXG_SLUG
 
 
 @pytest.fixture
@@ -56,7 +62,9 @@ def user_client(app):
 def test_only_owner_sees_rules_desk(app):
     c = app.test_client()
     c.post("/auth/login", data={"username": "nathan", "password": "password12"}, follow_redirects=True)
-    assert c.get("/owner/rules/").status_code == 200
+    r = c.get("/owner/rules/")
+    assert r.status_code == 200
+    assert b"Break &amp; Retest" in r.data or b"Break & Retest" in r.data
     c.get("/auth/logout", follow_redirects=True)
     c.post("/auth/login", data={"username": "trader", "password": "password12"}, follow_redirects=True)
     with c.session_transaction() as sess:
@@ -66,6 +74,21 @@ def test_only_owner_sees_rules_desk(app):
         assert u.username == "trader"
         assert (u.role or "").lower() == "user"
     assert c.get("/owner/rules/").status_code == 404
+
+
+def test_fx_alexg_seeded_on_desk_open(app):
+    with app.app_context():
+        owner = User.query.filter_by(username="nathan").first()
+        book = get_or_create_rulebook(owner)
+        strategies = list_strategies(owner)
+        assert len(strategies) >= 1
+        assert strategies[0].slug == FX_ALEXG_SLUG
+        assert book.active_strategy_id == strategies[0].id
+        assert strategies[0].max_trades_per_day == 2
+        assert strategies[0].stop_after_first_win is True
+        checklist = json.loads(strategies[0].checklist_json or "{}")
+        assert len(checklist.get("pre_trade") or []) >= 8
+        assert len(checklist.get("states") or []) == 6
 
 
 def test_risk_scales_down_in_drawdown():
@@ -80,6 +103,14 @@ def test_risk_scales_down_in_drawdown():
     risk = suggested_risk(book)
     assert risk["mode"] == "recovery"
     assert risk["risk_pct"] == pytest.approx(0.25)
+
+
+def test_lot_size_formula():
+    # 10000 * 1% / (20 * 10) = 100 / 200 = 0.5
+    result = calc_lot_size(balance=10000, risk_pct=1.0, sl_pips=20, pip_value=10)
+    assert result["error"] is None
+    assert result["lots"] == 0.5
+    assert result["risk_cash"] == 100.0
 
 
 def test_session_windows_parse_and_gate():
@@ -109,6 +140,13 @@ def test_session_windows_parse_and_gate():
         overview="SMC London",
         strategy_name="Test",
         markets="US30, XAUUSD",
+        trades_today=0,
+        wins_today=0,
+        losses_today=0,
+        day_locked=False,
+        day_lock_reason=None,
+        day_key=None,
+        max_trades_per_day=2,
     )
     user = SimpleNamespace(timezone="UTC", id=1, is_authenticated=True)
     gate = session_gate(user, book)
@@ -120,24 +158,34 @@ def test_session_windows_parse_and_gate():
     assert advice["warnings"]
 
 
-def test_owner_can_save_bible(owner_client, app):
+def test_daily_stop_after_first_win(app):
+    with app.app_context():
+        owner = User.query.filter_by(username="nathan").first()
+        get_or_create_rulebook(owner)
+        status = record_day_trade_result(owner, "win")
+        assert status["wins_today"] == 1
+        assert status["locked"] is True
+        assert "done for the day" in (status["reason"] or "").lower()
+
+
+def test_daily_second_chance_after_loss(app):
+    with app.app_context():
+        owner = User.query.filter_by(username="nathan").first()
+        get_or_create_rulebook(owner)
+        status = record_day_trade_result(owner, "loss")
+        assert status["losses_today"] == 1
+        assert status["locked"] is False
+        assert status["remaining"] == 1
+        status = record_day_trade_result(owner, "loss")
+        assert status["trades_today"] == 2
+        assert status["locked"] is True
+
+
+def test_owner_can_save_desk_settings(owner_client, app):
     r = owner_client.post(
         "/owner/rules/bible",
         data={
-            "strategy_name": "Nathan SMC",
-            "overview": "Liquidity sweep then displacement.",
-            "markets": "US30, XAUUSD",
-            "timeframes": "W, D, H4, M15",
-            "weekly_bias_rules": "Trade with weekly candle close.",
-            "daily_bias_rules": "Only with daily FVG direction.",
-            "h4_rules": "Wait for H4 BOS.",
-            "m15_rules": "Enter on M15 retest.",
-            "entry_rules": "Confirm displacement + MSS.",
-            "exit_rules": "Partial at 1R, runner to next OB.",
-            "invalidation_rules": "Close beyond sweep extreme.",
-            "do_not_trade_rules": "No mid-range; no revenge.",
-            "psychology_rules": "Stop after 2 losses.",
-            "session_windows": "London|0,1,2,3,4|07:00|11:30",
+            "action": "desk",
             "gate_strict": "on",
             "enabled": "on",
             "risk_base_pct": "1",
@@ -150,12 +198,28 @@ def test_owner_can_save_bible(owner_client, app):
     )
     assert r.status_code in (302, 303)
     with app.app_context():
-        book = OwnerRulebook.query.filter_by(user_id=1).first()
-        # user id may not be 1 — fetch by strategy name
-        book = OwnerRulebook.query.filter_by(strategy_name="Nathan SMC").first()
+        owner = User.query.filter_by(username="nathan").first()
+        book = OwnerRulebook.query.filter_by(user_id=owner.id).first()
         assert book is not None
-        assert "London" in book.session_windows_json
+        assert book.account_current_balance == 10000
         assert book.gate_strict is True
+        strat = OwnerStrategy.query.filter_by(user_id=owner.id, slug=FX_ALEXG_SLUG).first()
+        assert strat is not None
+
+
+def test_lot_calc_route(owner_client):
+    r = owner_client.post(
+        "/owner/rules/lot-size",
+        data={
+            "balance": "10000",
+            "risk_pct": "1",
+            "sl_pips": "20",
+            "pip_value": "10",
+        },
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    assert b"0.5 lots" in r.data
 
 
 def test_is_owner_helper(app):
@@ -164,3 +228,19 @@ def test_is_owner_helper(app):
         trader = User.query.filter_by(username="trader").first()
         assert is_owner_discipline_user(owner) is True
         assert is_owner_discipline_user(trader) is False
+
+
+def test_advise_rejects_off_watchlist(app):
+    with app.app_context():
+        owner = User.query.filter_by(username="nathan").first()
+        book = get_or_create_rulebook(owner)
+        from app.services.owner_discipline import get_active_strategy
+
+        strategy = get_active_strategy(owner, book)
+        advice = advise_before_trade(
+            book,
+            symbol="DOGEUSDT",
+            thesis="Weekly and daily bullish, AOI retest with engulfing",
+            strategy=strategy,
+        )
+        assert any("approved" in w.lower() or "instrument" in w.lower() for w in advice["warnings"])

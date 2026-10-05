@@ -1,5 +1,5 @@
 """
-Owner Rules Desk — Nathan-only strategy bible, time gates, risk coach.
+Owner Rules Desk — multi-strategy bible, session gates, checklist, lot calc.
 """
 
 from __future__ import annotations
@@ -10,10 +10,15 @@ from flask_login import current_user, login_required
 from app import db
 from app.services.owner_discipline import (
     advise_before_trade,
-    build_multi_tf_brief,
+    build_desk_brief,
+    calc_lot_size,
+    get_active_strategy,
     get_or_create_rulebook,
     is_owner_discipline_user,
+    list_strategies,
+    record_day_trade_result,
     session_gate,
+    set_active_strategy,
     suggested_risk,
     unlock_session_today,
     update_balance,
@@ -29,77 +34,161 @@ def _require_owner():
         abort(404)  # hide existence from non-owners
 
 
+def _desk_context(*, advice=None, advise_symbol="", advise_thesis="", lot_result=None, lot_form=None):
+    book = get_or_create_rulebook(current_user)
+    strategies = list_strategies(current_user)
+    strategy = get_active_strategy(current_user, book)
+    gate = session_gate(current_user, book, strategy)
+    brief = build_desk_brief(current_user)
+    return {
+        "book": book,
+        "strategies": strategies,
+        "strategy": strategy,
+        "gate": gate,
+        "brief": brief,
+        "risk": brief["risk"],
+        "day": gate.get("day") or {},
+        "checklist": brief.get("checklist") or {},
+        "advice": advice,
+        "advise_symbol": advise_symbol,
+        "advise_thesis": advise_thesis,
+        "lot_result": lot_result,
+        "lot_form": lot_form or {},
+    }
+
+
 @bp.route("/")
 @login_required
 def desk():
-    """Daily intelligence desk: gate, risk, multi-TF brief."""
+    """Daily intelligence desk: strategy switcher, gate, checklist, lot calc."""
+    _require_owner()
+    return render_template("owner_rules/desk.html", **_desk_context())
+
+
+@bp.route("/activate", methods=["POST"])
+@login_required
+def activate_strategy():
+    _require_owner()
+    try:
+        sid = int(request.form.get("strategy_id") or 0)
+    except (TypeError, ValueError):
+        flash("Pick a valid strategy.", "danger")
+        return redirect(url_for("owner_rules.desk"))
+    s = set_active_strategy(current_user, sid)
+    if not s:
+        flash("Strategy not found.", "danger")
+    else:
+        flash(f"Active system: {s.name}", "success")
+    return redirect(url_for("owner_rules.desk"))
+
+
+@bp.route("/day-result", methods=["POST"])
+@login_required
+def day_result():
+    _require_owner()
+    result = (request.form.get("result") or "").strip().lower()
+    if result not in ("win", "loss", "scratch"):
+        flash("Log win, loss, or scratch.", "danger")
+        return redirect(url_for("owner_rules.desk"))
+    status = record_day_trade_result(current_user, result)
+    if status.get("locked"):
+        flash(status.get("reason") or "Day locked.", "warning")
+    else:
+        flash(
+            f"Logged {result}. Trades today: {status['trades_today']}/{status['max_trades']}.",
+            "success",
+        )
+    return redirect(url_for("owner_rules.desk"))
+
+
+@bp.route("/lot-size", methods=["POST"])
+@login_required
+def lot_size():
     _require_owner()
     book = get_or_create_rulebook(current_user)
-    gate = session_gate(current_user, book)
-    brief = build_multi_tf_brief(book, gate)
+    strategy = get_active_strategy(current_user, book)
+    risk = suggested_risk(book, strategy)
+    form = {
+        "balance": request.form.get("balance") or "",
+        "risk_pct": request.form.get("risk_pct") or "",
+        "sl_pips": request.form.get("sl_pips") or "",
+        "pip_value": request.form.get("pip_value") or "10",
+    }
+    try:
+        balance = float(form["balance"] or risk.get("balance") or 0)
+        risk_pct = float(form["risk_pct"] or risk.get("risk_pct") or 1)
+        sl_pips = float(form["sl_pips"] or 0)
+        pip_value = float(form["pip_value"] or 10)
+    except ValueError:
+        flash("Check lot calculator numbers.", "danger")
+        return redirect(url_for("owner_rules.desk"))
+    result = calc_lot_size(balance=balance, risk_pct=risk_pct, sl_pips=sl_pips, pip_value=pip_value)
     return render_template(
         "owner_rules/desk.html",
-        book=book,
-        gate=gate,
-        brief=brief,
-        risk=brief["risk"],
+        **_desk_context(lot_result=result, lot_form=form),
     )
 
 
 @bp.route("/bible", methods=["GET", "POST"])
 @login_required
 def bible():
-    """Write / edit the full trading system in detail."""
+    """Strategy library + desk equity settings. Seeded systems are view-first."""
     _require_owner()
     book = get_or_create_rulebook(current_user)
+    strategies = list_strategies(current_user)
+    strategy = get_active_strategy(current_user, book)
+
     if request.method == "POST":
-        book.strategy_name = (request.form.get("strategy_name") or "My system").strip()[:160]
-        book.overview = (request.form.get("overview") or "").strip() or None
-        book.markets = (request.form.get("markets") or "").strip() or None
-        book.timeframes = (request.form.get("timeframes") or "").strip()[:120] or None
-        book.weekly_bias_rules = (request.form.get("weekly_bias_rules") or "").strip() or None
-        book.daily_bias_rules = (request.form.get("daily_bias_rules") or "").strip() or None
-        book.h4_rules = (request.form.get("h4_rules") or "").strip() or None
-        book.m15_rules = (request.form.get("m15_rules") or "").strip() or None
-        book.entry_rules = (request.form.get("entry_rules") or "").strip() or None
-        book.exit_rules = (request.form.get("exit_rules") or "").strip() or None
-        book.invalidation_rules = (request.form.get("invalidation_rules") or "").strip() or None
-        book.do_not_trade_rules = (request.form.get("do_not_trade_rules") or "").strip() or None
-        book.psychology_rules = (request.form.get("psychology_rules") or "").strip() or None
-        book.session_windows_json = windows_from_form(request.form.get("session_windows") or "")
-        book.gate_strict = request.form.get("gate_strict") == "on"
-        book.enabled = request.form.get("enabled") == "on"
-        try:
-            book.risk_base_pct = float(request.form.get("risk_base_pct") or 1.0)
-            book.risk_min_pct = float(request.form.get("risk_min_pct") or 0.25)
-        except ValueError:
-            flash("Check risk percentages.", "danger")
-            return redirect(url_for("owner_rules.bible"))
-        for field, key in (
-            ("account_starting_balance", "account_starting_balance"),
-            ("account_high_water", "account_high_water"),
-            ("account_current_balance", "account_current_balance"),
-        ):
-            raw = (request.form.get(field) or "").strip()
-            if raw == "":
-                continue
+        action = (request.form.get("action") or "desk").strip()
+        if action == "desk":
+            book.gate_strict = request.form.get("gate_strict") == "on"
+            book.enabled = request.form.get("enabled") == "on"
             try:
-                setattr(book, key, float(raw))
+                book.risk_base_pct = float(request.form.get("risk_base_pct") or book.risk_base_pct or 1.0)
+                book.risk_min_pct = float(request.form.get("risk_min_pct") or book.risk_min_pct or 0.25)
             except ValueError:
-                flash(f"Invalid number for {field}.", "danger")
+                flash("Check risk percentages.", "danger")
                 return redirect(url_for("owner_rules.bible"))
-        mt = (request.form.get("max_trades_per_day") or "").strip()
-        ml = (request.form.get("max_losses_in_row") or "").strip()
-        book.max_trades_per_day = int(mt) if mt.isdigit() else None
-        book.max_losses_in_row = int(ml) if ml.isdigit() else None
-        db.session.commit()
-        flash("Your trading bible is saved. The desk will coach from these rules only.", "success")
-        return redirect(url_for("owner_rules.desk"))
+            for field in (
+                "account_starting_balance",
+                "account_high_water",
+                "account_current_balance",
+            ):
+                raw = (request.form.get(field) or "").strip()
+                if raw == "":
+                    continue
+                try:
+                    setattr(book, field, float(raw))
+                except ValueError:
+                    flash(f"Invalid number for {field}.", "danger")
+                    return redirect(url_for("owner_rules.bible"))
+            db.session.commit()
+            flash("Desk equity & risk settings saved.", "success")
+            return redirect(url_for("owner_rules.desk"))
+
+        # Optional custom override on active strategy (notes / personal tweaks)
+        if strategy and action == "strategy_notes":
+            strategy.psychology_rules = (request.form.get("psychology_rules") or "").strip() or strategy.psychology_rules
+            strategy.do_not_trade_rules = (
+                request.form.get("do_not_trade_rules") or ""
+            ).strip() or strategy.do_not_trade_rules
+            raw_windows = (request.form.get("session_windows") or "").strip()
+            if raw_windows:
+                strategy.session_windows_json = windows_from_form(raw_windows)
+                book.session_windows_json = strategy.session_windows_json
+            db.session.commit()
+            flash("Strategy notes updated.", "success")
+            return redirect(url_for("owner_rules.bible"))
+
+        flash("Nothing to save.", "info")
+        return redirect(url_for("owner_rules.bible"))
 
     return render_template(
         "owner_rules/bible.html",
         book=book,
-        windows_text=windows_as_text(book),
+        strategies=strategies,
+        strategy=strategy,
+        windows_text=windows_as_text(strategy or book),
     )
 
 
@@ -137,21 +226,19 @@ def balance():
 def advise():
     _require_owner()
     book = get_or_create_rulebook(current_user)
+    strategy = get_active_strategy(current_user, book)
     advice = advise_before_trade(
         book,
         symbol=(request.form.get("symbol") or "").strip(),
         thesis=(request.form.get("thesis") or "").strip(),
         session_hint=(request.form.get("session_hint") or "").strip(),
+        strategy=strategy,
     )
-    gate = session_gate(current_user, book)
-    brief = build_multi_tf_brief(book, gate)
     return render_template(
         "owner_rules/desk.html",
-        book=book,
-        gate=gate,
-        brief=brief,
-        risk=brief["risk"],
-        advice=advice,
-        advise_symbol=request.form.get("symbol") or "",
-        advise_thesis=request.form.get("thesis") or "",
+        **_desk_context(
+            advice=advice,
+            advise_symbol=request.form.get("symbol") or "",
+            advise_thesis=request.form.get("thesis") or "",
+        ),
     )

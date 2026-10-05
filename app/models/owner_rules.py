@@ -1,5 +1,5 @@
 """
-Owner-only trading rulebook — Nathan's personal discipline system (not public).
+Owner-only trading rulebooks & strategies — Nathan's personal discipline system.
 """
 
 from __future__ import annotations
@@ -9,20 +9,71 @@ from app.utils.timeutil import utc_now
 
 
 class OwnerRulebook(db.Model):
-    """Detailed personal strategy bible for the platform owner."""
+    """Account-level desk settings (one per owner): equity, unlock, daily counters."""
 
     __tablename__ = "owner_rulebooks"
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True, index=True)
 
+    # Legacy single-bible fields kept for compatibility; strategies hold the real playbooks.
     strategy_name = db.Column(db.String(160), nullable=False, default="My system")
     overview = db.Column(db.Text, nullable=True)
+    markets = db.Column(db.Text, nullable=True)
+    timeframes = db.Column(db.String(120), nullable=True)
+    weekly_bias_rules = db.Column(db.Text, nullable=True)
+    daily_bias_rules = db.Column(db.Text, nullable=True)
+    h4_rules = db.Column(db.Text, nullable=True)
+    m15_rules = db.Column(db.Text, nullable=True)
+    entry_rules = db.Column(db.Text, nullable=True)
+    exit_rules = db.Column(db.Text, nullable=True)
+    invalidation_rules = db.Column(db.Text, nullable=True)
+    do_not_trade_rules = db.Column(db.Text, nullable=True)
+    psychology_rules = db.Column(db.Text, nullable=True)
+    session_windows_json = db.Column(db.Text, nullable=False, default="[]")
+    gate_strict = db.Column(db.Boolean, nullable=False, default=True)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
 
-    markets = db.Column(db.Text, nullable=True)  # free text / comma list
-    timeframes = db.Column(db.String(120), nullable=True)  # e.g. W, D, H4, M15
+    account_starting_balance = db.Column(db.Float, nullable=True)
+    account_high_water = db.Column(db.Float, nullable=True)
+    account_current_balance = db.Column(db.Float, nullable=True)
+    risk_base_pct = db.Column(db.Float, nullable=False, default=1.0)
+    risk_min_pct = db.Column(db.Float, nullable=False, default=0.25)
+    max_trades_per_day = db.Column(db.Integer, nullable=True)
+    max_losses_in_row = db.Column(db.Integer, nullable=True)
 
-    # Core rule sections (plain language Nathan writes)
+    unlocked_date = db.Column(db.String(10), nullable=True)
+    unlocked_note = db.Column(db.String(255), nullable=True)
+
+    active_strategy_id = db.Column(db.Integer, nullable=True)
+    day_key = db.Column(db.String(10), nullable=True)  # local YYYY-MM-DD for counters
+    trades_today = db.Column(db.Integer, nullable=False, default=0)
+    wins_today = db.Column(db.Integer, nullable=False, default=0)
+    losses_today = db.Column(db.Integer, nullable=False, default=0)
+    day_locked = db.Column(db.Boolean, nullable=False, default=False)
+    day_lock_reason = db.Column(db.String(255), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class OwnerStrategy(db.Model):
+    """One of Nathan's named trading systems (multi-strategy library)."""
+
+    __tablename__ = "owner_strategies"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    slug = db.Column(db.String(80), nullable=False)
+    name = db.Column(db.String(160), nullable=False)
+    tagline = db.Column(db.String(255), nullable=True)
+    style = db.Column(db.String(120), nullable=True)
+    overview = db.Column(db.Text, nullable=True)
+    markets = db.Column(db.Text, nullable=True)
+    instruments_json = db.Column(db.Text, nullable=True)
+    timeframes = db.Column(db.String(160), nullable=True)
+    timezone_name = db.Column(db.String(64), nullable=False, default="America/New_York")
+
     weekly_bias_rules = db.Column(db.Text, nullable=True)
     daily_bias_rules = db.Column(db.Text, nullable=True)
     h4_rules = db.Column(db.Text, nullable=True)
@@ -33,26 +84,27 @@ class OwnerRulebook(db.Model):
     do_not_trade_rules = db.Column(db.Text, nullable=True)
     psychology_rules = db.Column(db.Text, nullable=True)
 
-    # Session windows JSON: [{"label","days":[0-6],"start":"HH:MM","end":"HH:MM"}]
     session_windows_json = db.Column(db.Text, nullable=False, default="[]")
+    checklist_json = db.Column(db.Text, nullable=True)
+    spec_json = db.Column(db.Text, nullable=True)
+
     gate_strict = db.Column(db.Boolean, nullable=False, default=True)
     enabled = db.Column(db.Boolean, nullable=False, default=True)
-
-    # Risk — scales down in drawdown from high-water mark
-    account_starting_balance = db.Column(db.Float, nullable=True)
-    account_high_water = db.Column(db.Float, nullable=True)
-    account_current_balance = db.Column(db.Float, nullable=True)
+    stop_after_first_win = db.Column(db.Boolean, nullable=False, default=True)
+    max_trades_per_day = db.Column(db.Integer, nullable=False, default=2)
+    max_losses_in_row = db.Column(db.Integer, nullable=True)
     risk_base_pct = db.Column(db.Float, nullable=False, default=1.0)
     risk_min_pct = db.Column(db.Float, nullable=False, default=0.25)
-    max_trades_per_day = db.Column(db.Integer, nullable=True)
-    max_losses_in_row = db.Column(db.Integer, nullable=True)
-
-    # Soft unlock for today (YYYY-MM-DD) when he explicitly opens the session desk
-    unlocked_date = db.Column(db.String(10), nullable=True)
-    unlocked_note = db.Column(db.String(255), nullable=True)
+    min_rr = db.Column(db.Float, nullable=False, default=2.0)
+    target_rr = db.Column(db.Float, nullable=False, default=4.0)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
 
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "slug", name="uq_owner_strategies_user_slug"),
+    )
 
 
 class OwnerRuleCheckLog(db.Model):
@@ -63,6 +115,5 @@ class OwnerRuleCheckLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     event_type = db.Column(db.String(40), nullable=False)
-    # blocked_outside_hours | unlocked_session | risk_advice | rule_warning | balance_update
     detail = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False, index=True)

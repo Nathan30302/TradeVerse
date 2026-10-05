@@ -18,7 +18,7 @@ from app.models.playbook_setup import PlaybookSetup
 from app.models.trade_replay_event import TradeReplayEvent
 from app.models.admin_console import AdminConsoleEvent, AdminEmailDraft
 from app.models.user_login_event import UserLoginEvent
-from app.models.owner_rules import OwnerRulebook, OwnerRuleCheckLog
+from app.models.owner_rules import OwnerRulebook, OwnerRuleCheckLog, OwnerStrategy
 
 __all__ = [
     'User',
@@ -44,4 +44,5 @@ __all__ = [
     'UserLoginEvent',
     'OwnerRulebook',
     'OwnerRuleCheckLog',
+    'OwnerStrategy',
 ]

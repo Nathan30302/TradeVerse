@@ -99,7 +99,7 @@ def create_app(config_name='default'):
 
         from app.models import user, trade
         from app.models.user_login_event import UserLoginEvent  # noqa: F401 — register table
-        from app.models.owner_rules import OwnerRulebook, OwnerRuleCheckLog  # noqa: F401
+        from app.models.owner_rules import OwnerRulebook, OwnerRuleCheckLog, OwnerStrategy  # noqa: F401
         from app.models.trade_plan import TradePlan
         from app.models.performance_score import PerformanceScore
         from app.models.trade_feedback import TradeFeedback
