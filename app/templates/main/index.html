@@ -66,17 +66,34 @@
     border: 1px solid rgba(255,255,255,0.12);
   }
 
-  /* HD image layer — avoid transform scale (Safari blur/bleed at hero edges) */
+  /* Deep sky behind the live starfield. No photograph. */
   .landing-hero .hero-bg {
     position: absolute;
     inset: 0;
-    background-image: url("{{ hero_image_url or url_for('static', filename='img/landing-space-hero.jpg') }}");
-    -webkit-background-size: cover;
-    background-size: cover;
-    background-position: 68% 48%;
-    background-repeat: no-repeat;
-    filter: saturate(1.12) contrast(1.08) brightness(1.02);
-    opacity: 0.98;
+    background:
+      radial-gradient(900px 420px at 78% 28%, rgba(20,184,166,0.16), transparent 62%),
+      radial-gradient(700px 380px at 18% 82%, rgba(79,70,229,0.14), transparent 64%),
+      #020617;
+  }
+  .landing-hero .hero-sky {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .landing-hero .hero-sky-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg,
+      rgba(2,6,23,0.78) 0%,
+      rgba(2,6,23,0.42) 38%,
+      rgba(2,6,23,0.08) 72%,
+      rgba(2,6,23,0.02) 100%);
   }
 
   .landing-hero::before {
@@ -95,39 +112,7 @@
     pointer-events: none;
   }
 
-  /* Hero-only animated stars/streaks (premium, subtle, not distracting) */
-  .landing-hero .hero-vfx {
-    content: "";
-    position: absolute;
-    inset: -25%;
-    pointer-events: none;
-    background-image:
-      radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.32) 40%, transparent 60%),
-      radial-gradient(1.5px 1.5px at 70% 20%, rgba(255,255,255,0.26) 40%, transparent 60%),
-      radial-gradient(1.5px 1.5px at 55% 65%, rgba(255,255,255,0.20) 40%, transparent 60%),
-      radial-gradient(1px 1px at 35% 80%, rgba(255,255,255,0.18) 40%, transparent 60%),
-      radial-gradient(1px 1px at 85% 70%, rgba(255,255,255,0.16) 40%, transparent 60%),
-      repeating-linear-gradient(115deg,
-        rgba(255,255,255,0.00) 0px,
-        rgba(255,255,255,0.00) 240px,
-        rgba(255,255,255,0.07) 242px,
-        rgba(255,255,255,0.00) 246px,
-        rgba(255,255,255,0.00) 520px);
-    opacity: 0.5;
-    animation: tvTwinkle 7s ease-in-out infinite;
-  }
-
-  @keyframes tvTwinkle {
-    0%, 100% { opacity: 0.38; }
-    50% { opacity: 0.62; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .landing-hero .hero-vfx {
-      animation: none;
-      opacity: 0.45;
-    }
-  }
+  .landing-hero .hero-vfx { display: none; }
 
   .landing-hero .hero-title,
   .landing-hero .hero-subtitle {
@@ -1039,7 +1024,8 @@
 <div class="container pb-3 pb-lg-4 mb-3 mb-lg-4">
     <div class="landing-hero px-3 px-md-4 px-lg-5">
       <div class="hero-bg" aria-hidden="true"></div>
-      <div class="hero-vfx" aria-hidden="true"></div>
+      <canvas class="hero-sky" id="hero-sky" aria-hidden="true"></canvas>
+      <div class="hero-sky-scrim" aria-hidden="true"></div>
       <div class="row align-items-center g-4 g-xl-5 position-relative" style="z-index: 1;">
         <div class="col-lg-7">
             <div class="hero-content pe-lg-2">
@@ -1873,6 +1859,170 @@
 document.addEventListener('DOMContentLoaded', function() {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const page = document.querySelector('.landing-page');
+
+    (function startHeroSky() {
+        var canvas = document.getElementById('hero-sky');
+        var hero = canvas && canvas.parentElement;
+        if (!canvas || !hero) return;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        var stars = [];
+        var shots = [];
+        var w = 0;
+        var h = 0;
+        var raf = 0;
+        var running = false;
+        var nextShot = 3 + Math.random() * 4;
+        var last = 0;
+
+        function seed() {
+            var count = Math.round((w * h) / 2400);
+            if (count < 90) count = 90;
+            if (count > 260) count = 260;
+            stars = [];
+            var i;
+            for (i = 0; i < count; i++) {
+                var depth = Math.random();
+                var hue = '255,255,255';
+                var roll = Math.random();
+                if (roll < 0.1) hue = '186,230,253';
+                else if (roll < 0.16) hue = '254,243,199';
+                stars.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    r: depth > 0.9 ? 1.5 + Math.random() * 0.9 : 0.35 + depth * 1.05,
+                    depth: depth,
+                    tw: Math.random() * Math.PI * 2,
+                    twSpeed: 0.6 + Math.random() * 2.2,
+                    hue: hue
+                });
+            }
+        }
+
+        function resize() {
+            var rect = hero.getBoundingClientRect();
+            var dpr = Math.min(window.devicePixelRatio || 1, 2);
+            w = Math.max(1, rect.width);
+            h = Math.max(1, rect.height);
+            canvas.width = Math.floor(w * dpr);
+            canvas.height = Math.floor(h * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            seed();
+            if (reduceMotion) draw(0);
+        }
+
+        function spawnShot() {
+            var dir = Math.random() < 0.55 ? 1 : -1;
+            shots.push({
+                x: dir > 0 ? -20 : w + 20,
+                y: h * (0.06 + Math.random() * 0.55),
+                vx: dir * (8 + Math.random() * 5),
+                vy: 1.6 + Math.random() * 2.2,
+                life: 1,
+                decay: 0.010 + Math.random() * 0.008,
+                len: 80 + Math.random() * 110
+            });
+        }
+
+        function draw(dt) {
+            ctx.clearRect(0, 0, w, h);
+            var i;
+            for (i = 0; i < stars.length; i++) {
+                var s = stars[i];
+                if (!reduceMotion) {
+                    s.x -= (0.12 + s.depth * 0.72) * dt * 60;
+                    s.y += (s.depth - 0.45) * 0.05 * dt * 60;
+                    s.tw += s.twSpeed * dt;
+                    if (s.x < -6) s.x = w + 6;
+                    if (s.y < -6) s.y = h + 6;
+                    if (s.y > h + 6) s.y = -6;
+                }
+                var flicker = reduceMotion ? 0.8 : (0.28 + 0.72 * (0.5 + 0.5 * Math.sin(s.tw)));
+                if (!reduceMotion && s.depth > 0.88 && Math.sin(s.tw * 0.31) > 0.985) flicker = 1;
+                ctx.beginPath();
+                ctx.fillStyle = 'rgba(' + s.hue + ',' + (0.2 + flicker * 0.8).toFixed(3) + ')';
+                ctx.arc(s.x, s.y, s.r * (0.75 + flicker * 0.4), 0, Math.PI * 2);
+                ctx.fill();
+                if (s.r > 1.45 && flicker > 0.72) {
+                    ctx.strokeStyle = 'rgba(255,255,255,' + (0.18 * flicker).toFixed(3) + ')';
+                    ctx.lineWidth = 0.6;
+                    ctx.beginPath();
+                    ctx.moveTo(s.x - s.r * 2.4, s.y);
+                    ctx.lineTo(s.x + s.r * 2.4, s.y);
+                    ctx.moveTo(s.x, s.y - s.r * 2.4);
+                    ctx.lineTo(s.x, s.y + s.r * 2.4);
+                    ctx.stroke();
+                }
+            }
+            if (reduceMotion) return;
+            nextShot -= dt;
+            if (nextShot <= 0 && shots.length < 2) {
+                spawnShot();
+                nextShot = 6 + Math.random() * 9;
+            }
+            for (i = shots.length - 1; i >= 0; i--) {
+                var m = shots[i];
+                m.x += m.vx * dt * 60;
+                m.y += m.vy * dt * 60;
+                m.life -= m.decay * dt * 60;
+                var ang = Math.atan2(m.vy, m.vx);
+                var tx = m.x - Math.cos(ang) * m.len;
+                var ty = m.y - Math.sin(ang) * m.len;
+                var grd = ctx.createLinearGradient(m.x, m.y, tx, ty);
+                var life = m.life > 0 ? m.life : 0;
+                grd.addColorStop(0, 'rgba(255,255,255,' + life + ')');
+                grd.addColorStop(0.2, 'rgba(186,230,253,' + (life * 0.55) + ')');
+                grd.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.strokeStyle = grd;
+                ctx.lineWidth = 1.7;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(m.x, m.y);
+                ctx.lineTo(tx, ty);
+                ctx.stroke();
+                if (m.life <= 0 || m.y > h + 30 || m.x < -160 || m.x > w + 160) shots.splice(i, 1);
+            }
+        }
+
+        function frame(now) {
+            if (!running) return;
+            if (!last) last = now;
+            var dt = Math.min(0.05, (now - last) / 1000);
+            last = now;
+            draw(dt);
+            raf = requestAnimationFrame(frame);
+        }
+
+        var onScreen = true;
+
+        function start() {
+            if (running || reduceMotion || !onScreen || document.hidden) return;
+            running = true;
+            last = 0;
+            raf = requestAnimationFrame(frame);
+        }
+
+        function stop() {
+            running = false;
+            cancelAnimationFrame(raf);
+        }
+
+        resize();
+        if (!reduceMotion) start();
+        window.addEventListener('resize', resize);
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) stop();
+            else start();
+        });
+        if (window.IntersectionObserver) {
+            var io = new IntersectionObserver(function (entries) {
+                onScreen = !!(entries[0] && entries[0].isIntersecting);
+                if (onScreen) start();
+                else stop();
+            }, { threshold: 0.05 });
+            io.observe(hero);
+        }
+    })();
 
     // Hero mini chart
     const canvas = document.getElementById('miniChart');
