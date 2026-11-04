@@ -119,11 +119,11 @@
     if (statusEl) {
       statusEl.textContent =
         next === 'listening' ? 'Listening' :
-        next === 'thinking' ? 'Gathering the page' :
+        next === 'thinking' ? 'Reading that' :
         next === 'speaking' ? 'Speaking' :
-        next === 'waiting' ? 'Add your charts' :
-        next === 'review' ? 'Ready to save' :
-        'Tap the ink when you’re ready';
+        next === 'waiting' ? 'Add the charts' :
+        next === 'review' ? 'Say save, or tap save' :
+        'Tap the ink, or type';
     }
     syncComposer();
   }
@@ -752,9 +752,15 @@
           }, 2600);
         }
       };
-      rec.sr.onerror = function () {};
+      rec.sr.onerror = function (ev) {
+        var code = ev && ev.error;
+        if (code === 'not-allowed' || code === 'service-not-allowed') {
+          rec.srBlocked = true;
+          showErr('Speech recognition is blocked. Keep talking and we’ll use the recording, or type below.');
+        }
+      };
       rec.sr.onend = function () {
-        if (rec.recording && rec.sr) {
+        if (rec.recording && rec.sr && !rec.srBlocked) {
           try { rec.sr.start(); } catch (e) {}
         }
       };
@@ -940,6 +946,16 @@
     return whisper;
   }
 
+  function heardNothing() {
+    setLive('');
+    if (reviewMode) {
+      startRec();
+      return;
+    }
+    setState('idle');
+    if (statusEl) statusEl.textContent = 'Didn’t catch that — tap again, or type';
+  }
+
   function finishUtterance(srText, blob) {
     var local = String(srText || '').trim();
     if (looksLikeEcho(local)) local = '';
@@ -963,12 +979,12 @@
           if (text) {
             setLive(text);
             sendTurn(text);
-          } else startRec();
+          } else heardNothing();
         })
         .catch(function () {
           committing = false;
           if (local) sendTurn(local);
-          else startRec();
+          else heardNothing();
         });
       return;
     }
@@ -977,8 +993,7 @@
       sendTurn(local);
       return;
     }
-    setLive('');
-    startRec();
+    heardNothing();
   }
 
   function applyForm(fields, instrument) {
