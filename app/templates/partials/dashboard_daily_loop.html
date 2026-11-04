@@ -20,7 +20,7 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('trade.guide', mode='quick') }}">
-                <i class="fas fa-microphone me-1"></i> Voice
+                <i class="fas fa-microphone me-1"></i> Talk a trade
             </a>
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.weekly_review') }}">
                 <i class="fas fa-calendar-week me-1"></i> Weekly review
@@ -40,10 +40,10 @@
                     <div class="small mb-2" style="line-height:1.5;">{{ line }}</div>
                     {% endfor %}
                 {% else %}
-                    <p class="small tv-muted mb-2">Log closed trades to unlock a personalized briefing.</p>
-                    <a href="{{ url_for('trade.add') }}" class="btn btn-sm btn-primary">Log a trade</a>
+                    <p class="small tv-muted mb-2">Talk one closed trade and the briefing starts from your numbers.</p>
+                    <a href="{{ url_for('trade.guide') }}" class="btn btn-sm btn-primary">Talk a trade</a>
                 {% endif %}
-                <a class="small d-inline-block mt-2" href="{{ url_for('dashboard.ai') }}">Open AI Buddy →</a>
+                <a class="small d-inline-block mt-2" href="{{ url_for('dashboard.ai') }}">Ask your coach →</a>
             </div>
         </div>
 

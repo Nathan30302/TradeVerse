@@ -127,7 +127,7 @@ def measure_focus_compliance(user, *, last_n: int = 10) -> Dict[str, Any]:
         "broken": 0,
         "rate": None,
         "label": "No weekly focus set",
-        "detail": "Set a weekly focus from Trade Doctor or AI Buddy.",
+        "detail": "Set a weekly focus from Trade Doctor or AI Coach.",
         "trades": [],
         "max_day_ok": True,
     }

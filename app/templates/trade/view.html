@@ -60,11 +60,11 @@
     <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
             <div>
-                <div class="small text-uppercase fw-bold text-muted mb-1"><i class="fas fa-chalkboard-user me-1"></i> AI Buddy · post-close</div>
+                <div class="small text-uppercase fw-bold text-muted mb-1"><i class="fas fa-chalkboard-user me-1"></i> AI Coach · post-close</div>
                 <h5 class="mb-1">{{ post_close_coach.headline }}</h5>
                 <p class="mb-0 text-body">{{ post_close_coach.lesson }}</p>
             </div>
-            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dashboard.ai') }}">Open AI Buddy</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dashboard.ai') }}">Open AI Coach</a>
         </div>
         {% if post_close_coach.compliance and post_close_coach.compliance.has_focus and post_close_coach.compliance.sample_size %}
         <div class="small mt-2 p-2 rounded" style="background: rgba(15,23,42,0.06);">
@@ -96,7 +96,7 @@
         <div class="d-flex justify-content-between align-items-start gap-3">
             <div>
                 <h5 class="mb-1"><i class="fas fa-clipboard-check me-2 text-primary"></i>Quick Post‑Trade Review</h5>
-                <div class="small text-muted">30 seconds. This feeds your Analytics and AI Buddy insights.</div>
+                <div class="small text-muted">30 seconds. This feeds your Analytics and AI Coach insights.</div>
             </div>
             <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('trade.view', trade_id=trade.id) }}">Dismiss</a>
         </div>
@@ -132,7 +132,7 @@
                 <a class="btn btn-outline-primary" href="{{ url_for('trade.guide', complete=trade.id, mode='quick') }}">
                     <i class="fas fa-microphone me-1"></i> Log in 30 seconds
                 </a>
-                <a class="btn btn-outline-primary" href="{{ url_for('dashboard.ai') }}"><i class="fas fa-chalkboard-user me-2"></i>View AI Buddy</a>
+                <a class="btn btn-outline-primary" href="{{ url_for('dashboard.ai') }}"><i class="fas fa-chalkboard-user me-2"></i>View AI Coach</a>
             </div>
         </form>
     </div>

@@ -387,7 +387,7 @@ class AIAnalyzer:
  
         has_data = int(stats.get('total_trades') or 0) > 0
         return {
-            'label': 'AI Buddy Weekly Review',
+            'label': 'AI Coach Weekly Review',
             'period': 'Last 7 days',
             'has_data': has_data,
             'stats': stats,
@@ -426,7 +426,7 @@ class AIAnalyzer:
  
         if total_trades < 1:
             return {
-                'label': 'AI Buddy Monthly Review',
+                'label': 'AI Coach Monthly Review',
                 'period': 'Last 30 days',
                 'has_data': False,
                 'stats': stats,
@@ -449,7 +449,7 @@ class AIAnalyzer:
                 f"{win_rate:.0f}% wins, {total_pnl:+.2f} P/L."
             )
         return {
-            'label': 'AI Buddy Monthly Review',
+            'label': 'AI Coach Monthly Review',
             'period': 'Last 30 days',
             'has_data': True,
             'stats': stats,
@@ -834,17 +834,16 @@ class AIAnalyzer:
 
     def _empty_state_coach_reply(self, stats: Dict[str, Any], coach_context: str = '') -> Dict[str, Any]:
         body = (
-            "I don’t have enough of your journal yet to name a real leak.\n\n"
-            "**A clean first pass (~10 minutes):**\n"
-            "- Close **3 trades** with stop (or risk $), strategy tag, and emotion.\n"
-            "- Write **one honest line** on each — what was process vs impulse.\n"
-            "- Set **one weekly focus** (example: max 2 trades/day; stop after −2R).\n\n"
-            "Then ask “What’s my biggest leak?” — or open Trade Doctor."
+            "I don’t have a journal to coach yet, so I won’t invent a leak.\n\n"
+            "**Do this once:** open Voice Journal and talk one trade — what you traded, long or short, "
+            "entry, stop, and how you felt going in. One honest sentence on why you took it is enough.\n\n"
+            "After a few closed trades I can name the pattern and give you one rule for the week. "
+            "Until then, ask me how to log a trade or for a pre-trade checklist."
         )
         return {
             'answer': self._wrap_coach_answer(body, stats, coach_context),
             'follow_ups': [
-                "What should I log on every trade?",
+                "What should I say when I journal a trade?",
                 "Give me a pre-trade checklist.",
                 "Suggest a weekly focus rule for me.",
             ],
@@ -862,7 +861,7 @@ class AIAnalyzer:
         if total < 1:
             hello = f"{name}, " if name else ""
             lines = [
-                f"{hello}the journal is ready — close one trade and I’ll start reading your edge.",
+                f"{hello}talk one trade into Voice Journal and I’ll start reading your edge.",
                 "Today: one setup, one market, one session window.",
                 "Leave one weekly focus sentence so I can hold you to it.",
             ]

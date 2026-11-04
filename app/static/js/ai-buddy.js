@@ -564,7 +564,7 @@
         if (bit.isFinal) finals.push(t);
         else interim.push(t);
       }
-      var text = (finals.length ? finals.join(' ') : interim.join(' ')).trim();
+      var text = (finals.join(' ') + (interim.length ? ' ' + interim.join(' ') : '')).trim();
       var isFinal = evt.results.length > 0 && evt.results[evt.results.length - 1].isFinal;
       return { text: text, isFinal: isFinal };
     }

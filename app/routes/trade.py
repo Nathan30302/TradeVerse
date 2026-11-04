@@ -731,7 +731,7 @@ def add():
                 except Exception:
                     current_app.logger.debug('auto feedback skipped', exc_info=True)
                 if trade_needs_review(trade):
-                    flash('Add a one-line lesson while it is fresh — it powers AI Buddy and your review queue.', 'info')
+                    flash('Add a one-line lesson while it is fresh — it powers AI Coach and your review queue.', 'info')
                     return redirect(url_for('trade.view', trade_id=trade.id, review=1))
             if from_guide:
                 return redirect(url_for('trade.view', trade_id=trade.id, voice_note=1))
@@ -1621,7 +1621,7 @@ def close(trade_id):
             from app.services.ai_insights import AIAnalyzer
             insight = AIAnalyzer(current_user.id).get_last_trade_insight()
             if insight:
-                flash(f'AI Buddy: {insight}', 'info')
+                flash(f'AI Coach: {insight}', 'info')
         except Exception:
             pass
         if cooldown_note:

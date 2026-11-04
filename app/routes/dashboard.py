@@ -47,9 +47,9 @@ def _safe_ai_summary():
     Every key that any template references must exist here.
     """
     return {
-        'label': 'AI Buddy',
+        'label': 'AI Coach',
         'period': 'Last 7 days',
-        'summary': 'No trade data yet. Log some trades to unlock AI Buddy insights.',
+        'summary': 'No trades yet. Talk one into Voice Journal and I’ll start coaching from it.',
         'stats': {
             'total_trades': 0,
             'wins': 0,
@@ -1192,7 +1192,7 @@ def save_weekly_focus():
             .values(weekly_focus_rule=text, weekly_focus_set_at=utc_now())
         )
         db.session.commit()
-        flash('Weekly focus saved. AI Buddy will track adherence on your next trades.', 'success')
+        flash('Weekly focus saved. AI Coach will track adherence on your next trades.', 'success')
     except Exception as exc:
         db.session.rollback()
         current_app.logger.warning('save_weekly_focus failed: %s', exc)
@@ -1374,7 +1374,18 @@ def ai():
     except Exception:
         proactive_line = ''
 
+    try:
+        journal_trade_count = int(
+            db.session.query(func.count(Trade.id))
+            .filter(Trade.user_id == current_user.id)
+            .scalar()
+            or 0
+        )
+    except Exception:
+        journal_trade_count = 0
+
     return render_template('dashboard/ai.html',
+                           journal_trade_count=journal_trade_count,
                            weekly_review=weekly_review,
                            monthly_review=monthly_review,
                            behavioral_insights=behavioral_insights,
@@ -1533,14 +1544,19 @@ def ai_query():
             pass
         try:
             s = current_user.get_stats()
+            open_n = int(s.get('open_trades') or 0)
+            closed_n = int(s.get('closed_trades') or 0)
             ctx_all = (
-                f"open_trades={int(s.get('open_trades') or 0)}\n"
-                f"closed_trades_total={int(s.get('closed_trades') or 0)}\n"
+                f"open_trades={open_n}\n"
+                f"closed_trades_total={closed_n}\n"
                 f"win_rate_all_time={float(s.get('win_rate') or 0.0):.1f}%\n"
                 f"avg_rr_all_time={float(s.get('avg_rr') or 0.0):.2f}\n"
             )
         except Exception:
+            open_n = 0
+            closed_n = 0
             ctx_all = ""
+        journal_empty = (open_n + closed_n) < 1
         ctx = f"username={current_user.username or ''}\n{coach_block}\n{ctx_all}"
 
         # Chart / screenshot vision (Pro Plus + OpenAI)
@@ -1572,6 +1588,11 @@ def ai_query():
 
         # Personal journal questions use the LLM with evidence-only grounding when Pro Plus web is on.
         is_personal = AIAnalyzer._is_personal_performance_question(question)
+
+        # Personal questions with an empty journal stay on the local coach.
+        # A web model will invent leaks and P/L when there is nothing to cite.
+        if not answer and journal_empty and is_personal and not image_data:
+            use_web = False
 
         if not answer and use_web:
             try:
