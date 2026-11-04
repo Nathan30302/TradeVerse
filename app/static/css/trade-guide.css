@@ -198,9 +198,37 @@ body:has(.tv-vj-ink) .main-content > .alert {
   filter: drop-shadow(0 0 28px rgba(230, 196, 90, 0.28));
 }
 
+.tv-vj-voices {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0.7rem;
+}
+
+.tv-vj-voice {
+  border: 1px solid color-mix(in srgb, var(--vj-gold) 32%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--vj-paper) 78%, var(--vj-gold));
+  border-radius: 999px;
+  padding: 0.32rem 0.78rem;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.tv-vj-voice.is-on {
+  background: var(--vj-gold);
+  color: #1a1608;
+  border-color: var(--vj-gold);
+}
+
 .tv-vj-brand {
   position: relative;
-  margin: 0.35rem 0 0.55rem;
+  margin: 0.35rem 0 0.45rem;
   font-family: "Syne", system-ui, sans-serif;
   font-size: 0.68rem;
   font-weight: 700;
@@ -280,11 +308,11 @@ body:has(.tv-vj-ink) .main-content > .alert {
   min-height: 1.35em;
   margin: 0;
   font-family: "Literata", Georgia, serif;
-  font-size: 1.12rem;
+  font-size: 1.22rem;
   font-style: italic;
   line-height: 1.45;
-  color: color-mix(in srgb, var(--vj-paper) 72%, var(--vj-gold));
-  opacity: 0.5;
+  color: var(--vj-paper);
+  opacity: 0.55;
 }
 
 .tv-vj-live.is-on {
@@ -292,7 +320,7 @@ body:has(.tv-vj-ink) .main-content > .alert {
 }
 
 .tv-vj-stage[data-state="listening"] .tv-vj-live:not(.is-on)::before {
-  content: "The page is listening…";
+  content: "Listening…";
   font-style: italic;
   color: var(--vj-muted);
 }

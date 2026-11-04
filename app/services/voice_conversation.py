@@ -18,15 +18,19 @@ import requests
 from app.models.instrument import Instrument
 from app.services.voice_journal import (
     emotion_for_trade,
+    friendly_market,
     normalize_symbol_guess,
+    parse_rr_multiple,
     parse_voice_text,
     parse_yes_no,
+    repair_spoken_trade,
     strategy_from_setups,
+    target_from_rr,
 )
 
 
-SYSTEM_PROMPT = """You are a premium trading journal voice coach. Warm, concise, professional —
-like a mentor reviewing the trade with them, never a form wizard.
+SYSTEM_PROMPT = """You are a friend who journals trades with them. Warm, brief, human —
+like someone on the desk who already knows the markets, never a form wizard.
 
 GOAL: Collect a COMPLETE journal page through natural conversation:
 TRADE FACTS
@@ -55,6 +59,14 @@ RULES:
 7. Keep replies to one sentence, sometimes two. One question mark max.
 8. Know trading vocabulary: liquidity sweep, BOS, CHoCH, order block, FVG,
    retest, breakout, partials, trailing stop, R:R, pip, lot, session open.
+9. The same market has many names. US30 is the Dow — also Wall Street, DJ30,
+   and the mishearing "US state" / "US stay". NAS100 is Nasdaq, USTEC, US100,
+   US tech. SPX500 is the S&P, US500. GER40 is the DAX, DE40. UK100 is the FTSE.
+   XAUUSD is gold. EURUSD is fiber, GBPUSD is cable. Map what they said onto
+   the canonical symbol and say both ("US30, the Dow") so they know you heard them.
+10. Entry, stop, and an R:R ("R R", "risk reward", "1 to 2", "2R") are enough
+    to place the target. Do that math and say the ratio in plain words.
+11. Contractions. One human sentence, then one question. No lecture, no hype.
 
 OUTPUT JSON only:
 {
@@ -674,8 +686,44 @@ def _apply_reflection_answer(draft: Dict[str, Any], text: str) -> Dict[str, Any]
         return draft
     return _fill_reflection_slot(draft, hard[0], text)
 
+def _rr_words(multiple: float) -> str:
+    """Speak 2.0 as '1 to 2'."""
+    if abs(multiple - round(multiple)) < 0.05:
+        return f"1 to {int(round(multiple))}"
+    shown = f"{multiple:.1f}".rstrip("0").rstrip(".")
+    return f"1 to {shown}"
+
+
+def _apply_rr(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
+    """If they gave a ratio and we already have entry and stop, place the target."""
+    hard = _hard_missing(draft, text)
+    asking_target = bool(hard and hard[0] == "take_profit")
+    multiple = parse_rr_multiple(text, allow_bare=asking_target)
+    if not multiple or draft.get("entry_price") is None or draft.get("stop_loss") is None:
+        return draft
+    spoken = repair_spoken_trade(text).lower()
+    explicit = bool(re.search(r"\b(risk reward|rr)\b|\d\s*r\b", spoken))
+    if draft.get("take_profit") is not None and not explicit and not asking_target:
+        return draft
+    target = target_from_rr(
+        float(draft["entry_price"]),
+        float(draft["stop_loss"]),
+        str(draft.get("trade_type") or "BUY"),
+        multiple,
+    )
+    if target is None:
+        return draft
+    draft["take_profit"] = target
+    draft["_rr_spoken"] = f"That’s {_rr_words(multiple)} — target {target:g}."
+    return draft
+
+
 def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
     """A short spoken nod so the next question feels like a conversation."""
+    spoken_rr = draft.pop("_rr_spoken", None)
+    if spoken_rr:
+        draft.pop("_just_reflected", None)
+        return spoken_rr
     reflected = draft.pop("_just_reflected", None)
     if reflected:
         snippet = _light_clean(text)
@@ -726,8 +774,20 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
         return "Updated."
     parsed = parse_voice_text(text or "")
     bits: List[str] = []
-    if parsed.get("symbol") or draft.get("symbol"):
-        bits.append(str(parsed.get("symbol") or draft.get("symbol")))
+    sym_now = parsed.get("symbol")
+    sym_show = sym_now or draft.get("symbol")
+    if sym_show:
+        label = str(sym_show)
+        if sym_now:
+            nick = friendly_market(label)
+            spoken = (text or "").lower()
+            nick_word = nick.split()[-1].lower() if nick else ""
+            said_ticker = label.lower() in re.sub(r"[^a-z0-9]", "", spoken)
+            if nick and nick_word in spoken and not said_ticker:
+                label = f"{nick}, {label}"
+            elif nick and not said_ticker and nick_word not in spoken:
+                label = f"{label}, {nick}"
+        bits.append(label)
     if parsed.get("trade_type"):
         bits.append("long" if parsed["trade_type"] == "BUY" else "short")
     if parsed.get("entry_price") is not None:
@@ -1207,6 +1267,7 @@ def _apply_spoken_extras(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
     conf = _extract_confidence(text)
     if conf is not None and draft.get("confidence_level") is None:
         draft["confidence_level"] = conf
+    draft = _apply_rr(draft, text)
     # Fill size when that is the open question (bare "0.5" / "half lot").
     hard = _hard_missing(draft, text)
     if hard and hard[0] == "lot_size" and draft.get("lot_size") is None:
@@ -1390,7 +1451,9 @@ def _spoken_wrap(draft: Dict[str, Any]) -> str:
     bits = []
     if draft.get("trade_type") and draft.get("symbol"):
         side = "long" if draft["trade_type"] == "BUY" else "short"
-        bits.append(f"{side} {draft['symbol']}")
+        nick = friendly_market(str(draft["symbol"]))
+        label = f"{draft['symbol']}, {nick}" if nick else str(draft["symbol"])
+        bits.append(f"{side} {label}")
     if draft.get("entry_price") is not None:
         bits.append(f"from {draft['entry_price']:g}")
     if draft.get("session_type"):

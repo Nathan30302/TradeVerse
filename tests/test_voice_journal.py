@@ -496,6 +496,44 @@ def test_is_save_confirm():
     assert not is_save_confirm("change the stop")
 
 
+def test_desk_names_levels_and_risk_reward():
+    from app.services.voice_conversation import fallback_turn
+    from app.services.voice_journal import (
+        normalize_symbol_guess,
+        parse_voice_text,
+        refresh_symbol_alias_cache,
+        repair_spoken_trade,
+    )
+
+    refresh_symbol_alias_cache()
+    assert "us 30" in repair_spoken_trade("I bought the US state")
+    assert normalize_symbol_guess("I bought the US state")[0] == "US30"
+    assert normalize_symbol_guess("nas duck")[0] == "NAS100"
+    assert normalize_symbol_guess("spot gold")[0] == "XAUUSD"
+    assert normalize_symbol_guess("de 40")[0] == "GER40"
+    assert normalize_symbol_guess("fiber")[0] == "EURUSD"
+
+    out = parse_voice_text("long us state at 42500 sabotu 42350 risk reward one to two")
+    assert out["symbol"] == "US30"
+    assert out["trade_type"] == "BUY"
+    assert out["entry_price"] == 42500
+    assert out["stop_loss"] == 42350
+    assert out["take_profit"] == 42800
+
+    spoken = parse_voice_text(
+        "bought fiber at one point one seven two four stop one point one seven one zero"
+    )
+    assert spoken["symbol"] == "EURUSD"
+    assert spoken["entry_price"] == pytest.approx(1.1724)
+    assert spoken["stop_loss"] == pytest.approx(1.171)
+
+    held = fallback_turn("long on us thirty at 42500 stop 42350")["draft"]
+    nxt = fallback_turn("risk reward one to two", held)
+    assert nxt["draft"]["take_profit"] == 42800
+    assert "1 to 2" in nxt["reply"]
+    assert "42800" in nxt["reply"]
+
+
 def test_spoken_instruments_and_end_phrases():
     from app.services.voice_conversation import conversation_intent, fallback_turn
     from app.services.voice_journal import normalize_symbol_guess, refresh_symbol_alias_cache
@@ -546,6 +584,8 @@ def test_guide_page_has_composer_and_pending_hooks(logged_client, app):
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert "tv-vj-type-input" in body
+    assert "tv-vj-voices" in body
+    assert "Maya" in body and "Noah" in body and "Sage" in body
     assert "tv-vj-composer" in body
     assert "tv-vj-pending" in body or "still need notes" in body
     r2 = logged_client.get(f"/trade/guide?complete={tid}")

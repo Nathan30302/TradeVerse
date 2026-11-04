@@ -27,6 +27,35 @@
   var journalEl = document.getElementById('tv-vj-journal');
   var summaryEl = document.getElementById('tv-vj-summary');
 
+  var VOICE_PRESETS = {
+    coral: {
+      label: 'Maya',
+      rate: 1.02,
+      pitch: 1.04,
+      sample: 'Hey. I’m here — tell me the trade.',
+      names: ['samantha', 'google us english', 'karen', 'moira']
+    },
+    ash: {
+      label: 'Noah',
+      rate: 0.98,
+      pitch: 0.9,
+      sample: 'Ready when you are. What did you take?',
+      names: ['daniel', 'alex', 'aaron', 'google uk english male']
+    },
+    sage: {
+      label: 'Sage',
+      rate: 0.94,
+      pitch: 0.86,
+      sample: 'Alright. Walk me through the trade.',
+      names: ['fiona', 'victoria', 'serena', 'moira']
+    }
+  };
+  var voiceId = 'coral';
+  try {
+    var savedVoice = localStorage.getItem('tv-vj-voice');
+    if (savedVoice && VOICE_PRESETS[savedVoice]) voiceId = savedVoice;
+  } catch (e) {}
+
   var state = 'idle';
   var draft = {};
   var history = [];
@@ -79,6 +108,9 @@
     chunks: [],
     recording: false,
     text: '',
+    live: '',
+    base: '',
+    lastHeardAt: 0,
     mime: '',
     silence: null,
     maxTimer: null,
@@ -113,19 +145,49 @@
     return el ? String(el.value || '').trim() : '';
   }
 
+  function voiceLabel() {
+    return (VOICE_PRESETS[voiceId] || VOICE_PRESETS.coral).label;
+  }
+
   function setState(next) {
     state = next;
     if (stage) stage.setAttribute('data-state', next);
     if (statusEl) {
       statusEl.textContent =
-        next === 'listening' ? 'Listening' :
-        next === 'thinking' ? 'Reading that' :
-        next === 'speaking' ? 'Speaking' :
+        next === 'listening' ? 'I’m listening' :
+        next === 'thinking' ? 'One second' :
+        next === 'speaking' ? voiceLabel() :
         next === 'waiting' ? 'Add the charts' :
         next === 'review' ? 'Say save, or tap save' :
-        'Tap the ink, or type';
+        (voiceLabel() + ' · tap to talk, or type');
     }
     syncComposer();
+  }
+
+  function markVoice(id) {
+    voiceId = VOICE_PRESETS[id] ? id : 'coral';
+    try { localStorage.setItem('tv-vj-voice', voiceId); } catch (e) {}
+    var buttons = document.querySelectorAll('.tv-vj-voice');
+    for (var i = 0; i < buttons.length; i++) {
+      var on = buttons[i].getAttribute('data-voice') === voiceId;
+      buttons[i].classList.toggle('is-on', on);
+      buttons[i].setAttribute('aria-checked', on ? 'true' : 'false');
+    }
+    if (state === 'idle' && statusEl) statusEl.textContent = voiceLabel() + ' · tap to talk, or type';
+  }
+
+  function pickBrowserVoice(preset) {
+    if (!window.speechSynthesis || !preset) return null;
+    var voices = window.speechSynthesis.getVoices() || [];
+    var en = voices.filter(function (v) { return /^en/i.test(v.lang || ''); });
+    var names = preset.names || [];
+    for (var i = 0; i < names.length; i++) {
+      var needle = names[i];
+      for (var j = 0; j < en.length; j++) {
+        if (en[j].name && en[j].name.toLowerCase().indexOf(needle) !== -1) return en[j];
+      }
+    }
+    return en[0] || voices[0] || null;
   }
 
   function syncComposer() {
@@ -363,9 +425,12 @@
     function browserSpeak() {
       if (!window.speechSynthesis) { done(); return; }
       try {
+        var preset = VOICE_PRESETS[voiceId] || VOICE_PRESETS.coral;
         var u = new SpeechSynthesisUtterance(line);
-        u.rate = 1.04;
-        u.pitch = 1;
+        u.rate = preset.rate;
+        u.pitch = preset.pitch;
+        var chosen = pickBrowserVoice(preset);
+        if (chosen) u.voice = chosen;
         u.onend = done;
         u.onerror = done;
         window.speechSynthesis.speak(u);
@@ -381,7 +446,7 @@
     fetch(boot.speakUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
-      body: JSON.stringify({ text: line })
+      body: JSON.stringify({ text: line, voice: voiceId })
     }).then(function (r) {
       if (!r.ok) throw new Error('tts');
       return r.blob();
@@ -708,7 +773,8 @@
         quiet += 100;
         if (quiet >= 180) setVoiceVisual(false, rms);
       }
-      if (heard && quiet >= 2400) stopRec(false);
+      var sinceWords = Date.now() - (rec.lastHeardAt || 0);
+      if (heard && quiet >= 4200 && sinceWords > 900) stopRec(false);
       else if (!heard && quiet >= 10000) stopRec(false);
     }, 100);
   }
@@ -722,34 +788,28 @@
       rec.sr.interimResults = true;
       rec.sr.lang = 'en-US';
       rec.sr.maxAlternatives = 3;
+      rec.base = rec.text || '';
       rec.sr.onresult = function (ev) {
-        var finalTxt = '';
+        var finals = [];
         var interim = '';
-        for (var i = ev.resultIndex; i < ev.results.length; i++) {
-          var best = ev.results[i][0].transcript;
-          // Prefer the alternative that knows more trading words.
-          if (ev.results[i].length > 1) {
-            var topScore = tradingScore(best);
-            for (var a = 1; a < ev.results[i].length; a++) {
-              var alt = ev.results[i][a].transcript;
-              var sc = tradingScore(alt);
-              if (sc > topScore) {
-                best = alt;
-                topScore = sc;
-              }
-            }
-          }
-          if (ev.results[i].isFinal) finalTxt += best;
+        for (var i = 0; i < ev.results.length; i++) {
+          var best = ev.results[i][0] ? ev.results[i][0].transcript : '';
+          if (ev.results[i].isFinal) finals.push(best);
           else interim += best;
         }
-        if (finalTxt) rec.text = (rec.text + ' ' + finalTxt).trim();
+        var sessionText = finals.join(' ').replace(/\s+/g, ' ').trim();
+        rec.text = (rec.base + ' ' + sessionText).replace(/\s+/g, ' ').trim();
         var shown = (rec.text + (interim ? ' ' + interim : '')).replace(/\s+/g, ' ').trim();
+        rec.live = shown;
+        rec.lastHeardAt = Date.now();
         setLive(shown);
         if (shown) {
           clearTimeout(rec.silence);
+          var words = shown.split(/\s+/).length;
+          var settled = /[.?!]\s*$/.test(shown) || (/\d\s*$/.test(shown) && words >= 6);
           rec.silence = setTimeout(function () {
             if (rec.recording) stopRec(false);
-          }, 2600);
+          }, settled ? 1600 : 3200);
         }
       };
       rec.sr.onerror = function (ev) {
@@ -761,6 +821,7 @@
       };
       rec.sr.onend = function () {
         if (rec.recording && rec.sr && !rec.srBlocked) {
+          rec.base = rec.live || rec.text || '';
           try { rec.sr.start(); } catch (e) {}
         }
       };
@@ -775,6 +836,9 @@
     if (rec.recording || committing) return;
     if (state === 'thinking') return;
     rec.text = '';
+    rec.live = '';
+    rec.base = '';
+    rec.lastHeardAt = 0;
     rec.chunks = [];
     rec.gen += 1;
     setVoiceVisual(false, 0);
@@ -827,7 +891,7 @@
       if (gen !== rec.gen) return;
       if (!box.recDone || !box.srDone) return;
       if (box.silent) return;
-      finishUtterance(rec.text, box.blob);
+      finishUtterance(String(rec.live || rec.text || '').trim(), box.blob);
     }
 
     var sr = rec.sr;
@@ -905,23 +969,12 @@
     return t.indexOf('trading journal') !== -1 || t.indexOf('symbols: eurusd') !== -1;
   }
 
-  var TRADE_WORDS = [
-    'long', 'short', 'buy', 'sell', 'entry', 'stop', 'target', 'tp', 'sl',
-    'gold', 'eurusd', 'gbpusd', 'us30', 'nas100', 'xauusd', 'bitcoin',
-    'london', 'asia', 'overlap', 'breakout', 'retest', 'liquidity', 'sweep',
-    'order block', 'bos', 'choch', 'fvg', 'partials', 'lot', 'pips', 'session'
-  ];
-
-  function tradingScore(text) {
-    var t = String(text || '').toLowerCase();
-    var n = 0;
-    TRADE_WORDS.forEach(function (w) {
-      if (t.indexOf(w) !== -1) n += 1;
-    });
-    // Prefer keeping precise decimals / prices
-    if (/\d+\.\d+/.test(t)) n += 2;
-    if (/\b\d{3,5}\b/.test(t)) n += 1;
-    return n;
+  function captionIsEnough(text) {
+    var t = String(text || '').trim();
+    if (!t || /^(um+|uh+|hmm+|er+|ah+)$/i.test(t)) return false;
+    if (/\d/.test(t)) return true;
+    if (tokensOf(t).length >= 2) return true;
+    return /^(gold|silver|euro|cable|nasdaq|dow|dax|ftse|bitcoin|btc|eth|long|short|buy|sell|yes|no|save|open|closed)$/i.test(t);
   }
 
   function pickTranscript(whisper, local) {
@@ -930,20 +983,9 @@
     if (isPromptLeak(whisper)) whisper = '';
     if (looksLikeEcho(whisper)) whisper = '';
     if (looksLikeEcho(local)) local = '';
-    if (!whisper) return local;
-    if (!local) return whisper;
-    var localWords = tokensOf(local).length;
-    // Short confirms / single numbers: keep the live caption exact.
-    if (localWords <= 4) return local;
-    var ws = tradingScore(whisper);
-    var ls = tradingScore(local);
-    var wl = whisper.replace(/\s/g, '').length;
-    var ll = local.replace(/\s/g, '').length;
-    // Prefer the fuller, more trading-aware transcript so we keep exact words.
-    if (ws > ls && wl >= ll * 0.85) return whisper;
-    if (wl > ll * 1.35 && ws >= ls) return whisper;
-    if (ll >= 2) return local;
-    return whisper;
+    if (captionIsEnough(local)) return local;
+    if (whisper) return whisper;
+    return local;
   }
 
   function heardNothing() {
@@ -959,8 +1001,12 @@
   function finishUtterance(srText, blob) {
     var local = String(srText || '').trim();
     if (looksLikeEcho(local)) local = '';
-    var blobOk = !!(blob && blob.size > 900 && boot.transcribeEnabled);
-    // Always reconcile with Whisper when we can — keeps exact spoken words.
+    var blobOk = !!(blob && blob.size > 600 && boot.transcribeEnabled);
+    if (captionIsEnough(local)) {
+      setLive(local);
+      sendTurn(local);
+      return;
+    }
     if (blobOk) {
       committing = true;
       setState('thinking');
@@ -1324,12 +1370,12 @@
     if (journalEl) journalEl.classList.add('d-none');
     unlockAudio();
     var opening = boot.mode === 'quick'
-      ? 'Give me the short version — pair, side, levels.'
+      ? 'Give me the short version — market, side, and the levels.'
       : (boot.complete && boot.complete.symbol
         ? ('Let’s finish the notes on ' + boot.complete.symbol + '. What happened?')
         : (draft && draft.symbol
           ? ('Picking up on ' + draft.symbol + ' — what else?')
-          : 'Hey — tell me about the trade.'));
+          : 'Hey. What did you take?'));
     ensureStream().then(function (stream) {
       attachAnalyser(stream);
       if (!rec.raf) drawOrb();
@@ -1350,6 +1396,27 @@
     stopRec(true);
     stopTTS();
     sendTurn(text);
+  }
+
+  markVoice(voiceId);
+  var voiceRow = document.getElementById('tv-vj-voices');
+  if (voiceRow) {
+    voiceRow.addEventListener('click', function (ev) {
+      var btn = ev.target.closest ? ev.target.closest('[data-voice]') : null;
+      if (!btn || committing) return;
+      var id = btn.getAttribute('data-voice');
+      var preview = state === 'idle';
+      markVoice(id);
+      if (!preview) return;
+      stopTTS();
+      var preset = VOICE_PRESETS[voiceId] || VOICE_PRESETS.coral;
+      speak(preset.sample, function () {
+        if (state === 'speaking') setState('idle');
+      });
+    });
+  }
+  if (window.speechSynthesis && window.speechSynthesis.getVoices) {
+    window.speechSynthesis.getVoices();
   }
 
   if (orbBtn) {

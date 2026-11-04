@@ -21,6 +21,8 @@ from app.utils.timeutil import resolve_zoneinfo, utc_now
 SYMBOL_ALIASES: Dict[str, str] = {
     # Metals
     "gold": "XAUUSD",
+    "spot gold": "XAUUSD",
+    "gold spot": "XAUUSD",
     "xau": "XAUUSD",
     "xauusd": "XAUUSD",
     "silver": "XAGUSD",
@@ -28,6 +30,8 @@ SYMBOL_ALIASES: Dict[str, str] = {
     "xagusd": "XAGUSD",
     # FX majors / nicknames
     "euro": "EURUSD",
+    "fiber": "EURUSD",
+    "fibre": "EURUSD",
     "euro dollar": "EURUSD",
     "eur usd": "EURUSD",
     "eurusd": "EURUSD",
@@ -57,13 +61,26 @@ SYMBOL_ALIASES: Dict[str, str] = {
     "us30": "US30",
     "us 30": "US30",
     "us thirty": "US30",
+    "us state": "US30",
+    "us states": "US30",
+    "us stay": "US30",
+    "us date": "US30",
     "wall street": "US30",
+    "wall street 30": "US30",
     "wallstreet": "US30",
     "dow": "US30",
     "dow jones": "US30",
+    "dow 30": "US30",
+    "dow thirty": "US30",
     "the dow": "US30",
+    "dj30": "US30",
+    "dj 30": "US30",
+    "dji": "US30",
     "nas": "NAS100",
+    "nas duck": "NAS100",
     "nasdaq": "NAS100",
+    "us tech": "NAS100",
+    "us tech 100": "NAS100",
     "nas 100": "NAS100",
     "nas100": "NAS100",
     "nasdaq 100": "NAS100",
@@ -80,10 +97,15 @@ SYMBOL_ALIASES: Dict[str, str] = {
     "us500": "SPX500",
     # Europe indices
     "dax": "GER40",
+    "dax 40": "GER40",
+    "dax40": "GER40",
     "ger40": "GER40",
     "ger 40": "GER40",
+    "de40": "GER40",
+    "de 40": "GER40",
     "germany 40": "GER40",
     "ftse": "UK100",
+    "ukx": "UK100",
     "uk100": "UK100",
     "uk 100": "UK100",
     "ftse 100": "UK100",
@@ -134,6 +156,163 @@ _SPOKEN_NUMBERS: Dict[str, str] = {
 }
 
 _ALIAS_CACHE: Optional[Dict[str, str]] = None
+
+
+# How speech-to-text mangles desk language. Applied before aliases and prices.
+_MISHEARD: Tuple[Tuple[str, str], ...] = (
+    (r"\bus\s+(state|states|stay|date|straight)\b", "us 30"),
+    (r"\bu\s+s\s+(state|states|stay|thirty|30)\b", "us 30"),
+    (r"\byou\s+ess\s+(thirty|state|30)\b", "us 30"),
+    (r"\bdj\s*30\b", "us30"),
+    (r"\bde\s*40\b", "ger40"),
+    (r"\bnas\s*duck\b", "nasdaq"),
+    (r"\bnaz\s*daq\b", "nasdaq"),
+    (r"\b(sabotu|sabot|stopu|stoppa)\b", "stop"),
+    (r"\b(kakete|kaket|targit|tahgit|targett)\b", "target"),
+    (r"\b(rre|are\s+are)\b", "risk reward"),
+    (r"\br\s+r\b", "risk reward"),
+    (r"\bstop\s*loss\b", "stop"),
+    (r"\btake\s*profit\b", "target"),
+)
+
+_FRIENDLY_SYMBOL: Dict[str, str] = {
+    "US30": "the Dow",
+    "NAS100": "the Nasdaq",
+    "US500": "the S&P",
+    "SPX500": "the S&P",
+    "GER40": "the DAX",
+    "UK100": "the FTSE",
+    "XAUUSD": "gold",
+    "XAGUSD": "silver",
+    "EURUSD": "fiber",
+    "GBPUSD": "cable",
+}
+
+
+_DIGIT_WORD = {
+    "zero": "0",
+    "oh": "0",
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "four": "4",
+    "five": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+}
+_DIGIT_WORD_RE = r"(?:zero|oh|one|two|three|four|five|six|seven|eight|nine)"
+_RATIO_WORDS = {
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "four": "4",
+    "five": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+    "ten": "10",
+}
+
+
+def _collapse_spoken_prices(text: str) -> str:
+    """'four two five zero zero' and 'one point one seven two four' become digits."""
+    def repl_decimal(match: re.Match) -> str:
+        whole = "".join(_DIGIT_WORD[w.lower()] for w in match.group(1).split())
+        frac = "".join(_DIGIT_WORD[w.lower()] for w in match.group(2).split())
+        return f"{int(whole) if whole else 0}.{frac}"
+
+    t = re.sub(
+        rf"\b({_DIGIT_WORD_RE}(?:\s+{_DIGIT_WORD_RE})*)\s+point\s+({_DIGIT_WORD_RE}(?:\s+{_DIGIT_WORD_RE})*)\b",
+        repl_decimal,
+        text,
+        flags=re.I,
+    )
+
+    def repl_run(match: re.Match) -> str:
+        words = match.group(0).split()
+        if len(words) < 3:
+            return match.group(0)
+        return "".join(_DIGIT_WORD[w.lower()] for w in words)
+
+    return re.sub(
+        rf"\b{_DIGIT_WORD_RE}(?:\s+{_DIGIT_WORD_RE}){{2,}}\b",
+        repl_run,
+        t,
+        flags=re.I,
+    )
+
+
+def repair_spoken_trade(text: str) -> str:
+    """Turn common mishearings into words the journal already understands."""
+    t = text or ""
+    for pattern, repl in _MISHEARD:
+        t = re.sub(pattern, repl, t, flags=re.I)
+    t = _collapse_spoken_prices(t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def friendly_market(symbol: Optional[str]) -> str:
+    """Short desk name so a reply can say 'US30, the Dow'."""
+    if not symbol:
+        return ""
+    return _FRIENDLY_SYMBOL.get(str(symbol).upper(), "")
+
+
+def parse_rr_multiple(text: str, *, allow_bare: bool = False) -> Optional[float]:
+    """Risk multiple from '1 to 2', 'risk reward 2', or '2R'. None if it isn't a ratio."""
+    t = repair_spoken_trade(text or "").lower()
+    t = re.sub(
+        r"\b(one|two|three|four|five|six|seven|eight|nine|ten)\b",
+        lambda m: _RATIO_WORDS[m.group(1)],
+        t,
+    )
+    pair = re.search(
+        r"\b(?:risk reward|rr)\s*(?:of|is|at|was|about)?\s*"
+        r"(\d(?:\.\d+)?)\s*(?:to|:|/)\s*(\d(?:\.\d+)?)\b",
+        t,
+    )
+    if pair:
+        risk, reward = float(pair.group(1)), float(pair.group(2))
+        if risk > 0 and 0 < reward / risk <= 20:
+            return reward / risk
+    bare = re.search(
+        r"\b(?:risk reward|rr)\s*(?:of|is|at|was|about)?\s*(\d(?:\.\d+)?)\b",
+        t,
+    )
+    if bare:
+        value = float(bare.group(1))
+        if 0 < value <= 20:
+            return value
+    r_mult = re.search(r"\b(\d(?:\.\d+)?)\s*r\b", t)
+    if r_mult and (allow_bare or re.search(r"\b(risk reward|rr|target|stop)\b", t)):
+        value = float(r_mult.group(1))
+        if 0 < value <= 20:
+            return value
+    if allow_bare and len(t.split()) <= 6:
+        bare_pair = re.search(r"\b(\d(?:\.\d+)?)\s*(?:to|:)\s*(\d(?:\.\d+)?)\b", t)
+        if bare_pair:
+            risk, reward = float(bare_pair.group(1)), float(bare_pair.group(2))
+            if 0 < risk <= 20 and 0 < reward <= 20 and reward / risk <= 20:
+                return reward / risk
+    return None
+
+
+def target_from_rr(entry: float, stop: float, side: str, multiple: float) -> Optional[float]:
+    """Place the target the stated R:R implies. Skips a stop on the wrong side."""
+    risk = abs(float(entry) - float(stop))
+    if risk <= 0 or multiple <= 0:
+        return None
+    reward = risk * multiple
+    if str(side or "BUY").upper() == "SELL":
+        if float(stop) <= float(entry):
+            return None
+        return round(float(entry) - reward, 5)
+    if float(stop) >= float(entry):
+        return None
+    return round(float(entry) + reward, 5)
 
 
 def _expand_spoken_digits(text: str) -> str:
@@ -210,7 +389,7 @@ def normalize_symbol_guess(text: str) -> Tuple[Optional[str], bool]:
     needs_confirm is True when the match is an alias or a fuzzy spoken name.
     Knows nicknames (dow, gold, dax) and active catalog symbols (US 30, us thirty).
     """
-    raw = text or ""
+    raw = repair_spoken_trade(text or "")
     lower = re.sub(r"[^a-z0-9\s/&]", " ", raw.lower())
     lower = re.sub(r"\s+", " ", lower).strip()
     if not lower:
@@ -522,9 +701,10 @@ def suggest_session(when: Optional[datetime] = None, tz_name: str = "UTC") -> Di
 
 def parse_voice_text(text: str) -> Dict[str, Any]:
     """Extract trade fields from a spoken dump. Uncertain values are flagged, never silent."""
-    raw = (text or "").strip()
+    original = (text or "").strip()
+    raw = repair_spoken_trade(original)
     out: Dict[str, Any] = {
-        "text": raw,
+        "text": original,
         "symbol": None,
         "symbol_needs_confirm": False,
         "trade_type": None,
@@ -632,6 +812,24 @@ def parse_voice_text(text: str) -> Dict[str, Any]:
             out["take_profit"] = nums[2]
             out["fields_found"].extend(["entry_price", "stop_loss", "take_profit"])
             out["uncertain"].extend(["entry_price", "stop_loss", "take_profit"])
+
+    multiple = parse_rr_multiple(original)
+    if (
+        multiple
+        and out.get("take_profit") is None
+        and out.get("entry_price") is not None
+        and out.get("stop_loss") is not None
+    ):
+        target = target_from_rr(
+            float(out["entry_price"]),
+            float(out["stop_loss"]),
+            str(out.get("trade_type") or "BUY"),
+            multiple,
+        )
+        if target is not None:
+            out["take_profit"] = target
+            out["fields_found"].append("take_profit")
+            out["rr_multiple"] = multiple
 
     return out
 

@@ -149,9 +149,36 @@ def transcribe():
     return jsonify({'text': text})
 
 
-_NEURAL_VOICES = frozenset({
-    'alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse',
-})
+# Three human voices. Ids are OpenAI neural voices; labels are who the trader hears.
+_VOICE_CAST = {
+    'coral': {
+        'label': 'Maya',
+        'hint': 'Warm, close',
+        'instructions': (
+            'You are Maya, a friend journaling a trade with them. '
+            'Sound like a real person on a phone call: natural pace, contractions, a little warmth. '
+            'Never an announcer. Never hype. Short sentences, like you are sitting beside them.'
+        ),
+    },
+    'ash': {
+        'label': 'Noah',
+        'hint': 'Clear, steady',
+        'instructions': (
+            'You are Noah, a steady desk partner. Clear, human, unhurried. '
+            'Contractions, natural pace, no radio voice, no hype, no dramatic pauses.'
+        ),
+    },
+    'sage': {
+        'label': 'Sage',
+        'hint': 'Quiet, sure',
+        'instructions': (
+            'You are Sage, a quiet mentor who has traded for years. '
+            'Low, kind, unhurried, like talking across a desk. '
+            'Contractions. Never lecture. Never sound like a commercial.'
+        ),
+    },
+}
+_NEURAL_VOICES = frozenset(_VOICE_CAST)
 
 
 @bp.route('/speak', methods=['POST'])
@@ -173,7 +200,7 @@ def speak():
     if not text:
         return jsonify({'error': 'Nothing to speak.'}), 400
     voice = str(payload.get('voice') or 'coral').strip().lower()
-    if voice not in _NEURAL_VOICES:
+    if voice not in _VOICE_CAST:
         voice = 'coral'
 
     # Prefer higher-quality models; fall back so older accounts keep working.
@@ -197,9 +224,7 @@ def speak():
             'response_format': 'mp3',
         }
         if model.startswith('gpt-4o'):
-            body['instructions'] = (
-                'Speak like a calm senior trading mentor: warm, steady, concise, never hype.'
-            )
+            body['instructions'] = _VOICE_CAST[voice]['instructions']
         try:
             resp = requests.post(
                 'https://api.openai.com/v1/audio/speech',
@@ -243,6 +268,9 @@ def voices():
     enabled = _transcribe_enabled() and user_has_feature(current_user, 'ai_web')
     return jsonify({
         'enabled': enabled,
-        'voices': sorted(_NEURAL_VOICES) if enabled else [],
+        'voices': [
+            {'id': key, 'label': meta['label'], 'hint': meta['hint']}
+            for key, meta in _VOICE_CAST.items()
+        ],
         'default': 'coral',
     })
