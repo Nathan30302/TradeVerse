@@ -145,10 +145,10 @@
 
   .landing-hero .hero-title {
     text-shadow: 0 18px 48px rgba(0,0,0,0.55), 0 2px 0 rgba(0,0,0,0.25);
-    font-size: clamp(2rem, 4.8vw, 3.35rem);
-    line-height: 1.08;
-    letter-spacing: -0.03em;
-    max-width: 11ch;
+    font-size: clamp(2.7rem, 7vw, 4.75rem);
+    line-height: 0.96;
+    letter-spacing: -0.045em;
+    max-width: 10ch;
   }
 
   .landing-hero .landing-hero-badge {
@@ -175,7 +175,7 @@
       align-items: center;
     }
     .landing-hero .hero-title {
-      font-size: clamp(2.65rem, 3.4vw, 3.5rem);
+      font-size: clamp(3.6rem, 4.8vw, 5.15rem);
     }
   }
 
@@ -910,6 +910,125 @@
     .landing-page .landing-hero .hero-bg {
       transform: none !important;
     }
+    .tv-live-marquee-track { animation: none !important; }
+  }
+
+  /* Living strip + chapter list — same words, more presence */
+  .tv-live-marquee {
+    overflow: hidden;
+    margin: 0.25rem 0 1.75rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.28);
+  }
+  .tv-live-marquee-track {
+    display: flex;
+    align-items: center;
+    width: max-content;
+    padding: 0.9rem 0;
+    animation: tvMarquee 42s linear infinite;
+  }
+  .tv-live-marquee span {
+    font-family: Fraunces, "Times New Roman", serif;
+    font-size: 0.92rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(226,232,240,0.78);
+    white-space: nowrap;
+    padding: 0 1.35rem;
+  }
+  .tv-live-marquee span::before {
+    content: "";
+    display: inline-block;
+    width: 0.38rem;
+    height: 0.38rem;
+    margin-right: 1.35rem;
+    border-radius: 50%;
+    background: #2dd4bf;
+    box-shadow: 0 0 0 4px rgba(45,212,191,0.12);
+    vertical-align: 0.05em;
+  }
+  @keyframes tvMarquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  .tv-live-stack {
+    border-top: 1px solid rgba(255,255,255,0.12);
+  }
+  .tv-live-row {
+    display: grid;
+    grid-template-columns: 3.2rem 1fr;
+    grid-template-areas:
+      "idx name"
+      "idx copy";
+    column-gap: 0.85rem;
+    row-gap: 0.2rem;
+    padding: 1.15rem 0.2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    color: rgba(148,163,184,0.45);
+    transition: color 0.35s ease, background 0.35s ease;
+  }
+  .tv-live-row .n {
+    grid-area: idx;
+    align-self: center;
+    font-family: Fraunces, "Times New Roman", serif;
+    font-size: 0.95rem;
+  }
+  .tv-live-row h3 {
+    grid-area: name;
+    margin: 0;
+    font-family: Fraunces, "Times New Roman", serif;
+    font-weight: 600;
+    font-size: clamp(2.6rem, 8vw, 4.75rem);
+    letter-spacing: -0.05em;
+    line-height: 0.92;
+    color: inherit;
+  }
+  .tv-live-row p {
+    grid-area: copy;
+    margin: 0.35rem 0 0;
+    max-width: 34rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: inherit;
+  }
+  .tv-live-row.is-on {
+    color: #f8fafc;
+    background: linear-gradient(90deg, rgba(20,184,166,0.16), transparent 72%);
+  }
+  .tv-live-row.is-on .n { color: #5eead4; }
+  .tv-live-row.is-on p { color: rgba(226,232,240,0.9); }
+  @media (min-width: 768px) {
+    .tv-live-row {
+      grid-template-columns: 4.5rem minmax(9rem, 16rem) 1fr;
+      grid-template-areas: "idx name copy";
+      align-items: center;
+      padding: 1.45rem 0.4rem;
+    }
+    .tv-live-row p { margin: 0; }
+  }
+
+  .landing-page .feature-card {
+    background: linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(2,6,23,0.62) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #f8fafc;
+    box-shadow: 0 18px 48px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .landing-page .feature-card .card-title,
+  .landing-page .feature-card h3,
+  .landing-page .feature-card h5 {
+    color: #f8fafc;
+  }
+  .landing-page .feature-card .text-muted,
+  .landing-page .feature-card .card-text {
+    color: rgba(203,213,225,0.88) !important;
+  }
+  .landing-page .landing-section-head .display-5,
+  .landing-page .landing-cta-headline {
+    font-size: clamp(2.15rem, 4.6vw, 3.7rem);
+    letter-spacing: -0.04em;
+    line-height: 1.05;
   }
 </style>
 {% endblock %}
@@ -1054,6 +1173,13 @@
     </div>
 </div>
 
+<div class="tv-live-marquee" aria-hidden="true">
+    <div class="tv-live-marquee-track">
+        <span>Voice Journal</span><span>AI Coach</span><span>Playbook</span><span>Strategy Lab</span><span>Planner</span><span>Weekly review</span><span>Calendar</span><span>Risk</span>
+        <span>Voice Journal</span><span>AI Coach</span><span>Playbook</span><span>Strategy Lab</span><span>Planner</span><span>Weekly review</span><span>Calendar</span><span>Risk</span>
+    </div>
+</div>
+
 {% if not current_user.is_authenticated %}
 <nav id="landing-explore" class="container landing-explore mb-4 mb-lg-5" aria-label="Explore TradeVerse">
     <div class="landing-explore-inner">
@@ -1098,35 +1224,27 @@
         <h2 class="display-5 fw-bold mb-3 tv-split" data-tv-split>Four moves. One addictive habit.</h2>
         <p class="lead text-muted mb-0">TradeVerse is designed so every feature feeds the next — nothing sits unused.</p>
     </div>
-    <div class="row g-3 g-lg-4">
-        <div class="col-md-6 col-lg-3">
-            <div class="card feature-card h-100 border-0 p-3 tv-reveal" data-delay="1">
-                <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">01</div>
-                <h5 class="fw-bold">Plan</h5>
-                <p class="text-muted small mb-0">Lock entry, stop, and target in the planner before emotion takes over.</p>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card feature-card h-100 border-0 p-3 tv-reveal" data-delay="2">
-                <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">02</div>
-                <h5 class="fw-bold">Log</h5>
-                <p class="text-muted small mb-0">Talk the fill, or type it. Emotion and the checklist stay with the trade.</p>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card feature-card h-100 border-0 p-3 tv-reveal" data-delay="3">
-                <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">03</div>
-                <h5 class="fw-bold">Review</h5>
-                <p class="text-muted small mb-0">End-of-session ritual + AI Coach pulse turns mistakes into rules.</p>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card feature-card h-100 border-0 p-3 tv-reveal" data-delay="4">
-                <div class="display-6 fw-bold mb-2" style="color:#14b8a6;font-family:Fraunces,serif;">04</div>
-                <h5 class="fw-bold">Prove</h5>
-                <p class="text-muted small mb-0">Strategy Lab backtests ideas on real market history before you size up.</p>
-            </div>
-        </div>
+    <div class="tv-live-stack" id="tv-live-stack">
+        <article class="tv-live-row is-on" tabindex="0">
+            <div class="n">01</div>
+            <h3>Plan</h3>
+            <p>Lock entry, stop, and target in the planner before emotion takes over.</p>
+        </article>
+        <article class="tv-live-row" tabindex="0">
+            <div class="n">02</div>
+            <h3>Log</h3>
+            <p>Talk the fill, or type it. Emotion and the checklist stay with the trade.</p>
+        </article>
+        <article class="tv-live-row" tabindex="0">
+            <div class="n">03</div>
+            <h3>Review</h3>
+            <p>End-of-session ritual + AI Coach pulse turns mistakes into rules.</p>
+        </article>
+        <article class="tv-live-row" tabindex="0">
+            <div class="n">04</div>
+            <h3>Prove</h3>
+            <p>Strategy Lab backtests ideas on real market history before you size up.</p>
+        </article>
     </div>
 </div>
 
@@ -1795,6 +1913,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 scales: { x: { display: false }, y: { display: false } }
             }
         });
+    }
+
+    var liveStack = document.getElementById('tv-live-stack');
+    if (liveStack) {
+        var liveRows = Array.prototype.slice.call(liveStack.querySelectorAll('.tv-live-row'));
+        var liveIndex = 0;
+        var liveTimer = null;
+        function showLive(n) {
+            liveRows.forEach(function (row, idx) {
+                row.classList.toggle('is-on', idx === n);
+            });
+            liveIndex = n;
+        }
+        function armLive() {
+            if (reduceMotion || liveRows.length < 2) return;
+            clearInterval(liveTimer);
+            liveTimer = setInterval(function () {
+                showLive((liveIndex + 1) % liveRows.length);
+            }, 3400);
+        }
+        liveRows.forEach(function (row, idx) {
+            row.addEventListener('mouseenter', function () { showLive(idx); armLive(); });
+            row.addEventListener('focus', function () { showLive(idx); armLive(); });
+        });
+        showLive(0);
+        armLive();
     }
 
     if (!page) return;
