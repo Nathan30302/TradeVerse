@@ -186,9 +186,9 @@ function el(tag, className, text){
 async function importFromAPI(credentialId) {
     const modal = new bootstrap.Modal(document.getElementById('importModal'));
     const modalBody = document.getElementById('importModalBody');
-    
+
     modal.show();
-    
+
     try {
         const csrf = (typeof tvGetCsrf === 'function' ? tvGetCsrf() : (document.querySelector('input[name="csrf_token"]')||{}).value) || '';
         const response = await fetch(`/imports/api-import/${credentialId}`, {
@@ -201,9 +201,9 @@ async function importFromAPI(credentialId) {
             credentials: 'same-origin',
             body: JSON.stringify({dry_run: false})
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             clearEl(modalBody);
             modalBody.appendChild(el('i','fas fa-check-circle fa-3x text-success mb-3'));

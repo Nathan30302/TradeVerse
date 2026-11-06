@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Syne:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-ink9">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trade-guide.css') }}?v={{ app_version }}-ink22">
 {% endblock %}
 
 {% block content %}
@@ -90,55 +90,74 @@
         <input type="file" class="d-none" id="after_screenshot" name="after_screenshot" accept="image/*">
 
         <div class="tv-vj-stage" data-state="idle" id="tv-vj-stage">
-            <div class="tv-vj-bloom-wrap">
-                <button type="button" class="tv-vj-orb" id="tv-vj-orb" aria-label="Start conversation">
-                    <canvas id="tv-vj-canvas" width="320" height="320" aria-hidden="true"></canvas>
-                </button>
-            </div>
-
-            <p class="tv-vj-brand">TradeVerse</p>
-            <div class="tv-vj-voices" id="tv-vj-voices" role="radiogroup" aria-label="Choose a voice">
-                <button type="button" class="tv-vj-voice is-on" data-voice="coral" role="radio" aria-checked="true" title="Warm, close">Maya</button>
-                <button type="button" class="tv-vj-voice" data-voice="ash" role="radio" aria-checked="false" title="Clear, steady">Noah</button>
-                <button type="button" class="tv-vj-voice" data-voice="sage" role="radio" aria-checked="false" title="Quiet, sure">Sage</button>
-            </div>
+            <header class="tv-vj-top">
+                <p class="tv-vj-brand">TradeVerse</p>
+                <div class="tv-vj-voices" id="tv-vj-voices" role="radiogroup" aria-label="Choose a voice">
+                    <button type="button" class="tv-vj-voice is-on" data-voice="marin" role="radio" aria-checked="true" title="Close, real">Maya</button>
+                    <button type="button" class="tv-vj-voice" data-voice="cedar" role="radio" aria-checked="false" title="Warm, grounded">Noah</button>
+                    <button type="button" class="tv-vj-voice" data-voice="sage" role="radio" aria-checked="false" title="Quiet, sure">Sage</button>
+                </div>
+            </header>
             <div class="tv-vj-progress" id="tv-vj-progress" aria-hidden="true">
                 <span data-phase="facts" class="is-on">Facts</span>
-                <span data-phase="reflect">Reflect</span>
-                <span data-phase="charts">Charts</span>
+                <span data-phase="reflect">Feel</span>
+                <span data-phase="charts">Photo</span>
                 <span data-phase="review">Save</span>
             </div>
-            <p class="tv-vj-ai" id="tv-vj-ai">Just talk.</p>
-            <div class="tv-vj-live-wrap" id="tv-vj-live-wrap">
-                <p class="tv-vj-live" id="tv-vj-live" aria-live="polite"></p>
-            </div>
-            <p class="tv-vj-status" id="tv-vj-status">Tap the ink, or type</p>
 
-            <div class="tv-vj-chips" id="tv-vj-chips" aria-live="polite"></div>
-            <p class="tv-vj-chip-hint d-none" id="tv-vj-chip-hint">Tap a chip to fix it</p>
-            <p class="tv-vj-mic-err d-none" id="tv-vj-mic-err"></p>
-
-            <div class="tv-vj-composer" id="tv-vj-composer">
-                <label class="visually-hidden" for="tv-vj-type-input">Type a reply</label>
-                <input type="text" id="tv-vj-type-input" class="tv-vj-type-input" placeholder="Type a line if you’d rather not talk" autocomplete="off" enterkeyhint="send">
-                <button type="button" class="tv-vj-type-send" id="tv-vj-type-send" aria-label="Send typed reply">Send</button>
-            </div>
-
-            <div class="tv-vj-shot d-none" id="tv-vj-shot">
-                <p class="tv-vj-shot-prompt" id="tv-vj-shot-prompt">Got a before-trade screenshot?</p>
-                <div class="tv-vj-shot-row">
-                    <button type="button" class="tv-vj-shot-btn is-active" id="tv-vj-shot-before" data-pick="before">Before</button>
-                    <button type="button" class="tv-vj-shot-btn" id="tv-vj-shot-after" data-pick="after">After</button>
+            <div class="tv-vj-layout">
+                <div class="tv-vj-talk">
+                    <div class="tv-vj-bloom-wrap">
+                        <button type="button" class="tv-vj-orb" id="tv-vj-orb" aria-label="Start conversation">
+                            <canvas id="tv-vj-canvas" width="320" height="320" aria-hidden="true"></canvas>
+                        </button>
+                    </div>
+                    <p class="tv-vj-ai" id="tv-vj-ai">Just talk.</p>
+                    <div class="tv-vj-live-wrap" id="tv-vj-live-wrap">
+                        <p class="tv-vj-heard">You</p>
+                        <p class="tv-vj-live" id="tv-vj-live" aria-live="polite"></p>
+                    </div>
+                    <p class="tv-vj-redo d-none" id="tv-vj-redo">
+                        <button type="button" id="tv-vj-redo-btn">That’s not what I said</button>
+                    </p>
+                    <div class="tv-vj-prompts" id="tv-vj-prompts" aria-live="polite"></div>
+                    <p class="tv-vj-status" id="tv-vj-status">Tap to talk, or type</p>
+                    <button type="button" class="tv-vj-new d-none" id="tv-vj-new">New trade</button>
+                    <p class="tv-vj-mic-err d-none" id="tv-vj-mic-err"></p>
+                    <div class="tv-vj-composer" id="tv-vj-composer">
+                        <label class="visually-hidden" for="tv-vj-type-input">Type a reply</label>
+                        <input type="text" id="tv-vj-type-input" class="tv-vj-type-input" placeholder="Type a line if you’d rather not talk" autocomplete="off" enterkeyhint="send">
+                        <button type="button" class="tv-vj-type-send" id="tv-vj-type-send" aria-label="Send typed reply">Send</button>
+                    </div>
                 </div>
-                <button type="button" class="tv-vj-shot-skip" id="tv-vj-shot-skip">Not this time</button>
-                <div class="tv-vj-shot-previews" id="tv-vj-shot-previews"></div>
-            </div>
 
-            <section class="tv-vj-journal d-none" id="tv-vj-journal" aria-label="Trade journal">
-                <div id="tv-vj-summary"></div>
-                <button type="submit" class="btn btn-primary tv-vj-save" id="tv-guide-save">Save to journal</button>
-                <button type="button" class="btn btn-link tv-vj-fix" id="tv-vj-fix">Change something</button>
-            </section>
+                <aside class="tv-vj-sheet">
+                    <p class="tv-vj-check d-none" id="tv-vj-check">Check the numbers, then say if that looks right.</p>
+                    <article class="tv-vj-slip d-none" id="tv-vj-slip" aria-live="polite"></article>
+                    <div class="tv-vj-chips" id="tv-vj-chips" aria-live="polite"></div>
+                    <p class="tv-vj-chip-hint d-none" id="tv-vj-chip-hint">Tap a number to change it</p>
+                    <div class="tv-vj-shot d-none" id="tv-vj-shot">
+                        <p class="tv-vj-shot-prompt" id="tv-vj-shot-prompt">Add chart photo — before and after.</p>
+                        <div class="tv-vj-shot-grid">
+                            <button type="button" class="tv-vj-shot-slot" id="tv-vj-shot-before" data-pick="before">
+                                <span class="tv-vj-shot-kicker">Before</span>
+                                <span class="tv-vj-shot-hint">The setup</span>
+                            </button>
+                            <button type="button" class="tv-vj-shot-slot" id="tv-vj-shot-after" data-pick="after">
+                                <span class="tv-vj-shot-kicker">After</span>
+                                <span class="tv-vj-shot-hint">The result</span>
+                            </button>
+                        </div>
+                        <button type="button" class="tv-vj-shot-add d-none" id="tv-vj-shot-done">Continue</button>
+                        <button type="button" class="tv-vj-shot-skip" id="tv-vj-shot-skip">No photo this time</button>
+                    </div>
+                    <section class="tv-vj-journal d-none" id="tv-vj-journal" aria-label="Trade journal">
+                        <div id="tv-vj-summary"></div>
+                        <button type="submit" class="btn btn-primary tv-vj-save" id="tv-guide-save">Save to journal</button>
+                        <button type="button" class="btn btn-link tv-vj-fix" id="tv-vj-fix">Change something</button>
+                    </section>
+                </aside>
+            </div>
         </div>
     </form>
     <p class="tv-vj-tagline">A page of your journal, spoken</p>
@@ -158,10 +177,11 @@
     'extractUrl': url_for('trade.extract_chart'),
     'transcribeUrl': url_for('api_voice.transcribe'),
     'transcribeEnabled': voice_transcribe_enabled,
+    'speakEnabled': voice_speak_enabled,
     'speakUrl': url_for('api_voice.speak'),
     'listUrl': url_for('trade.list'),
     'userId': current_user.id,
     'storageKey': 'tv-vj-draft-' ~ current_user.id
 } | tojson }}</script>
-<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-ink9"></script>
+<script src="{{ url_for('static', filename='js/trade-guide.js') }}?v={{ app_version }}-ink22"></script>
 {% endblock %}

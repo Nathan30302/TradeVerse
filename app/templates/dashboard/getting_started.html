@@ -6,7 +6,7 @@
 <div class="tv-page-hero">
     <div class="page-header">
         <h1 class="page-title mb-2"><i class="fas fa-route"></i> Your first trade</h1>
-        <p class="page-subtitle mb-0">Talk it in, ask the coach, then name the setup. About three minutes to a journal you can actually use.</p>
+        <p class="page-subtitle mb-0">Talk the trade in, ask the coach, then name the setup. A few minutes, and the journal is yours.</p>
     </div>
 </div>
 
@@ -46,8 +46,8 @@
         <div class="card tv-surface h-100">
             <div class="card-body d-flex flex-column">
                 <div class="badge bg-info mb-2 align-self-start">04</div>
-                <h5 class="fw-bold">See Results</h5>
-                <p class="small tv-muted flex-grow-1">After 3+ linked trades, Results grade unlocks. At 5+, TradeVerse suggests your setup grade from real R:R.</p>
+                <h5 class="fw-bold">See how it played out</h5>
+                <p class="small tv-muted flex-grow-1">After a few trades on the same setup, the results start to show whether that idea is actually working.</p>
                 <a href="{{ url_for('playbook.index') }}" class="btn btn-outline-secondary w-100">View Results</a>
             </div>
         </div>
@@ -57,15 +57,15 @@
 <div class="card tv-surface mb-4">
     <div class="card-body d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
         <div>
-            <h5 class="fw-bold mb-1">Try sample data</h5>
+            <h5 class="fw-bold mb-1">Look around with sample trades</h5>
             <p class="small tv-muted mb-0">
-                Loads 3 demo trades <strong>linked to a graded sample playbook</strong> so you can explore Results, AI Coach, and analytics immediately.
+                Three demo trades, already tied to a sample setup, so you can see the coach and the results before your own journal is full.
             </p>
         </div>
         <form method="POST" action="{{ url_for('dashboard.getting_started_sample_data') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="next" value="{{ url_for('playbook.index') }}">
-            <button type="submit" class="btn btn-outline-primary">Load sample + playbook</button>
+            <button type="submit" class="btn btn-outline-primary">Load sample trades</button>
         </form>
     </div>
 </div>

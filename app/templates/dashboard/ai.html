@@ -629,19 +629,19 @@
         </div>
     </div>
     <div class="tv-ai-chat-shell">
-        <div id="aiCoachStatus" class="mb-2" role="status" aria-live="polite">Pick an action above, or type a question below.</div>
+        <div id="aiCoachStatus" class="mb-2" role="status" aria-live="polite">Ask about a trade, or pick one of the questions below.</div>
         <div id="aiChat" class="tv-ai-chat-thread flex-grow-1">
             <div id="aiEmptyHints" class="tv-panel mb-3">
                 {% if journal_trade_count|default(0)|int < 1 %}
-                <div class="fw-semibold mb-1">Nothing to coach yet</div>
-                <p class="small tv-muted mb-2">Talk one trade — market, side, entry, stop, and how you felt. I’ll use that, not a generic leak.</p>
+                <div class="fw-semibold mb-1">Nothing to go on yet</div>
+                <p class="small tv-muted mb-2">Talk one trade — the market, the side, where you got in, the stop, and how it felt. I’ll work from that.</p>
                 <div class="d-flex flex-wrap gap-2" id="aiQuickChips">
                     <a class="btn btn-sm btn-primary" href="{{ url_for('trade.guide') }}"><i class="fas fa-microphone me-1"></i> Talk a trade</a>
                     <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What should I say when I journal a trade?">What to say</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary tv-quick" data-q="Give me a pre-trade checklist.">Pre-trade checklist</button>
                 </div>
                 {% else %}
-                <div class="small tv-muted mb-2">Try asking:</div>
+                <div class="small tv-muted mb-2">A few places to start:</div>
                 <div class="d-flex flex-wrap gap-2" id="aiQuickChips">
                     <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What’s my biggest performance leak this week?">Biggest leak</button>
                     <button type="button" class="btn btn-sm btn-outline-primary tv-quick" data-q="What should my one rule be next week?">One rule</button>

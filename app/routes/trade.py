@@ -195,6 +195,20 @@ def _compose_guided_log_fields(form):
     return compose_guided_fields(form)
 
 
+def _prefer_richer_note(current, composed):
+    """Keep the journal note that still contains what was typed and carries the extra lines."""
+    current = (current or "").strip()
+    composed = (composed or "").strip()
+    if not composed:
+        return current
+    if not current:
+        return composed
+    head = current[:48].strip()
+    if head and head in composed and len(composed) >= len(current):
+        return composed
+    return current
+
+
 def _clip_str(value, limit: int):
     """Trim optional string fields to DB column limits."""
     if value is None:
@@ -513,10 +527,8 @@ def add():
             guided = _compose_guided_log_fields(request.form)
             from_guide = (request.form.get('from_guide') or '').strip() == '1'
             if guided:
-                if not pre_trade_plan:
-                    pre_trade_plan = guided['pre_trade_plan']
-                if not post_trade_notes:
-                    post_trade_notes = guided['post_trade_notes']
+                pre_trade_plan = _prefer_richer_note(pre_trade_plan, guided.get('pre_trade_plan'))
+                post_trade_notes = _prefer_richer_note(post_trade_notes, guided.get('post_trade_notes'))
                 if not emotion:
                     emotion = guided['emotion']
                 if not strategy and guided.get('strategy'):
@@ -914,6 +926,36 @@ def voice_turn():
             clean_history.append({'role': role, 'content': content})
     tz_name = getattr(current_user, 'timezone', None) or 'UTC'
     session_hint = suggest_session(tz_name=tz_name)
+    pattern_notes = []
+    try:
+        recent_rows = (
+            Trade.query.filter_by(user_id=current_user.id)
+            .order_by(Trade.id.desc())
+            .limit(24)
+            .all()
+        )
+        if recent_rows and recent_rows[0].lot_size:
+            session_hint = dict(session_hint)
+            session_hint['last_lot'] = float(recent_rows[0].lot_size)
+        for row in recent_rows:
+            blob = " ".join(
+                part.strip()
+                for part in (
+                    getattr(row, 'lessons_learned', None) or '',
+                    getattr(row, 'pre_trade_plan', None) or '',
+                    getattr(row, 'post_trade_notes', None) or '',
+                )
+                if part and str(part).strip()
+            )
+            if blob:
+                pattern_notes.append(blob)
+    except Exception:
+        current_app.logger.exception('voice journal pattern lookup failed')
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        pattern_notes = []
     raw_draft = payload.get('draft')
     has_before = bool(payload.get('has_before') or payload.get('has_screenshot'))
     has_after = bool(payload.get('has_after'))
@@ -927,6 +969,7 @@ def voice_turn():
         session_hint=session_hint,
         skip_screenshot=bool(payload.get('skip_screenshot')),
         instruments=active_instrument_symbols(),
+        pattern_notes=pattern_notes,
     )
     draft = result.get('draft') or {}
     instrument = None
@@ -953,6 +996,7 @@ def voice_turn():
         'complete': bool(result.get('complete')),
         'ask_screenshot': bool(result.get('ask_screenshot')),
         'screenshot_kind': result.get('screenshot_kind') or '',
+        'ask_key': result.get('ask_key') or '',
         'uncertain': result.get('uncertain') or [],
         'phase': result.get('phase') or '',
         'action': result.get('action') or '',
@@ -1382,9 +1426,12 @@ def view(trade_id):
             except Exception:
                 current_app.logger.debug('coach_grades skipped', exc_info=True)
         
+        from app.services.voice_journal import saved_journal_blocks
+
         return render_template(
             'trade/view.html',
             trade=trade,
+            journal_blocks=saved_journal_blocks(trade),
             mistakes=mistakes,
             feedbacks=feedbacks,
             linked_plans=linked_plans,

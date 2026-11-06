@@ -31,9 +31,9 @@ def build_insights_next_action(
 
     if pending > 0 and first_trade:
         return {
-            "eyebrow": "Do this next",
-            "title": f"You have {pending} trade{'s' if pending != 1 else ''} waiting for review",
-            "body": "Insights are sharper after you write a one-line lesson on closed trades.",
+            "eyebrow": "Worth doing now",
+            "title": f"{pending} closed trade{'s' if pending != 1 else ''} still need a note",
+            "body": "One line on what you learned makes the rest of this page useful.",
             "cta_label": "Review next trade",
             "cta_url": url_for("trade.view", trade_id=first_trade, review=1),
             "secondary_label": "End of session",
@@ -42,9 +42,9 @@ def build_insights_next_action(
 
     if dangerous_emotion:
         return {
-            "eyebrow": "Do this next",
-            "title": f"Watch trades tagged “{dangerous_emotion}”",
-            "body": "Set a weekly rule that limits size or skips this emotion for 5 sessions.",
+            "eyebrow": "Worth doing now",
+            "title": f"Trades tagged “{dangerous_emotion}” are costing you",
+            "body": "Give yourself one rule for the week: smaller size, or skip this feeling entirely.",
             "cta_label": "Set weekly focus",
             "cta_url": url_for("dashboard.weekly_review"),
             "secondary_label": "Open AI Coach",
@@ -53,9 +53,9 @@ def build_insights_next_action(
 
     if warning_count > 0 and page == "patterns":
         return {
-            "eyebrow": "Do this next",
-            "title": "Turn one weakness into a weekly rule",
-            "body": "Pick the loudest pattern warning and make it your only focus for 7 days.",
+            "eyebrow": "Worth doing now",
+            "title": "Pick one weak spot and make it this week’s rule",
+            "body": "One warning. Seven days. Leave the rest alone until that one’s quieter.",
             "cta_label": "Weekly review",
             "cta_url": url_for("dashboard.weekly_review"),
             "secondary_label": "Add trade with playbook",
@@ -64,9 +64,9 @@ def build_insights_next_action(
 
     if not focus:
         return {
-            "eyebrow": "Do this next",
-            "title": "Set one weekly focus rule",
-            "body": "Example: max 2 trades/day, or only trade your A+ playbook setup.",
+            "eyebrow": "Worth doing now",
+            "title": "Name one rule for this week",
+            "body": "Two trades a day, or only the setup you already trust. One sentence is enough.",
             "cta_label": "Weekly review",
             "cta_url": url_for("dashboard.weekly_review"),
             "secondary_label": "Open playbook",
@@ -74,8 +74,8 @@ def build_insights_next_action(
         }
 
     return {
-        "eyebrow": "Do this next",
-        "title": "Stay on your weekly rule",
+        "eyebrow": "This week",
+        "title": "Stay with the rule you already set",
         "body": focus[:180] + ("…" if len(focus) > 180 else ""),
         "cta_label": "Log a trade",
         "cta_url": url_for("trade.add"),

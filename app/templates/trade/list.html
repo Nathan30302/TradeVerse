@@ -21,7 +21,7 @@
                 <h1 class="page-title">
                     <i class="fas fa-list"></i> My Trades
                 </h1>
-                <p class="page-subtitle">View and manage all your trades</p>
+                <p class="page-subtitle">The trades you’ve written down.</p>
             </div>
         <div class="col-auto d-flex flex-wrap gap-2 justify-content-end">
             {% if has_feature('exports') %}
@@ -36,11 +36,11 @@
             <a href="{{ url_for('trade.add', duplicate=1) }}" class="btn btn-outline-primary btn-lg">
                 <i class="fas fa-copy"></i> Duplicate last
             </a>
-            <a href="{{ url_for('trade.guide') }}" class="btn btn-outline-primary btn-lg">
+            <a href="{{ url_for('trade.guide') }}" class="btn btn-primary btn-lg">
                 <i class="fas fa-microphone"></i> Voice Journal
             </a>
-            <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus-circle"></i> Add New Trade
+            <a href="{{ url_for('trade.add') }}" class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-plus-circle"></i> Add a trade
             </a>
         </div>
         </div>
@@ -304,16 +304,16 @@
 {% if not trades.items %}
         <div class="tv-empty-well py-5 px-3">
             <div class="tv-empty-icon"><i class="fas fa-inbox"></i></div>
-            <h4 class="mb-2">No trades found</h4>
+            <h4 class="mb-2">{% if status_filter != 'all' or symbol_filter or strategy_filter or mistake_filter %}Nothing matches that{% else %}No trades yet{% endif %}</h4>
             <p class="tv-muted mb-4 mx-auto" style="max-width: 28rem;">
                 {% if status_filter != 'all' or symbol_filter or strategy_filter or mistake_filter %}
-                    Try adjusting your filters or add a new trade.
+                    Clear a filter, or log the trade you were looking for.
                 {% else %}
-                    Start your trading journal by logging your first trade.
+                    The journal is empty. Talk the last trade in, or type it if that’s easier.
                 {% endif %}
             </p>
-            <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus-circle"></i> Add trade
+            <a href="{{ url_for('trade.guide') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-microphone"></i> Talk a trade
             </a>
         </div>
 {% endif %}

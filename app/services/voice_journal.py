@@ -447,15 +447,24 @@ def parse_yes_no(text: str) -> Optional[str]:
 
 
 def parse_status(text: str) -> Optional[str]:
-    """Open vs closed — not journal end-phrases like bare 'done' / 'finished'."""
-    t = (text or "").lower()
+    """Open vs closed. 'Candle closed' is not a closed trade."""
+    t = (text or "").lower().strip()
+    if re.search(r"\b(still in|still open|not closed|running|holding)\b", t):
+        return "open"
     if re.search(
-        r"\b(closed|already (?:out|done|closed)|stopped out|hit (?:tp|sl)|"
-        r"took profit|got stopped|flat now)\b",
+        r"\b(already (?:out|done|closed)|stopped out|hit (?:my )?(?:tp|sl)|"
+        r"took profit|got stopped|flat now|i(?:'m| am) out|"
+        r"closed (?:it|out|the trade)|got out)\b",
         t,
     ):
         return "closed"
-    if re.search(r"\b(open|still in|running|holding|not closed)\b", t):
+    if re.search(r"\bclosed\b", t) and not re.search(
+        r"\b(?:candle|bar|above|below|market) closed\b", t
+    ):
+        return "closed"
+    if re.fullmatch(r"(?:it(?:'s| is) )?(?:closed|out|flat)", t):
+        return "closed"
+    if re.search(r"\bopen\b", t):
         return "open"
     return None
 
@@ -560,7 +569,11 @@ _LABELED_PRICE = (
     ("entry", re.compile(r"\b(?:entry|entered|fill)\s*(?:price)?\s*(?:at|was|is|:)?\s*(\d{1,6}(?:[.,]\d{1,6})?)\b", re.I)),
     ("stop_loss", re.compile(r"\b(?:stop(?:\s*loss)?|sl)\s*(?:at|was|is|:)?\s*(\d{1,6}(?:[.,]\d{1,6})?)\b", re.I)),
     ("take_profit", re.compile(r"\b(?:take\s*profit|target|tp)\s*(?:at|was|is|:)?\s*(\d{1,6}(?:[.,]\d{1,6})?)\b", re.I)),
-    ("exit", re.compile(r"\b(?:exit(?:ed)?|closed?)\s*(?:at|price)?\s*(?:at|was|is|:)?\s*(\d{1,6}(?:[.,]\d{1,6})?)\b", re.I)),
+    ("exit", re.compile(
+        r"\b(?:exit(?:ed)?|closed?(?:\s+it)?|got out|get out|came out|where I (?:got|came) out)"
+        r"\s*(?:at|price)?\s*(?:at|was|is|:)?\s*(\d{1,6}(?:[.,]\d{1,6})?)\b",
+        re.I,
+    )),
 )
 
 
@@ -775,8 +788,9 @@ def parse_voice_text(text: str) -> Dict[str, Any]:
             val = _to_float(m.group(1))
             if val is not None:
                 labeled[key] = val
-                out[key if key != "entry" else "entry_price"] = val
-                out["fields_found"].append("entry_price" if key == "entry" else key)
+                field = {"entry": "entry_price", "exit": "exit_price"}.get(key, key)
+                out[field] = val
+                out["fields_found"].append(field)
 
     if out.get("entry_price") is None:
         at_m = re.search(r"\b(?:at|around|from)\s+(\d{1,6}(?:[.,]\d{1,6})?)\b", raw, re.I)
@@ -1066,7 +1080,7 @@ def compose_guided_fields(form) -> Optional[Dict[str, Any]]:
     if mgmt_bits:
         post_bits.append("Management: " + ", ".join(mgmt_bits))
     if mgmt_note:
-        post_bits.append(mgmt_note)
+        post_bits.append(f"Managed: {mgmt_note}")
 
     pre = "\n".join(pre_bits).strip()
     post = "\n".join(post_bits).strip()
@@ -1114,6 +1128,61 @@ def compose_guided_fields(form) -> Optional[Dict[str, Any]]:
         "tags": tags,
         "lessons_learned": lessons,
     }
+
+
+_SAVED_LABELS = {
+    "feeling during": "In the trade",
+    "emotions": "In the trade",
+    "setup": "Setup",
+    "session": "Session",
+    "feeling after": "Now",
+    "management": "How you managed it",
+    "outcome": "What happened",
+    "fix": "The one thing",
+    "next time": "Next time",
+    "managed": "How you managed it",
+}
+
+
+def saved_journal_blocks(trade) -> List[Dict[str, str]]:
+    """Turn saved notes into the labeled page someone can reread."""
+    blocks: List[Dict[str, str]] = []
+
+    def push(label: str, text: str) -> None:
+        text = (text or "").strip()
+        if text:
+            blocks.append({"label": label, "text": text})
+
+    def consume(blob: Optional[str], default_label: str) -> None:
+        body: List[str] = []
+        peeled: List[tuple] = []
+        for raw in (blob or "").splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+            low = line.lower()
+            if low in ("followed rules", "mostly followed rules", "broke rules"):
+                peeled.append(("Rules", line[0].upper() + line[1:]))
+                continue
+            if ":" in line:
+                head, rest = line.split(":", 1)
+                mapped = _SAVED_LABELS.get(head.strip().lower())
+                if mapped and rest.strip():
+                    peeled.append((mapped, rest.strip()))
+                    continue
+            body.append(line)
+        if body:
+            push(default_label, " ".join(body))
+        for label, text in peeled:
+            push(label, text)
+
+    consume(getattr(trade, "pre_trade_plan", None), "Why this trade")
+    consume(getattr(trade, "post_trade_notes", None), "What happened")
+    consume(getattr(trade, "lessons_learned", None), "What it taught you")
+    mistake = (getattr(trade, "mistakes", None) or "").strip()
+    if mistake and not any(mistake in block["text"] for block in blocks):
+        push("The one thing", mistake)
+    return blocks
 
 
 def _is_journaled(trade: Trade) -> bool:

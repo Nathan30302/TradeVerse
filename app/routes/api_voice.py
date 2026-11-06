@@ -92,6 +92,7 @@ def transcribe():
 
     models = [
         os.environ.get('OPENAI_TRANSCRIBE_MODEL', '').strip(),
+        'gpt-4o-transcribe',
         'gpt-4o-mini-transcribe',
         'whisper-1',
     ]
@@ -107,7 +108,16 @@ def transcribe():
         }
         if model == 'whisper-1':
             form['temperature'] = '0'
-        # No glossary prompt — it made Whisper substitute different trading words.
+        elif model.startswith('gpt-4o'):
+            # Verbatim only. A symbol glossary made the model substitute other trading words.
+            hint = str(request.form.get('hint') or '').strip().replace('\n', ' ')[:240]
+            prompt = (
+                'Transcribe verbatim. Keep the speaker\'s exact words, slang, and numbers. '
+                'Do not paraphrase, summarize, or replace a word with a different one.'
+            )
+            if hint and 'trading journal' not in hint.lower():
+                prompt += ' A rough live caption, which is often wrong: ' + hint
+            form['prompt'] = prompt
         try:
             resp = requests.post(
                 'https://api.openai.com/v1/audio/transcriptions',
@@ -149,33 +159,38 @@ def transcribe():
     return jsonify({'text': text})
 
 
-# Three human voices. Ids are OpenAI neural voices; labels are who the trader hears.
+# Acting notes for gpt-4o-mini-tts. Concrete pace and tone, one breath.
+_HUMAN = (
+    "Voice: a friend across the desk after the close. "
+    "Tone: warm, easy, contractions, a natural rise and fall. "
+    "Pace: conversational, unhurried, never clipped. "
+    "Delivery: one continuous thought. A short breath only before a question. "
+    "Clarity: everyday speech, not an announcer and not a recording."
+)
+_CLASSIC_VOICES = frozenset({
+    'alloy', 'ash', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer',
+})
 _VOICE_CAST = {
-    'coral': {
+    'marin': {
         'label': 'Maya',
-        'hint': 'Warm, close',
-        'instructions': (
-            'You are Maya, a friend journaling a trade with them. '
-            'Sound like a real person on a phone call: natural pace, contractions, a little warmth. '
-            'Never an announcer. Never hype. Short sentences, like you are sitting beside them.'
-        ),
+        'hint': 'Close, real',
+        'speed': 0.96,
+        'classic': 'shimmer',
+        'instructions': _HUMAN + " A woman in her thirties. Close to the mic, soft smile in the voice, unhurried.",
     },
-    'ash': {
+    'cedar': {
         'label': 'Noah',
-        'hint': 'Clear, steady',
-        'instructions': (
-            'You are Noah, a steady desk partner. Clear, human, unhurried. '
-            'Contractions, natural pace, no radio voice, no hype, no dramatic pauses.'
-        ),
+        'hint': 'Warm, grounded',
+        'speed': 0.94,
+        'classic': 'onyx',
+        'instructions': _HUMAN + " A man in his thirties. Low, easy, leaning back, like he's glad you sat down.",
     },
     'sage': {
         'label': 'Sage',
         'hint': 'Quiet, sure',
-        'instructions': (
-            'You are Sage, a quiet mentor who has traded for years. '
-            'Low, kind, unhurried, like talking across a desk. '
-            'Contractions. Never lecture. Never sound like a commercial.'
-        ),
+        'speed': 0.95,
+        'classic': 'sage',
+        'instructions': _HUMAN + " A woman with a quiet, steady voice, a little lower, thinking it through with you.",
     },
 }
 _NEURAL_VOICES = frozenset(_VOICE_CAST)
@@ -199,9 +214,11 @@ def speak():
     text = truncate_for_speech(str(payload.get('text') or ''))
     if not text:
         return jsonify({'error': 'Nothing to speak.'}), 400
-    voice = str(payload.get('voice') or 'coral').strip().lower()
+    voice = str(payload.get('voice') or 'marin').strip().lower()
+    if voice in ('coral', 'ash'):
+        voice = {'coral': 'marin', 'ash': 'cedar'}[voice]
     if voice not in _VOICE_CAST:
-        voice = 'coral'
+        voice = 'marin'
 
     # Prefer higher-quality models; fall back so older accounts keep working.
     models = [
@@ -217,11 +234,15 @@ def speak():
 
     last_err = ''
     for model in models:
+        spoken_voice = voice
+        if not model.startswith('gpt-4o') and spoken_voice not in _CLASSIC_VOICES:
+            spoken_voice = _VOICE_CAST[voice].get('classic') or 'sage'
         body = {
             'model': model,
-            'voice': voice,
+            'voice': spoken_voice,
             'input': text,
             'response_format': 'mp3',
+            'speed': _VOICE_CAST[voice].get('speed') or 0.94,
         }
         if model.startswith('gpt-4o'):
             body['instructions'] = _VOICE_CAST[voice]['instructions']
@@ -272,5 +293,5 @@ def voices():
             {'id': key, 'label': meta['label'], 'hint': meta['hint']}
             for key, meta in _VOICE_CAST.items()
         ],
-        'default': 'coral',
+        'default': 'marin',
     })

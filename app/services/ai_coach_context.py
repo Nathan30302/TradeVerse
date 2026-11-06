@@ -257,11 +257,11 @@ def get_coach_narrative(user) -> Dict[str, Any]:
         "source": "empty",
         "has_data": False,
         "leak": "Not enough trades yet",
-        "strength": "Journal is ready",
-        "next_action": "Close 3 trades with SL, strategy tag, and a one-line note",
+        "strength": "The journal is ready",
+        "next_action": "Close a few trades with a stop, a setup name, and one line on what you learned",
         "summary": (
-            "I need a few closed trades before I can name a real leak. "
-            "Start small: sample data or live logs, then Trade Doctor, then one weekly rule."
+            "I need a few closed trades before I can tell you what’s actually leaking. "
+            "Log them as they happen, or load the sample trades if you want to look around first."
         ),
         "suggested_focus": "Max 2 trades per day; stop after 2 losses.",
         "lab_prompt": (

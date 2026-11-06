@@ -576,15 +576,22 @@ body:not([data-tv-landing="1"]) .main-content > .tv-page-enter {
 }
 
 .tv-journal-story-label {
-  font-size: 0.7rem;
+  font-family: "Syne", "Sora", system-ui, sans-serif;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--bs-secondary-color, #6c757d);
-  margin-bottom: 0.4rem;
+  color: #c4a35a;
+  margin-bottom: 0.35rem;
+}
+.tv-journal-page .tv-journal-story-block + .tv-journal-story-block {
+  margin-top: 0.95rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid color-mix(in srgb, var(--bs-secondary-color, #6c757d) 28%, transparent);
 }
 .tv-journal-story-text {
-  font-size: 1.02rem;
+  font-family: "Literata", Georgia, serif;
+  font-size: 1.05rem;
   line-height: 1.55;
   white-space: pre-wrap;
 }

@@ -104,24 +104,26 @@ skipped by the user) and screenshots are done or declined.
 """
 
 _QUESTIONS = (
-    ("symbol", "What did you trade?"),
-    ("trade_type", "Were you long or short?"),
-    ("entry_price", "What was your entry?"),
-    ("stop_loss", "Where was the stop?"),
-    ("status", "Still in it, or already done?"),
-    ("session_type", "Which session — London, New York, or Asia?"),
-    ("entry_time", "About what time did you enter?"),
-    ("take_profit", "Any target on it?"),
+    ("symbol", "What market was that?"),
+    ("trade_type", "Long or short?"),
+    ("entry_price", "What price did you enter at?"),
+    ("stop_loss", "What was your stop loss?"),
+    ("take_profit", "What was your take profit?"),
+    ("status", "Are you still in it, or are you out?"),
     ("exit_price", "Where did you get out?"),
+    ("session_type", "Which session — London, New York, or Asia?"),
+    ("entry_time", "Roughly what time was that?"),
     ("lot_size", "What size were you trading?"),
-    ("timeframe", "What timeframe were you mainly on?"),
-    ("thesis_notes", "Why did you enter — what was the idea?"),
+    ("timeframe", "What timeframe were you on?"),
+    ("thesis_notes", "Why did you enter?"),
     ("followed_plan", "Did you follow your rules on this one?"),
-    ("feeling_during", "How were you feeling during the trade?"),
+    ("feeling_during", "How were you feeling while you were in it?"),
     ("feeling_after", "And how do you feel about it now?"),
-    ("confidence_level", "How confident were you — one to ten?"),
-    ("lessons", "What did you learn from this trade?"),
-    ("improve_next", "What will you do differently next time?"),
+    ("confidence_level", "How confident were you, one to ten?"),
+    ("lessons", "What did this one teach you?"),
+    ("improve_next", "What are you going to do differently next time?"),
+    ("managed_note", "How did you manage it — stop, partials, or did you get out early?"),
+    ("mistake", "If you could fix one thing about this trade, what would it be?"),
 )
 
 _EMPTY = {
@@ -141,6 +143,12 @@ _EMPTY = {
     "feeling_after": None,
     "lessons": None,
     "improve_next": None,
+    "managed_note": None,
+    "mistake": None,
+    "moved_sl": None,
+    "early_close": None,
+    "took_partials": None,
+    "added_size": None,
     "emotions": [],
     "lot_size": None,
     "timeframe": None,
@@ -157,6 +165,10 @@ _EMPTY = {
     "tp_skipped": False,
     "reflection_skipped": False,
     "lot_skipped": False,
+    "confidence_skipped": False,
+    "levels_confirmed": False,
+    "session_assumed": False,
+    "lot_assumed": False,
 }
 
 _SHORT_ANSWER = re.compile(
@@ -172,11 +184,11 @@ _SHORT_ANSWER = re.compile(
 _FILLED_ASK = (
     ("symbol", ("what did you trade", "which pair", "what market", "what instrument")),
     ("trade_type", ("long or short", "buy or sell", "which side", "were you long")),
-    ("entry_price", ("your entry", "entry price", "where did you get in", "what was the entry")),
-    ("stop_loss", ("the stop", "stop loss", "where did you put the stop", "where was the stop")),
+    ("entry_price", ("your entry", "entry price", "where did you get in", "what was the entry", "price did you enter", "did you enter at")),
+    ("stop_loss", ("the stop", "stop loss", "where did you put the stop", "where was the stop", "your stop loss")),
     ("entry_time", ("what time did you enter", "about what time", "what time was it")),
-    ("take_profit", ("any target", "take profit", "your target")),
-    ("exit_price", ("get out", "where did you close", "exit price")),
+    ("take_profit", ("any target", "take profit", "your target", "your take profit")),
+    ("exit_price", ("get out", "where did you close", "exit price", "did you get out")),
     ("status", ("still in it, or already", "already done?", "still in it or")),
     ("session_type", ("which session", "london, new york", "what session")),
     ("thesis_notes", ("the idea going in", "what was the idea", "why did you enter")),
@@ -188,6 +200,8 @@ _FILLED_ASK = (
     ("confidence_level", ("how confident", "one to ten", "1 to 10", "confidence")),
     ("lessons", ("what did you learn", "what have you learnt", "lesson")),
     ("improve_next", ("differently next time", "improve next", "next time")),
+    ("managed_note", ("manage it", "partials", "get out early", "move the stop")),
+    ("mistake", ("fix one thing", "the mistake")),
 )
 
 _REASON_HINTS = (
@@ -203,6 +217,8 @@ _REFLECT_KEYS = (
     "feeling_after",
     "lessons",
     "improve_next",
+    "managed_note",
+    "mistake",
 )
 
 _TIME_RE = re.compile(
@@ -310,8 +326,8 @@ _PAUSE_RE = re.compile(
 )
 
 _FINISH_RE = re.compile(
-    r"\b(that'?s (?:all|enough)|(?:i'?m\s+)?done(?:\s+(?:journaling|logging|here))?|"
-    r"finished(?:\s+(?:logging|journaling))?|wrap(?:\s+it)?\s+up|"
+    r"\b(that'?s (?:all|enough)|i'?m done (?:journaling|logging)|"
+    r"finished (?:logging|journaling)|wrap(?:\s+it)?\s+up|"
     r"close(?:\s+the)?\s+(?:journal|session)|end (?:the )?(?:trade )?(?:log|journal)|"
     r"log it(?: now)?)\b",
     re.I,
@@ -357,6 +373,8 @@ def _soft_close_draft(draft: Dict[str, Any]) -> Dict[str, Any]:
         draft["entry_time"] = "unspecified"
     if draft.get("take_profit") is None:
         draft["tp_skipped"] = True
+    if draft.get("confidence_level") is None:
+        draft["confidence_skipped"] = True
     for key in _REFLECT_KEYS:
         if key == "followed_plan":
             if not draft.get("followed_plan"):
@@ -463,11 +481,6 @@ def _best_spoken_thesis(candidates: List[str]) -> str:
             h in low for h in ("because", "idea", "thesis", "setup", "sweep", "break", "retest", "liquidity")
         ):
             return turn[:2000]
-    for turn in reversed(candidates):
-        if _levels_only_dump(turn):
-            continue
-        if _substantial_line(turn):
-            return turn[:2000]
     return ""
 
 
@@ -554,7 +567,7 @@ def _one_question(reply: str) -> str:
 
 def _hard_missing(draft: Dict[str, Any], transcript: str = "") -> List[str]:
     missing = missing_keys(draft)
-    soft = {"take_profit", "confidence_level"}
+    soft: set = set()
     if (draft.get("voice_mode") or "") == "quick":
         # Quick mode still gets thesis + rules; deeper feelings are soft.
         soft |= {"feeling_during", "feeling_after", "lessons", "improve_next", "entry_time", "lot_size", "timeframe"}
@@ -609,12 +622,57 @@ def _parse_followed_plan(text: str) -> Optional[str]:
 
 
 def _skipped_reflection(text: str) -> bool:
+    """Only an explicit skip. 'Not sure' can be a real feeling."""
     t = (text or "").lower().strip()
+    if len(t.split()) > 8:
+        return False
     return bool(re.search(
-        r"\b(skip(?:ped)?(?: reflection| that| it)?|nothing to add|no lesson|"
-        r"not sure|don't know|dont know|no idea|pass)\b",
+        r"\b(skip(?:ped)?(?: reflection| the feelings| that| it)?|nothing to add|no lesson|pass)\b",
         t,
     ))
+
+
+_CONF_WORDS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+
+
+def _parse_confidence(text: str) -> Optional[int]:
+    """A 1–10 answer. Ignores prices and long trade dumps."""
+    t = (text or "").lower()
+    if len(t.split()) > 8:
+        return None
+    if re.search(r"\d{3,}", t) or re.search(r"\d+\.\d+", t):
+        return None
+    m = re.search(r"\b(10|[1-9])\b", t)
+    if m:
+        num = int(m.group(1))
+        return num if 1 <= num <= 10 else None
+    for word, num in _CONF_WORDS.items():
+        if re.search(rf"\b{word}\b", t):
+            return num
+    return None
+
+
+def _read_management(draft: Dict[str, Any], text: str) -> None:
+    """Pull stop, partials, early exit, and adding size out of a plain answer."""
+    t = (text or "").lower()
+    if re.search(r"\b(moved|move|trailed|be stop|be the stop)\b", t) and not re.search(
+        r"\b(didn't|did not|never|no)\b", t
+    ):
+        draft["moved_sl"] = "yes"
+    elif re.search(r"\b(didn't move|did not move|left the stop|stop stayed)\b", t):
+        draft["moved_sl"] = "no"
+    if re.search(r"\b(partials?|scaled out|took some off)\b", t):
+        draft["took_partials"] = "no" if re.search(r"\b(no|didn't|did not|without)\b", t) else "yes"
+    if re.search(r"\b(early|bailed|scratched|got out early|closed early)\b", t):
+        draft["early_close"] = "no" if re.search(r"\b(didn't|did not|not early|held)\b", t) else "yes"
+    if re.search(r"\b(as planned|stuck to it|managed it well|left it)\b", t):
+        draft["moved_sl"] = draft.get("moved_sl") or "no"
+        draft["early_close"] = draft.get("early_close") or "no"
+    if re.search(r"\b(added|scaled in|added size)\b", t) and not re.search(r"\b(didn't|did not|no)\b", t):
+        draft["added_size"] = "yes"
 
 
 def _fill_reflection_slot(draft: Dict[str, Any], key: str, text: str) -> Dict[str, Any]:
@@ -629,6 +687,8 @@ def _fill_reflection_slot(draft: Dict[str, Any], key: str, text: str) -> Dict[st
             draft["_just_reflected"] = "followed_plan"
         return draft
     if key in ("feeling_during", "feeling_after"):
+        if _extract_timeframe(cleaned) and len(cleaned.split()) <= 4:
+            return draft
         if _CORR_RE.search(cleaned) and not re.search(
             r"\b(feel|calm|nervous|anxious|proud|fear|patient|disciplin)\b", cleaned, re.I
         ):
@@ -653,11 +713,112 @@ def _fill_reflection_slot(draft: Dict[str, Any], key: str, text: str) -> Dict[st
     elif key == "improve_next" and not draft.get("improve_next"):
         draft["improve_next"] = cleaned[:1200]
         draft["_just_reflected"] = key
+    elif key == "managed_note" and not draft.get("managed_note"):
+        draft["managed_note"] = cleaned[:400]
+        draft["_just_reflected"] = key
+        _read_management(draft, cleaned)
+    elif key == "mistake" and not draft.get("mistake"):
+        low = cleaned.lower()
+        if re.search(r"\b(no mistake|nothing|none|it was fine|wouldn't change|would not change)\b", low):
+            draft["mistake"] = "none"
+        else:
+            draft["mistake"] = cleaned[:400]
+        draft["_just_reflected"] = key
     return draft
+
+
+_FEEL_RE = re.compile(
+    r"\b(calm|nervous|anxious|confident|excited|patient|frustrated|angry|proud|"
+    r"relieved|unsure|scared|afraid|disciplined|tilted|focused|hesitant|hopeful|annoyed)\b",
+    re.I,
+)
+
+
+def _confidence_phrase(text: str) -> Optional[int]:
+    """Pull 'about an 8' out of a longer answer. Ignore prices."""
+    low = (text or "").lower()
+    if re.search(r"\d{3,}|\d+\.\d+", low):
+        return None
+    spoken = re.search(r"\b(10|[1-9])\s+out of\s+(?:ten|10)\b", low)
+    if spoken:
+        return int(spoken.group(1))
+    soft = re.search(r"\b(?:about|around|maybe)\s+(?:an?\s+)?(10|[1-9])\b", low)
+    if soft and (_FEEL_RE.search(low) or re.search(r"\b(confident|confidence)\b", low)):
+        return int(soft.group(1))
+    return None
+
+
+def _looks_like_coaching_not_thesis(text: str) -> bool:
+    low = (text or "").lower()
+    if any(hint in low for hint in ("because", "idea", "setup", "sweep", "retest", "breakout", "liquidity")):
+        return False
+    return bool(re.search(r"\b(felt|feeling|followed|rules|confident|out of ten|mistake|next time)\b", low))
+
+
+def _harvest_coaching(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
+    """One sentence can fill feeling, confidence, rules, management, and the mistake."""
+    raw = _light_clean(text)
+    low = raw.lower()
+    if not raw:
+        return draft
+    score = _confidence_phrase(raw)
+    if score and draft.get("confidence_level") is None:
+        draft["confidence_level"] = score
+        draft["_just_reflected"] = "confidence_level"
+    if not draft.get("followed_plan"):
+        plan = _parse_followed_plan(raw)
+        if plan and re.search(r"\b(rules?|plan|playbook|follow)\b", low):
+            draft["followed_plan"] = plan
+            draft["_just_reflected"] = "followed_plan"
+    if not (draft.get("managed_note") or "").strip() and re.search(
+        r"\b(partials?|moved the stop|move the stop|trailed|got out early|as planned|left the stop|took some off)\b",
+        low,
+    ):
+        draft["managed_note"] = raw[:400]
+        _read_management(draft, raw)
+        draft["_just_reflected"] = "managed_note"
+    if not (draft.get("mistake") or "").strip() and re.search(
+        r"\b(mistake|shouldn't have|should not have|entered before|i chased|chased the)\b",
+        low,
+    ):
+        if re.search(r"\b(no mistake|nothing|none|it was fine|wouldn't change|would not change)\b", low):
+            draft["mistake"] = "none"
+        else:
+            draft["mistake"] = raw[:400]
+        draft["_just_reflected"] = "mistake"
+    if _FEEL_RE.search(raw) and re.search(r"\b(felt|feeling|i was|i'm|i am|but)\b", low):
+        if not (draft.get("feeling_during") or "").strip():
+            draft["feeling_during"] = raw[:400]
+            draft.setdefault("emotions", [])
+            if isinstance(draft["emotions"], list) and raw[:40] not in draft["emotions"]:
+                draft["emotions"] = (draft["emotions"] + [raw[:40]])[:6]
+            draft["_just_reflected"] = "feeling_during"
+        if re.search(r"\b(now|after|afterwards)\b", low) and not (draft.get("feeling_after") or "").strip():
+            draft["feeling_after"] = raw[:400]
+            draft["_just_reflected"] = "feeling_after"
+    if not (draft.get("improve_next") or "").strip() and re.search(r"\b(next time|from now on|differently)\b", low):
+        draft["improve_next"] = raw[:400]
+        draft["_just_reflected"] = "improve_next"
+    if not (draft.get("lessons") or "").strip() and re.search(
+        r"\b(taught me|the lesson|i learned|i learnt|lesson was)\b", low
+    ):
+        draft["lessons"] = raw[:400]
+        draft["_just_reflected"] = "lessons"
+    return draft
+
+
+def _is_levels_yes(text: str) -> bool:
+    t = _light_clean(text).lower()
+    return bool(re.fullmatch(
+        r"(?:yes[, ]*)?(?:that |it )?(?:looks )?(?:right|good|correct)|"
+        r"yes|yeah|yep|yup|correct|right|perfect|good|okay|ok",
+        t,
+    ))
 
 
 def _apply_reflection_answer(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
     """When the open question is reflection, capture the reply into that slot."""
+    draft = _harvest_coaching(draft, text)
     if _skipped_reflection(text):
         facts_left = [k for k in _hard_missing(draft, text) if k not in _REFLECT_KEYS]
         if not facts_left:
@@ -667,6 +828,21 @@ def _apply_reflection_answer(draft: Dict[str, Any], text: str) -> Dict[str, Any]
                     draft[key] = "skipped" if key != "followed_plan" else "mostly"
             return draft
     hard = _hard_missing(draft, text)
+    if _is_levels_yes(text) and (not hard or hard[0] != "followed_plan"):
+        return draft
+    if hard and hard[0] == "confidence_level":
+        if draft.get("confidence_level") is None:
+            score = _parse_confidence(text)
+            if score:
+                draft["confidence_level"] = score
+                draft["_just_reflected"] = "confidence_level"
+        return draft
+    if hard and hard[0] == "thesis_notes" and _looks_like_coaching_not_thesis(text):
+        return draft
+    if hard and hard[0] in _REFLECT_KEYS and (draft.get(hard[0]) or "").strip() not in ("", "skipped"):
+        # A levels-only line is not a thesis — let the real reason replace it.
+        if not (hard[0] == "thesis_notes" and _levels_only_dump(str(draft.get("thesis_notes") or ""))):
+            return draft
     if not hard or hard[0] not in _REFLECT_KEYS:
         why_hints = ("because", "idea", "thesis", "i entered", "went in because", "my plan")
         low = (text or "").lower()
@@ -718,6 +894,13 @@ def _apply_rr(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
     return draft
 
 
+def _backchannel(text: str) -> str:
+    """A small human nod. Rotates so it doesn't say the same word every turn."""
+    lines = ("Okay.", "Alright.", "Yeah, I got that.", "Okay, okay.", "Right.")
+    score = sum(ord(ch) for ch in (text or "x"))
+    return lines[score % len(lines)]
+
+
 def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
     """A short spoken nod so the next question feels like a conversation."""
     spoken_rr = draft.pop("_rr_spoken", None)
@@ -735,18 +918,15 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
                 return "Okay — noted you broke the rules."
             if plan == "mostly":
                 return "Okay — mostly on plan."
-        if reflected in ("feeling_during", "feeling_after") and snippet:
-            bit = snippet.split(",")[0].strip()
-            if len(bit) > 42:
-                bit = bit[:40].rstrip() + "…"
-            return f"Got it — {bit}."
-        if reflected in ("lessons", "improve_next", "thesis_notes") and snippet:
+        if reflected == "confidence_level" and draft.get("confidence_level"):
+            return f"Okay, {int(draft['confidence_level'])}."
+        if reflected in ("feeling_during", "feeling_after", "lessons", "improve_next", "thesis_notes"):
             if reflected == "thesis_notes":
-                return "Clear — that’s the idea."
+                return "Yeah. That’s the idea."
             if reflected == "lessons":
-                return "Solid takeaway."
-            return "Noted for next time."
-        return "Got it."
+                return "Okay. That’s a real takeaway."
+            return _backchannel(text)
+        return _backchannel(text)
     corr = draft.get("_just_corrected") or []
     if corr:
         labels: List[str] = []
@@ -773,55 +953,167 @@ def _ack_from_last(text: str, draft: Dict[str, Any]) -> str:
             return "Updated — " + ", ".join(labels) + "."
         return "Updated."
     parsed = parse_voice_text(text or "")
-    bits: List[str] = []
-    sym_now = parsed.get("symbol")
-    sym_show = sym_now or draft.get("symbol")
-    if sym_show:
-        label = str(sym_show)
-        if sym_now:
-            nick = friendly_market(label)
-            spoken = (text or "").lower()
-            nick_word = nick.split()[-1].lower() if nick else ""
-            said_ticker = label.lower() in re.sub(r"[^a-z0-9]", "", spoken)
-            if nick and nick_word in spoken and not said_ticker:
-                label = f"{nick}, {label}"
-            elif nick and not said_ticker and nick_word not in spoken:
-                label = f"{label}, {nick}"
-        bits.append(label)
-    if parsed.get("trade_type"):
-        bits.append("long" if parsed["trade_type"] == "BUY" else "short")
-    if parsed.get("entry_price") is not None:
-        bits.append(f"entry {float(parsed['entry_price']):g}")
-    elif parsed.get("stop_loss") is not None:
-        bits.append(f"stop {float(parsed['stop_loss']):g}")
-    if parsed.get("status") == "open":
-        bits.append("still open")
-    elif parsed.get("status") == "closed":
-        bits.append("closed")
-    if parsed.get("session_type"):
-        bits.append(str(parsed["session_type"]).replace(" Session", ""))
-    time_bit = _extract_entry_time(text or "")
-    if time_bit and "entry_time" not in "".join(bits).lower():
-        bits.append(time_bit)
-    if parsed.get("take_profit") is not None and len(bits) < 3:
-        bits.append(f"target {float(parsed['take_profit']):g}")
-    if parsed.get("lot_size") is not None and len(bits) < 3:
-        bits.append(f"{float(parsed['lot_size']):g} lot")
-    if draft.get("timeframe") and len(bits) < 3:
-        bits.append(str(draft["timeframe"]))
-    if not bits:
-        if _is_short_field_answer(text) and (
-            draft.get("symbol") or draft.get("trade_type") or draft.get("entry_price") is not None
-        ):
-            return "Okay."
+    nod = _backchannel(text)
+    if parsed.get("symbol"):
+        nick = friendly_market(str(parsed["symbol"]))
+        spoken = re.sub(r"[^a-z0-9]", "", (text or "").lower())
+        nick_word = nick.split()[-1].lower() if nick else ""
+        said_ticker = str(parsed["symbol"]).lower() in spoken
+        said_nick = bool(nick_word) and nick_word in (text or "").lower()
+        # Confirm a misheard name ("US state" → the Dow). Don't read the ticker aloud.
+        if nick and not said_ticker and not said_nick:
+            heard = nick[0].upper() + nick[1:]
+            return f"{nod[:-1]}, {heard}."
+    if not (text or "").strip():
         return ""
-    return "Got it — " + ", ".join(bits[:3]) + "."
+    return nod
 
 
 def _shot_prompt(kind: str) -> str:
-    if kind == "after":
-        return "And the after chart?"
-    return "Got a before-trade screenshot?"
+    return "Add the before and after, if you have them."
+
+
+_CLOCK_TIMES = {"this morning", "this afternoon", "this evening", "overnight", "just now"}
+
+_FACT_BEFORE_CONFIRM = {
+    "symbol",
+    "trade_type",
+    "entry_price",
+    "stop_loss",
+    "take_profit",
+    "status",
+    "exit_price",
+}
+
+_PATTERN_THEMES = (
+    ("entering before the candle closed", re.compile(r"candle clos|before the (?:candle )?clos|too early|entered early", re.I)),
+    ("chasing the entry", re.compile(r"\bi chased\b|\bchased the\b", re.I)),
+    ("moving the stop", re.compile(r"mov(?:e|ed|ing) the stop", re.I)),
+    ("breaking your rules", re.compile(r"broke (?:my |the )?rules|didn'?t follow", re.I)),
+    ("getting out early", re.compile(r"got out early|closed early|bailed", re.I)),
+)
+
+
+def _clock_phrase(hour: Any) -> str:
+    try:
+        hour_i = int(hour)
+    except (TypeError, ValueError):
+        return "just now"
+    if 5 <= hour_i < 12:
+        return "this morning"
+    if 12 <= hour_i < 17:
+        return "this afternoon"
+    if 17 <= hour_i < 22:
+        return "this evening"
+    return "overnight"
+
+
+def _levels_ready(draft: Dict[str, Any]) -> bool:
+    """Enough prices are on the page to ask the trader to glance at them."""
+    if not draft.get("symbol") or not draft.get("trade_type"):
+        return False
+    if draft.get("entry_price") is None:
+        return False
+    if draft.get("stop_loss") is None and not draft.get("stop_skipped"):
+        return False
+    if not draft.get("status"):
+        return False
+    if draft.get("status") == "closed" and draft.get("exit_price") is None:
+        return False
+    return True
+
+
+def _needs_confirm(draft: Dict[str, Any], hard: Optional[List[str]] = None) -> bool:
+    if draft.get("levels_confirmed"):
+        return False
+    if not _levels_ready(draft):
+        return False
+    if hard is None:
+        hard = _hard_missing(draft, "")
+    if any(key in _FACT_BEFORE_CONFIRM for key in hard):
+        return False
+    return True
+
+
+def _resolve_confirm(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
+    """A yes, or just moving on, accepts the numbers. A plain no holds for a correction."""
+    t = _light_clean(text).lower()
+    if _CORR_RE.search(text or ""):
+        draft["levels_confirmed"] = False
+        return draft
+    if re.fullmatch(r"(no|nope|nah|wrong|change it|change something)", t):
+        draft["levels_confirmed"] = False
+        draft["_confirm_no"] = True
+        return draft
+    draft["levels_confirmed"] = True
+    draft.pop("_confirm_no", None)
+    return draft
+
+
+def _apply_context_defaults(
+    draft: Dict[str, Any],
+    session_hint: Optional[Dict[str, Any]],
+    *,
+    spoke_session: bool = False,
+) -> Dict[str, Any]:
+    """Use the clock for session and time. A spoken session always wins."""
+    if spoke_session:
+        draft["session_assumed"] = False
+    if not session_hint or not (draft.get("symbol") or draft.get("entry_price") is not None):
+        return draft
+    if not draft.get("session_type") and session_hint.get("session_type"):
+        draft["session_type"] = session_hint["session_type"]
+        draft["session_assumed"] = True
+    if not (draft.get("entry_time") or "").strip():
+        draft["entry_time"] = _clock_phrase(session_hint.get("hour"))
+    return draft
+
+
+def _fill_assumed_lot(draft: Dict[str, Any], session_hint: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Keep their usual size when they never said one. The chip stays tappable."""
+    if draft.get("lot_size") is not None or draft.get("lot_skipped"):
+        return draft
+    size = 1.0
+    if session_hint and session_hint.get("last_lot") not in (None, ""):
+        try:
+            size = float(session_hint["last_lot"])
+        except (TypeError, ValueError):
+            size = 1.0
+    if size <= 0:
+        size = 1.0
+    draft["lot_size"] = size
+    draft["lot_assumed"] = True
+    return draft
+
+
+def journal_pattern_line(draft: Dict[str, Any], recent_notes: Optional[List[str]] = None) -> str:
+    """One sentence when this trade repeats something already in the journal."""
+    mistake = (draft.get("mistake") or "").strip().lower()
+    if mistake in ("none", "skipped"):
+        mistake = ""
+    blob = " ".join(
+        part
+        for part in (
+            mistake,
+            str(draft.get("improve_next") or ""),
+            str(draft.get("lessons") or ""),
+        )
+        if part and str(part).strip().lower() not in ("skipped", "none")
+    )
+    if not blob.strip():
+        return ""
+    notes = [n for n in (recent_notes or []) if (n or "").strip()]
+    for label, rx in _PATTERN_THEMES:
+        if not rx.search(blob):
+            continue
+        hits = sum(1 for note in notes if rx.search(note))
+        total = hits + 1
+        if total >= 3:
+            word = {3: "third", 4: "fourth", 5: "fifth"}.get(total, f"{total}th")
+            return f"That’s the {word} time lately you’ve been {label}."
+        if total == 2:
+            return f"That’s come up again — {label}."
+    return ""
 
 
 def conversational_next(
@@ -831,6 +1123,8 @@ def conversational_next(
     has_before: bool = False,
     has_after: bool = False,
     skip_screenshot: bool = False,
+    session_hint: Optional[Dict[str, Any]] = None,
+    pattern_notes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Next spoken line: acknowledge last answer, then one unfilled question."""
     hard = _hard_missing(draft, transcript)
@@ -838,28 +1132,45 @@ def conversational_next(
     ask_shot = False
     shot_kind = ""
     complete = False
-    if hard:
+    ask_key = ""
+    if draft.pop("_confirm_no", None) and _needs_confirm(draft, hard):
+        reply = "Which part should I change?"
+        ask_key = "confirm_levels"
+    elif _needs_confirm(draft, hard):
+        ask_key = "confirm_levels"
+        q = "Does that look right?"
+        reply = f"{ack} {q}".strip() if ack else q
+    elif hard:
+        ask_key = hard[0]
         q = dict(_QUESTIONS)[hard[0]]
         reply = f"{ack} {q}".strip() if ack else q
-    elif not has_before and not skip_screenshot:
-        q = _shot_prompt("before")
+    elif not skip_screenshot and not (has_before or has_after) and not draft.get("screenshot_prompted"):
+        draft = _fill_assumed_lot(draft, session_hint)
+        ask_key = "screenshot"
+        q = _shot_prompt("both")
         reply = f"{ack} {q}".strip() if ack else q
         ask_shot = True
-        shot_kind = "before"
+        shot_kind = "both"
         draft["screenshot_prompted"] = True
-    elif not has_after and not skip_screenshot:
-        reply = _shot_prompt("after")
+    elif (
+        not skip_screenshot
+        and draft.get("screenshot_prompted")
+        and not (has_before or has_after)
+    ):
+        ask_key = "screenshot"
+        reply = ack or "I’m here when the photos are in."
         ask_shot = True
-        shot_kind = "after"
-        draft["screenshot_prompted"] = True
+        shot_kind = "both"
     else:
-        reply = _spoken_wrap(draft)
+        draft = _fill_assumed_lot(draft, session_hint)
+        reply = _spoken_wrap(draft, pattern_notes)
         complete = required_ready(draft)
     draft.pop("_just_corrected", None)
     return {
         "reply": reply,
         "ask_screenshot": ask_shot,
         "screenshot_kind": shot_kind,
+        "ask_key": ask_key,
         "complete": complete,
     }
 
@@ -967,7 +1278,7 @@ def merge_draft(base: Optional[Dict[str, Any]], incoming: Optional[Dict[str, Any
                     )
                 else:
                     out[key] = prev_notes
-            elif key in ("screenshot_prompted", "screenshot_before", "screenshot_after", "stop_skipped", "tp_skipped", "reflection_skipped", "lot_skipped"):
+            elif key in ("screenshot_prompted", "screenshot_before", "screenshot_after", "stop_skipped", "tp_skipped", "reflection_skipped", "lot_skipped", "confidence_skipped"):
                 if val:
                     out[key] = True
             elif key == "voice_mode":
@@ -1052,8 +1363,37 @@ def apply_parse(draft: Dict[str, Any], parsed: Dict[str, Any]) -> Dict[str, Any]
                 parsed.pop("bare_number", None)
         except (TypeError, ValueError):
             pass
+    if hard_now and hard_now[0] == "confidence_level" and parsed.get("bare_number") is not None:
+        parsed = dict(parsed)
+        parsed.pop("bare_number", None)
+    if (
+        hard_now
+        and hard_now[0] in _REFLECT_KEYS
+        and parsed.get("bare_number") is not None
+    ):
+        try:
+            bare_conf = float(parsed["bare_number"])
+            if bare_conf.is_integer() and 1 <= int(bare_conf) <= 10:
+                parsed = dict(parsed)
+                parsed.pop("bare_number", None)
+        except (TypeError, ValueError):
+            pass
     if parsed.get("bare_number") is not None:
         bare = parsed["bare_number"]
+        asking = hard_now[0] if hard_now else ""
+        # A bare price answers the question that was just asked.
+        if asking == "entry_price" and draft.get("entry_price") is None:
+            incoming["entry_price"] = bare
+        elif asking == "stop_loss" and draft.get("stop_loss") is None:
+            incoming["stop_loss"] = bare
+        elif asking == "take_profit" and draft.get("take_profit") is None:
+            incoming["take_profit"] = bare
+        elif asking == "exit_price" and draft.get("exit_price") is None:
+            incoming["exit_price"] = bare
+        else:
+            pass
+        if asking in ("entry_price", "stop_loss", "take_profit", "exit_price") and incoming.get(asking) is not None:
+            return merge_draft(draft, incoming)
         # Prefer size when that is the open gap (bare "0.5" after exit is known).
         need_lot = draft.get("lot_size") is None and not draft.get("lot_skipped")
         exit_known = draft.get("exit_price") is not None or incoming.get("exit_price") is not None
@@ -1105,23 +1445,14 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
         missing.append("entry_price")
     if draft.get("stop_loss") is None and not draft.get("stop_skipped"):
         missing.append("stop_loss")
+    if draft.get("take_profit") is None and not draft.get("tp_skipped"):
+        missing.append("take_profit")
     status = draft.get("status")
     if not status:
         missing.append("status")
     if status == "closed" and draft.get("exit_price") is None:
-        if draft.get("take_profit") is None:
-            missing.append("take_profit")
         missing.append("exit_price")
-    elif status == "open" and draft.get("take_profit") is None and not draft.get("tp_skipped"):
-        missing.append("take_profit")
-    if not draft.get("session_type"):
-        missing.append("session_type")
-    if not (draft.get("entry_time") or "").strip():
-        missing.append("entry_time")
-    if draft.get("lot_size") is None and not draft.get("lot_skipped"):
-        missing.append("lot_size")
-    if not (draft.get("timeframe") or "").strip():
-        missing.append("timeframe")
+    # Size and timeframe are captured if spoken. They don't hold up the why.
     if not draft.get("reflection_skipped"):
         thesis = (draft.get("thesis_notes") or "").strip()
         if not thesis or thesis == "skipped" or _levels_only_dump(thesis):
@@ -1134,20 +1465,34 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
                 missing.append("feeling_during")
             if not (draft.get("feeling_after") or "").strip():
                 missing.append("feeling_after")
-            # confidence_level is soft / parse-only — never blocks lessons or wrap.
+            if draft.get("confidence_level") is None and not draft.get("confidence_skipped"):
+                missing.append("confidence_level")
             if not (draft.get("lessons") or "").strip():
                 missing.append("lessons")
             if not (draft.get("improve_next") or "").strip():
                 missing.append("improve_next")
+            if not (draft.get("managed_note") or "").strip():
+                missing.append("managed_note")
+            if not (draft.get("mistake") or "").strip():
+                missing.append("mistake")
+    if not draft.get("session_type"):
+        missing.append("session_type")
+    if not (draft.get("entry_time") or "").strip():
+        missing.append("entry_time")
     return missing
+
+
+_PHASE_REFLECT = set(_REFLECT_KEYS) | {"confidence_level"}
 
 
 def journal_phase(draft: Dict[str, Any]) -> str:
     """Coarse progress for the Ink Bloom page: facts → reflect → charts → review."""
-    hard = _hard_missing(draft)
-    if any(k not in _REFLECT_KEYS for k in hard):
+    if _needs_confirm(draft):
         return "facts"
-    if any(k in _REFLECT_KEYS for k in hard):
+    hard = _hard_missing(draft)
+    if any(k not in _PHASE_REFLECT for k in hard):
+        return "facts"
+    if hard:
         return "reflect"
     if not draft.get("screenshot_before") and not draft.get("screenshot_after") and not draft.get("screenshot_prompted"):
         return "charts"
@@ -1175,7 +1520,7 @@ def _infer_closed_exit(draft: Dict[str, Any], transcript: str) -> Dict[str, Any]
         return draft
     if re.search(r"\b(hit tp|took profit|target)\b", t) and draft.get("take_profit") is not None:
         draft = merge_draft(draft, {"exit_price": draft["take_profit"], "outcome": "win"})
-    elif re.search(r"\b(stopped out|hit sl|stop(?:ped)?)\b", t) and draft.get("stop_loss") is not None:
+    elif re.search(r"\b(stopped out|hit (?:my )?sl|hit (?:my )?stop|got stopped|stopped me out)\b", t) and draft.get("stop_loss") is not None:
         draft = merge_draft(draft, {"exit_price": draft["stop_loss"], "outcome": "loss"})
     elif re.search(r"\bbreakeven\b", t) and draft.get("entry_price") is not None:
         draft = merge_draft(draft, {"exit_price": draft["entry_price"], "outcome": "breakeven"})
@@ -1253,7 +1598,9 @@ def _extract_confidence(text: str) -> Optional[int]:
 
 def _apply_spoken_extras(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
     when = _extract_entry_time(text)
-    if when and not draft.get("entry_time"):
+    if when and (
+        not draft.get("entry_time") or str(draft.get("entry_time")) in _CLOCK_TIMES
+    ):
         draft["entry_time"] = when
     if _skipped_time(text) and not draft.get("entry_time"):
         draft["entry_time"] = "unspecified"
@@ -1268,20 +1615,31 @@ def _apply_spoken_extras(draft: Dict[str, Any], text: str) -> Dict[str, Any]:
     if conf is not None and draft.get("confidence_level") is None:
         draft["confidence_level"] = conf
     draft = _apply_rr(draft, text)
-    # Fill size when that is the open question (bare "0.5" / "half lot").
+    # Fill size from a bare lot or an explicit "size" — not from a 1–10 confidence answer.
     hard = _hard_missing(draft, text)
-    if hard and hard[0] == "lot_size" and draft.get("lot_size") is None:
+    asking_confidence = bool(hard and hard[0] == "confidence_level")
+    if not asking_confidence and (draft.get("lot_size") is None or draft.get("lot_assumed")):
         parsed = parse_voice_text(text)
-        if parsed.get("lot_size") is not None:
+        low_size = (text or "").lower()
+        explicit_size = bool(re.search(r"\b(lots?|size|contracts?)\b", low_size)) or bool(
+            re.fullmatch(r"\d+(?:\.\d+)?", (text or "").strip())
+        )
+        reflecting = bool(hard and hard[0] in _REFLECT_KEYS)
+        if parsed.get("lot_size") is not None and (explicit_size or not reflecting):
             draft["lot_size"] = parsed["lot_size"]
-        elif parsed.get("bare_number") is not None:
+            draft["lot_assumed"] = False
+        elif explicit_size and parsed.get("bare_number") is not None:
             n = float(parsed["bare_number"])
-            if 0 < n <= 100:
+            conf_scale = float(n).is_integer() and 1 <= int(n) <= 10
+            if 0 < n <= 100 and not (reflecting and conf_scale):
                 draft["lot_size"] = n
-        elif re.search(r"\bhalf\s*lot\b", (text or "").lower()):
+                draft["lot_assumed"] = False
+        elif re.search(r"\bhalf\s*lot\b", low_size):
             draft["lot_size"] = 0.5
-        elif re.search(r"\b(one|1)\s*lot\b", (text or "").lower()):
+            draft["lot_assumed"] = False
+        elif re.search(r"\b(one|1)\s*lot\b", low_size):
             draft["lot_size"] = 1.0
+            draft["lot_assumed"] = False
     if hard and hard[0] == "timeframe" and not draft.get("timeframe"):
         tf2 = _extract_timeframe(text)
         if tf2:
@@ -1348,6 +1706,7 @@ def fallback_turn(
     has_after: bool = False,
     session_hint: Optional[Dict[str, Any]] = None,
     skip_screenshot: bool = False,
+    pattern_notes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Deterministic conversation when the LLM is unavailable."""
     draft = merge_draft(empty_draft(), draft)
@@ -1355,6 +1714,7 @@ def fallback_turn(
     has_before = bool(has_before or has_screenshot or draft.get("screenshot_before"))
     has_after = bool(has_after or draft.get("screenshot_after"))
     intent = conversation_intent(text) if text else None
+    asking_confirm = _needs_confirm(draft)
     if text:
         parsed = parse_voice_text(text)
         # End phrases must not flip status via bare "done"/"finished".
@@ -1373,9 +1733,16 @@ def fallback_turn(
             draft["symbol"] = guessed
         draft = _apply_spoken_extras(draft, text)
         draft = _mark_shots(draft, text, has_before=has_before, has_after=has_after)
+        if asking_confirm and intent not in ("pause", "finish"):
+            draft = _resolve_confirm(draft, text)
+        draft = _apply_context_defaults(
+            draft, session_hint, spoke_session=bool(parsed.get("session_type"))
+        )
         if intent not in ("pause", "finish"):
             draft = _capture_user_words(draft, text)
             draft = _apply_reflection_answer(draft, text)
+    else:
+        draft = _apply_context_defaults(draft, session_hint)
 
     if intent == "pause":
         return {
@@ -1404,6 +1771,7 @@ def fallback_turn(
                 "source": "fallback",
             }
         draft = _soft_close_draft(draft)
+        draft["levels_confirmed"] = True
         skip_screenshot = True
         nxt = conversational_next(
             draft,
@@ -1411,9 +1779,11 @@ def fallback_turn(
             has_before=True,
             has_after=True,
             skip_screenshot=True,
+            session_hint=session_hint,
+            pattern_notes=pattern_notes,
         )
         return {
-            "reply": (nxt["reply"] or _spoken_wrap(draft))[:280],
+            "reply": (nxt["reply"] or _spoken_wrap(draft, pattern_notes))[:480],
             "draft": draft,
             "complete": True,
             "ask_screenshot": False,
@@ -1432,14 +1802,16 @@ def fallback_turn(
         has_before=has_before,
         has_after=has_after,
         skip_screenshot=skip_screenshot,
+        session_hint=session_hint,
+        pattern_notes=pattern_notes,
     )
-    _ = session_hint  # clock is a hint for the LLM only — never silently assumed
     return {
-        "reply": nxt["reply"][:280],
+        "reply": nxt["reply"][:480],
         "draft": draft,
         "complete": nxt["complete"],
         "ask_screenshot": nxt["ask_screenshot"],
         "screenshot_kind": nxt["screenshot_kind"],
+        "ask_key": nxt.get("ask_key") or "",
         "uncertain": [],
         "phase": journal_phase(draft),
         "action": "",
@@ -1447,31 +1819,23 @@ def fallback_turn(
     }
 
 
-def _spoken_wrap(draft: Dict[str, Any]) -> str:
-    bits = []
-    if draft.get("trade_type") and draft.get("symbol"):
-        side = "long" if draft["trade_type"] == "BUY" else "short"
-        nick = friendly_market(str(draft["symbol"]))
-        label = f"{draft['symbol']}, {nick}" if nick else str(draft["symbol"])
-        bits.append(f"{side} {label}")
-    if draft.get("entry_price") is not None:
-        bits.append(f"from {draft['entry_price']:g}")
-    if draft.get("session_type"):
-        bits.append(str(draft["session_type"]).replace(" Session", ""))
-    state = "still open" if draft.get("status") != "closed" else "closed"
-    core = " ".join(bits) if bits else "the trade"
-    extra = ""
+def _spoken_wrap(draft: Dict[str, Any], pattern_notes: Optional[List[str]] = None) -> str:
+    """Close like a person. The page shows the numbers — don't read the ticker aloud."""
+    nick = friendly_market(str(draft.get("symbol") or ""))
+    who = nick if nick else "this one"
     metrics = _draft_metrics(draft)
-    if draft.get("status") == "closed" and metrics.get("profit_loss") is not None:
+    ratio = ""
+    label = str(metrics.get("rr_label") or "")
+    if label.startswith("1:"):
+        ratio = f" About 1 to {label.split(':', 1)[1]}."
+    elif draft.get("status") == "closed" and metrics.get("profit_loss") is not None:
         pnl = metrics["profit_loss"]
-        extra = f" That’s about {pnl:+g}."
-    elif metrics.get("rr_label"):
-        extra = f" Planned {metrics['rr_label']}."
-    elif metrics.get("sl_pips"):
-        extra = f" Stop is {metrics['sl_pips']:g} away."
+        ratio = f" That’s about {pnl:+g}."
+    pattern = journal_pattern_line(draft, pattern_notes)
+    extra = f" {pattern}" if pattern else ""
     return (
-        f"Got it — {core}, {state}.{extra} "
-        "I’ll put that in your journal — say save when it looks right."
+        f"Alright. I’ve got {who}, and how it felt.{ratio}{extra} "
+        "It’s in your journal — say save when it looks right."
     )
 
 
@@ -1581,6 +1945,7 @@ def run_turn(
     session_hint: Optional[Dict[str, Any]] = None,
     skip_screenshot: bool = False,
     instruments: Optional[List[str]] = None,
+    pattern_notes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """One user utterance → updated draft + the next spoken line."""
     draft = merge_draft(empty_draft(), draft)
@@ -1599,6 +1964,7 @@ def run_turn(
     has_before = bool(has_before or has_screenshot or draft.get("screenshot_before"))
     has_after = bool(has_after or draft.get("screenshot_after"))
     intent = conversation_intent(text)
+    asking_confirm = _needs_confirm(draft)
     parsed = parse_voice_text(text)
     if intent in ("pause", "finish") and parsed.get("status") and not re.search(
         r"\b(closed|still in|open|hit (?:tp|sl)|stopped out)\b", text.lower()
@@ -1612,6 +1978,11 @@ def run_turn(
         skip_screenshot = True
     seeded = _apply_spoken_extras(seeded, text)
     seeded = _mark_shots(seeded, text, has_before=has_before, has_after=has_after)
+    if asking_confirm and intent not in ("pause", "finish"):
+        seeded = _resolve_confirm(seeded, text)
+    seeded = _apply_context_defaults(
+        seeded, session_hint, spoke_session=bool(parsed.get("session_type"))
+    )
     if intent not in ("pause", "finish"):
         seeded = _capture_user_words(seeded, text, history)
         seeded = _apply_reflection_answer(seeded, text)
@@ -1644,11 +2015,18 @@ def run_turn(
                 "source": "fallback",
             }
         seeded = _soft_close_draft(seeded)
+        seeded["levels_confirmed"] = True
         nxt = conversational_next(
-            seeded, text, has_before=True, has_after=True, skip_screenshot=True
+            seeded,
+            text,
+            has_before=True,
+            has_after=True,
+            skip_screenshot=True,
+            session_hint=session_hint,
+            pattern_notes=pattern_notes,
         )
         return {
-            "reply": (nxt["reply"] or _spoken_wrap(seeded))[:280],
+            "reply": (nxt["reply"] or _spoken_wrap(seeded, pattern_notes))[:480],
             "draft": seeded,
             "complete": True,
             "ask_screenshot": False,
@@ -1659,45 +2037,29 @@ def run_turn(
             "source": "fallback",
         }
 
-    llm = _openai_turn(
-        text,
-        seeded,
-        history or [],
-        instruments or active_instrument_symbols(320),
-        session_hint,
-        has_before and has_after,
-    )
-    merged = seeded
-    source = "fallback"
-    uncertain: List[Any] = []
-    corr = list(seeded.get("_just_corrected") or [])
-    if llm:
-        merged = _capture_user_words(llm.get("draft") or seeded, text, history)
-        merged = _apply_spoken_extras(merged, text)
-        merged = _mark_shots(merged, text, has_before=has_before, has_after=has_after)
-        merged = _apply_reflection_answer(merged, text)
-        source = llm.get("source") or "llm"
-        uncertain = llm.get("uncertain") or []
-    if corr:
-        merged["_just_corrected"] = corr
-
+    # The next line stays on what they actually said. A model draft was
+    # inventing feelings and skipping ahead to "say save".
+    _ = (history, instruments)
     nxt = conversational_next(
-        merged,
+        seeded,
         text,
-        has_before=bool(has_before or merged.get("screenshot_before")),
-        has_after=bool(has_after or merged.get("screenshot_after")),
+        has_before=bool(has_before or seeded.get("screenshot_before")),
+        has_after=bool(has_after or seeded.get("screenshot_after")),
         skip_screenshot=skip_screenshot,
+        session_hint=session_hint,
+        pattern_notes=pattern_notes,
     )
     return {
-        "reply": nxt["reply"][:280],
-        "draft": merged,
+        "reply": nxt["reply"][:480],
+        "draft": seeded,
         "complete": nxt["complete"],
         "ask_screenshot": nxt["ask_screenshot"],
         "screenshot_kind": nxt["screenshot_kind"],
-        "uncertain": uncertain,
-        "phase": journal_phase(merged),
+        "ask_key": nxt.get("ask_key") or "",
+        "uncertain": [],
+        "phase": journal_phase(seeded),
         "action": "",
-        "source": source,
+        "source": "fallback",
     }
 
 
@@ -1752,7 +2114,17 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
     if after:
         happened_bits.append(after if after.lower().startswith("feel") else f"Feeling after: {after}")
     happened = "\n".join(happened_bits).strip()
-    lesson_bits = [p for p in (lessons, f"Next time: {improve}" if improve else "") if p]
+    mistake = (draft.get("mistake") or "").strip()
+    if mistake in ("skipped", "none"):
+        mistake = "" if mistake == "skipped" else "No single mistake."
+    managed = (draft.get("managed_note") or "").strip()
+    if managed == "skipped":
+        managed = ""
+    lesson_bits = [p for p in (
+        lessons,
+        f"Fix: {mistake}" if mistake else "",
+        f"Next time: {improve}" if improve else "",
+    ) if p]
     lessons_out = "\n".join(lesson_bits).strip()
     emotion_line = ", ".join(
         [e for e in ([during, after] + list(emotions)) if e and e != "skipped"]
@@ -1785,6 +2157,11 @@ def draft_to_form_fields(draft: Dict[str, Any]) -> Dict[str, Any]:
         "guide_what_happened": happened,
         "guide_reflection": improve,
         "guide_setup_tags": ", ".join(tags),
+        "guide_moved_sl": draft.get("moved_sl") or "",
+        "guide_early_close": draft.get("early_close") or "",
+        "guide_partials": draft.get("took_partials") or "",
+        "guide_added": draft.get("added_size") or "",
+        "guide_mgmt_note": managed,
         "pre_trade_plan": thesis,
         "post_trade_notes": post_notes,
         "lessons_learned": lessons_out or improve or lessons,

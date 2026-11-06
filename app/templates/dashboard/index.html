@@ -13,7 +13,7 @@
 {% set ai_best_strat = ai_setups.get('best_strategy') if ai_setups else none %}
 {% set ai_weaknesses = (ai_summary.get('weaknesses')      if ai_summary else []) or [] %}
 {% set ai_recs       = (ai_summary.get('recommendations') if ai_summary else []) or [] %}
-{% set ai_text       = (ai_summary.get('summary')         if ai_summary else '') or 'Talk one trade in and AI Coach will start from that.' %}
+{% set ai_text       = (ai_summary.get('summary')         if ai_summary else '') or 'Talk one trade in. The coach starts from that.' %}
 {% set pinned = pinned_note %}
 {% set uname = (current_user.username or 'trader') %}
 
@@ -32,7 +32,7 @@
                     Welcome back, {{ uname }}
                 </h1>
                 <p class="page-subtitle mb-0">
-                    Plan → log → review. Protect your edge, one disciplined session at a time.
+                    Log the trade while you still remember why you took it.
                 </p>
                 <div class="tv-workflow d-none d-md-grid">
                     <a class="tv-workflow-step" href="{{ url_for('planner.new_plan') }}"><span class="n">1</span> Plan</a>
@@ -58,7 +58,7 @@
                     <i class="fas fa-microphone me-1"></i> Talk a trade
                 </a>
                 <a href="{{ url_for('trade.add') }}" class="btn btn-primary btn-lg" aria-label="Add a new trade">
-                    <i class="fas fa-plus me-1"></i> Journal Trade
+                    <i class="fas fa-plus me-1"></i> Log a trade
                 </a>
                 {% endif %}
             </div>
@@ -130,7 +130,7 @@
 {% if done_count < 5 %}
 <details class="tv-metrics-more tv-reveal mb-4" {% if done_count < 2 %}open{% endif %}>
     <summary>
-        Activation · {{ done_count }}/5 — playbook → grade → log → Results
+        Getting set up · {{ done_count }} of 5
     </summary>
     <div class="progress mb-3" style="height:6px;border-radius:999px;">
         <div class="progress-bar" role="progressbar" style="width: {{ (done_count / 5 * 100)|round(0) }}%; background: linear-gradient(90deg,#0f766e,#14b8a6);" aria-valuenow="{{ done_count }}" aria-valuemin="0" aria-valuemax="5"></div>

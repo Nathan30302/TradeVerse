@@ -82,7 +82,7 @@ def create_app(config_name='default'):
     
     # Configure Flask-Login
     login_manager.login_view = 'auth.login'
-    login_manager.login_message = '🔒 Please log in to access this page.'
+    login_manager.login_message = 'Sign in to open your journal.'
     login_manager.login_message_category = 'info'
     
     # Import models (inside app context to avoid circular imports)
@@ -609,6 +609,7 @@ def register_context_processors(app):
             'ui_font_labels': dict(app.config.get('UI_FONT_LABELS') or {}),
             'current_year': datetime.now(timezone.utc).year,
             'voice_transcribe_enabled': bool(os.environ.get('OPENAI_API_KEY', '').strip()),
+            'voice_speak_enabled': bool(os.environ.get('OPENAI_API_KEY', '').strip()),
             'di_context': di_context,
         }
 

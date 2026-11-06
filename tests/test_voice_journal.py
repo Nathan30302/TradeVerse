@@ -87,6 +87,10 @@ def test_parse_yes_no_status_and_bare_number():
     assert parse_voice_text("yes that's right")["yes_no"] == "yes"
     assert parse_voice_text("already done")["status"] == "closed"
     assert parse_voice_text("still in it")["status"] == "open"
+    assert parse_voice_text("closed")["status"] == "closed"
+    assert parse_voice_text("not closed")["status"] == "open"
+    assert parse_voice_text("hit my tp")["status"] == "closed"
+    assert parse_voice_text("I entered before the candle closed")["status"] is None
     assert parse_voice_text("1.17240")["bare_number"] == 1.1724
     out = parse_voice_text("")
     assert out["symbol"] is None
@@ -222,7 +226,7 @@ def test_dashboard_has_voice_and_journal_trade(logged_client):
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert "Voice" in body
-    assert "Journal Trade" in body or "Add Trade" in body
+    assert "Log a trade" in body or "Talk a trade" in body or "Add Trade" in body
 
 
 def test_parse_at_price_as_entry():
@@ -244,31 +248,27 @@ def test_conversation_skips_fields_already_said():
     assert d["stop_loss"] == 42350
     assert first["complete"] is False
     reply = (first["reply"] or "").lower()
-    assert "got it" in reply
+    assert any(w in reply for w in ("okay", "alright", "yeah", "right", "got it"))
     assert "what did you trade" not in reply
+    assert "save when" not in reply
 
-    second = fallback_turn("still in it, breakout off the open", d)
+    assert "take profit" in reply or "target" in reply
+
+    second = fallback_turn("still in it, target 42800, breakout off the open", d)
     assert second["draft"]["status"] == "open"
     assert "Breakout" in (second["draft"].get("setup_tags") or [])
     assert "long or short" not in (second["reply"] or "").lower()
-    assert "session" in (second["reply"] or "").lower()
+    assert "look right" in (second["reply"] or "").lower()
 
     third = fallback_turn("London this morning", second["draft"])
     assert third["draft"]["session_type"]
     assert third["draft"]["entry_time"]
+    assert third["draft"]["levels_confirmed"] is True
+    assert "breakout" in (third["draft"].get("thesis_notes") or "").lower()
     assert "what did you trade" not in (third["reply"] or "").lower()
-    # Size, then timeframe / reflection — not charts yet.
     assert third["ask_screenshot"] is False
     reply3 = (third["reply"] or "").lower()
-    assert (
-        "size" in reply3
-        or "lot" in reply3
-        or "timeframe" in reply3
-        or "why" in reply3
-        or "idea" in reply3
-        or "rules" in reply3
-        or "follow" in reply3
-    )
+    assert "rules" in reply3 or "follow" in reply3 or "feeling" in reply3
 
 
 def test_voice_turn_api_extracts_and_asks_once(logged_client):
@@ -292,7 +292,7 @@ def test_conversation_completes_after_screenshot_skip():
     from app.services.voice_conversation import fallback_turn, required_ready
 
     d = fallback_turn(
-        "Bought gold at 3650 stop 3640, still in it this morning london because it swept the low"
+        "Bought gold at 3650 stop 3640 target 3680, still in it this morning london because it swept the low"
     )["draft"]
     assert d["symbol"] == "XAUUSD"
     assert d["session_type"]
@@ -305,15 +305,20 @@ def test_conversation_completes_after_screenshot_skip():
     d = fallback_turn("yes I followed my rules", d)["draft"]
     d = fallback_turn("a bit nervous but patient", d)["draft"]
     d = fallback_turn("calm and focused now", d)["draft"]
+    d = fallback_turn("8", d)["draft"]
     d = fallback_turn("wait for confirmation next time", d)["draft"]
     d = fallback_turn("size down when unsure", d)["draft"]
+    d = fallback_turn("left the stop and took no partials", d)["draft"]
+    d = fallback_turn("I chased the first candle", d)["draft"]
     shot = fallback_turn("yeah that's it", d, has_screenshot=False)
     assert shot["ask_screenshot"] is True
-    assert shot["screenshot_kind"] == "before"
-    after = fallback_turn("I uploaded the before chart.", shot["draft"], has_before=True)
-    assert after["ask_screenshot"] is True
-    assert after["screenshot_kind"] == "after"
-    done = fallback_turn("no", after["draft"], has_before=True, skip_screenshot=True)
+    assert shot["screenshot_kind"] == "both"
+    done = fallback_turn(
+        "I uploaded the chart.",
+        shot["draft"],
+        has_before=True,
+        has_after=True,
+    )
     assert done["complete"] is True
     assert done["ask_screenshot"] is False
     assert done["draft"].get("followed_plan") == "yes"
@@ -321,15 +326,19 @@ def test_conversation_completes_after_screenshot_skip():
     assert done["draft"].get("improve_next")
 
 
-def test_does_not_infer_session_from_clock():
+def test_session_comes_from_the_clock_when_they_do_not_say_it():
     from app.services.voice_conversation import fallback_turn
 
     first = fallback_turn(
         "I went long on US30 at 42500 stop 42350 still in it",
-        session_hint={"session_type": "New York Session", "chip": "NY"},
+        session_hint={"session_type": "New York Session", "chip": "NY", "hour": 14},
     )
-    assert not first["draft"].get("session_type")
-    assert "session" in (first["reply"] or "").lower()
+    assert first["draft"]["session_type"] == "New York Session"
+    assert first["draft"]["entry_time"] == "this afternoon"
+    assert first["draft"]["session_assumed"] is True
+    reply = (first["reply"] or "").lower()
+    assert "which session" not in reply
+    assert "take profit" in reply or "target" in reply
 
 
 def test_thesis_and_dump_keep_user_words():
@@ -413,12 +422,15 @@ def test_wrap_includes_planned_return():
     d = fallback_turn("yes followed rules", d)["draft"]
     d = fallback_turn("calm", d)["draft"]
     d = fallback_turn("confident", d)["draft"]
+    d = fallback_turn("8", d)["draft"]
     d = fallback_turn("trust the open sweep", d)["draft"]
     d = fallback_turn("wait for close confirmation", d)["draft"]
+    d = fallback_turn("as planned", d)["draft"]
+    d = fallback_turn("no mistake", d)["draft"]
     done = fallback_turn("no screenshot", d, skip_screenshot=True)
     assert done["complete"] is True
     reply = (done["reply"] or "").lower()
-    assert "1:" in reply or "planned" in reply
+    assert "1 to" in reply or "planned" in reply
     assert "journal" in reply
     assert "save" in reply
 
@@ -442,10 +454,16 @@ def test_full_journal_asks_reflection_before_charts():
         d = fallback_turn("nervous but disciplined", d)["draft"]
     while missing_keys(d) and missing_keys(d)[0] == "feeling_after":
         d = fallback_turn("relieved and calm", d)["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "confidence_level":
+        d = fallback_turn("7", d)["draft"]
     while missing_keys(d) and missing_keys(d)[0] == "lessons":
         d = fallback_turn("patience pays on the open", d)["draft"]
     while missing_keys(d) and missing_keys(d)[0] == "improve_next":
         d = fallback_turn("take only A plus setups", d)["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "managed_note":
+        d = fallback_turn("as planned, left the stop", d)["draft"]
+    while missing_keys(d) and missing_keys(d)[0] == "mistake":
+        d = fallback_turn("I entered before the candle closed", d)["draft"]
     assert d.get("followed_plan") == "yes"
     assert d.get("feeling_during")
     assert d.get("improve_next")
@@ -546,7 +564,16 @@ def test_spoken_instruments_and_end_phrases():
     assert conversation_intent("edit later") == "pause"
     assert conversation_intent("let's end now") == "pause"
     assert conversation_intent("that's all") == "finish"
-    assert conversation_intent("done") == "finish"
+    assert conversation_intent("log it") == "finish"
+    assert conversation_intent("done") is None
+    assert conversation_intent("already done") is None
+    early = fallback_turn("Long US30 at 42500 stop 42350")
+    assert early["complete"] is False
+    assert "save when" not in (early["reply"] or "").lower()
+    closed = fallback_turn("already done", early["draft"])
+    assert closed["complete"] is False
+    assert closed["draft"]["status"] == "closed"
+    assert "save when" not in (closed["reply"] or "").lower()
 
     d = fallback_turn("I went long on us thirty at 42500 stop 42350")["draft"]
     assert d["symbol"] == "US30"
@@ -561,6 +588,177 @@ def test_spoken_instruments_and_end_phrases():
     assert done["action"] == "finish"
     assert done["complete"] is True
     assert done["ask_screenshot"] is False
+
+
+def test_one_sentence_does_not_turn_the_stop_into_the_exit():
+    from app.services.voice_conversation import fallback_turn
+
+    step = fallback_turn(
+        "I bought gold at 3650, stop 3640, take profit 3670, I got out at 3660 because it swept the London low"
+    )
+    d = step["draft"]
+    assert d["symbol"] == "XAUUSD"
+    assert d["entry_price"] == 3650
+    assert d["stop_loss"] == 3640
+    assert d["take_profit"] == 3670
+    assert d["exit_price"] == 3660
+    assert "swept" in (d.get("thesis_notes") or "").lower()
+
+
+def test_why_said_with_the_price_is_kept():
+    from app.services.voice_conversation import fallback_turn
+
+    step = fallback_turn("I bought gold at 3650 because it swept the London low")
+    assert "swept" in (step["draft"].get("thesis_notes") or "").lower()
+    reply = (step["reply"] or "").lower()
+    assert "stop" in reply
+    assert "why did you enter" not in reply
+
+
+def test_asks_entry_stop_target_exit_and_why():
+    """The price questions are asked, in order, until each one has been said."""
+    from app.services.voice_conversation import fallback_turn
+
+    step = fallback_turn("I bought gold")
+    assert step["draft"]["trade_type"] == "BUY"
+    assert "price" in (step["reply"] or "").lower()
+    assert "enter" in (step["reply"] or "").lower()
+
+    step = fallback_turn("3650", step["draft"])
+    assert step["draft"]["entry_price"] == 3650
+    assert "stop loss" in (step["reply"] or "").lower()
+
+    step = fallback_turn("3640", step["draft"])
+    assert step["draft"]["stop_loss"] == 3640
+    assert "take profit" in (step["reply"] or "").lower()
+
+    step = fallback_turn("3670", step["draft"])
+    assert step["draft"]["take_profit"] == 3670
+    reply = (step["reply"] or "").lower()
+    assert "still in" in reply or "out" in reply
+
+    step = fallback_turn("I'm out", step["draft"])
+    assert step["draft"]["status"] == "closed"
+    assert "get out" in (step["reply"] or "").lower()
+
+    step = fallback_turn("3660", step["draft"])
+    assert step["draft"]["exit_price"] == 3660
+    assert "look right" in (step["reply"] or "").lower()
+
+    step = fallback_turn("yes that looks right", step["draft"])
+    assert step["draft"]["levels_confirmed"] is True
+    why = (step["reply"] or "").lower()
+    assert "why" in why and "enter" in why
+
+
+def test_every_journal_question_stays():
+    """Every coaching answer still has its own question. Nothing is dropped."""
+    from app.services.voice_conversation import fallback_turn, missing_keys
+
+    d = fallback_turn(
+        "Long EURUSD at 1.1724 stop 1.1714 target 1.1744 still open London this morning"
+    )["draft"]
+    d["levels_confirmed"] = True
+    keys = missing_keys(d)
+    for key in (
+        "thesis_notes",
+        "followed_plan",
+        "feeling_during",
+        "feeling_after",
+        "confidence_level",
+        "lessons",
+        "improve_next",
+        "managed_note",
+        "mistake",
+    ):
+        assert key in keys
+    nxt = fallback_turn("London open retest of support", d)
+    reply = (nxt["reply"] or "").lower()
+    assert "rules" in reply or "follow" in reply
+
+
+def test_saved_journal_page_keeps_each_part():
+    from app.services.voice_journal import saved_journal_blocks
+
+    class Row:
+        pre_trade_plan = "Swept the London low.\nFeeling during: nervous but patient\nFollowed rules"
+        post_trade_notes = "Hit TP.\nFeeling after: relieved\nManaged: left the stop"
+        lessons_learned = "Wait for the sweep.\nFix: entered early\nNext time: size down"
+        mistakes = ""
+
+    labels = [block["label"] for block in saved_journal_blocks(Row())]
+    for label in (
+        "Why this trade",
+        "In the trade",
+        "Rules",
+        "What happened",
+        "Now",
+        "How you managed it",
+        "What it taught you",
+        "The one thing",
+        "Next time",
+    ):
+        assert label in labels
+
+
+def test_one_answer_fills_several_coaching_fields():
+    from app.services.voice_conversation import fallback_turn
+
+    d = fallback_turn(
+        "Long EURUSD at 1.1724 stop 1.1714 target 1.1744 still open London"
+    )["draft"]
+    d["levels_confirmed"] = True
+    nxt = fallback_turn("I was calm, about an 8, and I followed the plan", d)
+    assert "calm" in (nxt["draft"].get("feeling_during") or "").lower()
+    assert nxt["draft"]["confidence_level"] == 8
+    assert nxt["draft"]["followed_plan"] == "yes"
+    reply = (nxt["reply"] or "").lower()
+    assert "one to ten" not in reply
+    assert "follow your rules" not in reply
+
+
+def test_pattern_line_names_a_repeat():
+    from app.services.voice_conversation import fallback_turn, journal_pattern_line
+
+    draft = {"mistake": "I entered before the candle closed", "lessons": "wait for the close"}
+    assert journal_pattern_line(draft, []) == ""
+    line = journal_pattern_line(
+        draft,
+        [
+            "entered before the candle closed again",
+            "patience on the open",
+            "too early before the close",
+        ],
+    )
+    assert "third" in line.lower()
+    assert "candle" in line.lower()
+
+    ready = fallback_turn(
+        "Long EURUSD at 1.1724 stop 1.1714 target 1.1744 still open London"
+    )["draft"]
+    ready.update(
+        {
+            "levels_confirmed": True,
+            "thesis_notes": "London open retest",
+            "followed_plan": "yes",
+            "feeling_during": "calm",
+            "feeling_after": "relieved",
+            "confidence_level": 8,
+            "lessons": "wait for the close",
+            "improve_next": "next time I wait",
+            "managed_note": "as planned",
+            "mistake": "I entered before the candle closed",
+            "entry_time": "this morning",
+        }
+    )
+    done = fallback_turn(
+        "no screenshot",
+        ready,
+        skip_screenshot=True,
+        pattern_notes=["entered before the candle closed", "too early before the close"],
+    )
+    assert "third" in (done["reply"] or "").lower()
+    assert "save" in (done["reply"] or "").lower()
 
 
 def test_guide_page_has_composer_and_pending_hooks(logged_client, app):
@@ -586,6 +784,8 @@ def test_guide_page_has_composer_and_pending_hooks(logged_client, app):
     assert "tv-vj-type-input" in body
     assert "tv-vj-voices" in body
     assert "Maya" in body and "Noah" in body and "Sage" in body
+    assert "Add chart photo" in body
+    assert 'data-voice="marin"' in body
     assert "tv-vj-composer" in body
     assert "tv-vj-pending" in body or "still need notes" in body
     r2 = logged_client.get(f"/trade/guide?complete={tid}")

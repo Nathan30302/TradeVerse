@@ -28,31 +28,34 @@
   var summaryEl = document.getElementById('tv-vj-summary');
 
   var VOICE_PRESETS = {
-    coral: {
+    marin: {
       label: 'Maya',
-      rate: 1.02,
-      pitch: 1.04,
-      sample: 'Hey. I’m here — tell me the trade.',
-      names: ['samantha', 'google us english', 'karen', 'moira']
+      rate: 0.96,
+      pitch: 1,
+      sample: 'Hey. I’m here. Tell me the trade.',
+      names: ['sandy', 'shelley', 'flo', 'samantha', 'ava']
     },
-    ash: {
+    cedar: {
       label: 'Noah',
-      rate: 0.98,
-      pitch: 0.9,
-      sample: 'Ready when you are. What did you take?',
-      names: ['daniel', 'alex', 'aaron', 'google uk english male']
+      rate: 0.94,
+      pitch: 1,
+      sample: 'Hey. Whenever you’re ready.',
+      names: ['reed', 'rocko', 'daniel', 'evan', 'aaron']
     },
     sage: {
       label: 'Sage',
-      rate: 0.94,
-      pitch: 0.86,
-      sample: 'Alright. Walk me through the trade.',
-      names: ['fiona', 'victoria', 'serena', 'moira']
+      rate: 0.95,
+      pitch: 1,
+      sample: 'Alright. I’m listening.',
+      names: ['tessa', 'shelley', 'moira', 'fiona', 'serena']
     }
   };
-  var voiceId = 'coral';
+  var JOKE_VOICES = /bad news|bahh|bells|boing|bubbles|cellos|good news|grandma|grandpa|jester|junior|organ|superstar|trinoids|wobble|zarvox|albert|fred|ralph|kathy/;
+  var voiceId = 'marin';
   try {
     var savedVoice = localStorage.getItem('tv-vj-voice');
+    if (savedVoice === 'coral') savedVoice = 'marin';
+    if (savedVoice === 'ash') savedVoice = 'cedar';
     if (savedVoice && VOICE_PRESETS[savedVoice]) voiceId = savedVoice;
   } catch (e) {}
 
@@ -71,6 +74,10 @@
   var fixField = '';
   var reviewMode = false;
   var storageKey = boot.storageKey || ('tv-vj-draft-' + (boot.userId || 'anon'));
+  var journalSaved = false;
+  var confirming = false;
+  var audioCache = {};
+  var voiceWarmOk = true;
   var typeInput = document.getElementById('tv-vj-type-input');
   var typeSend = document.getElementById('tv-vj-type-send');
   var chipHint = document.getElementById('tv-vj-chip-hint');
@@ -146,7 +153,7 @@
   }
 
   function voiceLabel() {
-    return (VOICE_PRESETS[voiceId] || VOICE_PRESETS.coral).label;
+    return (VOICE_PRESETS[voiceId] || VOICE_PRESETS.marin).label;
   }
 
   function setState(next) {
@@ -154,8 +161,8 @@
     if (stage) stage.setAttribute('data-state', next);
     if (statusEl) {
       statusEl.textContent =
-        next === 'listening' ? 'I’m listening' :
-        next === 'thinking' ? 'One second' :
+        next === 'listening' ? 'I’m with you' :
+        next === 'thinking' ? 'Got it' :
         next === 'speaking' ? voiceLabel() :
         next === 'waiting' ? 'Add the charts' :
         next === 'review' ? 'Say save, or tap save' :
@@ -165,7 +172,15 @@
   }
 
   function markVoice(id) {
-    voiceId = VOICE_PRESETS[id] ? id : 'coral';
+    var next = VOICE_PRESETS[id] ? id : 'marin';
+    if (next !== voiceId) {
+      audioCache = {};
+      voiceWarmOk = true;
+      voiceId = next;
+      warmVoice();
+    } else {
+      voiceId = next;
+    }
     try { localStorage.setItem('tv-vj-voice', voiceId); } catch (e) {}
     var buttons = document.querySelectorAll('.tv-vj-voice');
     for (var i = 0; i < buttons.length; i++) {
@@ -179,15 +194,31 @@
   function pickBrowserVoice(preset) {
     if (!window.speechSynthesis || !preset) return null;
     var voices = window.speechSynthesis.getVoices() || [];
-    var en = voices.filter(function (v) { return /^en/i.test(v.lang || ''); });
-    var names = preset.names || [];
-    for (var i = 0; i < names.length; i++) {
-      var needle = names[i];
-      for (var j = 0; j < en.length; j++) {
-        if (en[j].name && en[j].name.toLowerCase().indexOf(needle) !== -1) return en[j];
+    var best = null;
+    var bestScore = 0;
+    for (var j = 0; j < voices.length; j++) {
+      var v = voices[j];
+      var name = (v.name || '').toLowerCase();
+      var lang = (v.lang || '').toLowerCase();
+      if (!name || JOKE_VOICES.test(name)) continue;
+      if (lang && lang.indexOf('en') !== 0) continue;
+      var score = 1;
+      if (/premium|enhanced|natural/.test(name)) score += 30;
+      var names = preset.names || [];
+      for (var i = 0; i < names.length; i++) {
+        if (name.indexOf(names[i]) !== -1) score += 24 - i * 3;
+      }
+      if (lang.indexOf('en-za') === 0 || lang.indexOf('en-gb') === 0) score += 2;
+      if (score > bestScore) {
+        bestScore = score;
+        best = v;
       }
     }
-    return en[0] || voices[0] || null;
+    return best;
+  }
+
+  function forBrowser(line) {
+    return String(line || '').replace(/\s*[—–]\s*/g, ', ').replace(/\s{2,}/g, ' ').trim();
   }
 
   function syncComposer() {
@@ -203,8 +234,24 @@
     return /\b(save(?: it)?|log(?: it)?|looks good|that'?s (?:it|right|correct)|confirm|submit|go ahead|yes(?: please)?|yep|yeah|perfect)\b/.test(t);
   }
 
+  function savedMarkOn() {
+    try { return sessionStorage.getItem(storageKey + '-saved') === '1'; } catch (e) { return false; }
+  }
+
+  function markJournalSaved() {
+    journalSaved = true;
+    try {
+      sessionStorage.setItem(storageKey + '-saved', '1');
+      sessionStorage.removeItem(storageKey);
+    } catch (e) {}
+  }
+
   function persistDraft() {
     try {
+      if (journalSaved || savedMarkOn()) {
+        sessionStorage.removeItem(storageKey);
+        return;
+      }
       if (!draft || (!draft.symbol && draft.entry_price == null && history.length < 1)) {
         sessionStorage.removeItem(storageKey);
         return;
@@ -223,6 +270,64 @@
 
   function clearPersisted() {
     try { sessionStorage.removeItem(storageKey); } catch (e) {}
+  }
+
+  function showNewTrade(on) {
+    var btn = document.getElementById('tv-vj-new');
+    if (btn) btn.classList.toggle('d-none', !on);
+  }
+
+  function startFresh() {
+    journalSaved = false;
+    try { sessionStorage.removeItem(storageKey + '-saved'); } catch (e) {}
+    draft = {};
+    history = [];
+    transcriptDump = [];
+    hasBefore = false;
+    hasAfter = false;
+    hasShot = false;
+    skipShot = false;
+    reviewMode = false;
+    fixField = '';
+    clearPersisted();
+    [
+      'symbol', 'instrument_id', 'entry_price', 'stop_loss', 'take_profit', 'exit_price',
+      'lot_size', 'session_type', 'strategy', 'timeframe', 'confidence_level',
+      'pre_trade_plan', 'post_trade_notes', 'lessons_learned', 'emotion',
+      'guide_why', 'guide_voice_dump', 'guide_feeling_before', 'guide_feeling_after',
+      'guide_followed_plan', 'guide_what_happened', 'guide_reflection', 'guide_emotions',
+      'guide_setup_tags', 'guide_session', 'guide_moved_sl', 'guide_early_close',
+      'guide_partials', 'guide_added', 'guide_mgmt_note'
+    ].forEach(function (id) { setVal(id, ''); });
+    confirming = false;
+    if (stage) {
+      stage.classList.remove('is-confirm');
+      stage.classList.remove('is-review');
+      stage.classList.remove('is-slip');
+    }
+    renderChips({}, {});
+    renderPrompts('');
+    if (shotEl) shotEl.classList.add('d-none');
+    if (journalEl) journalEl.classList.add('d-none');
+    if (summaryEl) summaryEl.innerHTML = '';
+    setLive('');
+    setAi('Tell me the trade.');
+    setPhase('facts');
+    setState('idle');
+    showNewTrade(false);
+    showRedo(false);
+    undoStack = null;
+    var check = document.getElementById('tv-vj-check');
+    if (check) check.classList.add('d-none');
+    ['tv-vj-shot-before', 'tv-vj-shot-after'].forEach(function (id) {
+      var slot = document.getElementById(id);
+      if (!slot) return;
+      slot.classList.remove('has-file');
+      var img = slot.querySelector('img');
+      if (img) img.remove();
+    });
+    var doneBtn = document.getElementById('tv-vj-shot-done');
+    if (doneBtn) doneBtn.classList.add('d-none');
   }
 
   function seedFromBoot() {
@@ -249,6 +354,11 @@
       return;
     }
     try {
+      if (savedMarkOn()) {
+        sessionStorage.removeItem(storageKey);
+        sessionStorage.removeItem(storageKey + '-saved');
+        return;
+      }
       var raw = sessionStorage.getItem(storageKey);
       if (!raw) return;
       var saved = JSON.parse(raw);
@@ -405,6 +515,87 @@
     }
   }
 
+  var SPEAK_AHEAD = [
+    'Okay.',
+    'Alright.',
+    'Yeah, I got that.',
+    'Okay, okay.',
+    'Right.',
+    'Does that look right?',
+    'Which part should I change?',
+    'What price did you enter at?',
+    'What was your stop loss?',
+    'What was your take profit?',
+    'Where did you get out?',
+    'Why did you enter?',
+    'Did you follow your rules on this one?',
+    'How were you feeling while you were in it?',
+    'And how do you feel about it now?',
+    'How confident were you, one to ten?',
+    'What did this one teach you?',
+    'What are you going to do differently next time?',
+    'How did you manage it — stop, partials, or did you get out early?',
+    'If you could fix one thing about this trade, what would it be?',
+    'Add the before and after, if you have them.',
+    'You still in it, or are you out?'
+  ];
+
+  function voiceKey(line) {
+    return voiceId + '|h4|' + line;
+  }
+
+  function neuralSpeak() {
+    return !!(boot.speakEnabled && boot.speakUrl && voiceWarmOk);
+  }
+
+  function noteSpeakFailed(status) {
+    if (status === 403 || status === 503) {
+      boot.speakEnabled = false;
+      voiceWarmOk = false;
+    }
+  }
+
+  function cachedAudio(line) {
+    var hit = audioCache[voiceKey(line)];
+    return hit && hit !== 'loading' ? hit : '';
+  }
+
+  function prefetchSpeak(line) {
+    if (!neuralSpeak() || !line) return;
+    var key = voiceKey(line);
+    if (audioCache[key]) return;
+    audioCache[key] = 'loading';
+    fetch(boot.speakUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+      body: JSON.stringify({ text: line, voice: voiceId })
+    }).then(function (r) {
+      if (!r.ok) {
+        noteSpeakFailed(r.status);
+        delete audioCache[key];
+        return null;
+      }
+      return r.blob();
+    }).then(function (blob) {
+      if (!blob) return;
+      audioCache[key] = URL.createObjectURL(blob);
+    }).catch(function () {
+      delete audioCache[key];
+    });
+  }
+
+  function warmVoice() {
+    if (!neuralSpeak()) return;
+    var i = 0;
+    function next() {
+      if (!voiceWarmOk || i >= SPEAK_AHEAD.length) return;
+      prefetchSpeak(SPEAK_AHEAD[i]);
+      i += 1;
+      setTimeout(next, 280);
+    }
+    setTimeout(next, 500);
+  }
+
   function speak(text, then) {
     var line = String(text || '').trim();
     if (!line) {
@@ -423,24 +614,57 @@
     var done = wrapped;
 
     function browserSpeak() {
-      if (!window.speechSynthesis) { done(); return; }
-      try {
-        var preset = VOICE_PRESETS[voiceId] || VOICE_PRESETS.coral;
-        var u = new SpeechSynthesisUtterance(line);
-        u.rate = preset.rate;
-        u.pitch = preset.pitch;
-        var chosen = pickBrowserVoice(preset);
-        if (chosen) u.voice = chosen;
-        u.onend = done;
-        u.onerror = done;
-        window.speechSynthesis.speak(u);
-      } catch (e) {
-        done();
+      function go() {
+        if (!window.speechSynthesis) { done(); return; }
+        try {
+          var preset = VOICE_PRESETS[voiceId] || VOICE_PRESETS.marin;
+          var chosen = pickBrowserVoice(preset);
+          var u = new SpeechSynthesisUtterance(forBrowser(line));
+          u.lang = (chosen && chosen.lang) || 'en-GB';
+          u.rate = preset.rate;
+          u.pitch = preset.pitch;
+          if (chosen) {
+            u.voice = chosen;
+            u.lang = chosen.lang || u.lang;
+          }
+          u.onend = done;
+          u.onerror = done;
+          window.speechSynthesis.speak(u);
+        } catch (e) {
+          done();
+        }
       }
+      if (window.speechSynthesis && !(window.speechSynthesis.getVoices() || []).length) {
+        var fired = false;
+        var run = function () { if (fired) return; fired = true; go(); };
+        window.speechSynthesis.addEventListener('voiceschanged', run, { once: true });
+        setTimeout(run, 400);
+        return;
+      }
+      go();
     }
 
-    if (!boot.speakUrl) {
+    if (!neuralSpeak()) {
       browserSpeak();
+      return;
+    }
+
+    function playUrl(url, after) {
+      var prev = document.getElementById('tv-vj-tts');
+      if (prev) prev.remove();
+      var audio = document.createElement('audio');
+      audio.id = 'tv-vj-tts';
+      audio.src = url;
+      audio.addEventListener('ended', after, { once: true });
+      audio.addEventListener('error', function () { browserSpeak(); }, { once: true });
+      document.body.appendChild(audio);
+      var play = audio.play();
+      if (play && play.catch) play.catch(function () { browserSpeak(); });
+    }
+
+    var exact = cachedAudio(line);
+    if (exact) {
+      playUrl(exact, done);
       return;
     }
     fetch(boot.speakUrl, {
@@ -448,18 +672,15 @@
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
       body: JSON.stringify({ text: line, voice: voiceId })
     }).then(function (r) {
-      if (!r.ok) throw new Error('tts');
+      if (!r.ok) {
+        noteSpeakFailed(r.status);
+        throw new Error('tts');
+      }
       return r.blob();
     }).then(function (blob) {
       var url = URL.createObjectURL(blob);
-      var audio = document.createElement('audio');
-      audio.id = 'tv-vj-tts';
-      audio.src = url;
-      audio.addEventListener('ended', done, { once: true });
-      audio.addEventListener('error', function () { browserSpeak(); }, { once: true });
-      document.body.appendChild(audio);
-      var play = audio.play();
-      if (play && play.catch) play.catch(function () { browserSpeak(); });
+      audioCache[voiceKey(line)] = url;
+      playUrl(url, done);
     }).catch(function () {
       browserSpeak();
     });
@@ -786,14 +1007,28 @@
       rec.sr = new Ctor();
       rec.sr.continuous = true;
       rec.sr.interimResults = true;
-      rec.sr.lang = 'en-US';
+      rec.sr.lang = 'en-GB';
       rec.sr.maxAlternatives = 3;
       rec.base = rec.text || '';
       rec.sr.onresult = function (ev) {
         var finals = [];
         var interim = '';
         for (var i = 0; i < ev.results.length; i++) {
-          var best = ev.results[i][0] ? ev.results[i][0].transcript : '';
+          var best = '';
+          var bestScore = -1;
+          var bestFit = -1;
+          for (var a = 0; a < ev.results[i].length; a++) {
+            var alt = ev.results[i][a];
+            if (!alt) continue;
+            var said = alt.transcript || '';
+            var score = typeof alt.confidence === 'number' ? alt.confidence : 0;
+            var fit = fidelity(said);
+            if (!best || score > bestScore + 0.05 || (Math.abs(score - bestScore) <= 0.05 && fit > bestFit)) {
+              best = said;
+              bestScore = score;
+              bestFit = fit;
+            }
+          }
           if (ev.results[i].isFinal) finals.push(best);
           else interim += best;
         }
@@ -801,8 +1036,9 @@
         rec.text = (rec.base + ' ' + sessionText).replace(/\s+/g, ' ').trim();
         var shown = (rec.text + (interim ? ' ' + interim : '')).replace(/\s+/g, ' ').trim();
         rec.live = shown;
+        noteHeard(shown);
         rec.lastHeardAt = Date.now();
-        setLive(shown);
+        setLive(rec.faithful && fidelity(rec.faithful) > fidelity(shown) ? rec.faithful : shown);
         if (shown) {
           clearTimeout(rec.silence);
           var words = shown.split(/\s+/).length;
@@ -838,6 +1074,7 @@
     rec.text = '';
     rec.live = '';
     rec.base = '';
+    rec.faithful = '';
     rec.lastHeardAt = 0;
     rec.chunks = [];
     rec.gen += 1;
@@ -850,9 +1087,11 @@
       attachAnalyser(stream);
       rec.mime = pickMime();
       try {
-        rec.mr = rec.mime ? new MediaRecorder(stream, { mimeType: rec.mime }) : new MediaRecorder(stream);
+        var recOpts = rec.mime ? { mimeType: rec.mime, audioBitsPerSecond: 128000 } : { audioBitsPerSecond: 128000 };
+        rec.mr = new MediaRecorder(stream, recOpts);
       } catch (e) {
-        rec.mr = new MediaRecorder(stream);
+        try { rec.mr = rec.mime ? new MediaRecorder(stream, { mimeType: rec.mime }) : new MediaRecorder(stream); }
+        catch (e2) { rec.mr = new MediaRecorder(stream); }
       }
       rec.mr.ondataavailable = function (e) {
         if (e.data && e.data.size) rec.chunks.push(e.data);
@@ -933,6 +1172,19 @@
     }
   }
 
+  function fidelity(text) {
+    var t = String(text || '');
+    var digits = (t.match(/\d/g) || []).length;
+    var words = t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+    return digits * 8 + words;
+  }
+
+  function noteHeard(text) {
+    var t = String(text || '').trim();
+    if (!t) return;
+    if (fidelity(t) >= fidelity(rec.faithful || '')) rec.faithful = t;
+  }
+
   function tokensOf(text) {
     return String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean);
   }
@@ -977,13 +1229,23 @@
     return /^(gold|silver|euro|cable|nasdaq|dow|dax|ftse|bitcoin|btc|eth|long|short|buy|sell|yes|no|save|open|closed)$/i.test(t);
   }
 
+  var WHISPER_JUNK = /^(thanks for watching\.?|thank you(?: for watching)?\.?|subscribe\.?|you\.?|bye\.?|music\.?|applause\.?|[.\s]+)$/i;
+
   function pickTranscript(whisper, local) {
     whisper = String(whisper || '').trim();
     local = String(local || '').trim();
-    if (isPromptLeak(whisper)) whisper = '';
+    if (isPromptLeak(whisper) || WHISPER_JUNK.test(whisper)) whisper = '';
     if (looksLikeEcho(whisper)) whisper = '';
     if (looksLikeEcho(local)) local = '';
-    if (captionIsEnough(local)) return local;
+    // A tiny transcript against a real sentence is usually a bad guess.
+    if (whisper && local) {
+      var wt = tokensOf(whisper);
+      var lt = tokensOf(local);
+      if (wt.length <= 2 && lt.length >= 5 && tokenOverlap(whisper, local) < 0.34) return local;
+      // A transcript that swaps the sentence is not what they said.
+      if (tokenOverlap(whisper, local) < 0.45 && fidelity(local) >= fidelity(whisper)) return local;
+      if (fidelity(local) > fidelity(whisper) + 6) return local;
+    }
     if (whisper) return whisper;
     return local;
   }
@@ -1000,19 +1262,20 @@
 
   function finishUtterance(srText, blob) {
     var local = String(srText || '').trim();
+    var faithful = String(rec.faithful || '').trim();
     if (looksLikeEcho(local)) local = '';
-    var blobOk = !!(blob && blob.size > 600 && boot.transcribeEnabled);
-    if (captionIsEnough(local)) {
-      setLive(local);
-      sendTurn(local);
-      return;
+    if (looksLikeEcho(faithful)) faithful = '';
+    if (faithful && (!local || (tokenOverlap(faithful, local) < 0.72 && fidelity(faithful) > fidelity(local)))) {
+      local = faithful;
     }
+    var blobOk = !!(blob && blob.size > 250 && boot.transcribeEnabled);
     if (blobOk) {
       committing = true;
       setState('thinking');
       setLive(local || '…');
       var fd = new FormData();
       fd.append('audio', blob, blobName(blob.type || rec.mime));
+      if (local) fd.append('hint', local.slice(0, 240));
       fetch(boot.transcribeUrl || '/api/voice/transcribe', {
         method: 'POST',
         headers: { 'X-CSRFToken': csrf() },
@@ -1074,9 +1337,11 @@
       var pnl = Number(m.profit_loss);
       chips.push({ t: (pnl >= 0 ? '+' : '') + pnl, k: pnl >= 0 ? 'is-win' : 'is-loss', f: '' });
     }
-    if (d.session_type) chips.push({ t: String(d.session_type).replace(' Session', ''), k: '', f: 'session_type' });
+    if (d.session_type) chips.push({ t: String(d.session_type).replace(' Session', '').replace(' Sessions', ''), k: d.session_assumed ? 'is-soft' : '', f: 'session_type' });
     if (d.timeframe && d.timeframe !== 'unspecified') chips.push({ t: d.timeframe, k: '', f: 'timeframe' });
-    if (d.lot_size != null && Number(d.lot_size) !== 1) chips.push({ t: d.lot_size + ' lot', k: '', f: 'lot_size' });
+    if (d.lot_size != null && (Number(d.lot_size) !== 1 || d.lot_assumed)) {
+      chips.push({ t: d.lot_size + ' lot', k: d.lot_assumed ? 'is-soft' : '', f: 'lot_size' });
+    }
     if (d.confidence_level != null && d.confidence_level !== '') chips.push({ t: d.confidence_level + '/10', k: '', f: 'confidence_level' });
     if (d.thesis_notes && d.thesis_notes !== 'skipped') {
       var why = String(d.thesis_notes);
@@ -1084,29 +1349,113 @@
     }
     el.innerHTML = chips.map(function (c) {
       var tap = c.f ? ' is-tap' : '';
+      if (confirming && c.f) tap += ' is-live';
       var attr = c.f ? ' data-fix="' + esc(c.f) + '" role="button" tabindex="0"' : '';
       return '<span class="tv-vj-chip ' + c.k + tap + '"' + attr + '>' + esc(c.t) + '</span>';
     }).join('');
     el.classList.toggle('is-on', chips.length > 0);
     if (chipHint) chipHint.classList.toggle('d-none', chips.filter(function (c) { return c.f; }).length < 1);
+    showNewTrade(!!(d && d.symbol));
+    renderSlip(d, m);
+  }
+
+  function cleanNote(v) {
+    v = v == null ? '' : String(v).trim();
+    if (!v || v === 'skipped') return '';
+    return v;
+  }
+
+  function journalSections(d) {
+    d = d || {};
+    var rules = '';
+    if (d.followed_plan === 'yes') rules = 'You followed your rules.';
+    else if (d.followed_plan === 'mostly') rules = 'Mostly on the rules.';
+    else if (d.followed_plan === 'no') rules = 'You broke your rules on this one.';
+    var mistake = cleanNote(d.mistake);
+    if (mistake === 'none') mistake = 'Nothing you’d change.';
+    var sections = [];
+    function add(label, text) {
+      text = cleanNote(text);
+      if (text) sections.push({ label: label, text: text });
+    }
+    add('Why', d.thesis_notes);
+    if (rules) sections.push({ label: 'Rules', text: rules });
+    add('In the trade', d.feeling_during);
+    add('Now', d.feeling_after);
+    add('How you managed it', d.managed_note);
+    if (mistake) sections.push({ label: 'The one thing', text: mistake });
+    add('What it taught you', d.lessons);
+    add('Next time', d.improve_next);
+    return sections;
+  }
+
+  function renderSlip(d, m) {
+    var el = document.getElementById('tv-vj-slip');
+    if (!el) return;
+    d = d || {};
+    m = m || {};
+    if (reviewMode || !d.symbol) {
+      el.classList.add('d-none');
+      el.innerHTML = '';
+      if (stage) stage.classList.remove('is-slip');
+      return;
+    }
+    function tap(label, field) {
+      return '<button type="button" class="tv-vj-slip-level" data-fix="' + esc(field) + '">' + esc(label) + '</button>';
+    }
+    var side = d.trade_type === 'SELL' ? 'Short' : (d.trade_type ? 'Long' : '');
+    var names = [];
+    if (side) names.push('<button type="button" class="tv-vj-slip-name" data-fix="trade_type">' + esc(side) + '</button>');
+    names.push('<button type="button" class="tv-vj-slip-name" data-fix="symbol">' + esc(d.symbol) + '</button>');
+    var levels = [];
+    if (d.entry_price != null) levels.push(tap('In ' + d.entry_price, 'entry_price'));
+    if (d.stop_loss != null) levels.push(tap('Stop ' + d.stop_loss, 'stop_loss'));
+    if (d.take_profit != null) levels.push(tap('Target ' + d.take_profit, 'take_profit'));
+    if (d.status === 'closed' && d.exit_price != null) levels.push(tap('Out ' + d.exit_price, 'exit_price'));
+    var picks = [];
+    if (m.rr_label) picks.push('<span class="tv-vj-slip-level is-quiet">' + esc(m.rr_label) + '</span>');
+    if (d.session_type) picks.push(tap(String(d.session_type).replace(' Session', '').replace(' Sessions', ''), 'session_type'));
+    if (d.entry_time && d.entry_time !== 'unspecified') picks.push('<span class="tv-vj-slip-level is-quiet">' + esc(d.entry_time) + '</span>');
+    if (d.timeframe && d.timeframe !== 'unspecified') picks.push(tap(d.timeframe, 'timeframe'));
+    if (d.lot_size != null) picks.push(tap(d.lot_size + ' lot', 'lot_size'));
+    if (d.confidence_level != null && d.confidence_level !== '') picks.push(tap(d.confidence_level + '/10', 'confidence_level'));
+    var stateLine = d.status === 'closed' ? 'Closed' : (d.status === 'open' ? 'Still in it' : '');
+    var sections = journalSections(d).map(function (s) {
+      var text = s.text;
+      if (text.length > 280) text = text.slice(0, 278) + '…';
+      return '<div class="tv-vj-slip-block"><p class="tv-vj-slip-label">' + esc(s.label) + '</p>' +
+        '<p class="tv-vj-slip-text">' + esc(text) + '</p></div>';
+    }).join('');
+    el.innerHTML =
+      '<div class="tv-vj-slip-head"><div class="tv-vj-slip-id">' + names.join('<span class="tv-vj-slip-dot">·</span>') + '</div>' +
+      (stateLine ? '<p class="tv-vj-slip-state">' + esc(stateLine) + '</p>' : '') + '</div>' +
+      (levels.length ? '<div class="tv-vj-slip-levels">' + levels.join('') + '</div>' : '') +
+      (picks.length ? '<div class="tv-vj-slip-picks">' + picks.join('') + '</div>' : '') +
+      sections +
+      (confirming ? '<p class="tv-vj-slip-foot">Tap a figure if it’s wrong</p>' : '');
+    el.classList.toggle('is-confirm', !!confirming);
+    el.classList.remove('d-none');
+    if (stage) stage.classList.add('is-slip');
   }
 
   function askFix(field) {
     fixField = field || '';
     reviewMode = false;
+    if (stage) stage.classList.remove('is-review');
+    renderSlip(draft, lastMetrics || {});
     var prompts = {
       symbol: 'What market was it?',
       trade_type: 'Long or short?',
-      entry_price: 'What was the entry?',
-      stop_loss: 'Where was the stop?',
-      take_profit: 'What was the target?',
+      entry_price: 'What price did you enter at?',
+      stop_loss: 'What was your stop loss?',
+      take_profit: 'What was your take profit?',
       exit_price: 'Where did you get out?',
       session_type: 'Which session?',
       lot_size: 'What size were you trading?',
       timeframe: 'What timeframe were you on?',
       confidence_level: 'Confidence from one to ten?'
     };
-    var line = prompts[fixField] || 'What should I change?';
+    var line = prompts[fixField] || 'Which part should I change?';
     if (journalEl) journalEl.classList.add('d-none');
     skipShot = true;
     speak(line, startRec);
@@ -1151,15 +1500,6 @@
     if (d.entry_time && d.entry_time !== 'unspecified') facts.push(['Time', d.entry_time]);
     if (d.confidence_level != null && d.confidence_level !== '') facts.push(['Confidence', d.confidence_level + '/10']);
 
-    function section(title, rows) {
-      if (!rows.length) return '';
-      var h = '<div class="tv-vj-story-block"><h3>' + esc(title) + '</h3>';
-      rows.forEach(function (row) {
-        h += '<div class="tv-vj-row"><span>' + esc(row[0]) + '</span><strong>' + esc(row[1]) + '</strong></div>';
-      });
-      return h + '</div>';
-    }
-
     function narrative(label, text) {
       if (!text || text === 'skipped') return '';
       return '<div class="tv-vj-story-block">' +
@@ -1167,25 +1507,18 @@
         '<p class="tv-vj-story-text">' + esc(text) + '</p></div>';
     }
 
-    var meta = [];
-    if (d.setup_tags && d.setup_tags.length) meta.push(['Setup', d.setup_tags.join(', ')]);
-    if (d.followed_plan && d.followed_plan !== 'skipped') {
-      meta.push(['Rules', d.followed_plan === 'yes' ? 'Followed' : (d.followed_plan === 'mostly' ? 'Mostly' : 'Broke rules')]);
-    }
-    if (d.feeling_during && d.feeling_during !== 'skipped') meta.push(['During', d.feeling_during]);
-    if (d.feeling_after && d.feeling_after !== 'skipped') meta.push(['After', d.feeling_after]);
-    if (d.emotions && d.emotions.length) meta.push(['Feel', d.emotions.join(', ')]);
-
     var html = '<article class="tv-vj-card">' + hero;
     html += '<h2>' + esc(facts[0][0]) + ' <span>' + esc(facts[0][1]) + '</span></h2>';
     facts.slice(1).forEach(function (row) {
       html += '<div class="tv-vj-row"><span>' + esc(row[0]) + '</span><strong>' + esc(row[1]) + '</strong></div>';
     });
-    html += narrative('Why this trade', d.thesis_notes);
-    html += section('Context', meta);
-    html += narrative('Lesson', d.lessons);
-    html += narrative('Next time', d.improve_next);
-    html += '<p class="tv-vj-save-hint">Looks right? Save to journal — tap a chip to fix a level.</p>';
+    if (d.setup_tags && d.setup_tags.length) {
+      html += narrative('Setup', d.setup_tags.join(', '));
+    }
+    journalSections(d).forEach(function (s) {
+      html += narrative(s.label, s.text);
+    });
+    html += '<p class="tv-vj-save-hint">This is the page. Say save, or tap a number to change it.</p>';
     html += '</article>';
     summaryEl.innerHTML = html;
   }
@@ -1196,20 +1529,53 @@
     });
   }
 
-  function showShot(kind) {
-    shotKind = kind === 'after' ? 'after' : 'before';
+  function renderPrompts(askKey) {
+    var el = document.getElementById('tv-vj-prompts');
+    if (!el) return;
+    var sets = {
+      confirm_levels: ['Looks right', 'Change something'],
+      feeling_during: ['Calm', 'Confident', 'Nervous', 'Patient', 'Frustrated'],
+      feeling_after: ['Relieved', 'Calm', 'Annoyed', 'Proud', 'Unsure'],
+      confidence_level: ['4', '6', '7', '8', '9', '10'],
+      followed_plan: ['Yes', 'Mostly', 'No'],
+      managed_note: ['As planned', 'Moved stop', 'Took partials', 'Got out early'],
+      mistake: ['No mistake']
+    };
+    var items = sets[askKey] || [];
+    if (!items.length) {
+      el.innerHTML = '';
+      el.classList.remove('is-on');
+      return;
+    }
+    el.innerHTML = items.map(function (label) {
+      return '<button type="button" class="tv-vj-prompt" data-say="' + esc(label) + '">' + esc(label) + '</button>';
+    }).join('');
+    el.classList.add('is-on');
+  }
+
+  function showShot() {
     if (!shotEl) return;
     shotEl.classList.remove('d-none');
+    renderPrompts('');
+    if (shotEl.scrollIntoView) shotEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     var prompt = document.getElementById('tv-vj-shot-prompt');
-    if (prompt) {
-      prompt.textContent = shotKind === 'after'
-        ? 'And the after chart?'
-        : 'Got a before-trade screenshot?';
+    if (prompt) prompt.textContent = 'Add chart photo — before and after.';
+    var doneBtn = document.getElementById('tv-vj-shot-done');
+    if (doneBtn) doneBtn.classList.toggle('d-none', !(hasBefore || hasAfter));
+  }
+
+  function previewInSlot(kind, file) {
+    var slot = document.getElementById(kind === 'after' ? 'tv-vj-shot-after' : 'tv-vj-shot-before');
+    if (!slot || !file) return;
+    var url = URL.createObjectURL(file);
+    var img = slot.querySelector('img');
+    if (!img) {
+      img = document.createElement('img');
+      img.alt = kind === 'after' ? 'After chart' : 'Before chart';
+      slot.appendChild(img);
     }
-    var beforeBtn = document.getElementById('tv-vj-shot-before');
-    var afterBtn = document.getElementById('tv-vj-shot-after');
-    if (beforeBtn) beforeBtn.classList.toggle('is-active', shotKind !== 'after');
-    if (afterBtn) afterBtn.classList.toggle('is-active', shotKind === 'after');
+    img.src = url;
+    slot.classList.add('has-file');
   }
 
   function previewShot(kind, file) {
@@ -1229,8 +1595,9 @@
     if (kind === 'after') hasAfter = true;
     else hasBefore = true;
     hasShot = hasBefore || hasAfter;
-    previewShot(kind, file);
-    var said = kind === 'after' ? 'I uploaded the after chart.' : 'I uploaded the before chart.';
+    previewInSlot(kind, file);
+    var doneBtn = document.getElementById('tv-vj-shot-done');
+    if (doneBtn) doneBtn.classList.remove('d-none');
     if (kind === 'before' && boot.extractUrl) {
       var fd = new FormData();
       fd.append('image', file, file.name || 'chart.jpg');
@@ -1245,18 +1612,68 @@
           draft.instrument_id = data.instrument.id;
           draft.symbol = data.instrument.symbol;
         }
-        sendTurn(said);
-      }).catch(function () {
-        sendTurn(said);
-      });
-    } else {
-      sendTurn(said);
+        renderChips(draft, lastMetrics || {});
+      }).catch(function () {});
     }
+  }
+
+  var undoStack = null;
+
+  function showRedo(on) {
+    var el = document.getElementById('tv-vj-redo');
+    if (el) el.classList.toggle('d-none', !on);
+  }
+
+  function rememberTurn() {
+    var fields = {};
+    if (form) {
+      var nodes = form.querySelectorAll('input, select, textarea');
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].type === 'file') continue;
+        var key = nodes[i].id || nodes[i].name;
+        if (!key) continue;
+        fields[key] = nodes[i].value;
+      }
+    }
+    undoStack = {
+      draft: JSON.parse(JSON.stringify(draft || {})),
+      history: history.slice(),
+      transcript: transcriptDump.slice(),
+      confirming: !!confirming,
+      reviewMode: !!reviewMode,
+      ai: aiEl ? aiEl.textContent : '',
+      fields: fields
+    };
+  }
+
+  function restoreTurn() {
+    if (!undoStack || committing) return;
+    stopTTS();
+    stopRec(true);
+    draft = undoStack.draft || {};
+    history = undoStack.history || [];
+    transcriptDump = (undoStack.transcript || []).slice();
+    confirming = !!undoStack.confirming;
+    reviewMode = !!undoStack.reviewMode;
+    Object.keys(undoStack.fields || {}).forEach(function (k) { setVal(k, undoStack.fields[k]); });
+    if (stage) {
+      stage.classList.toggle('is-confirm', confirming);
+      stage.classList.remove('is-review');
+    }
+    if (journalEl) journalEl.classList.add('d-none');
+    renderChips(draft, lastMetrics || {});
+    setAi(undoStack.ai || 'Tell me the trade.');
+    setVal('guide_voice_dump', transcriptDump.join('\n'));
+    showRedo(false);
+    undoStack = null;
+    persistDraft();
+    speak('Okay. Say that again.', startRec);
   }
 
   function sendTurn(text) {
     var spoken = String(text || '').trim();
     if (!spoken) return;
+    rememberTurn();
     if (reviewMode && looksLikeSaveConfirm(spoken)) {
       clearPersisted();
       if (form.requestSubmit) form.requestSubmit();
@@ -1309,11 +1726,16 @@
         }
         draft = data.draft || draft;
         if (boot.mode === 'quick') draft.voice_mode = 'quick';
+        confirming = data.ask_key === 'confirm_levels';
+        if (stage) stage.classList.toggle('is-confirm', confirming);
+        var check = document.getElementById('tv-vj-check');
+        if (check) check.classList.toggle('d-none', !confirming);
         applyForm(data.form, data.instrument);
         renderChips(draft, data.metrics || {});
         setPhase(data.phase || (data.ask_screenshot ? 'charts' : (data.complete ? 'review' : '')));
         setVal('guide_voice_dump', transcriptDump.join('\n'));
         history.push({ role: 'assistant', content: data.reply || '' });
+        showRedo(true);
         persistDraft();
         if (pendingEl && (draft.symbol || draft.entry_price != null)) pendingEl.classList.add('d-none');
         if (data.action === 'pause') {
@@ -1322,7 +1744,9 @@
           });
           return;
         }
+        renderPrompts(data.ask_screenshot ? '' : (data.ask_key || ''));
         if (data.ask_screenshot && shotEl) showShot(data.screenshot_kind || 'before');
+        else if (shotEl && !data.ask_screenshot) shotEl.classList.add('d-none');
         if ((data.complete && !data.ask_screenshot) || data.action === 'finish') {
           if (!(data.instrument && data.instrument.id) && !val('instrument_id')) {
             speak('I didn’t catch the market — say the ticker once more?', startRec);
@@ -1351,11 +1775,18 @@
     stopRec(true);
     stopTTS();
     reviewMode = true;
+    renderPrompts('');
     setState('review');
     setPhase('review');
     setLive('');
     if (shotEl && hasBefore && hasAfter) shotEl.classList.add('d-none');
     if (journalEl) journalEl.classList.remove('d-none');
+    var slip = document.getElementById('tv-vj-slip');
+    if (slip) slip.classList.add('d-none');
+    if (stage) {
+      stage.classList.remove('is-slip');
+      stage.classList.add('is-review');
+    }
     setVal('guide_voice_dump', transcriptDump.join('\n'));
     renderJournal(data);
     persistDraft();
@@ -1366,6 +1797,7 @@
 
   function begin() {
     if (state !== 'idle' && state !== 'review' && !reviewMode) return;
+    if (reviewMode || state === 'review') startFresh();
     reviewMode = false;
     if (journalEl) journalEl.classList.add('d-none');
     unlockAudio();
@@ -1375,7 +1807,7 @@
         ? ('Let’s finish the notes on ' + boot.complete.symbol + '. What happened?')
         : (draft && draft.symbol
           ? ('Picking up on ' + draft.symbol + ' — what else?')
-          : 'Hey. What did you take?'));
+          : 'Hey. Tell me the market, the price you entered, your stop, and your take profit.'));
     ensureStream().then(function (stream) {
       attachAnalyser(stream);
       if (!rec.raf) drawOrb();
@@ -1399,6 +1831,7 @@
   }
 
   markVoice(voiceId);
+  warmVoice();
   var voiceRow = document.getElementById('tv-vj-voices');
   if (voiceRow) {
     voiceRow.addEventListener('click', function (ev) {
@@ -1409,7 +1842,7 @@
       markVoice(id);
       if (!preview) return;
       stopTTS();
-      var preset = VOICE_PRESETS[voiceId] || VOICE_PRESETS.coral;
+      var preset = VOICE_PRESETS[voiceId] || VOICE_PRESETS.marin;
       speak(preset.sample, function () {
         if (state === 'speaking') setState('idle');
       });
@@ -1431,13 +1864,16 @@
     });
   }
 
+  function onFixClick(ev) {
+    var node = ev.target.closest('[data-fix]');
+    if (!node || node.classList.contains('is-quiet')) return;
+    askFix(node.getAttribute('data-fix'));
+  }
   var chipsEl = document.getElementById('tv-vj-chips');
   if (chipsEl) {
-    chipsEl.addEventListener('click', function (ev) {
-      var node = ev.target.closest('[data-fix]');
-      if (!node) return;
-      askFix(node.getAttribute('data-fix'));
-    });
+    chipsEl.addEventListener('click', onFixClick);
+    var slipEl = document.getElementById('tv-vj-slip');
+    if (slipEl) slipEl.addEventListener('click', onFixClick);
     chipsEl.addEventListener('keydown', function (ev) {
       if (ev.key !== 'Enter' && ev.key !== ' ') return;
       var node = ev.target.closest('[data-fix]');
@@ -1457,6 +1893,62 @@
     });
   }
 
+  var redoBtn = document.getElementById('tv-vj-redo-btn');
+  if (redoBtn) redoBtn.addEventListener('click', restoreTurn);
+
+  var promptEl = document.getElementById('tv-vj-prompts');
+  if (promptEl) {
+    promptEl.addEventListener('click', function (ev) {
+      var btn = ev.target.closest ? ev.target.closest('[data-say]') : null;
+      if (!btn || committing) return;
+      var said = btn.getAttribute('data-say') || '';
+      if (!said) return;
+      if (/^looks right$/i.test(said)) {
+        stopRec(true);
+        sendTurn('yes that looks right');
+        return;
+      }
+      if (/^followed my rules$/i.test(said)) {
+        stopRec(true);
+        sendTurn('yes I followed my rules');
+        return;
+      }
+      if (/^about an 8$/i.test(said)) {
+        stopRec(true);
+        sendTurn('about an 8, I felt calm');
+        return;
+      }
+      if (/^change something$/i.test(said)) {
+        stopRec(true);
+        setAi('Tap the one that’s wrong.');
+        if (chipHint) {
+          chipHint.textContent = 'Tap the one that’s wrong';
+          chipHint.classList.remove('d-none');
+        }
+        return;
+      }
+      if (/^\d+$/.test(said)) said = said + ' out of ten';
+      else if (/^(yes|no|mostly)$/i.test(said)) said = said.toLowerCase() === 'yes'
+        ? 'yes I followed my rules'
+        : (said.toLowerCase() === 'no' ? 'no I broke my rules' : 'mostly on plan');
+      else if (/as planned/i.test(said)) said = 'as planned, left the stop';
+      else if (/moved stop/i.test(said)) said = 'I moved the stop';
+      else if (/partials/i.test(said)) said = 'I took partials';
+      else if (/out early/i.test(said)) said = 'I got out early';
+      else if (/no mistake/i.test(said)) said = 'no mistake';
+      else said = 'I felt ' + said.toLowerCase();
+      stopRec(true);
+      sendTurn(said);
+    });
+  }
+  var shotDone = document.getElementById('tv-vj-shot-done');
+  if (shotDone) {
+    shotDone.addEventListener('click', function () {
+      if (!(hasBefore || hasAfter)) return;
+      if (shotEl) shotEl.classList.add('d-none');
+      sendTurn('I uploaded the chart.');
+    });
+  }
   document.getElementById('tv-vj-shot-before') && document.getElementById('tv-vj-shot-before').addEventListener('click', function () {
     var input = document.getElementById('before_screenshot');
     if (input) input.click();
@@ -1488,10 +1980,11 @@
     if (journalEl) journalEl.classList.add('d-none');
     reviewMode = false;
     skipShot = true;
-    speak('What should I change?', startRec);
+    speak('Which part should I change?', startRec);
   });
 
   form.addEventListener('submit', function () {
+    markJournalSaved();
     if (!val('lot_size')) setVal('lot_size', '1');
     var why = val('guide_why') || val('pre_trade_plan');
     if (why && !val('pre_trade_plan')) setVal('pre_trade_plan', why);
@@ -1516,7 +2009,30 @@
   if (!rec.raf) drawOrb();
   syncComposer();
 
+  var newTradeBtn = document.getElementById('tv-vj-new');
+  if (newTradeBtn) {
+    newTradeBtn.addEventListener('click', function () {
+      if (committing) return;
+      stopRec(true);
+      stopTTS();
+      startFresh();
+    });
+  }
+
+  window.addEventListener('pageshow', function (ev) {
+    if (!ev || !ev.persisted) return;
+    if (boot.complete && boot.complete.symbol) return;
+    if (journalSaved || savedMarkOn()) startFresh();
+  });
+
   window.addEventListener('pagehide', function () {
+    if (journalSaved || savedMarkOn()) {
+      clearPersisted();
+      stopTTS();
+      if (rec.stream) rec.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+      cancelAnimationFrame(rec.raf);
+      return;
+    }
     persistDraft();
     stopTTS();
     if (rec.stream) rec.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });

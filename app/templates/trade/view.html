@@ -493,7 +493,7 @@
         {% endif %}
 
         <!-- Journal story -->
-        {% if trade.pre_trade_plan or trade.post_trade_notes or trade.lessons_learned %}
+        {% if journal_blocks %}
         <div class="card mb-4 tv-journal-story">
             <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <h5 class="mb-0"><i class="fas fa-book-open me-1"></i> Journal story</h5>
@@ -502,25 +502,13 @@
                 <span class="badge text-bg-dark">Planned {{ display_rr|rr_ratio }}</span>
                 {% endif %}
             </div>
-            <div class="card-body">
-                {% if trade.pre_trade_plan %}
-                    <div class="tv-journal-story-block {% if trade.post_trade_notes or trade.lessons_learned %}mb-3 pb-3 border-bottom border-secondary-subtle{% endif %}">
-                        <h6 class="tv-journal-story-label">Why this trade</h6>
-                        <p class="tv-journal-story-text mb-0">{{ trade.pre_trade_plan }}</p>
-                    </div>
-                {% endif %}
-                {% if trade.post_trade_notes %}
-                    <div class="tv-journal-story-block {% if trade.lessons_learned %}mb-3 pb-3 border-bottom border-secondary-subtle{% endif %}">
-                        <h6 class="tv-journal-story-label">Review</h6>
-                        <p class="tv-journal-story-text mb-0">{{ trade.post_trade_notes }}</p>
-                    </div>
-                {% endif %}
-                {% if trade.lessons_learned %}
+            <div class="card-body tv-journal-page">
+                {% for block in journal_blocks %}
                     <div class="tv-journal-story-block">
-                        <h6 class="tv-journal-story-label">Lessons</h6>
-                        <p class="tv-journal-story-text mb-0">{{ trade.lessons_learned }}</p>
+                        <h6 class="tv-journal-story-label">{{ block.label }}</h6>
+                        <p class="tv-journal-story-text mb-0">{{ block.text }}</p>
                     </div>
-                {% endif %}
+                {% endfor %}
             </div>
         </div>
         {% endif %}

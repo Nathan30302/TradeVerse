@@ -361,7 +361,7 @@ def getting_started_sample_data():
             'success',
         )
     else:
-        flash('You already have trades — sample data was not added. Open Playbook or Trade Doctor instead.', 'info')
+        flash('You already have trades, so I left the sample ones out.', 'info')
     return redirect(next_url or url_for('playbook.index'))
 
 
