@@ -605,6 +605,22 @@ def test_one_sentence_does_not_turn_the_stop_into_the_exit():
     assert "swept" in (d.get("thesis_notes") or "").lower()
 
 
+def test_entry_then_stop_are_asked_one_at_a_time():
+    from app.services.voice_conversation import fallback_turn
+
+    first = fallback_turn("just starting")
+    reply = (first["reply"] or "").lower()
+    assert "price" in reply and "enter" in reply
+    assert "stop loss" not in reply
+    assert "take profit" not in reply
+
+    second = fallback_turn("3650", first["draft"])
+    assert second["draft"]["entry_price"] == 3650
+    follow = (second["reply"] or "").lower()
+    assert "stop loss" in follow
+    assert "take profit" not in follow
+
+
 def test_why_said_with_the_price_is_kept():
     from app.services.voice_conversation import fallback_turn
 

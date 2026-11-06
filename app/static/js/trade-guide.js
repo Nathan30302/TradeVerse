@@ -395,8 +395,17 @@
     errEl.classList.remove('d-none');
   }
 
+  function plainWords(text) {
+    return String(text || '')
+      .replace(/\s*[—–]\s*/g, ', ')
+      .replace(/\s+-\s+/g, ', ')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+,/g, ',')
+      .trim();
+  }
+
   function setAi(text) {
-    lastReply = String(text || '');
+    lastReply = plainWords(text);
     if (aiEl) {
       aiEl.textContent = lastReply;
       aiEl.classList.add('is-in');
@@ -405,7 +414,7 @@
 
   function setLive(text) {
     if (!liveEl) return;
-    var shown = String(text || '').trim();
+    var shown = plainWords(text);
     liveEl.textContent = shown;
     liveEl.classList.toggle('is-on', !!shown);
     var wrap = document.getElementById('tv-vj-live-wrap');
@@ -534,14 +543,14 @@
     'How confident were you, one to ten?',
     'What did this one teach you?',
     'What are you going to do differently next time?',
-    'How did you manage it — stop, partials, or did you get out early?',
+    'How did you manage the trade?',
     'If you could fix one thing about this trade, what would it be?',
     'Add the before and after, if you have them.',
     'You still in it, or are you out?'
   ];
 
   function voiceKey(line) {
-    return voiceId + '|h4|' + line;
+    return voiceId + '|h5|' + line;
   }
 
   function neuralSpeak() {
@@ -1749,7 +1758,7 @@
         else if (shotEl && !data.ask_screenshot) shotEl.classList.add('d-none');
         if ((data.complete && !data.ask_screenshot) || data.action === 'finish') {
           if (!(data.instrument && data.instrument.id) && !val('instrument_id')) {
-            speak('I didn’t catch the market — say the ticker once more?', startRec);
+            speak('I didn’t catch the market. Say the name once more?', startRec);
             return;
           }
           enterReview(data);
@@ -1767,7 +1776,7 @@
       })
       .catch(function () {
         committing = false;
-        speak('I missed that — try once more.', startRec);
+        speak('I missed that. Try once more.', startRec);
       });
   }
 
@@ -1790,7 +1799,7 @@
     setVal('guide_voice_dump', transcriptDump.join('\n'));
     renderJournal(data);
     persistDraft();
-    speak(data && data.reply ? data.reply : 'Got it — say save when it looks right.', function () {
+    speak(data && data.reply ? data.reply : 'Got it. Say save when it looks right.', function () {
       if (reviewMode) startRec();
     });
   }
@@ -1802,12 +1811,12 @@
     if (journalEl) journalEl.classList.add('d-none');
     unlockAudio();
     var opening = boot.mode === 'quick'
-      ? 'Give me the short version — market, side, and the levels.'
+      ? 'What price did you enter at?'
       : (boot.complete && boot.complete.symbol
         ? ('Let’s finish the notes on ' + boot.complete.symbol + '. What happened?')
         : (draft && draft.symbol
-          ? ('Picking up on ' + draft.symbol + ' — what else?')
-          : 'Hey. Tell me the market, the price you entered, your stop, and your take profit.'));
+          ? ('Picking up on ' + draft.symbol + '. What else?')
+          : 'What price did you enter at?'));
     ensureStream().then(function (stream) {
       attachAnalyser(stream);
       if (!rec.raf) drawOrb();

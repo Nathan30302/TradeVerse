@@ -434,16 +434,17 @@ body:has(.tv-vj-ink) .main-content > .alert {
 .tv-vj-ai {
   position: relative;
   margin: 0 0.4rem;
-  max-width: 19rem;
+  max-width: 22rem;
   min-height: 2.6em;
   font-family: "Literata", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  font-size: clamp(1.45rem, 5.4vw, 1.85rem);
-  font-weight: 400;
+  font-size: clamp(1.65rem, 6vw, 2.15rem);
+  font-weight: 560;
   font-optical-sizing: auto;
-  letter-spacing: -0.015em;
-  line-height: 1.35;
+  letter-spacing: 0;
+  line-height: 1.28;
+  hyphens: none;
   color: var(--vj-paper);
-  opacity: 0.92;
+  opacity: 0.96;
   transition: opacity 320ms ease, transform 360ms ease;
 }
 
@@ -580,12 +581,15 @@ body:has(.tv-vj-ink) .main-content > .alert {
 .tv-vj-live {
   min-height: 1.35em;
   margin: 0;
-  font-family: "Literata", Georgia, serif;
-  font-size: 1.22rem;
-  font-style: italic;
-  line-height: 1.45;
+  font-family: "Literata", "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 1.35rem;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0;
+  hyphens: none;
+  line-height: 1.4;
   color: var(--vj-paper);
-  opacity: 0.55;
+  opacity: 0.72;
 }
 
 .tv-vj-live.is-on {

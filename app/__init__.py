@@ -13,6 +13,8 @@ from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 from config import config
 import os
+import shutil
+import sys
 
 # Initialize Flask extensions (will be bound to app in create_app)
 db = SQLAlchemy()
@@ -609,7 +611,9 @@ def register_context_processors(app):
             'ui_font_labels': dict(app.config.get('UI_FONT_LABELS') or {}),
             'current_year': datetime.now(timezone.utc).year,
             'voice_transcribe_enabled': bool(os.environ.get('OPENAI_API_KEY', '').strip()),
-            'voice_speak_enabled': bool(os.environ.get('OPENAI_API_KEY', '').strip()),
+            'voice_speak_enabled': bool(os.environ.get('OPENAI_API_KEY', '').strip()) or (
+                sys.platform == 'darwin' and bool(shutil.which('say'))
+            ),
             'di_context': di_context,
         }
 

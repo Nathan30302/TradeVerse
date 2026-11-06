@@ -8,6 +8,10 @@ SpeechRecognition is unavailable but microphone capture may still work.
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
+import sys
+import tempfile
 
 import requests
 from flask import Blueprint, current_app, jsonify, request
@@ -50,6 +54,54 @@ _EXT_FOR_TYPE = {
 
 def _transcribe_enabled() -> bool:
     return bool(os.environ.get('OPENAI_API_KEY', '').strip())
+
+
+def voice_output_ready() -> bool:
+    """True when this machine can speak for every device, including a phone."""
+    if _transcribe_enabled():
+        return True
+    return sys.platform == 'darwin' and bool(shutil.which('say'))
+
+
+# Mac voices. The phone plays this audio, so it does not use its own robot voice.
+_SAY_CAST = {
+    'marin': ('Sandy', '168'),
+    'cedar': ('Reed', '160'),
+    'sage': ('Tessa', '156'),
+}
+
+
+def _speak_on_mac(text: str, voice_id: str) -> bytes | None:
+    """Render speech with the Mac's natural voices and return a wav."""
+    if sys.platform != 'darwin' or not shutil.which('say'):
+        return None
+    name, rate = _SAY_CAST.get(voice_id, ('Sandy', '168'))
+    spoken = (text or '').replace('—', ', ').replace('–', ', ').strip()
+    if not spoken:
+        return None
+    fd, path = tempfile.mkstemp(suffix='.wav')
+    os.close(fd)
+    try:
+        cmd = ['say', '-v', name, '-r', rate, '-o', path, '--data-format=LEI16@22050', spoken]
+        proc = subprocess.run(cmd, capture_output=True, timeout=25)
+        if proc.returncode != 0:
+            proc = subprocess.run(
+                ['say', '-r', rate, '-o', path, '--data-format=LEI16@22050', spoken],
+                capture_output=True,
+                timeout=25,
+            )
+        if proc.returncode != 0:
+            return None
+        with open(path, 'rb') as handle:
+            data = handle.read()
+        return data if len(data) > 1000 else None
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
 
 @bp.route('/status', methods=['GET'])
@@ -204,12 +256,6 @@ def speak():
     from app.services.entitlements import user_has_feature
     from app.services.ai_buddy_voice import truncate_for_speech
 
-    api_key = os.environ.get('OPENAI_API_KEY', '').strip()
-    if not api_key:
-        return jsonify({'error': 'Speech is not configured.', 'fallback': True}), 503
-    if not user_has_feature(current_user, 'ai_web'):
-        return jsonify({'error': 'Neural voice requires Pro Plus.', 'fallback': True}), 403
-
     payload = request.get_json(silent=True) or {}
     text = truncate_for_speech(str(payload.get('text') or ''))
     if not text:
@@ -219,6 +265,20 @@ def speak():
         voice = {'coral': 'marin', 'ash': 'cedar'}[voice]
     if voice not in _VOICE_CAST:
         voice = 'marin'
+
+    api_key = os.environ.get('OPENAI_API_KEY', '').strip()
+    if not (api_key and user_has_feature(current_user, 'ai_web')):
+        local = _speak_on_mac(text, voice)
+        if local:
+            from flask import Response
+            return Response(
+                local,
+                mimetype='audio/wav',
+                headers={'Cache-Control': 'no-store', 'X-TTS-Model': 'mac-say'},
+            )
+        if api_key:
+            return jsonify({'error': 'Neural voice requires Pro Plus.', 'fallback': True}), 403
+        return jsonify({'error': 'Speech is not configured.', 'fallback': True}), 503
 
     # Prefer higher-quality models; fall back so older accounts keep working.
     models = [
@@ -276,6 +336,14 @@ def speak():
         current_app.logger.info('TTS model %s HTTP %s — trying next', model, resp.status_code)
 
     current_app.logger.warning('TTS failed all models: %s', last_err)
+    local = _speak_on_mac(text, voice)
+    if local:
+        from flask import Response
+        return Response(
+            local,
+            mimetype='audio/wav',
+            headers={'Cache-Control': 'no-store', 'X-TTS-Model': 'mac-say'},
+        )
     return jsonify({'error': 'Speech synthesis failed.', 'fallback': True}), 502
 
 

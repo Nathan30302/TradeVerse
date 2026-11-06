@@ -111,7 +111,7 @@ _QUESTIONS = (
     ("take_profit", "What was your take profit?"),
     ("status", "Are you still in it, or are you out?"),
     ("exit_price", "Where did you get out?"),
-    ("session_type", "Which session — London, New York, or Asia?"),
+    ("session_type", "Which session was it?"),
     ("entry_time", "Roughly what time was that?"),
     ("lot_size", "What size were you trading?"),
     ("timeframe", "What timeframe were you on?"),
@@ -122,7 +122,7 @@ _QUESTIONS = (
     ("confidence_level", "How confident were you, one to ten?"),
     ("lessons", "What did this one teach you?"),
     ("improve_next", "What are you going to do differently next time?"),
-    ("managed_note", "How did you manage it — stop, partials, or did you get out early?"),
+    ("managed_note", "How did you manage the trade?"),
     ("mistake", "If you could fix one thing about this trade, what would it be?"),
 )
 
@@ -1112,8 +1112,16 @@ def journal_pattern_line(draft: Dict[str, Any], recent_notes: Optional[List[str]
             word = {3: "third", 4: "fourth", 5: "fifth"}.get(total, f"{total}th")
             return f"That’s the {word} time lately you’ve been {label}."
         if total == 2:
-            return f"That’s come up again — {label}."
+            return f"That’s come up again, {label}."
     return ""
+
+
+def _plain_spoken(text: str) -> str:
+    """Spoken lines stay sentences. No dashes that read like a generated script."""
+    cleaned = re.sub(r"\s*[—–]\s*", ", ", text or "")
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s+,", ",", cleaned)
+    return cleaned.strip()
 
 
 def conversational_next(
@@ -1167,7 +1175,7 @@ def conversational_next(
         complete = required_ready(draft)
     draft.pop("_just_corrected", None)
     return {
-        "reply": reply,
+        "reply": _plain_spoken(reply),
         "ask_screenshot": ask_shot,
         "screenshot_kind": shot_kind,
         "ask_key": ask_key,
@@ -1435,12 +1443,8 @@ def apply_parse(draft: Dict[str, Any], parsed: Dict[str, Any]) -> Dict[str, Any]
 
 
 def missing_keys(draft: Dict[str, Any]) -> List[str]:
-    """What the buddy should still ask — never a visible checklist."""
+    """What the buddy should still ask. One price at a time, entry then stop."""
     missing: List[str] = []
-    if not draft.get("symbol"):
-        missing.append("symbol")
-    if not draft.get("trade_type"):
-        missing.append("trade_type")
     if draft.get("entry_price") is None:
         missing.append("entry_price")
     if draft.get("stop_loss") is None and not draft.get("stop_skipped"):
@@ -1452,6 +1456,10 @@ def missing_keys(draft: Dict[str, Any]) -> List[str]:
         missing.append("status")
     if status == "closed" and draft.get("exit_price") is None:
         missing.append("exit_price")
+    if not draft.get("symbol"):
+        missing.append("symbol")
+    if not draft.get("trade_type"):
+        missing.append("trade_type")
     # Size and timeframe are captured if spoken. They don't hold up the why.
     if not draft.get("reflection_skipped"):
         thesis = (draft.get("thesis_notes") or "").strip()
@@ -1746,7 +1754,7 @@ def fallback_turn(
 
     if intent == "pause":
         return {
-            "reply": "Alright — I’ll hold this page. Come back whenever you’re ready to finish it.",
+            "reply": "Alright. I’ll hold this page. Come back whenever you’re ready to finish it.",
             "draft": draft,
             "complete": False,
             "ask_screenshot": False,
@@ -1760,7 +1768,7 @@ def fallback_turn(
     if intent == "finish":
         if not required_ready(draft):
             return {
-                "reply": "I still need the market, side, and entry — say those, or say edit later to pause.",
+                "reply": "I still need the market, the side, and the entry. Say those, or say edit later to pause.",
                 "draft": draft,
                 "complete": False,
                 "ask_screenshot": False,
@@ -1835,7 +1843,7 @@ def _spoken_wrap(draft: Dict[str, Any], pattern_notes: Optional[List[str]] = Non
     extra = f" {pattern}" if pattern else ""
     return (
         f"Alright. I’ve got {who}, and how it felt.{ratio}{extra} "
-        "It’s in your journal — say save when it looks right."
+        "It’s in your journal. Say save when it looks right."
     )
 
 
@@ -1991,7 +1999,7 @@ def run_turn(
 
     if intent == "pause":
         return {
-            "reply": "Alright — I’ll hold this page. Come back whenever you’re ready to finish it.",
+            "reply": "Alright. I’ll hold this page. Come back whenever you’re ready to finish it.",
             "draft": seeded,
             "complete": False,
             "ask_screenshot": False,
@@ -2004,7 +2012,7 @@ def run_turn(
     if intent == "finish":
         if not required_ready(seeded):
             return {
-                "reply": "I still need the market, side, and entry — say those, or say edit later to pause.",
+                "reply": "I still need the market, the side, and the entry. Say those, or say edit later to pause.",
                 "draft": seeded,
                 "complete": False,
                 "ask_screenshot": False,
