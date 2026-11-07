@@ -800,7 +800,7 @@ def test_guide_page_has_composer_and_pending_hooks(logged_client, app):
     assert "tv-vj-type-input" in body
     assert "tv-vj-voices" in body
     assert "Maya" in body and "Noah" in body and "Sage" in body
-    assert "Add chart photo" in body
+    assert "Add the chart, before and after." in body
     assert 'data-voice="marin"' in body
     assert "tv-vj-composer" in body
     assert "tv-vj-pending" in body or "still need notes" in body

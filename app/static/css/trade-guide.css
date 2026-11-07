@@ -492,13 +492,13 @@ body:has(.tv-vj-ink) .main-content > .alert {
 }
 
 .tv-vj-heard {
-  margin: 0 0 0.15rem;
-  font-family: "Syne", system-ui, sans-serif;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--vj-gold);
+  margin: 0 0 0.2rem;
+  font-family: "Literata", Georgia, serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: color-mix(in srgb, var(--vj-paper) 62%, var(--vj-gold));
 }
 
 .tv-vj-prompts {
@@ -564,11 +564,11 @@ body:has(.tv-vj-ink) .main-content > .alert {
   background: transparent;
   padding: 0;
   color: var(--vj-gold-dim);
-  font-family: "Syne", system-ui, sans-serif;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: "Literata", Georgia, serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
 

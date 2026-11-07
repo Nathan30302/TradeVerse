@@ -454,13 +454,31 @@
     });
   }
 
+  function player() {
+    var a = document.getElementById('tv-vj-tts');
+    if (!a) {
+      a = document.createElement('audio');
+      a.id = 'tv-vj-tts';
+      a.setAttribute('playsinline', 'true');
+      a.setAttribute('webkit-playsinline', 'true');
+      a.preload = 'auto';
+      document.body.appendChild(a);
+    }
+    return a;
+  }
+
   function unlockAudio() {
     try {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.resume();
-        var unlock = new SpeechSynthesisUtterance(' ');
-        unlock.volume = 0;
-        window.speechSynthesis.speak(unlock);
+      var a = player();
+      if (!a.getAttribute('data-unlocked')) {
+        a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+        var started = a.play();
+        if (started && started.then) {
+          started.then(function () {
+            a.pause();
+            a.setAttribute('data-unlocked', '1');
+          }).catch(function () {});
+        }
       }
     } catch (e) {}
     try {
@@ -469,7 +487,7 @@
         if (!rec.ctx) rec.ctx = new AC();
         rec.ctx.resume();
       }
-    } catch (e) {}
+    } catch (e2) {}
   }
 
   function clearBargeIn() {
@@ -507,7 +525,6 @@
         var a = document.getElementById('tv-vj-tts');
         if (a) {
           try { a.pause(); } catch (e2) {}
-          a.remove();
         }
         startRec();
       }
@@ -519,8 +536,8 @@
     try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
     var a = document.getElementById('tv-vj-tts');
     if (a) {
-      try { a.pause(); } catch (e) {}
-      a.remove();
+      try { a.pause(); } catch (e2) {}
+      a.onended = null;
     }
   }
 
@@ -550,7 +567,7 @@
   ];
 
   function voiceKey(line) {
-    return voiceId + '|h5|' + line;
+    return voiceId + '|h6|' + line;
   }
 
   function neuralSpeak() {
@@ -602,7 +619,7 @@
       i += 1;
       setTimeout(next, 280);
     }
-    setTimeout(next, 500);
+    setTimeout(next, 40);
   }
 
   function speak(text, then) {
@@ -659,16 +676,22 @@
     }
 
     function playUrl(url, after) {
-      var prev = document.getElementById('tv-vj-tts');
-      if (prev) prev.remove();
-      var audio = document.createElement('audio');
-      audio.id = 'tv-vj-tts';
+      var audio = player();
+      audio.onended = after;
+      var gaveUp = false;
+      function fallback() {
+        if (gaveUp || rec.bargeFired) return;
+        gaveUp = true;
+        browserSpeak();
+      }
+      audio.onerror = fallback;
       audio.src = url;
-      audio.addEventListener('ended', after, { once: true });
-      audio.addEventListener('error', function () { browserSpeak(); }, { once: true });
-      document.body.appendChild(audio);
-      var play = audio.play();
-      if (play && play.catch) play.catch(function () { browserSpeak(); });
+      function start() {
+        var play = audio.play();
+        if (play && play.catch) play.catch(fallback);
+      }
+      if (audio.readyState >= 2) start();
+      else audio.addEventListener('canplay', start, { once: true });
     }
 
     var exact = cachedAudio(line);
@@ -1568,7 +1591,7 @@
     renderPrompts('');
     if (shotEl.scrollIntoView) shotEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     var prompt = document.getElementById('tv-vj-shot-prompt');
-    if (prompt) prompt.textContent = 'Add chart photo — before and after.';
+    if (prompt) prompt.textContent = 'Add the chart, before and after.';
     var doneBtn = document.getElementById('tv-vj-shot-done');
     if (doneBtn) doneBtn.classList.toggle('d-none', !(hasBefore || hasAfter));
   }

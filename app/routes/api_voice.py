@@ -65,43 +65,56 @@ def voice_output_ready() -> bool:
 
 # Mac voices. The phone plays this audio, so it does not use its own robot voice.
 _SAY_CAST = {
-    'marin': ('Sandy', '168'),
-    'cedar': ('Reed', '160'),
-    'sage': ('Tessa', '156'),
+    'marin': ('Sandy', '150'),
+    'cedar': ('Reed', '146'),
+    'sage': ('Tessa', '144'),
 }
 
 
-def _speak_on_mac(text: str, voice_id: str) -> bytes | None:
-    """Render speech with the Mac's natural voices and return a wav."""
+def _speak_on_mac(text: str, voice_id: str) -> tuple[bytes, str] | None:
+    """Render speech with the Mac's natural voices. AAC so a phone can play it."""
     if sys.platform != 'darwin' or not shutil.which('say'):
         return None
-    name, rate = _SAY_CAST.get(voice_id, ('Sandy', '168'))
+    name, rate = _SAY_CAST.get(voice_id, ('Sandy', '150'))
     spoken = (text or '').replace('—', ', ').replace('–', ', ').strip()
     if not spoken:
         return None
-    fd, path = tempfile.mkstemp(suffix='.wav')
+    fd, wav_path = tempfile.mkstemp(suffix='.wav')
     os.close(fd)
+    m4a_path = wav_path[:-4] + '.m4a'
     try:
-        cmd = ['say', '-v', name, '-r', rate, '-o', path, '--data-format=LEI16@22050', spoken]
+        cmd = ['say', '-v', name, '-r', rate, '-o', wav_path, '--data-format=LEI16@22050', spoken]
         proc = subprocess.run(cmd, capture_output=True, timeout=25)
         if proc.returncode != 0:
             proc = subprocess.run(
-                ['say', '-r', rate, '-o', path, '--data-format=LEI16@22050', spoken],
+                ['say', '-r', rate, '-o', wav_path, '--data-format=LEI16@22050', spoken],
                 capture_output=True,
                 timeout=25,
             )
-        if proc.returncode != 0:
+        if proc.returncode != 0 or not os.path.getsize(wav_path):
             return None
-        with open(path, 'rb') as handle:
+        if shutil.which('afconvert'):
+            converted = subprocess.run(
+                ['afconvert', '-f', 'm4af', '-d', 'aac', '-b', '64000', wav_path, m4a_path],
+                capture_output=True,
+                timeout=20,
+            )
+            if converted.returncode == 0 and os.path.exists(m4a_path) and os.path.getsize(m4a_path) > 400:
+                with open(m4a_path, 'rb') as handle:
+                    return handle.read(), 'audio/mp4'
+        with open(wav_path, 'rb') as handle:
             data = handle.read()
-        return data if len(data) > 1000 else None
+        if len(data) > 1000:
+            return data, 'audio/wav'
+        return None
     except (OSError, subprocess.TimeoutExpired):
         return None
     finally:
-        try:
-            os.remove(path)
-        except OSError:
-            pass
+        for path in (wav_path, m4a_path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
 
 @bp.route('/status', methods=['GET'])
@@ -271,9 +284,10 @@ def speak():
         local = _speak_on_mac(text, voice)
         if local:
             from flask import Response
+            data, mime = local
             return Response(
-                local,
-                mimetype='audio/wav',
+                data,
+                mimetype=mime,
                 headers={'Cache-Control': 'no-store', 'X-TTS-Model': 'mac-say'},
             )
         if api_key:
@@ -339,9 +353,10 @@ def speak():
     local = _speak_on_mac(text, voice)
     if local:
         from flask import Response
+        data, mime = local
         return Response(
-            local,
-            mimetype='audio/wav',
+            data,
+            mimetype=mime,
             headers={'Cache-Control': 'no-store', 'X-TTS-Model': 'mac-say'},
         )
     return jsonify({'error': 'Speech synthesis failed.', 'fallback': True}), 502
